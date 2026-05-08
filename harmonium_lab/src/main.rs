@@ -85,6 +85,7 @@ impl RenderSection {
             valence: self.valence,
             arousal: self.arousal,
             seed,
+            rhythmic_cell_variety: None,
         }
     }
 }
@@ -222,6 +223,12 @@ enum Commands {
         /// Path to SF2 soundfont file (uses FundSP synth if not specified)
         #[arg(long)]
         soundfont: Option<PathBuf>,
+
+        /// Override `VarietyParams::rhythmic_cell_variety` (0.0–1.0).
+        /// Default 0.5 from VarietyParams. Set 0.0 to disable clave / 3+3+2
+        /// cells and gap=2 splits — useful for A/B comparison against legacy.
+        #[arg(long)]
+        variety: Option<f32>,
     },
 
     /// Render audio from a TuningParams profile and rate it
@@ -296,6 +303,14 @@ enum Commands {
         #[arg(long, env = "ANTHROPIC_API_KEY")]
         api_key: Option<String>,
     },
+
+    /// Dump a default-TuningParams TOML profile (with optional [render] block).
+    /// Useful as a starting point for new style profiles or for QA loops.
+    DefaultProfile {
+        /// Output TOML file (defaults to stdout if omitted)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -320,8 +335,8 @@ fn main() -> Result<()> {
         Commands::GenerateStyle { name, description, output, iterations, api_key } => {
             cmd_generate_style(&name, &description, &output, iterations, api_key)?;
         }
-        Commands::Render { profile, bars, bpm, seed, output, soundfont } => {
-            cmd_render(&profile, bars, bpm, seed, &output, soundfont.as_deref())?;
+        Commands::Render { profile, bars, bpm, seed, output, soundfont, variety } => {
+            cmd_render(&profile, bars, bpm, seed, &output, soundfont.as_deref(), variety)?;
         }
         Commands::RateStyle { profile, bars, bpm, seed, output } => {
             cmd_rate_style(&profile, bars, bpm, seed, output)?;
@@ -331,6 +346,9 @@ fn main() -> Result<()> {
         }
         Commands::TuneStyle { name, description, bars, bpm, iterations, output, api_key } => {
             cmd_tune_style(&name, &description, bars, bpm, iterations, &output, api_key)?;
+        }
+        Commands::DefaultProfile { output } => {
+            cmd_default_profile(output.as_deref())?;
         }
     }
 
@@ -1008,6 +1026,7 @@ fn cmd_render(
     seed: u64,
     output: &Path,
     soundfont: Option<&Path>,
+    variety: Option<f32>,
 ) -> Result<()> {
     let toml_str = std::fs::read_to_string(profile_path)
         .with_context(|| format!("Failed to read profile: {}", profile_path.display()))?;
@@ -1031,10 +1050,19 @@ fn cmd_render(
         // User explicitly set BPM via CLI
         config.bpm = bpm;
     }
+    config.rhythmic_cell_variety = variety;
 
+    let variety_label = variety.map_or_else(|| "default".to_string(), |v| format!("{v:.2}"));
     println!(
-        "Rendering {} bars at {} BPM (density={:.1}, tension={:.1}, valence={:.1}, arousal={:.1}, seed={})...",
-        bars, config.bpm, config.density, config.tension, config.valence, config.arousal, seed
+        "Rendering {} bars at {} BPM (density={:.1}, tension={:.1}, valence={:.1}, arousal={:.1}, seed={}, variety={})...",
+        bars,
+        config.bpm,
+        config.density,
+        config.tension,
+        config.valence,
+        config.arousal,
+        seed,
+        variety_label
     );
     render::render_to_files(&style.tuning, bars, &config, output, sf2_bytes.as_deref())?;
     println!("WAV saved to: {}", output.display());
@@ -1172,6 +1200,23 @@ fn cmd_rate_batch(candidates_dir: &Path, bars: usize, bpm: f32, seed: u64) -> Re
         println!("  {}. [{}] {} — {}", i + 1, rating, path.display(), feedback);
     }
 
+    Ok(())
+}
+
+fn cmd_default_profile(output: Option<&Path>) -> Result<()> {
+    let style = StyleFile { render: RenderSection::default(), tuning: TuningParams::default() };
+    let toml_str = toml::to_string_pretty(&style)
+        .map_err(|e| anyhow::anyhow!("Failed to serialize default profile: {e}"))?;
+    match output {
+        Some(path) => {
+            std::fs::write(path, &toml_str)
+                .with_context(|| format!("Failed to write profile: {}", path.display()))?;
+            println!("Default profile written to: {}", path.display());
+        }
+        None => {
+            print!("{toml_str}");
+        }
+    }
     Ok(())
 }
 

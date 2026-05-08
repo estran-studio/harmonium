@@ -474,6 +474,12 @@ impl MusicComposer {
     pub fn set_rhythm_tension(&mut self, t: f32) {
         self.musical_params.rhythm_tension = t.clamp(0.0, 1.0);
     }
+    /// Override the rhythmic-cell variety knob (CORELIB-13).
+    /// Default is 0.5 from `VarietyParams::default()`. Set 0.0 to disable
+    /// clave/3+3+2 cells and gap=2 splits — useful for legacy/A-B comparison.
+    pub fn set_rhythmic_cell_variety(&mut self, v: f32) {
+        self.musical_params.variety.rhythmic_cell_variety = v.clamp(0.0, 1.0);
+    }
     pub fn set_rhythm_secondary(&mut self, steps: usize, pulses: usize, rotation: usize) {
         self.musical_params.rhythm_secondary_steps = steps;
         self.musical_params.rhythm_secondary_pulses = pulses;
