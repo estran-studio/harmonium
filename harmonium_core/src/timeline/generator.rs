@@ -1021,17 +1021,9 @@ impl TimelineGenerator {
     /// 1. Variety-gated dotted/syncopated branch (`[3,1]`, `[1,3]`, `[4]`)
     /// 2. Density-aware uniform table (sustain at low density, subdivision otherwise)
     fn pick_cell_gap4(d: f32, variety: f32, rng: &mut dyn RngCore) -> Vec<usize> {
-        const DOTTED: &[(&[usize], f32)] = &[
-            (&[3, 1], 0.4),
-            (&[1, 3], 0.4),
-            (&[4],    0.2),
-        ];
-        const SUBDIV: &[(&[usize], f32)] = &[
-            (&[2, 2],       0.30),
-            (&[1, 1, 2],    0.20),
-            (&[2, 1, 1],    0.20),
-            (&[1, 1, 1, 1], 0.15),
-        ];
+        const DOTTED: &[(&[usize], f32)] = &[(&[3, 1], 0.4), (&[1, 3], 0.4), (&[4], 0.2)];
+        const SUBDIV: &[(&[usize], f32)] =
+            &[(&[2, 2], 0.30), (&[1, 1, 2], 0.20), (&[2, 1, 1], 0.20), (&[1, 1, 1, 1], 0.15)];
 
         let dotted_chance = (0.20 + variety * 0.35).min(0.55);
         if rng.next_f32() < dotted_chance {
@@ -1047,8 +1039,8 @@ impl TimelineGenerator {
     /// Used for compound meters (3/4, 6/8). No variety gating yet.
     fn pick_cell_gap6(rng: &mut dyn RngCore) -> Vec<usize> {
         const TABLE: &[(&[usize], f32)] = &[
-            (&[4, 2],    0.25),
-            (&[2, 4],    0.20),
+            (&[4, 2], 0.25),
+            (&[2, 4], 0.20),
             (&[2, 2, 2], 0.20),
             (&[3, 1, 2], 0.15),
             (&[1, 1, 4], 0.20),
@@ -1063,21 +1055,15 @@ impl TimelineGenerator {
     /// 2. Low-density sparse pair (`[6,2]`, `[2,6]`)
     /// 3. Density-aware uniform table
     fn pick_cell_gap8(d: f32, variety: f32, rng: &mut dyn RngCore) -> Vec<usize> {
-        const CLAVE: &[(&[usize], f32)] = &[
-            (&[3, 3, 2], 0.5),
-            (&[2, 3, 3], 0.3),
-            (&[3, 2, 3], 0.2),
-        ];
-        const SPARSE: &[(&[usize], f32)] = &[
-            (&[6, 2], 0.5),
-            (&[2, 6], 0.5),
-        ];
+        const CLAVE: &[(&[usize], f32)] =
+            &[(&[3, 3, 2], 0.5), (&[2, 3, 3], 0.3), (&[3, 2, 3], 0.2)];
+        const SPARSE: &[(&[usize], f32)] = &[(&[6, 2], 0.5), (&[2, 6], 0.5)];
         const DENSE: &[(&[usize], f32)] = &[
-            (&[4, 4],       0.15),
-            (&[4, 2, 2],    0.15),
-            (&[2, 2, 4],    0.15),
+            (&[4, 4], 0.15),
+            (&[4, 2, 2], 0.15),
+            (&[2, 2, 4], 0.15),
             (&[2, 2, 2, 2], 0.20),
-            (&[2, 4, 2],    0.15),
+            (&[2, 4, 2], 0.15),
         ];
 
         let clave_chance = (0.20 + variety * 0.45).min(0.65);
