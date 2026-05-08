@@ -33,7 +33,7 @@ ratio in MIDI.
 | 3:2 eighth-note triplets (3 notes per beat) | 5:4, 7:8, mixed tuplets |
 | 3:2 quarter-note triplets (3 notes per half-bar) | Nested tuplets |
 | Cell-emission API for triplet groups | Per-note micro-timing / swing ratio |
-| MIDI export with correct tuplet ticks | Live audio playback timing changes (already works at sample level) |
+| MIDI export with correct tuplet ticks | Audio path *changes* (we audit it in Phase 1; only modify if needed) |
 | VexFlow rendering via `factory.Tuplet(...)` | Tuplets across barlines |
 | Tests: round-trip MIDI, count distribution | Performance: re-derive cell variety from RL/profile params |
 
@@ -255,11 +255,13 @@ compatible because `tuplet` defaults to `None` and old behavior is preserved.
 
 | Phase | Deliverable | Effort | Stops at |
 |---|---|---|---|
-| 1 | `TupletGroup` schema + `Option<TupletGroup>` on `TimelineNote`/`NoteSnapshot` | 1 day | Compiles, default `None` everywhere, all existing tests pass |
+| 1 | **Audio-path audit** + `TupletGroup` schema + `Option<TupletGroup>` on `TimelineNote`/`NoteSnapshot` | 1.5 days | Audit memo (does live playback already render at sample-accurate ticks, or does it consume `duration_steps` directly?); compiles with default `None` everywhere; all existing tests pass |
 | 2 | `pick_rhythmic_cell` returns `Vec<CellNote>`; cell emission loop handles tuplet metadata | 2 days | Generator emits triplet groups; unit tests pass |
 | 3 | MIDI export honors tuplet ratio (durations + on-tick redistribution) | 1 day | Round-trip test: emit → parse → assert |
 | 4 | Variety wiring + new golden snapshot for jazz scenario | 0.5 day | All `cargo test --workspace` green |
 | 5 | Frontend VexFlow consumer renders `factory.Tuplet`; manual audio QA | 2–3 days | User can hear & see real triplets in practice app |
+
+Phase 1's audit is load-bearing: if the audio path consumes `duration_steps` as integer step counts (rather than resolved sample-accurate ticks), Phase 3's MIDI changes won't reach playback and we'll need a parallel audio fix. The audit decides whether Phase 3 ships alone or pairs with audio work.
 
 Phase 1–4 are core work; phase 5 is the practice-app frontend.
 
@@ -272,10 +274,9 @@ Phase 1–4 are core work; phase 5 is the practice-app frontend.
   let MIDI export redistribute. Avoids `f32` positions.
 - [ ] **Tuplet across barlines?** Reject in V1 (return `None` from cell picker
   when gap straddles the bar end). Document as known limitation.
-- [ ] **Live playback path** — does the audio side need to know about tuplets,
-  or is it already sample-accurate from the timeline tick? Likely
-  sample-accurate already since the audio path consumes resolved tick deltas
-  from MIDI/timeline, not step indices. Confirm in phase 1.
+- [x] **Live playback path** — *deferred to Phase 1 audio-path audit (§8).* The
+  hypothesis is sample-accurate already (audio consumes resolved tick deltas,
+  not step indices), but the audit is the gate before MIDI work in Phase 3.
 - [ ] **Should `[3, 3, 2]` clave cells be migrated to a tuplet representation?**
   No — they are genuine 3+3+2 patterns, not triplets. Leave as-is.
 - [ ] **Pivot vs. Polygon-vertex approach** — the lead trigger placement still

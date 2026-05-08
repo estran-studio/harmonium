@@ -950,11 +950,31 @@ impl TimelineGenerator {
     /// These map 1:1 to VexFlow glyphs: 16=w, 12=hd, 8=h, 6=qd, 4=q, 3=8d, 2=8, 1=16
     const NOTATION_SAFE_STEPS: [usize; 8] = [16, 12, 8, 6, 4, 3, 2, 1];
 
+    /// Pick one cell from a weighted table. Weights are relative; they are
+    /// summed and the random sample is rescaled, so callers don't need to make
+    /// them sum to 1.0. Always returns a cell — the last entry is the fallback.
+    fn pick_weighted_cell(rng: &mut dyn RngCore, choices: &[(&[usize], f32)]) -> Vec<usize> {
+        debug_assert!(!choices.is_empty(), "pick_weighted_cell needs at least one option");
+        let total: f32 = choices.iter().map(|(_, w)| *w).sum();
+        let mut r = rng.next_f32() * total;
+        for (cell, w) in choices {
+            if r < *w {
+                return cell.to_vec();
+            }
+            r -= w;
+        }
+        choices.last().unwrap().0.to_vec()
+    }
+
     /// Pick a rhythmic cell (sequence of durations in steps) to fill a gap (CORELIB-1).
     ///
     /// Returns a `Vec<usize>` of notation-safe durations that sum to approximately `gap`.
     /// Higher density → more subdivision, shorter notes. Higher variety → more
     /// asymmetric/clave-style cells over uniform ones.
+    ///
+    /// Each `gap` arm follows the same shape: roll variety-gated "special"
+    /// branches (dotted, clave) first; if none fire, pick from the uniform
+    /// weighted table. Branches read top-to-bottom in priority order.
     fn pick_rhythmic_cell(
         gap: usize,
         density: f32,
@@ -969,74 +989,9 @@ impl TimelineGenerator {
                 // Tiny flourish: split eighth into two 16ths
                 vec![1, 1]
             }
-            4 => {
-                let r = rng.next_f32();
-                // Variety-gated dotted/syncopated branch (was d<0.4 only)
-                let dotted_chance = (0.20 + variety * 0.35).min(0.55);
-                if r < dotted_chance {
-                    // Dotted/syncopated: [3,1], [1,3], [4]
-                    let s = rng.next_f32();
-                    if s < 0.4 {
-                        vec![3, 1]
-                    } else if s < 0.8 {
-                        vec![1, 3]
-                    } else {
-                        vec![4]
-                    }
-                } else if d < 0.4 {
-                    vec![4] // sustain
-                } else if r < dotted_chance + 0.20 {
-                    vec![2, 2]
-                } else if r < dotted_chance + 0.35 {
-                    vec![1, 1, 2]
-                } else if r < dotted_chance + 0.50 {
-                    vec![2, 1, 1]
-                } else {
-                    vec![1, 1, 1, 1] // four 16ths
-                }
-            }
-            8 => {
-                let r = rng.next_f32();
-                // Clave/triplet-feel branch grows with variety (was fixed 15% slice)
-                let clave_chance = (0.20 + variety * 0.45).min(0.65);
-                if r < clave_chance {
-                    // Asymmetric 3+3+2 family — clave / Latin / "triplet feel"
-                    let s = rng.next_f32();
-                    if s < 0.5 {
-                        vec![3, 3, 2]
-                    } else if s < 0.8 {
-                        vec![2, 3, 3]
-                    } else {
-                        vec![3, 2, 3]
-                    }
-                } else if d < 0.3 {
-                    if rng.next_f32() < 0.5 { vec![6, 2] } else { vec![2, 6] }
-                } else if r < clave_chance + 0.10 {
-                    vec![4, 4]
-                } else if r < clave_chance + 0.20 {
-                    vec![4, 2, 2]
-                } else if r < clave_chance + 0.30 {
-                    vec![2, 2, 4]
-                } else if r < clave_chance + 0.45 {
-                    vec![2, 2, 2, 2]
-                } else {
-                    vec![2, 4, 2] // short-long-short
-                }
-            }
-            6 => {
-                let r = rng.next_f32();
-                if r < 0.25 {
-                    vec![4, 2]
-                } else if r < 0.45 {
-                    vec![2, 4]
-                } else if r < 0.65 {
-                    vec![2, 2, 2]
-                } else if r < 0.80 {
-                    vec![3, 1, 2]
-                } else {
-                    vec![1, 1, 4]
-                }
-            }
+            4 => Self::pick_cell_gap4(d, variety, rng),
+            6 => Self::pick_cell_gap6(rng),
+            8 => Self::pick_cell_gap8(d, variety, rng),
             12..=usize::MAX => {
                 let r = rng.next_f32();
                 if d < 0.3 {
@@ -1058,6 +1013,81 @@ impl TimelineGenerator {
             }
             _ => vec![gap],
         }
+    }
+
+    /// Quarter-gap (4 steps) cell selection.
+    ///
+    /// Two-tier:
+    /// 1. Variety-gated dotted/syncopated branch (`[3,1]`, `[1,3]`, `[4]`)
+    /// 2. Density-aware uniform table (sustain at low density, subdivision otherwise)
+    fn pick_cell_gap4(d: f32, variety: f32, rng: &mut dyn RngCore) -> Vec<usize> {
+        const DOTTED: &[(&[usize], f32)] = &[
+            (&[3, 1], 0.4),
+            (&[1, 3], 0.4),
+            (&[4],    0.2),
+        ];
+        const SUBDIV: &[(&[usize], f32)] = &[
+            (&[2, 2],       0.30),
+            (&[1, 1, 2],    0.20),
+            (&[2, 1, 1],    0.20),
+            (&[1, 1, 1, 1], 0.15),
+        ];
+
+        let dotted_chance = (0.20 + variety * 0.35).min(0.55);
+        if rng.next_f32() < dotted_chance {
+            return Self::pick_weighted_cell(rng, DOTTED);
+        }
+        if d < 0.4 {
+            return vec![4]; // sustain at low density
+        }
+        Self::pick_weighted_cell(rng, SUBDIV)
+    }
+
+    /// Dotted-quarter gap (6 steps) cell selection.
+    /// Used for compound meters (3/4, 6/8). No variety gating yet.
+    fn pick_cell_gap6(rng: &mut dyn RngCore) -> Vec<usize> {
+        const TABLE: &[(&[usize], f32)] = &[
+            (&[4, 2],    0.25),
+            (&[2, 4],    0.20),
+            (&[2, 2, 2], 0.20),
+            (&[3, 1, 2], 0.15),
+            (&[1, 1, 4], 0.20),
+        ];
+        Self::pick_weighted_cell(rng, TABLE)
+    }
+
+    /// Half-bar gap (8 steps) cell selection.
+    ///
+    /// Three-tier:
+    /// 1. Variety-gated clave/3+3+2 family (`[3,3,2]`, `[2,3,3]`, `[3,2,3]`)
+    /// 2. Low-density sparse pair (`[6,2]`, `[2,6]`)
+    /// 3. Density-aware uniform table
+    fn pick_cell_gap8(d: f32, variety: f32, rng: &mut dyn RngCore) -> Vec<usize> {
+        const CLAVE: &[(&[usize], f32)] = &[
+            (&[3, 3, 2], 0.5),
+            (&[2, 3, 3], 0.3),
+            (&[3, 2, 3], 0.2),
+        ];
+        const SPARSE: &[(&[usize], f32)] = &[
+            (&[6, 2], 0.5),
+            (&[2, 6], 0.5),
+        ];
+        const DENSE: &[(&[usize], f32)] = &[
+            (&[4, 4],       0.15),
+            (&[4, 2, 2],    0.15),
+            (&[2, 2, 4],    0.15),
+            (&[2, 2, 2, 2], 0.20),
+            (&[2, 4, 2],    0.15),
+        ];
+
+        let clave_chance = (0.20 + variety * 0.45).min(0.65);
+        if rng.next_f32() < clave_chance {
+            return Self::pick_weighted_cell(rng, CLAVE);
+        }
+        if d < 0.3 {
+            return Self::pick_weighted_cell(rng, SPARSE);
+        }
+        Self::pick_weighted_cell(rng, DENSE)
     }
 
     /// Calculate lead note duration (until next lead trigger or end of bar),
