@@ -468,6 +468,10 @@ impl TimelineGenerator {
             }
         }
 
+        // Watermark: when a multi-gap rhythmic cell is emitted (e.g. clave 3+3+2
+        // spanning two quarter gaps), suppress lead triggers until this step.
+        let mut skip_lead_until: usize = 0;
+
         for step in 0..steps {
             // Tick primary sequencer
             let trigger_primary = if step < self.sequencer_primary.pattern.len() {
@@ -589,6 +593,7 @@ impl TimelineGenerator {
             // === LEAD (with voicing decision) ===
             let play_lead = melody_enabled
                 && trigger_primary.lead
+                && step >= skip_lead_until
                 && !(is_high_tension && is_in_fill_zone)
                 && !self.musical_params.muted_channels.get(1).copied().unwrap_or(false);
 
@@ -618,7 +623,7 @@ impl TimelineGenerator {
                     let base_vel = (70.0 + self.current_state.arousal * 30.0) as u8;
 
                     // Determine available gap to next trigger
-                    let gap = self.calculate_lead_duration(
+                    let raw_gap = self.calculate_lead_duration(
                         step,
                         steps,
                         &self.sequencer_primary.pattern,
@@ -626,20 +631,42 @@ impl TimelineGenerator {
                         fill_zone_start,
                     );
 
+                    // === CELL VARIETY (CORELIB-13 wiring) ===
+                    let variety = self.musical_params.variety.rhythmic_cell_variety;
+
+                    // === LOOKAHEAD COMBINE ===
+                    // Adjacent quarter-gaps can merge into a half-bar cell so we
+                    // can emit clave-style patterns like [3,3,2] that don't fit
+                    // in a single quarter. Probability scales with variety.
+                    let combine_prob = (variety * 0.6).min(0.8);
+                    let pattern_len = self.sequencer_primary.pattern.len();
+                    let next_lead_step = step + raw_gap;
+                    let combined = raw_gap == 4
+                        && next_lead_step < steps
+                        && next_lead_step < pattern_len
+                        && self.sequencer_primary.pattern[next_lead_step].lead
+                        && rng.next_f32() < combine_prob;
+                    let gap = if combined { 8 } else { raw_gap };
+
                     // === CORELIB-1: RHYTHMIC CELL SUBDIVISION ===
                     // At higher density/tension, subdivide long notes into cells.
                     // Low density → sustain (single long note)
                     // Mid density → quarter+eighth or dotted patterns
                     // High density → eighth note runs, 16th pickups
                     let subdivide_prob = if gap >= 4 {
-                        (density * 0.6 + self.current_state.tension * 0.3).min(0.8)
+                        (density * 0.5 + self.current_state.tension * 0.25 + variety * 0.35)
+                            .min(0.9)
+                    } else if gap == 2 && variety > 0.0 {
+                        // Occasionally split an eighth into two 16ths for flourish.
+                        // Fully gated on variety so disabling it restores legacy behavior.
+                        (variety * (0.3 + density * 0.2)).min(0.4)
                     } else {
-                        0.0 // Don't subdivide short gaps
+                        0.0
                     };
 
-                    if gap >= 4 && rng.next_f32() < subdivide_prob {
+                    if gap >= 2 && rng.next_f32() < subdivide_prob {
                         // Generate a rhythmic cell that fills the gap
-                        let cell = Self::pick_rhythmic_cell(gap, density, rng);
+                        let cell = Self::pick_rhythmic_cell(gap, density, variety, rng);
                         let mut cell_offset = 0;
                         for (i, &dur) in cell.iter().enumerate() {
                             if cell_offset >= gap {
@@ -688,6 +715,11 @@ impl TimelineGenerator {
                                 articulation: Articulation::Normal,
                             },
                         );
+                    }
+
+                    // Suppress the swallowed trigger when we merged two gaps.
+                    if combined {
+                        skip_lead_until = step + gap;
                     }
                 }
             }
@@ -921,42 +953,72 @@ impl TimelineGenerator {
     /// Pick a rhythmic cell (sequence of durations in steps) to fill a gap (CORELIB-1).
     ///
     /// Returns a `Vec<usize>` of notation-safe durations that sum to approximately `gap`.
-    /// Higher density → more subdivision, shorter notes.
-    fn pick_rhythmic_cell(gap: usize, density: f32, rng: &mut dyn RngCore) -> Vec<usize> {
+    /// Higher density → more subdivision, shorter notes. Higher variety → more
+    /// asymmetric/clave-style cells over uniform ones.
+    fn pick_rhythmic_cell(
+        gap: usize,
+        density: f32,
+        variety: f32,
+        rng: &mut dyn RngCore,
+    ) -> Vec<usize> {
         // Fuzzy density: add randomness so same density doesn't always pick same branch
         let d = (density + (rng.next_f32() - 0.5) * 0.2).clamp(0.0, 1.0);
 
         match gap {
+            2 => {
+                // Tiny flourish: split eighth into two 16ths
+                vec![1, 1]
+            }
             4 => {
                 let r = rng.next_f32();
-                if d < 0.4 {
-                    if r < 0.5 { vec![3, 1] } else { vec![4] }
-                } else if r < 0.25 {
+                // Variety-gated dotted/syncopated branch (was d<0.4 only)
+                let dotted_chance = (0.20 + variety * 0.35).min(0.55);
+                if r < dotted_chance {
+                    // Dotted/syncopated: [3,1], [1,3], [4]
+                    let s = rng.next_f32();
+                    if s < 0.4 {
+                        vec![3, 1]
+                    } else if s < 0.8 {
+                        vec![1, 3]
+                    } else {
+                        vec![4]
+                    }
+                } else if d < 0.4 {
+                    vec![4] // sustain
+                } else if r < dotted_chance + 0.20 {
                     vec![2, 2]
-                } else if r < 0.45 {
+                } else if r < dotted_chance + 0.35 {
                     vec![1, 1, 2]
-                } else if r < 0.65 {
+                } else if r < dotted_chance + 0.50 {
                     vec![2, 1, 1]
-                } else if r < 0.80 {
-                    vec![1, 3] // 16th + dotted-8th
                 } else {
                     vec![1, 1, 1, 1] // four 16ths
                 }
             }
             8 => {
                 let r = rng.next_f32();
-                if d < 0.3 {
-                    if r < 0.5 { vec![6, 2] } else { vec![5, 3] }
-                } else if r < 0.20 {
+                // Clave/triplet-feel branch grows with variety (was fixed 15% slice)
+                let clave_chance = (0.20 + variety * 0.45).min(0.65);
+                if r < clave_chance {
+                    // Asymmetric 3+3+2 family — clave / Latin / "triplet feel"
+                    let s = rng.next_f32();
+                    if s < 0.5 {
+                        vec![3, 3, 2]
+                    } else if s < 0.8 {
+                        vec![2, 3, 3]
+                    } else {
+                        vec![3, 2, 3]
+                    }
+                } else if d < 0.3 {
+                    if rng.next_f32() < 0.5 { vec![6, 2] } else { vec![2, 6] }
+                } else if r < clave_chance + 0.10 {
                     vec![4, 4]
-                } else if r < 0.35 {
+                } else if r < clave_chance + 0.20 {
                     vec![4, 2, 2]
-                } else if r < 0.50 {
+                } else if r < clave_chance + 0.30 {
                     vec![2, 2, 4]
-                } else if r < 0.65 {
+                } else if r < clave_chance + 0.45 {
                     vec![2, 2, 2, 2]
-                } else if r < 0.80 {
-                    vec![3, 3, 2] // triplet feel
                 } else {
                     vec![2, 4, 2] // short-long-short
                 }
@@ -1604,6 +1666,9 @@ mod tests {
         params.rhythm_mode = RhythmMode::PerfectBalance;
         params.rhythm_density = 0.8;
         params.rhythm_tension = 0.5;
+        // Disable rhythmic-cell variety so this test's strict count equality
+        // depends only on pattern equality, not on RNG-driven cell choices.
+        params.variety.rhythmic_cell_variety = 0.0;
         tgen.update_params(params);
 
         // Step 3: Generate bars — bar 0 should match bar 1+
