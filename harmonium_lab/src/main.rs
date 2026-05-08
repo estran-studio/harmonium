@@ -46,6 +46,10 @@ struct RenderSection {
     valence: f32,
     #[serde(default = "default_arousal")]
     arousal: f32,
+    /// Optional rhythmic-cell variety override (CORELIB-13). `None` = engine
+    /// default (`VarietyParams::default().rhythmic_cell_variety`).
+    #[serde(default)]
+    rhythmic_cell_variety: Option<f32>,
 }
 
 fn default_bpm() -> f32 {
@@ -72,6 +76,7 @@ impl Default for RenderSection {
             tension: default_tension(),
             valence: default_valence(),
             arousal: default_arousal(),
+            rhythmic_cell_variety: None,
         }
     }
 }
@@ -85,7 +90,7 @@ impl RenderSection {
             valence: self.valence,
             arousal: self.arousal,
             seed,
-            rhythmic_cell_variety: None,
+            rhythmic_cell_variety: self.rhythmic_cell_variety,
         }
     }
 }
@@ -1050,9 +1055,14 @@ fn cmd_render(
         // User explicitly set BPM via CLI
         config.bpm = bpm;
     }
-    config.rhythmic_cell_variety = variety;
+    // CLI --variety overrides the profile's value when present; otherwise
+    // the profile's `[render].rhythmic_cell_variety` is preserved.
+    if variety.is_some() {
+        config.rhythmic_cell_variety = variety;
+    }
 
-    let variety_label = variety.map_or_else(|| "default".to_string(), |v| format!("{v:.2}"));
+    let variety_label =
+        config.rhythmic_cell_variety.map_or_else(|| "default".to_string(), |v| format!("{v:.2}"));
     println!(
         "Rendering {} bars at {} BPM (density={:.1}, tension={:.1}, valence={:.1}, arousal={:.1}, seed={}, variety={})...",
         bars,
