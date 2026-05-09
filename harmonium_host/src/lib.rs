@@ -850,6 +850,19 @@ impl Handle {
         let _ = self.controller.clear_loop();
     }
 
+    /// Generate a new melody with a fresh random seed. Maps the
+    /// composer-side new_melody onto the wasm controller path so the
+    /// browser shuffle / regenerate buttons actually produce new content.
+    pub fn new_melody(&mut self) {
+        let _ = self.controller.send(harmonium_core::EngineCommand::NewMelody);
+    }
+
+    pub fn set_seed(&mut self, seed: u64) {
+        let _ = self
+            .controller
+            .send(harmonium_core::EngineCommand::SetSeed(seed));
+    }
+
     // === Recording ===
 
     pub fn start_recording_wav(&mut self) {
