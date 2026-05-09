@@ -820,6 +820,36 @@ impl Handle {
         self.stream.pause().map_err(|e| e.to_string())
     }
 
+    // === Timeline Controls ===
+    // Mirror of NativeHandle::seek/set_loop/clear_loop, but routed through
+    // HarmoniumController so the same behavior runs in the browser.
+    // 1-based bars (matching the Tauri/Practice surface).
+
+    /// Deterministic seek: reset RNG + generator, replay to target bar.
+    pub fn seek(&mut self, bar: u32) {
+        let _ = self.controller.seek(bar.max(1) as usize);
+    }
+
+    /// Seek playhead without resetting the writehead — uses already-generated
+    /// measures.
+    pub fn seek_playhead(&mut self, bar: u32) {
+        let _ = self.controller.seek_playhead(bar.max(1) as usize);
+    }
+
+    /// Set a loop region (1-based, inclusive).
+    pub fn set_loop(&mut self, start_bar: u32, end_bar: u32) {
+        if start_bar < 1 || end_bar < start_bar {
+            return;
+        }
+        let _ = self
+            .controller
+            .set_loop(start_bar as usize, end_bar as usize);
+    }
+
+    pub fn clear_loop(&mut self) {
+        let _ = self.controller.clear_loop();
+    }
+
     // === Recording ===
 
     pub fn start_recording_wav(&mut self) {
