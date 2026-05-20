@@ -7,6 +7,33 @@ use crate::{
     playback::PlaybackCommand,
 };
 
+/// Owned handle to the live-MIDI monitor channel. Wraps the SPSC producer so
+/// callers (the MIDI input subsystem) get a clean `note_on`/`note_off` API
+/// without depending on `rtrb`. Single-instance: moved into the MIDI callback
+/// for the life of the connection, then handed back via
+/// [`NativeHandle::restore_live_midi_sender`].
+pub struct LiveMidiSender {
+    tx: rtrb::Producer<crate::playback::LiveMidiEvent>,
+}
+
+impl LiveMidiSender {
+    /// Voice a note the player just pressed. Drops silently if the audio
+    /// thread is momentarily behind (ring full) — a missed monitor note is
+    /// preferable to blocking the MIDI callback.
+    pub fn note_on(&mut self, note: u8, velocity: u8) {
+        let _ = self
+            .tx
+            .push(crate::playback::LiveMidiEvent { on: true, note, velocity });
+    }
+
+    /// Release a held note.
+    pub fn note_off(&mut self, note: u8) {
+        let _ = self
+            .tx
+            .push(crate::playback::LiveMidiEvent { on: false, note, velocity: 0 });
+    }
+}
+
 /// Wrapper that makes `cpal::Stream` `Send + Sync`.
 struct SendStream(cpal::Stream);
 
@@ -25,6 +52,10 @@ pub struct NativeHandle {
     stream: SendStream,
     composer: Mutex<MusicComposer>,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
+    /// SPSC producer for the live-MIDI monitor. `take`n once by the MIDI
+    /// input subsystem (the controller note-on/off callback), which then
+    /// owns it for the life of the connection. `None` after it's taken.
+    live_midi_tx: Option<LiveMidiSender>,
     report_rx: rtrb::Consumer<EngineReport>,
     session_config: SessionConfig,
     font_queue: FontQueue,
@@ -44,6 +75,7 @@ impl NativeHandle {
             session_config,
             composer,
             playback_cmd_tx,
+            live_midi_tx,
             report_rx,
             font_queue,
             finished_recordings,
@@ -53,6 +85,7 @@ impl NativeHandle {
             stream: SendStream(stream),
             composer,
             playback_cmd_tx,
+            live_midi_tx: Some(LiveMidiSender { tx: live_midi_tx }),
             report_rx,
             session_config,
             font_queue,
@@ -70,6 +103,21 @@ impl NativeHandle {
         let handle = Self::start(sf2_bytes, backend)?;
         handle.pause()?;
         Ok(handle)
+    }
+
+    /// Take ownership of the live-MIDI monitor producer. Returns `Some` the
+    /// first time (handed to the MIDI input callback), `None` thereafter —
+    /// the caller is responsible for parking it and giving it back via
+    /// [`Self::restore_live_midi_sender`] when MIDI input stops, so a later
+    /// start can reclaim it.
+    pub fn take_live_midi_sender(&mut self) -> Option<LiveMidiSender> {
+        self.live_midi_tx.take()
+    }
+
+    /// Return a previously-taken live-MIDI producer so the next MIDI start
+    /// can reuse it (the SPSC producer is single-instance, not cloneable).
+    pub fn restore_live_midi_sender(&mut self, tx: LiveMidiSender) {
+        self.live_midi_tx = Some(tx);
     }
 
     // === Playback Controls ===

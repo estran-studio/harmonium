@@ -35,7 +35,7 @@ pub mod audio;
 #[cfg(feature = "standalone")]
 pub mod native_handle;
 #[cfg(feature = "standalone")]
-pub use native_handle::NativeHandle;
+pub use native_handle::{LiveMidiSender, NativeHandle};
 
 // VST Plugin module (only for VST builds)
 #[cfg(feature = "vst")]
@@ -1424,6 +1424,7 @@ pub fn start_with_backend(sf2_bytes: Option<Box<[u8]>>, backend: &str) -> Result
         config,
         composer,
         playback_cmd_tx,
+        _live_midi_tx,
         report_rx,
         font_queue,
         finished_recordings,
