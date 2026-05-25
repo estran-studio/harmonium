@@ -388,46 +388,157 @@ Engine sounds good enough with barline-swapped patterns for V2. Morphing is poli
 
 ## User Scenarios & Testing *(mandatory)*
 
-> ⚠️ This spec was migrated from Plane and needs decomposition into prioritized
-> user stories via `/speckit-specify` or manual editing. The Plane content
-> above is the source material.
-
 ### User Story 1 — Level 1: Vertex ratios as TuningParams (Priority: P1)
 
-[Decompose from L1 Plane content above]
+A composer building a style profile knows that "4-vertex kick against 7-vertex hat" *is* a 4:7 polyrhythm — but right now those numbers are buried in density-driven vertex selection. As a dev configuring a style profile, I want to declare polyrhythm ratios explicitly in `TuningParams` so that style profiles can encode genre-specific rhythmic relationships (swing 3:2, Afro-Cuban 5:3:4, bossa 4:2) rather than emerging accidentally from density tuning.
+
+**Why this priority**: Plane explicitly tags this as **Effort: Low** ("parameter exposure + threshold mapping; existing PerfectBalance polygon system does the heavy lifting"). It is Groomed (the other three levels are Backlog). Most importantly, L2/L3/L4 all depend on L1 — well-defined polyrhythm configs are the morph targets for L4, the per-track subdivision ratios for L2, and the source of modulation ratios for L3.
+
+**Independent Test**: Add `PolyrhythmConfig` to `TuningParams`. Load a "Swing" style profile with `density=0.5, max_ratio=2`. Render a measure and assert the polygon vertex counts match the documented swing config (hat=12, kick=4, snare=2 — i.e., a 3:2 natural relationship). Then set `tension=0.5` and assert vertex counts crossfade to 3:4 / 4:3 per the threshold table.
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** `PolyrhythmConfig { density: 0.0, max_ratio: 2, .. }`, **When** the engine renders, **Then** all polygon layers use simple duple ratios (straight time).
+2. **Given** `tension = 0.5` and `max_ratio = 4`, **When** the engine renders, **Then** the polygon vertex counts implement a 3:4 / 4:3 relationship (per Plane threshold table).
+3. **Given** `tension = 0.9` and `max_ratio = 4`, **When** the engine renders, **Then** vertex counts implement a 7:4 relationship (avant-garde band of the threshold table).
+4. **Given** `oddity_preference = 1.0`, **When** the engine selects polygon vertex counts, **Then** rhythmic-oddity-violating symmetric configurations are excluded (Simha Arom criterion).
+5. **Given** a style profile that loads `PolyrhythmConfig`, **When** rendered at `rhythm_steps = 48`, **Then** all expected duple (2,4,8,16), triple (3,6,12), and 3:4 / 4:3 ratios are representable exactly.
 
 ### User Story 2 — Level 2: Independent track subdivisions (Priority: P2)
 
-[Decompose from L2 Plane content above]
+A composer wants drums to operate on a 12-grid while piano comps on an 8-grid, all aligning at the barline — a polymeter texture in the spirit of Steve Reich or West African layering. As a dev, I want each track to declare its own `EuclideanLayer { k, n, rotation }` with independent `n` (cycle length) so that polymeter textures emerge without coupling every track to a shared grid.
+
+**Why this priority**: Plane calls this "V2.1 — nice textural addition but not critical for launch. Current shared-grid produces good results." Depends on L1 shipping first. Lands after the engine has explicit vertex ratios for tracks to reason about independently.
+
+**Independent Test**: Configure two tracks with `EuclideanLayer { k: 5, n: 12 }` and `EuclideanLayer { k: 3, n: 8 }`. Render until LCM(12, 8) = 24 ticks — assert the per-track trigger streams match each layer independently and that both align cleanly at every barline boundary (LCM-derived).
+
+**Acceptance Scenarios**:
+
+1. **Given** two tracks with different `n` values, **When** the engine renders a bar, **Then** each track's triggers respect its own `EuclideanLayer` independently and both align at the bar boundary.
+2. **Given** an `n` that requires more than 480 PPQ to represent exactly (e.g., 7-tuplets), **When** configured, **Then** the engine rejects the configuration or rounds with a documented warning [NEEDS CLARIFICATION: Plane research note flags standard MIDI 480 PPQ handles everything except 7-tuplets exactly, but doesn't specify the chosen mitigation].
+3. **Given** track-A on `n=12` and track-B on `n=8`, **When** rendered across an LCM cycle, **Then** track alignment at each barline is exact (no drift accumulates).
 
 ### User Story 3 — Level 3: Implied metric modulation (Priority: P3)
 
-[Decompose from L3 Plane content above]
+A musician hearing the engine at a tension spike wants to feel the ground shift — drums implying 3:2 while the band holds tempo, Elvin Jones style. As a musician, I want the engine to trigger implied metric modulation at tension peaks, phrase climaxes, and section boundaries so that the rhythm participates in the emotional arc instead of merely keeping time.
 
-### User Story 4 — Level 4: Continuous pattern morphing (Priority: P4)
+**Why this priority**: Plane explicitly tags **V3, High effort**. Depends on L1 (explicit ratios for modulation), L2 (independent track subdivision — drums need to render at a different effective tempo than bass/piano/lead), CORELIB-29 (swing must be global first), and CORELIB-28 (comping must NOT modulate, only drums). P3 because the dependency chain mandates this order.
 
-[Decompose from L4 Plane content above]
+**Independent Test**: Configure `MetricModulationConfig { tension_threshold: 0.6, probability: 1.0, preferred_ratio: (3, 2), max_duration_bars: 4, scope: Implied }`. Drive tension from 0.0 to 0.8 over a phrase. Assert drums re-quantize to the 3:2 implied grid for ≤ 4 bars at the climax and snap back at the next phrase boundary, while bass / piano / lead onsets remain at the original tempo throughout.
+
+**Acceptance Scenarios**:
+
+1. **Given** `tension_threshold = 0.6` and `probability = 1.0` and a tension crossing at a phrase boundary, **When** the modulation is triggered, **Then** the drum track's onsets re-quantize to the implied grid (e.g., 1.5x faster effective tempo for 3:2) while bass / piano / lead onsets remain on the original grid.
+2. **Given** an active 3:2 modulation, **When** `max_duration_bars` is reached or tension drops below threshold at a bar boundary, **Then** drums resolve back to the original grid cleanly at the next barline boundary (no mid-bar snap).
+3. **Given** the Bossa Nova style profile (`probability = 0.0`), **When** tension spikes, **Then** no modulation is ever triggered (style identity is preserved).
+4. **Given** `transition_bars > 0`, **When** modulation begins or resolves, **Then** the drums phase accents gradually across the transition window rather than snapping.
+5. **Given** the modulation triggers mid-bar from a sub-section-boundary event, **When** the engine attempts the shift, **Then** the shift is deferred to the next section / phrase boundary [NEEDS CLARIFICATION: Plane spec frames triggers as "at a section/phrase boundary" but the trigger table includes mid-phrase events like phrase-arc climax — confirm whether the climax counts as a boundary or waits].
+
+### User Story 4 — Level 4: Continuous pattern morphing across all rhythm modes (Priority: P4)
+
+A musician dragging the Emotion Lab pad hears harmony morph smoothly but rhythm snaps at every density threshold — the rhythm is the only system without smooth transitions. As a musician, I want rhythm patterns to crossfade over 2–4 bars when parameters change so that ballad-to-swing builds, style switches, and Emotion Lab moves transform the whole texture (harmony + rhythm) together.
+
+**Why this priority**: Plane explicitly tags **V3, High effort**. Depends on L1 (well-defined polyrhythm configs as morph targets). Lands last because it's a polish layer over working pattern generation — Plane notes "engine sounds good enough with barline-swapped patterns for V2."
+
+**Independent Test**: Set `rhythm_morph_bars = 4`. Trigger a density change at bar 4 (e.g., `density = 0.4 → 0.7`). Render bars 4–7 and assert each step's velocity is the linearly interpolated blend of the current and target patterns. Hits present in both patterns must stay at full velocity (anchors). Setting `rhythm_morph_bars = 0` must produce the current instant-swap behavior byte-identically.
+
+**Acceptance Scenarios**:
+
+1. **Given** `rhythm_morph_bars = 0`, **When** parameters change, **Then** patterns swap at the next barline byte-identically to current behavior (backward compatible).
+2. **Given** `rhythm_morph_bars = 4` and a parameter change at bar B, **When** the engine renders bars B..B+4, **Then** velocity at each step interpolates linearly between current and target patterns; hits in both stay at full velocity (anchors).
+3. **Given** the morph is mid-progress and a *new* parameter change arrives, **When** the engine receives the new target, **Then** the morph re-targets cleanly without producing an audible click [NEEDS CLARIFICATION: target-update semantics during an in-flight morph — Plane spec describes single-target transitions but Emotion Lab can produce continuous changes].
+4. **Given** PerfectBalance mode is active during a morph, **When** the engine interpolates onset positions, **Then** the blended pattern's first Fourier coefficient X[1] is verified near zero (mathematically balanced throughout the morph).
+5. **Given** Euclidean mode with `E(5,16) → E(7,16)`, **When** the morph runs, **Then** the two new hits fade in at the maximally-even positions Bjorklund places them.
+6. **Given** ClassicGroove mode with a density threshold crossing, **When** the morph runs, **Then** velocity interpolation alone (no onset repositioning) implements the crossfade.
 
 ### Edge Cases
 
-- [To be enumerated]
+- L1: `max_ratio = 0` — degenerate; clamp to ≥ 2 or reject.
+- L1: `oddity_preference` plus `density = 0` — straight time is symmetric by definition; document precedence rule.
+- L2: 7-tuplets at 480 PPQ — Plane research note flags inexact representation [NEEDS CLARIFICATION above].
+- L2: a track with `n = 0` or `n` larger than `rhythm_steps` — reject at construction.
+- L3: tension stays above threshold longer than `max_duration_bars` — must still resolve at the cap, then optionally re-trigger.
+- L3: phrase boundary lands inside a `transition_bars` window — the in-flight transition either completes before the next trigger fires, or is interrupted [NEEDS CLARIFICATION].
+- L3: drums implying 3:2 while the bar boundary itself shifts — Plane spec says "Resolution must align at a bar boundary — for 3:2, 2 bars original = 3 bars implied." Engine must enforce this alignment, not let modulation cancel mid-bar.
+- L4: morph target changes before the previous morph completes [NEEDS CLARIFICATION above].
+- L4: a step exists in both patterns at different velocities (e.g., 0.9 in current vs 0.5 in target) — Plane spec says "stay at full velocity (anchors)" but doesn't specify which velocity wins [NEEDS CLARIFICATION: max vs interpolated for anchor steps].
+- L4: morphing in PerfectBalance mode pushes X[1] above the balance tolerance — engine must adjust phase rotation to compensate.
+- Cross-level: L3 modulation active during an L4 morph — interaction is unspecified [NEEDS CLARIFICATION].
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: [TO BE FILLED from Plane content]
+#### Level 1 (P1)
+
+- **FR-L1-001**: `TuningParams` MUST include a `PolyrhythmConfig` sub-struct with fields `density: f32`, `max_ratio: u32`, `phase_spread: f32`, `oddity_preference: f32`.
+- **FR-L1-002**: The engine MUST map `tension` to polyrhythm complexity using the Plane threshold table (0.0–0.2 straight, 0.2–0.4 3:2, 0.4–0.6 3:4/4:3, 0.6–0.8 5:4, 0.8+ 7:4).
+- **FR-L1-003**: Style profiles MUST be able to set explicit polygon vertex counts per track (hat / kick / snare) that produce the documented genre ratios (swing 3:2, Afro-Cuban 5:3:4, bossa duple).
+- **FR-L1-004**: When polyrhythm is active, the engine MUST default to `rhythm_steps = 48` (12/beat) to support duple, triple, and 3:4 / 4:3 natively.
+- **FR-L1-005**: `oddity_preference = 1.0` MUST exclude symmetric vertex configurations (Simha Arom rhythmic oddity).
+
+#### Level 2 (P2)
+
+- **FR-L2-001**: Each track MUST be configurable with an independent `EuclideanLayer { k, n, rotation }` where `n` may differ across tracks.
+- **FR-L2-002**: All tracks MUST align at bar boundaries — the bar length MUST be the LCM of all active `n` values (re-sync point).
+- **FR-L2-003**: Configurations whose LCM exceeds the engine's tick capacity (e.g., 7-tuplets at 480 PPQ) MUST be rejected or handled with documented rounding [NEEDS CLARIFICATION].
+
+#### Level 3 (P3)
+
+- **FR-L3-001**: `TuningParams` MUST include a `MetricModulationConfig` with fields per the Plane spec: `tension_threshold`, `probability`, `preferred_ratio: (u32, u32)`, `max_duration_bars`, `scope: ModulationScope`, `transition_bars`.
+- **FR-L3-002**: Modulation MUST be triggered when tension crosses `tension_threshold` at a section / phrase boundary, gated by `probability`.
+- **FR-L3-003**: When `scope: Implied` (the jazz default), only drum-track onsets MUST re-quantize to the implied grid; bass / piano / lead MUST remain on the original grid.
+- **FR-L3-004**: Modulation MUST resolve at the next bar-aligned boundary that satisfies the original-vs-implied bar ratio (e.g., 3:2 resolves after 2 original = 3 implied bars).
+- **FR-L3-005**: Modulation MUST always resolve by `max_duration_bars` even if tension stays above threshold.
+- **FR-L3-006**: `transition_bars` MUST phase accent placement gradually across the transition window rather than producing an abrupt shift.
+
+#### Level 4 (P4)
+
+- **FR-L4-001**: `TuningParams` MUST include `rhythm_morph_bars: u32` with default `0` (current instant-swap behavior preserved).
+- **FR-L4-002**: When `rhythm_morph_bars > 0` and the sequencer receives a new target pattern, the engine MUST crossfade over the configured number of bars rather than swap at the next barline.
+- **FR-L4-003**: Crossfade MUST blend per-step velocities linearly: steps in both patterns stay at full velocity (anchors); steps only in current ramp down; steps only in target ramp up.
+- **FR-L4-004**: Crossfade MUST work across all three rhythm modes (PerfectBalance, Euclidean, ClassicGroove).
+- **FR-L4-005**: In PerfectBalance mode, the blended pattern MUST maintain X[1] ≈ 0 (balanced) throughout the morph, adjusting phase rotation as needed.
+- **FR-L4-006**: `rhythm_morph_bars = 0` MUST produce byte-identical output to the pre-L4 engine (backward compatibility verified by golden file tests).
+
+### Key Entities *(include if data is involved)*
+
+- **PolyrhythmConfig**: New sub-struct of `TuningParams` carrying the four L1 fields.
+- **EuclideanLayer**: Per-track config `(k, n, rotation)` enabling independent subdivisions (L2).
+- **MetricModulationConfig**: Per-style config gating implied-modulation events (L3).
+- **PatternMorphState**: Per-track state machine carrying `current_pattern`, optional `target_pattern`, `progress`, `transition_bars`, `current_transition_bar`; produces a blended `Vec<StepTrigger>` each bar (L4).
+- **ModulationScope**: Enum `{ Implied, Actual }` selecting drums-only vs full-band modulation (L3).
+- **TuningParams**: Existing central struct gains `PolyrhythmConfig`, `MetricModulationConfig`, and `rhythm_morph_bars`.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: [TO BE FILLED]
+- **SC-001 (L1)**: Style profiles can produce the documented genre ratios (swing 3:2, Afro-Cuban 5:3:4, bossa duple) and `harmonium_lab` polyrhythm-classification metric correctly identifies the ratio in synthesized output for each genre.
+- **SC-002 (L1)**: All existing PerfectBalance golden file tests pass unchanged when `PolyrhythmConfig` is left at defaults.
+- **SC-003 (L2)**: Two tracks configured at different `n` values render alignment-correct output across at least one LCM cycle with zero drift.
+- **SC-004 (L3)**: At least one triggered metric modulation per emotional-arc test fixture is detectable in `harmonium_lab` analysis, and the drum track's implied tempo is within 5% of the configured ratio.
+- **SC-005 (L4)**: A/B listening evaluation on Emotion Lab pad drags rates the morphing-on output as "smoother / more musical" than morphing-off in at least 75% of paired comparisons. [NEEDS CLARIFICATION: rater methodology — depends on harmonium_lab listening-test harness].
+- **SC-006 (L4)**: With `rhythm_morph_bars = 0`, all existing rhythm-mode golden file tests pass byte-identically.
+- **SC-007**: Each FR is covered by at least one unit test in `harmonium_core`. Cross-level interactions (L3 modulation during L4 morph) are covered by an integration test or explicitly documented as out-of-scope.
 
 ## Assumptions
 
-- [TO BE FILLED]
+- The four levels ship sequentially in P1 → P4 order; nothing in the spec assumes simultaneous landing.
+- "Drums" in L3 means specifically the kick / snare / hat tracks; comping (CORELIB-28) is explicitly excluded from modulation per the dependency note.
+- Plane research notes flag standard MIDI 480 PPQ as sufficient for everything except 7-tuplets — the engine accepts this constraint and rejects (or rounds) unsupported subdivisions at construction.
+- The morph layer (L4) sits above the rhythm mode (not inside it) and only needs to see onset positions and velocities — it does not require mode-specific knowledge beyond the PerfectBalance balance check.
+- Default `rhythm_morph_bars = 0` preserves current behavior — L4 is opt-in per style profile.
+- L3 and L4 may interact (modulation triggers during an in-flight morph). This interaction is out of scope for the first ship of either level [NEEDS CLARIFICATION above].
+
+---
+
+## Footer — File & Branch Pointers
+
+- `harmonium_core/src/params.rs` — `PolyrhythmConfig`, `MetricModulationConfig`, `rhythm_morph_bars` on `TuningParams`
+- `harmonium_core/src/timeline/generator.rs` — vertex-ratio selection (L1), per-track subdivision (L2), modulation triggering (L3), morph state read (L4)
+- `harmonium_core/src/rhythm/` — PerfectBalance / Euclidean / ClassicGroove mode implementations (L4 morph integrates here)
+- New: `harmonium_core/src/rhythm/morph.rs` — `PatternMorphState` (L4)
+- New: `harmonium_core/src/rhythm/modulation.rs` — implied metric modulation logic (L3)
+- `harmonium_core/src/sequencer.rs` — `prepare_next_bar()` feeds the morph state target (L4)
+- **Plane history**: see frontmatter — CORELIB-30 (Groomed, L1), CORELIB-31/32/33 (Backlog, L2–L4)
