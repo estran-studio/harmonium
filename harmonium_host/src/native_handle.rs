@@ -21,16 +21,12 @@ impl LiveMidiSender {
     /// thread is momentarily behind (ring full) — a missed monitor note is
     /// preferable to blocking the MIDI callback.
     pub fn note_on(&mut self, note: u8, velocity: u8) {
-        let _ = self
-            .tx
-            .push(crate::playback::LiveMidiEvent { on: true, note, velocity });
+        let _ = self.tx.push(crate::playback::LiveMidiEvent { on: true, note, velocity });
     }
 
     /// Release a held note.
     pub fn note_off(&mut self, note: u8) {
-        let _ = self
-            .tx
-            .push(crate::playback::LiveMidiEvent { on: false, note, velocity: 0 });
+        let _ = self.tx.push(crate::playback::LiveMidiEvent { on: false, note, velocity: 0 });
     }
 }
 

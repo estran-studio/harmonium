@@ -63,8 +63,7 @@ pub fn create_timeline_stream(
 
     // Command/report ring buffers (lock-free for audio thread)
     let (playback_cmd_tx, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    let (live_midi_tx, live_midi_rx) =
-        rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(256);
+    let (live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(256);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
     // Shared pages: composer writes by index, playback reads by index
@@ -168,8 +167,7 @@ pub fn create_offline_engine(
 > {
     let (playback_cmd_tx, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
     // Offline render has no live MIDI input; the consumer simply stays empty.
-    let (_live_midi_tx, live_midi_rx) =
-        rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(1);
+    let (_live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(1);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
     let shared_pages: crate::SharedPages = Arc::new(Mutex::new(Vec::with_capacity(64)));
