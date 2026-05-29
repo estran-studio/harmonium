@@ -116,6 +116,7 @@ fn main() -> Result<()> {
             config,
             composer_mutex,
             playback_cmd_tx,
+            _live_midi_tx,
             report_rx,
             _font_queue,
             finished_recordings,

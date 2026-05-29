@@ -12,6 +12,23 @@ use arrayvec::ArrayString;
 use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{events::AudioEvent, log, params::MusicalParams, timeline::Playhead};
 
+/// MIDI channel reserved for monitoring the player's own input ("hear
+/// yourself"). Channels 0–3 are the sequenced tracks (lead/bass/kick/hat)
+/// and 9 is GM percussion, so 8 is free and tonal.
+pub const MONITOR_CHANNEL: u8 = 8;
+
+/// A live note the player pressed on their MIDI controller, forwarded from
+/// the MIDI input thread to the audio thread so it can be voiced through the
+/// same synth as the backing track. Single-producer/single-consumer: the MIDI
+/// callback owns the producer, the audio thread the consumer.
+#[derive(Clone, Copy, Debug)]
+pub struct LiveMidiEvent {
+    /// true = note-on, false = note-off.
+    pub on: bool,
+    pub note: u8,
+    pub velocity: u8,
+}
+
 /// Commands sent from the main thread to the PlaybackEngine (audio thread).
 pub enum PlaybackCommand {
     SetChannelGain {
@@ -83,6 +100,10 @@ pub struct PlaybackEngine {
     // Command ring buffer (main thread → audio thread)
     cmd_rx: rtrb::Consumer<PlaybackCommand>,
 
+    // Live MIDI monitor ring buffer (MIDI input thread → audio thread).
+    // Notes the player presses, voiced through the synth on MONITOR_CHANNEL.
+    live_rx: rtrb::Consumer<LiveMidiEvent>,
+
     // Report ring buffer (audio thread → main thread)
     report_tx: rtrb::Producer<harmonium_core::EngineReport>,
 
@@ -129,6 +150,7 @@ impl PlaybackEngine {
         mut renderer: Box<dyn AudioRenderer>,
         shared_pages: crate::SharedPages,
         cmd_rx: rtrb::Consumer<PlaybackCommand>,
+        live_rx: rtrb::Consumer<LiveMidiEvent>,
         report_tx: rtrb::Producer<harmonium_core::EngineReport>,
         playhead_bar: Arc<AtomicUsize>,
     ) -> Self {
@@ -144,6 +166,7 @@ impl PlaybackEngine {
             samples_per_step,
             shared_pages,
             cmd_rx,
+            live_rx,
             report_tx,
             playhead_bar,
             output_muted: false,
@@ -169,6 +192,8 @@ impl PlaybackEngine {
     pub fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         // Process commands first (outside rt context)
         self.process_commands();
+        // Voice any notes the player pressed on their MIDI controller.
+        self.process_live_midi();
 
         let total_samples = output.len() / channels;
         let mut processed = 0;
@@ -271,6 +296,25 @@ impl PlaybackEngine {
         let current_step = self.playhead.position.step_in_bar(4);
         if current_step.is_multiple_of(4) {
             self.send_report();
+        }
+    }
+
+    /// Drain the live-MIDI ring and voice the player's notes through the
+    /// synth on the dedicated monitor channel. Note-off respects an empty
+    /// ring (producer may not exist when MIDI input is off) — it simply
+    /// no-ops, so this is safe to call every buffer.
+    fn process_live_midi(&mut self) {
+        while let Ok(ev) = self.live_rx.pop() {
+            let event = if ev.on {
+                AudioEvent::NoteOn {
+                    note: ev.note,
+                    velocity: ev.velocity,
+                    channel: MONITOR_CHANNEL,
+                }
+            } else {
+                AudioEvent::NoteOff { note: ev.note, channel: MONITOR_CHANNEL }
+            };
+            self.renderer.handle_event(event);
         }
     }
 

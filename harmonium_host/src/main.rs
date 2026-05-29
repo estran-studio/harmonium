@@ -305,6 +305,7 @@ fn main() {
         config,
         composer_mutex,
         mut playback_cmd_tx,
+        _live_midi_tx,
         _report_rx,
         _font_queue,
         finished_recordings,

@@ -35,7 +35,7 @@ pub mod audio;
 #[cfg(feature = "standalone")]
 pub mod native_handle;
 #[cfg(feature = "standalone")]
-pub use native_handle::NativeHandle;
+pub use native_handle::{LiveMidiSender, NativeHandle};
 
 // VST Plugin module (only for VST builds)
 #[cfg(feature = "vst")]
@@ -393,11 +393,7 @@ impl Handle {
     pub fn get_current_cycle(&mut self) -> usize {
         self.with_state(
             |s| {
-                if s.progression_length > 0 {
-                    s.current_bar / s.progression_length + 1
-                } else {
-                    1
-                }
+                if s.progression_length > 0 { s.current_bar / s.progression_length + 1 } else { 1 }
             },
             1,
         )
@@ -446,10 +442,7 @@ impl Handle {
         self.with_state(
             |s| {
                 let len = s.primary_steps.min(192);
-                s.primary_pattern[..len]
-                    .iter()
-                    .map(|&b| if b { 1u8 } else { 0 })
-                    .collect()
+                s.primary_pattern[..len].iter().map(|&b| if b { 1u8 } else { 0 }).collect()
             },
             vec![0; 16],
         )
@@ -460,10 +453,7 @@ impl Handle {
         self.with_state(
             |s| {
                 let len = s.secondary_steps.min(192);
-                s.secondary_pattern[..len]
-                    .iter()
-                    .map(|&b| if b { 1u8 } else { 0 })
-                    .collect()
+                s.secondary_pattern[..len].iter().map(|&b| if b { 1u8 } else { 0 }).collect()
             },
             vec![0; 12],
         )
@@ -476,11 +466,7 @@ impl Handle {
     /// measures to its score cache for VexFlow rendering.
     /// Returns `"[]"` when no new measures are available.
     pub fn get_new_measures_json(&mut self) -> String {
-        let measures = self
-            .composer
-            .lock()
-            .map(|mut c| c.take_snapshots())
-            .unwrap_or_default();
+        let measures = self.composer.lock().map(|mut c| c.take_snapshots()).unwrap_or_default();
         serde_json::to_string(&measures).unwrap_or_else(|_| "[]".to_string())
     }
 
@@ -507,24 +493,20 @@ impl Handle {
     /// Set channel routing (-1=FundSP, >=0=Bank ID)
     pub fn set_channel_routing(&mut self, channel: usize, mode: i32) {
         if channel < 16 {
-            let _ = self
-                .playback_cmd_tx
-                .push(playback::PlaybackCommand::SetChannelRoute {
-                    channel: channel as u8,
-                    bank_id: mode,
-                });
+            let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelRoute {
+                channel: channel as u8,
+                bank_id: mode,
+            });
         }
     }
 
     /// Set channel mute
     pub fn set_channel_muted(&mut self, channel: usize, is_muted: bool) {
         if channel < 16 {
-            let _ = self
-                .playback_cmd_tx
-                .push(playback::PlaybackCommand::SetChannelMute {
-                    channel: channel as u8,
-                    muted: is_muted,
-                });
+            let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelMute {
+                channel: channel as u8,
+                muted: is_muted,
+            });
         }
     }
 
@@ -532,62 +514,50 @@ impl Handle {
 
     pub fn set_gain_lead(&mut self, gain: f32) {
         self.cached_params.gain_lead = gain.clamp(0.0, 1.0);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetChannelGain {
-                channel: 1,
-                gain: self.cached_params.gain_lead,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelGain {
+            channel: 1,
+            gain: self.cached_params.gain_lead,
+        });
     }
 
     pub fn set_gain_bass(&mut self, gain: f32) {
         self.cached_params.gain_bass = gain.clamp(0.0, 1.0);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetChannelGain {
-                channel: 0,
-                gain: self.cached_params.gain_bass,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelGain {
+            channel: 0,
+            gain: self.cached_params.gain_bass,
+        });
     }
 
     pub fn set_gain_snare(&mut self, gain: f32) {
         self.cached_params.gain_snare = gain.clamp(0.0, 1.0);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetChannelGain {
-                channel: 2,
-                gain: self.cached_params.gain_snare,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelGain {
+            channel: 2,
+            gain: self.cached_params.gain_snare,
+        });
     }
 
     pub fn set_gain_hat(&mut self, gain: f32) {
         self.cached_params.gain_hat = gain.clamp(0.0, 1.0);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetChannelGain {
-                channel: 3,
-                gain: self.cached_params.gain_hat,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetChannelGain {
+            channel: 3,
+            gain: self.cached_params.gain_hat,
+        });
     }
 
     pub fn set_vel_base_bass(&mut self, vel: u8) {
         self.cached_params.vel_base_bass = vel.min(127);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetVelocityBase {
-                channel: 0,
-                velocity: self.cached_params.vel_base_bass,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetVelocityBase {
+            channel: 0,
+            velocity: self.cached_params.vel_base_bass,
+        });
     }
 
     pub fn set_vel_base_snare(&mut self, vel: u8) {
         self.cached_params.vel_base_snare = vel.min(127);
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetVelocityBase {
-                channel: 2,
-                velocity: self.cached_params.vel_base_snare,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetVelocityBase {
+            channel: 2,
+            velocity: self.cached_params.vel_base_snare,
+        });
     }
 
     pub fn get_gain_lead(&self) -> f32 {
@@ -641,9 +611,8 @@ impl Handle {
     pub fn flush_fonts(&mut self) {
         if let Ok(mut queue) = self.font_queue.try_lock() {
             while let Some((id, bytes)) = queue.pop() {
-                let _ = self
-                    .playback_cmd_tx
-                    .push(playback::PlaybackCommand::LoadFont { id, bytes });
+                let _ =
+                    self.playback_cmd_tx.push(playback::PlaybackCommand::LoadFont { id, bytes });
             }
         }
     }
@@ -691,11 +660,7 @@ impl Handle {
     /// queue doesn't overflow when the UI is idle.
     pub fn poll_measures(&mut self) {
         self.poll_reports();
-        let new_measures = self
-            .composer
-            .lock()
-            .map(|mut c| c.take_snapshots())
-            .unwrap_or_default();
+        let new_measures = self.composer.lock().map(|mut c| c.take_snapshots()).unwrap_or_default();
         if !new_measures.is_empty() {
             self.measures_buffer.extend(new_measures);
             self.measures_buffer.sort_by_key(|m| m.index);
@@ -948,9 +913,7 @@ impl Handle {
     /// measures.
     pub fn seek_playhead(&mut self, bar: u32) {
         let target = (bar.max(1)) as usize;
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SeekPlayhead(target));
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SeekPlayhead(target));
         // Drop any pre-seek reports so getters don't read stale state.
         self.cached_state = None;
         while self.report_rx.pop().is_ok() {}
@@ -961,12 +924,10 @@ impl Handle {
         if start_bar < 1 || end_bar < start_bar {
             return;
         }
-        let _ = self
-            .playback_cmd_tx
-            .push(playback::PlaybackCommand::SetLoop {
-                start_bar: start_bar as usize,
-                end_bar: end_bar as usize,
-            });
+        let _ = self.playback_cmd_tx.push(playback::PlaybackCommand::SetLoop {
+            start_bar: start_bar as usize,
+            end_bar: end_bar as usize,
+        });
     }
 
     pub fn clear_loop(&mut self) {
@@ -1202,16 +1163,8 @@ impl Handle {
 
     pub fn set_direct_secondary_steps(&mut self, steps: usize) {
         self.poll_reports();
-        let cur_pulses = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_pulses)
-            .unwrap_or(3);
-        let cur_rotation = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_rotation)
-            .unwrap_or(0);
+        let cur_pulses = self.cached_state.as_ref().map(|s| s.secondary_pulses).unwrap_or(3);
+        let cur_rotation = self.cached_state.as_ref().map(|s| s.secondary_rotation).unwrap_or(0);
         if let Ok(mut c) = self.composer.lock() {
             c.set_rhythm_secondary(steps.clamp(4, 32), cur_pulses, cur_rotation);
         }
@@ -1219,16 +1172,8 @@ impl Handle {
 
     pub fn set_direct_secondary_pulses(&mut self, pulses: usize) {
         self.poll_reports();
-        let cur_steps = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_steps)
-            .unwrap_or(12);
-        let cur_rotation = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_rotation)
-            .unwrap_or(0);
+        let cur_steps = self.cached_state.as_ref().map(|s| s.secondary_steps).unwrap_or(12);
+        let cur_rotation = self.cached_state.as_ref().map(|s| s.secondary_rotation).unwrap_or(0);
         if let Ok(mut c) = self.composer.lock() {
             c.set_rhythm_secondary(cur_steps, pulses.clamp(1, 32), cur_rotation);
         }
@@ -1236,16 +1181,8 @@ impl Handle {
 
     pub fn set_direct_secondary_rotation(&mut self, rotation: usize) {
         self.poll_reports();
-        let cur_steps = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_steps)
-            .unwrap_or(12);
-        let cur_pulses = self
-            .cached_state
-            .as_ref()
-            .map(|s| s.secondary_pulses)
-            .unwrap_or(3);
+        let cur_steps = self.cached_state.as_ref().map(|s| s.secondary_steps).unwrap_or(12);
+        let cur_pulses = self.cached_state.as_ref().map(|s| s.secondary_pulses).unwrap_or(3);
         if let Ok(mut c) = self.composer.lock() {
             c.set_rhythm_secondary(cur_steps, cur_pulses, rotation);
         }
@@ -1424,6 +1361,7 @@ pub fn start_with_backend(sf2_bytes: Option<Box<[u8]>>, backend: &str) -> Result
         config,
         composer,
         playback_cmd_tx,
+        _live_midi_tx,
         report_rx,
         font_queue,
         finished_recordings,
