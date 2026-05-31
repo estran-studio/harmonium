@@ -18,8 +18,9 @@ use crate::{
     harmony::{
         HarmonyMode, RngCore,
         basic::{ChordQuality, ChordStep, Progression},
-        chord::ChordType,
+        chord::{Chord, ChordType},
         driver::HarmonicDriver,
+        lydian_chromatic::LydianChromaticConcept,
         melody::HarmonyNavigator,
     },
     params::{CurrentState, MusicalParams},
@@ -337,10 +338,35 @@ impl TimelineGenerator {
 
         // Snapshot state at generation time
         measure.state_snapshot = StateSnapshot::from(&self.current_state);
+
+        // Improv scale guidance (LCC): build the structured chord from the live
+        // chord type + absolute root. `chord_root_offset` drives the actual
+        // bass/harmony, so it is the ground truth for what is sounding — unlike
+        // `chord_name`, which is derived from a separate source and can desync
+        // (see KNOWN ISSUE below). The chord symbol is generated from the SAME
+        // structured chord, so symbol / root / tones / scale are always mutually
+        // consistent. Consumed by the improv-coach UI.
+        //
+        // KNOWN ISSUE (pre-existing, not introduced here): `self.chord_name` can
+        // disagree with `chord_root_offset` in the procedural HarmonicDriver path
+        // (chord_name = decision.next_chord.name() vs root_offset =
+        // driver.root_offset()). The existing chord display uses chord_name and
+        // can therefore be wrong; ScaleGuidance deliberately avoids it. Fixing
+        // chord_name itself is a separate follow-up.
+        let abs_root =
+            (i32::from(self.musical_params.key_root) + self.chord_root_offset).rem_euclid(12) as u8;
+        let guide_chord = Chord::new(abs_root, self.current_chord_type);
+        let scale_guidance = Some(LydianChromaticConcept::new().scale_guidance(
+            &guide_chord,
+            guide_chord.name(),
+            self.current_state.tension,
+        ));
+
         measure.chord_context = ChordContext {
             root_offset: self.chord_root_offset,
             is_minor: self.chord_is_minor,
             chord_name: self.chord_name.clone(),
+            scale_guidance,
         };
 
         // === PER-STEP LOGIC (replicates tick() event generation) ===
