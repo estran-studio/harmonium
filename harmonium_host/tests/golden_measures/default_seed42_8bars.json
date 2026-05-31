@@ -108,7 +108,27 @@
         "velocity": 83
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Lydian Diminished",
+      "scale_notes": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        9,
+        11
+      ],
+      "lcc_level": 3
+    }
   },
   {
     "index": 2,
@@ -261,7 +281,26 @@
         "velocity": 83
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "F",
+      "chord_root": 5,
+      "chord_tones": [
+        5,
+        9,
+        0
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        5,
+        7,
+        9,
+        11,
+        1,
+        3
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 3,
@@ -379,7 +418,26 @@
         "velocity": 85
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "F",
+      "chord_root": 5,
+      "chord_tones": [
+        5,
+        9,
+        0
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        5,
+        7,
+        9,
+        11,
+        1,
+        3
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 4,
@@ -525,7 +583,26 @@
         "velocity": 86
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 5,
@@ -636,7 +713,27 @@
         "velocity": 80
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Lydian Diminished",
+      "scale_notes": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        9,
+        11
+      ],
+      "lcc_level": 3
+    }
   },
   {
     "index": 6,
@@ -782,7 +879,28 @@
         "velocity": 84
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "A#7",
+      "chord_root": 10,
+      "chord_tones": [
+        10,
+        2,
+        5,
+        8
+      ],
+      "scale_name": "Lydian b7",
+      "scale_notes": [
+        10,
+        0,
+        2,
+        4,
+        5,
+        7,
+        8
+      ],
+      "lcc_level": 4
+    }
   },
   {
     "index": 7,
@@ -949,7 +1067,27 @@
         "velocity": 86
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "A#7",
+      "chord_root": 10,
+      "chord_tones": [
+        10,
+        2,
+        5,
+        8
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        10,
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 8,
@@ -1067,7 +1205,26 @@
         "velocity": 75
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 9,
@@ -1206,7 +1363,26 @@
         "velocity": 76
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "lcc_level": 5
+    }
   },
   {
     "index": 10,
@@ -1324,7 +1500,27 @@
         "velocity": 73
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Lydian Diminished",
+      "scale_notes": [
+        0,
+        2,
+        3,
+        6,
+        7,
+        9,
+        11
+      ],
+      "lcc_level": 3
+    }
   },
   {
     "index": 11,
@@ -1456,6 +1652,25 @@
         "velocity": 75
       }
     ],
-    "composition_bpm": 120.0
+    "composition_bpm": 120.0,
+    "scale_guidance": {
+      "chord_symbol": "C",
+      "chord_root": 0,
+      "chord_tones": [
+        0,
+        4,
+        7
+      ],
+      "scale_name": "Aux. Augmented",
+      "scale_notes": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "lcc_level": 5
+    }
   }
 ]
