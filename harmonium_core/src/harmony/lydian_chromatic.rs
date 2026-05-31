@@ -6,7 +6,28 @@
 //! Niveau 1 (Lydien) = le plus consonant (Ingoing)
 //! Niveau 12 (Chromatique) = le plus dissonant (Outgoing)
 
+use serde::{Deserialize, Serialize};
+
 use super::chord::{Chord, ChordType, PitchClass};
+
+/// Improv guidance for one chord: the suggested scale + chord tones, derived
+/// from the Lydian Chromatic Concept. Consumed by the improv-coach UI to show
+/// the player what to solo over the current changes.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScaleGuidance {
+    /// Display symbol for the chord (e.g. "Dm7", or a roman numeral like "ii").
+    pub chord_symbol: String,
+    /// Absolute root pitch class of the chord (0-11, 0=C).
+    pub chord_root: u8,
+    /// Chord-tone pitch classes (0-11) — the "safe/strong" notes to land on.
+    pub chord_tones: Vec<u8>,
+    /// Name of the suggested scale (e.g. "Lydian b7").
+    pub scale_name: String,
+    /// Scale pitch classes (0-11) to play over this chord.
+    pub scale_notes: Vec<u8>,
+    /// LCC level 1-12 (1 = most consonant/Lydian, 12 = chromatic).
+    pub lcc_level: u8,
+}
 
 /// Les 12 niveaux de gravité tonale de Russell
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -233,6 +254,30 @@ impl LydianChromaticConcept {
         }
     }
 
+    /// Build improv guidance for a chord at a given tension: the suggested
+    /// scale (parent Lydian + LCC level for the tension) plus the chord tones.
+    ///
+    /// `chord_symbol` is the display name to echo back (e.g. "Dm7" or "ii").
+    /// All pitch classes returned are absolute (0-11, 0 = C).
+    #[must_use]
+    pub fn scale_guidance(
+        &self,
+        chord: &Chord,
+        chord_symbol: String,
+        tension: f32,
+    ) -> ScaleGuidance {
+        let parent = self.parent_lydian(chord);
+        let level = self.level_for_tension(tension);
+        ScaleGuidance {
+            chord_symbol,
+            chord_root: chord.root % 12,
+            chord_tones: chord.pitch_classes(),
+            scale_name: level.name().to_string(),
+            scale_notes: self.get_scale(parent, level),
+            lcc_level: level as u8,
+        }
+    }
+
     /// Suggère le niveau LCC optimal pour une transition entre deux accords
     #[must_use]
     pub fn suggest_level_for_transition(&self, from: &Chord, to: &Chord) -> LccLevel {
@@ -333,5 +378,48 @@ mod tests {
 
         // Tension haute (1.0) -> Chromatic, tout est valide
         assert!(lcc.is_valid_note(5, &c_maj, 1.0));
+    }
+
+    #[test]
+    fn test_scale_guidance_cmaj_low_tension() {
+        let lcc = LydianChromaticConcept::new();
+        let c_maj = Chord::new(0, ChordType::Major);
+
+        let g = lcc.scale_guidance(&c_maj, "I".to_string(), 0.0);
+
+        assert_eq!(g.chord_symbol, "I");
+        assert_eq!(g.chord_root, 0);
+        // C major triad tones: C E G = 0, 4, 7
+        assert_eq!(g.chord_tones, vec![0, 4, 7]);
+        // Low tension -> Lydian over C = C D E F# G A B
+        assert_eq!(g.scale_name, "Lydian");
+        assert_eq!(g.lcc_level, 1);
+        assert_eq!(g.scale_notes, vec![0, 2, 4, 6, 7, 9, 11]);
+    }
+
+    #[test]
+    fn test_scale_guidance_minor_uses_parent_lydian() {
+        let lcc = LydianChromaticConcept::new();
+        // Dm7: minor parent Lydian is root+9 = (2+9)%12 = 11 (B Lydian) in this
+        // simplified model; the scale must be rooted on that parent, and the
+        // chord tones must be Dm7's own notes (D F A C = 2, 5, 9, 0).
+        let dm7 = Chord::new(2, ChordType::Minor7);
+        let g = lcc.scale_guidance(&dm7, "ii".to_string(), 0.0);
+
+        assert_eq!(g.chord_root, 2);
+        assert_eq!(g.chord_tones, dm7.pitch_classes());
+        assert_eq!(g.lcc_level, 1);
+        // scale is the Lydian rooted on the parent (root+9), not on D
+        let parent = (2 + 9) % 12;
+        assert_eq!(g.scale_notes, lcc.get_scale(parent, LccLevel::Lydian));
+    }
+
+    #[test]
+    fn test_scale_guidance_serde_roundtrip() {
+        let lcc = LydianChromaticConcept::new();
+        let g = lcc.scale_guidance(&Chord::new(7, ChordType::Dominant7), "V7".to_string(), 0.5);
+        let json = serde_json::to_string(&g).unwrap();
+        let back: ScaleGuidance = serde_json::from_str(&json).unwrap();
+        assert_eq!(g, back);
     }
 }

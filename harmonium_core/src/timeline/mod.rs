@@ -183,6 +183,11 @@ pub struct ChordContext {
     pub is_minor: bool,
     /// Chord name for display
     pub chord_name: String,
+    /// Improv scale guidance (LCC-derived) for this measure's chord.
+    /// `None` for measures generated before this field existed or when the
+    /// chord/key context is unavailable.
+    #[serde(default)]
+    pub scale_guidance: Option<crate::harmony::ScaleGuidance>,
 }
 
 /// A complete measure of music across all tracks.

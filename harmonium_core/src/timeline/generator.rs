@@ -18,8 +18,9 @@ use crate::{
     harmony::{
         HarmonyMode, RngCore,
         basic::{ChordQuality, ChordStep, Progression},
-        chord::ChordType,
+        chord::{Chord, ChordType},
         driver::HarmonicDriver,
+        lydian_chromatic::LydianChromaticConcept,
         melody::HarmonyNavigator,
     },
     params::{CurrentState, MusicalParams},
@@ -337,10 +338,24 @@ impl TimelineGenerator {
 
         // Snapshot state at generation time
         measure.state_snapshot = StateSnapshot::from(&self.current_state);
+
+        // Improv scale guidance (LCC): build the structured chord from the live
+        // chord type + absolute root, then derive the suggested scale + chord
+        // tones for the current tension. Consumed by the improv-coach UI.
+        let abs_root =
+            (i32::from(self.musical_params.key_root) + self.chord_root_offset).rem_euclid(12) as u8;
+        let guide_chord = Chord::new(abs_root, self.current_chord_type);
+        let scale_guidance = Some(LydianChromaticConcept::new().scale_guidance(
+            &guide_chord,
+            self.chord_name.clone(),
+            self.current_state.tension,
+        ));
+
         measure.chord_context = ChordContext {
             root_offset: self.chord_root_offset,
             is_minor: self.chord_is_minor,
             chord_name: self.chord_name.clone(),
+            scale_guidance,
         };
 
         // === PER-STEP LOGIC (replicates tick() event generation) ===

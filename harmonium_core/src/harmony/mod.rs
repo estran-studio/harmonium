@@ -27,6 +27,7 @@ pub mod voice_leading;
 pub use basic::{ChordQuality, ChordStep, Progression};
 pub use chord::{Chord, ChordType, PitchClass};
 pub use driver::HarmonicDriver;
+pub use lydian_chromatic::{LccLevel, LydianChromaticConcept, ScaleGuidance};
 pub use melody::HarmonyNavigator;
 pub use parsimonious::{Neighbor, ParsimoniousDriver, ParsimoniousTransform, TRQ};
 use rand::Rng;

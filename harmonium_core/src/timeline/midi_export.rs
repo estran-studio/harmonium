@@ -356,8 +356,12 @@ mod tests {
         let mut timeline = ScoreTimeline::new(10);
 
         let mut measure = Measure::new(1, TimeSignature::new(4, 4), 120.0, 16);
-        measure.chord_context =
-            ChordContext { root_offset: 0, is_minor: false, chord_name: "I".to_string() };
+        measure.chord_context = ChordContext {
+            root_offset: 0,
+            is_minor: false,
+            chord_name: "I".to_string(),
+            ..Default::default()
+        };
         measure.state_snapshot = StateSnapshot {
             bpm: 120.0,
             density: 0.5,

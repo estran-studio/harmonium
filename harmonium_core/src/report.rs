@@ -56,6 +56,11 @@ pub struct MeasureSnapshot {
     /// Emotion-mapped BPM (composition tempo, ignoring user override).
     /// Used for tempo markings on the score.
     pub composition_bpm: f32,
+    /// Improv scale guidance (LCC-derived) for this measure's chord — the
+    /// suggested scale + chord tones the improv-coach UI displays. `None` when
+    /// the chord/key context was unavailable at generation time.
+    #[serde(default)]
+    pub scale_guidance: Option<crate::harmony::ScaleGuidance>,
 }
 
 impl MeasureSnapshot {
@@ -89,6 +94,7 @@ impl MeasureSnapshot {
             notes,
             // Default to measure tempo; overridden by composer with emotion-mapped BPM
             composition_bpm: measure.tempo,
+            scale_guidance: measure.chord_context.scale_guidance.clone(),
         }
     }
 }
