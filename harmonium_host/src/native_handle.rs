@@ -189,6 +189,24 @@ impl NativeHandle {
         while self.report_rx.pop().is_ok() {}
     }
 
+    /// Re-key the procedural session to a concert pitch class (0–11) and
+    /// regenerate `bars` from bar 1. Keeps the cached session key in sync so
+    /// `session_config().key` reflects the new key. No-op if already in `key_pc`.
+    pub fn set_session_key(&mut self, key_pc: u8, bars: usize) {
+        let new_key = if let Ok(mut composer) = self.composer.lock() {
+            composer.set_session_key(key_pc);
+            composer.reset_timeline();
+            composer.generate_bars(bars);
+            composer.session_key_string()
+        } else {
+            return;
+        };
+        self.session_config.key = new_key;
+        self.measures_buffer.clear();
+        self.cached_state = None;
+        while self.report_rx.pop().is_ok() {}
+    }
+
     /// Read the current playhead bar (from the shared atomic).
     pub fn playhead_bar(&self) -> usize {
         if let Ok(composer) = self.composer.lock() { composer.playhead_bar() } else { 1 }
