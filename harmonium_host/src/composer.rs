@@ -421,6 +421,11 @@ impl MusicComposer {
         self.deterministic_seek(1);
     }
 
+    /// Current session key as a display string (e.g. "C", "Bb").
+    pub fn session_key_string(&self) -> String {
+        self.config.key.clone()
+    }
+
     /// Get the current session seed.
     pub fn session_seed(&self) -> u64 {
         self.session_seed
@@ -509,6 +514,36 @@ impl MusicComposer {
     }
     pub fn set_key_root(&mut self, r: u8) {
         self.musical_params.key_root = r % 12;
+    }
+
+    /// Re-key the procedural session to a concert pitch class (0–11), rebuilding
+    /// the scale navigator and re-rooting the harmonic driver so the next
+    /// regeneration is centred on the new key. Used by the difficulty system to
+    /// keep beginners in easy keys (the engine otherwise picks a random natural
+    /// key, which can be sharp-heavy — B, E, A). The caller must regenerate
+    /// afterwards (e.g. via `deterministic_seek(1)` / `reset_timeline`).
+    ///
+    /// Returns `true` if the key actually changed, `false` (no-op) if the
+    /// session was already in `key_pc` — letting the caller skip an
+    /// unnecessary timeline wipe + regeneration.
+    pub fn set_session_key(&mut self, key_pc: u8) -> bool {
+        let key_pc = key_pc % 12;
+        if key_pc == self.init_key_pc {
+            return false;
+        }
+        let symbol = harmonium_core::params::key_root_to_pitch_symbol(key_pc);
+        self.init_key = symbol;
+        self.init_key_pc = key_pc;
+        self.config.key = format!("{symbol}");
+        self.musical_params.key_root = key_pc;
+        // Rebuild the scale navigator on the new tonic (keep the current scale).
+        self.generator.harmony = HarmonyNavigator::new(symbol, self.init_scale, 4);
+        // Re-root the procedural harmonic driver so chords centre on the new key.
+        if let Some(driver) = self.generator.harmonic_driver.as_mut() {
+            driver.set_key(key_pc);
+        }
+        log::info(&format!("Session re-keyed to {symbol} (pc {key_pc})"));
+        true
     }
 
     pub fn set_melody_smoothness(&mut self, s: f32) {
