@@ -522,10 +522,14 @@ impl MusicComposer {
     /// keep beginners in easy keys (the engine otherwise picks a random natural
     /// key, which can be sharp-heavy — B, E, A). The caller must regenerate
     /// afterwards (e.g. via `deterministic_seek(1)` / `reset_timeline`).
-    pub fn set_session_key(&mut self, key_pc: u8) {
+    ///
+    /// Returns `true` if the key actually changed, `false` (no-op) if the
+    /// session was already in `key_pc` — letting the caller skip an
+    /// unnecessary timeline wipe + regeneration.
+    pub fn set_session_key(&mut self, key_pc: u8) -> bool {
         let key_pc = key_pc % 12;
         if key_pc == self.init_key_pc {
-            return;
+            return false;
         }
         let symbol = harmonium_core::params::key_root_to_pitch_symbol(key_pc);
         self.init_key = symbol;
@@ -539,6 +543,7 @@ impl MusicComposer {
             driver.set_key(key_pc);
         }
         log::info(&format!("Session re-keyed to {symbol} (pc {key_pc})"));
+        true
     }
 
     pub fn set_melody_smoothness(&mut self, s: f32) {

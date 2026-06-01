@@ -191,11 +191,17 @@ impl NativeHandle {
 
     /// Re-key the procedural session to a concert pitch class (0–11) and
     /// regenerate `bars` from bar 1. Keeps the cached session key in sync so
-    /// `session_config().key` reflects the new key. No-op if already in `key_pc`.
+    /// `session_config().key` reflects the new key. True no-op if already in
+    /// `key_pc` (the timeline is left untouched).
     pub fn set_session_key(&mut self, key_pc: u8, bars: usize) {
         let new_key = if let Ok(mut composer) = self.composer.lock() {
-            composer.set_session_key(key_pc);
+            if !composer.set_session_key(key_pc) {
+                return;
+            }
             composer.reset_timeline();
+            // Re-seed the RNG/generator for the new key so a later seek back to
+            // bar 1 reproduces these bars instead of morphing the melody.
+            composer.deterministic_seek(1);
             composer.generate_bars(bars);
             composer.session_key_string()
         } else {
