@@ -65,8 +65,10 @@ impl HarmonyNavigator {
         let scale_len = scale.notes().len();
 
         // Départ: accord I majeur (tonique, tierce majeure, quinte, septième majeure)
+        // — en pitch classes absolues, ancrées sur la tonique (issue #26)
         let global_key_root = pitch.into_u8();
-        let current_chord_notes = vec![0, 4, 7, 11]; // I Maj7
+        let k = global_key_root;
+        let current_chord_notes = vec![k % 12, (k + 4) % 12, (k + 7) % 12, (k + 11) % 12]; // I Maj7
 
         Self {
             current_scale: scale,
@@ -102,11 +104,13 @@ impl HarmonyNavigator {
     }
 
     /// Change le contexte harmonique (accord courant)
-    /// Root offset: décalage en demi-tons par rapport à la tonique globale
-    /// Ex: `root_offset=0` (I), `root_offset=5` (IV), `root_offset=7` (V), `root_offset=9` (vi)
+    /// `root_pc`: pitch class ABSOLUE (0=C … 11=B) de la fondamentale de
+    /// l'accord qui sonne — le même espace que les notes de `current_scale`,
+    /// pour que le biais notes-d'accord vise les bonnes hauteurs (issue #26).
+    /// L'appelant convertit son offset relatif via `key_root + offset`.
     ///
     /// Basé sur la théorie des progressions fonctionnelles (Tonique-Sous-Dominante-Dominante)
-    pub fn set_chord_context(&mut self, root_offset: i32, quality: ChordQuality) {
+    pub fn set_chord_context(&mut self, root_pc: i32, quality: ChordQuality) {
         // Construction de l'accord selon sa qualité
         let (third, fifth, seventh) = match quality {
             ChordQuality::Major => (4, 7, 11),     // Maj7: 1-3-5-7
@@ -120,16 +124,16 @@ impl HarmonyNavigator {
         self.current_chord_notes = if quality == ChordQuality::Sus2 {
             // Sus2 n'a que 3 notes (pas de 7ème)
             vec![
-                (root_offset % 12) as u8,
-                ((root_offset + third) % 12) as u8,
-                ((root_offset + fifth) % 12) as u8,
+                (root_pc % 12) as u8,
+                ((root_pc + third) % 12) as u8,
+                ((root_pc + fifth) % 12) as u8,
             ]
         } else {
             vec![
-                (root_offset % 12) as u8,             // Fondamentale
-                ((root_offset + third) % 12) as u8,   // Tierce (ou 2nde pour sus2)
-                ((root_offset + fifth) % 12) as u8,   // Quinte (juste ou diminuée)
-                ((root_offset + seventh) % 12) as u8, // Septième
+                (root_pc % 12) as u8,             // Fondamentale
+                ((root_pc + third) % 12) as u8,   // Tierce (ou 2nde pour sus2)
+                ((root_pc + fifth) % 12) as u8,   // Quinte (juste ou diminuée)
+                ((root_pc + seventh) % 12) as u8, // Septième
             ]
         };
     }
