@@ -107,10 +107,12 @@ impl TimelineGenerator {
             last_valence_choice: current_state.valence,
             last_tension_choice: current_state.tension,
             current_state,
-            musical_params,
             chord_root_offset: 0,
             chord_is_minor: false,
-            chord_name: "I".to_string(),
+            // Real tonic name, not a roman placeholder — bars generated before
+            // the first chord decision must still label what sounds (issue #26).
+            chord_name: Chord::new(musical_params.key_root % 12, ChordType::Major).name(),
+            musical_params,
             current_chord_type: ChordType::Major,
             chord_chart,
             chart_index: 0,
@@ -183,10 +185,11 @@ impl TimelineGenerator {
         self.last_valence_choice = initial_state.valence;
         self.last_tension_choice = initial_state.tension;
         self.current_state = initial_state;
-        self.musical_params = musical_params;
         self.chord_root_offset = 0;
         self.chord_is_minor = false;
-        self.chord_name = "I".to_string();
+        // Real tonic name, not a roman placeholder (see new(); issue #26).
+        self.chord_name = Chord::new(musical_params.key_root % 12, ChordType::Major).name();
+        self.musical_params = musical_params;
         self.current_chord_type = ChordType::Major;
         self.chord_chart = chord_chart;
         self.chart_index = 0;
@@ -310,6 +313,16 @@ impl TimelineGenerator {
         base + jitter
     }
 
+    /// Absolute pitch class (0-11) of the sounding chord root.
+    ///
+    /// `chord_root_offset` is relative to the session key in every harmony
+    /// mode; anything that produces or labels actual pitches must go through
+    /// this conversion (issue #26 — the bass used the raw offset as if it
+    /// were C-rooted, playing the wrong root in any non-C session).
+    fn sounding_root_pc(&self) -> i32 {
+        (i32::from(self.musical_params.key_root) + self.chord_root_offset).rem_euclid(12)
+    }
+
     pub fn generate_measure(&mut self, bar_index: usize, rng: &mut dyn RngCore) -> Measure {
         self.current_bar = bar_index;
 
@@ -340,21 +353,12 @@ impl TimelineGenerator {
         measure.state_snapshot = StateSnapshot::from(&self.current_state);
 
         // Improv scale guidance (LCC): build the structured chord from the live
-        // chord type + absolute root. `chord_root_offset` drives the actual
-        // bass/harmony, so it is the ground truth for what is sounding — unlike
-        // `chord_name`, which is derived from a separate source and can desync
-        // (see KNOWN ISSUE below). The chord symbol is generated from the SAME
-        // structured chord, so symbol / root / tones / scale are always mutually
-        // consistent. Consumed by the improv-coach UI.
-        //
-        // KNOWN ISSUE (pre-existing, not introduced here): `self.chord_name` can
-        // disagree with `chord_root_offset` in the procedural HarmonicDriver path
-        // (chord_name = decision.next_chord.name() vs root_offset =
-        // driver.root_offset()). The existing chord display uses chord_name and
-        // can therefore be wrong; ScaleGuidance deliberately avoids it. Fixing
-        // chord_name itself is a separate follow-up.
-        let abs_root =
-            (i32::from(self.musical_params.key_root) + self.chord_root_offset).rem_euclid(12) as u8;
+        // chord type + absolute root. `key_root + chord_root_offset` is the
+        // absolute root of the sounding chord — the same space the bass and the
+        // melody chord-tone bias use (issue #26). The chord symbol is generated
+        // from the SAME structured chord, so symbol / root / tones / scale are
+        // always mutually consistent. Consumed by the improv-coach UI.
+        let abs_root = self.sounding_root_pc() as u8;
         let guide_chord = Chord::new(abs_root, self.current_chord_type);
         let scale_guidance = Some(LydianChromaticConcept::new().scale_guidance(
             &guide_chord,
@@ -393,7 +397,7 @@ impl TimelineGenerator {
             && tpb >= 2;
 
         if walking_bass {
-            let root = 36i32 + self.chord_root_offset;
+            let root = 36i32 + self.sounding_root_pc();
             let is_minor = self.chord_is_minor;
             let third_interval = if is_minor { 3 } else { 4 };
             let num_beats = time_sig.numerator;
@@ -524,6 +528,7 @@ impl TimelineGenerator {
                 && self.musical_params.enable_harmony
                 && self.harmony_mode == HarmonyMode::Driver
             {
+                let key_root = i32::from(self.musical_params.key_root);
                 if let Some(ref mut driver) = self.harmonic_driver {
                     let decision = driver.next_chord(
                         self.current_state.tension,
@@ -532,10 +537,14 @@ impl TimelineGenerator {
                     );
                     let root_offset = driver.root_offset();
                     let quality = driver.to_basic_quality();
-                    self.harmony.set_chord_context(root_offset, quality);
+                    let abs_pc = (key_root + root_offset).rem_euclid(12) as u8;
+                    self.harmony.set_chord_context(i32::from(abs_pc), quality);
                     self.chord_root_offset = root_offset;
                     self.chord_is_minor = driver.is_minor();
-                    self.chord_name = decision.next_chord.name();
+                    // Label from the sounding root, not the driver's key space —
+                    // keeps the name true to the audio even if the driver key
+                    // and key_root ever diverge (issue #26).
+                    self.chord_name = Chord::new(abs_pc, decision.next_chord.chord_type).name();
                     self.current_chord_type = decision.next_chord.chord_type;
                 }
             }
@@ -553,7 +562,7 @@ impl TimelineGenerator {
                 // === REST INSERTION for bass (sparse at low density) ===
                 let bass_rest_prob = (1.0 - density) * 0.15; // 0-15%
                 if self.musical_params.fixed_kick || rng.next_f32() >= bass_rest_prob {
-                    let root = 36i32 + self.chord_root_offset;
+                    let root = 36i32 + self.sounding_root_pc();
 
                     // === PITCH VARIETY: root, fifth, third, approach ===
                     let midi_note = if self.musical_params.fixed_kick {
@@ -911,10 +920,8 @@ impl TimelineGenerator {
             self.progression_index = (self.progression_index + 1) % self.current_progression.len();
             let chord = &self.current_progression[self.progression_index];
 
-            self.harmony.set_chord_context(chord.root_offset, chord.quality);
             self.chord_root_offset = chord.root_offset;
             self.chord_is_minor = matches!(chord.quality, ChordQuality::Minor);
-            self.chord_name = format_chord_name(chord.root_offset, chord.quality);
             self.current_chord_type = match chord.quality {
                 ChordQuality::Major => ChordType::Major7,
                 ChordQuality::Minor => ChordType::Minor7,
@@ -922,6 +929,11 @@ impl TimelineGenerator {
                 ChordQuality::Diminished => ChordType::Diminished7,
                 ChordQuality::Sus2 => ChordType::Sus2,
             };
+            self.harmony.set_chord_context(self.sounding_root_pc(), chord.quality);
+            // Real absolute chord name (e.g. "Em7"), not a roman numeral — the
+            // label must match the sounding chord in every key (issue #26).
+            self.chord_name =
+                Chord::new(self.sounding_root_pc() as u8, self.current_chord_type).name();
         }
     }
 
@@ -930,17 +942,20 @@ impl TimelineGenerator {
         // CORELIB-5: Dynamic harmonic rhythm
         let measures_per_chord = self.harmonic_rhythm_rate(self.current_state.tension);
         if bar_index.is_multiple_of(measures_per_chord) {
+            let key_root = i32::from(self.musical_params.key_root);
             if let Some(ref mut driver) = self.harmonic_driver {
                 let decision =
                     driver.next_chord(self.current_state.tension, self.current_state.valence, rng);
 
                 let root_offset = driver.root_offset();
                 let quality = driver.to_basic_quality();
-                self.harmony.set_chord_context(root_offset, quality);
+                let abs_pc = (key_root + root_offset).rem_euclid(12) as u8;
+                self.harmony.set_chord_context(i32::from(abs_pc), quality);
 
                 self.chord_root_offset = root_offset;
                 self.chord_is_minor = driver.is_minor();
-                self.chord_name = decision.next_chord.name();
+                // Label from the sounding root (see mid-bar site above / issue #26).
+                self.chord_name = Chord::new(abs_pc, decision.next_chord.chord_type).name();
                 self.current_chord_type = decision.next_chord.chord_type;
             }
         }
@@ -959,11 +974,13 @@ impl TimelineGenerator {
                 ((i32::from(chord.root)) - i32::from(self.musical_params.key_root) + 12) % 12;
             let quality = chord.to_basic_quality();
 
-            self.harmony.set_chord_context(root_offset, quality);
             self.chord_root_offset = root_offset;
             self.chord_is_minor = chord.chord_type.is_minor();
             self.chord_name = chord.name();
             self.current_chord_type = chord.chord_type;
+            // sounding_root_pc == chord.root here by construction (the offset
+            // was derived from key_root above), so context matches the chart.
+            self.harmony.set_chord_context(self.sounding_root_pc(), quality);
 
             // Advance to next chord, wrapping at chart end
             self.chart_index = (self.chart_index + 1) % self.chord_chart.len();
@@ -1239,31 +1256,6 @@ impl TimelineGenerator {
 }
 
 /// Format a chord name using Roman numeral notation
-fn format_chord_name(root_offset: i32, quality: ChordQuality) -> String {
-    let roman = match root_offset {
-        0 => "I",
-        2 => "II",
-        3 => "III",
-        5 => "IV",
-        7 => "V",
-        8 => "VI",
-        9 => "vi",
-        10 => "VII",
-        11 => "vii",
-        _ => "?",
-    };
-
-    let quality_symbol = match quality {
-        ChordQuality::Major => "",
-        ChordQuality::Minor => "m",
-        ChordQuality::Dominant7 => "7",
-        ChordQuality::Diminished => "°",
-        ChordQuality::Sus2 => "sus2",
-    };
-
-    format!("{roman}{quality_symbol}")
-}
-
 #[cfg(test)]
 mod tests {
     use rust_music_theory::{note::PitchSymbol, scale::ScaleType};

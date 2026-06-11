@@ -13,7 +13,7 @@ use arrayvec::ArrayString;
 use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{
     events::AudioEvent,
-    harmony::{HarmonicDriver, HarmonyNavigator},
+    harmony::{Chord, ChordType, HarmonicDriver, HarmonyNavigator},
     log,
     params::{CurrentState, EngineParams, MusicalParams, SessionConfig, TimeSignature},
     sequencer::Sequencer,
@@ -201,7 +201,11 @@ impl TimelineEngine {
         let tuning = TuningParams::default();
         let harmonic_driver = Some(HarmonicDriver::new(key_pc, &tuning.harmony_driver));
 
-        let musical_params = MusicalParams::default();
+        let mut musical_params = MusicalParams::default();
+        // The session key drives the relative→absolute conversion of every
+        // chord root (issue #26) — it must match the navigator/driver key
+        // from the very first bar, not default to C.
+        musical_params.key_root = key_pc;
 
         let initial_state = CurrentState {
             bpm,
@@ -259,7 +263,8 @@ impl TimelineEngine {
             emotion_mapper: EmotionMapper::new(),
             emotion_mode: false,
             cached_emotions: EngineParams::default(),
-            last_chord_name: ArrayString::from("I").unwrap_or_default(),
+            last_chord_name: ArrayString::from(&Chord::new(key_pc, ChordType::Major).name())
+                .unwrap_or_default(),
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
             is_recording_wav: false,
@@ -364,6 +369,10 @@ impl TimelineEngine {
             PitchSymbol::B => 11,
             _ => 0,
         };
+        // Keep the relative→absolute chord-root conversion on the new key
+        // (issue #26).
+        self.musical_params.key_root = self.init_key_pc;
+        self.params_dirty = true;
     }
 
     /// Full reset: stop notes, reset playhead, drain buffer, reset writehead/loop,
@@ -685,7 +694,19 @@ impl TimelineEngine {
                     self.params_dirty = true;
                 }
                 EngineCommand::SetKeyRoot(r) => {
-                    self.musical_params.key_root = r % 12;
+                    // A key change is a session re-key: navigator scale,
+                    // harmonic driver and key_root must move together or
+                    // chord labels/audio desync (issue #26).
+                    let key_pc = r % 12;
+                    let symbol = harmonium_core::params::key_root_to_pitch_symbol(key_pc);
+                    self.init_key = symbol;
+                    self.init_key_pc = key_pc;
+                    self.config.key = format!("{symbol}");
+                    self.musical_params.key_root = key_pc;
+                    self.generator.harmony = HarmonyNavigator::new(symbol, self.init_scale, 4);
+                    if let Some(driver) = self.generator.harmonic_driver.as_mut() {
+                        driver.set_key(key_pc);
+                    }
                     self.params_dirty = true;
                 }
                 EngineCommand::SetMelodySmoothness(s) => {

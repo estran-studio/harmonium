@@ -5,27 +5,27 @@
     "time_sig_numerator": 3,
     "time_sig_denominator": 4,
     "steps": 12,
-    "chord_name": "I",
+    "chord_name": "A",
     "chord_root_offset": 0,
     "chord_is_minor": false,
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 125
       },
       {
         "track": 0,
-        "pitch": 43,
+        "pitch": 52,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 104
       },
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 126
@@ -75,22 +75,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Lydian Diminished",
       "scale_notes": [
-        0,
-        2,
-        3,
-        6,
-        7,
         9,
-        11
+        11,
+        0,
+        3,
+        4,
+        6,
+        8
       ],
       "lcc_level": 3
     }
@@ -107,21 +107,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 41,
+        "pitch": 38,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 127
       },
       {
         "track": 0,
-        "pitch": 48,
+        "pitch": 45,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 107
       },
       {
         "track": 0,
-        "pitch": 43,
+        "pitch": 40,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 127
@@ -199,21 +199,21 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "F",
-      "chord_root": 5,
+      "chord_symbol": "D",
+      "chord_root": 2,
       "chord_tones": [
-        5,
-        9,
-        0
+        2,
+        6,
+        9
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        5,
-        7,
-        9,
-        11,
-        1,
-        3
+        2,
+        4,
+        6,
+        8,
+        10,
+        0
       ],
       "lcc_level": 5
     }
@@ -230,21 +230,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 41,
+        "pitch": 38,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 126
       },
       {
         "track": 0,
-        "pitch": 45,
+        "pitch": 42,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 103
       },
       {
         "track": 0,
-        "pitch": 45,
+        "pitch": 42,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 127
@@ -322,23 +322,23 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "F",
-      "chord_root": 5,
+      "chord_symbol": "D",
+      "chord_root": 2,
       "chord_tones": [
-        5,
-        9,
-        0
+        2,
+        6,
+        9
       ],
       "scale_name": "Aux. Dim. Blues",
       "scale_notes": [
+        2,
+        3,
         5,
         6,
         8,
         9,
         11,
-        0,
-        2,
-        3
+        0
       ],
       "lcc_level": 6
     }
@@ -355,21 +355,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 112
       },
       {
         "track": 0,
-        "pitch": 40,
+        "pitch": 49,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 95
       },
       {
         "track": 0,
-        "pitch": 40,
+        "pitch": 49,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 113
@@ -433,21 +433,21 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        0,
-        2,
-        4,
-        6,
-        8,
-        10
+        9,
+        11,
+        1,
+        3,
+        5,
+        7
       ],
       "lcc_level": 5
     }
@@ -464,21 +464,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 118
       },
       {
         "track": 0,
-        "pitch": 43,
+        "pitch": 52,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 103
       },
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 127
@@ -528,22 +528,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Lydian Diminished",
       "scale_notes": [
-        0,
-        2,
-        3,
-        6,
-        7,
         9,
-        11
+        11,
+        0,
+        3,
+        4,
+        6,
+        8
       ],
       "lcc_level": 3
     }
@@ -560,21 +560,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 45,
+        "pitch": 42,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 127
       },
       {
         "track": 0,
-        "pitch": 48,
+        "pitch": 45,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 105
       },
       {
         "track": 0,
-        "pitch": 48,
+        "pitch": 45,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 127
@@ -638,22 +638,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "Am7",
-      "chord_root": 9,
+      "chord_symbol": "F#m7",
+      "chord_root": 6,
       "chord_tones": [
+        6,
         9,
-        0,
-        4,
-        7
+        1,
+        4
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        6,
-        8,
-        10,
-        0,
-        2,
-        4
+        3,
+        5,
+        7,
+        9,
+        11,
+        1
       ],
       "lcc_level": 5
     }
@@ -670,63 +670,63 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 45,
+        "pitch": 42,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 120
       },
       {
         "track": 0,
-        "pitch": 54,
+        "pitch": 51,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 105
       },
       {
         "track": 0,
-        "pitch": 47,
+        "pitch": 44,
         "start_step": 8,
         "duration_steps": 2,
         "velocity": 127
       },
       {
         "track": 1,
-        "pitch": 91,
+        "pitch": 93,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 108
       },
       {
         "track": 1,
-        "pitch": 93,
+        "pitch": 103,
         "start_step": 4,
         "duration_steps": 1,
         "velocity": 92
       },
       {
         "track": 1,
-        "pitch": 96,
+        "pitch": 105,
         "start_step": 5,
         "duration_steps": 1,
         "velocity": 76
       },
       {
         "track": 1,
-        "pitch": 93,
+        "pitch": 103,
         "start_step": 6,
         "duration_steps": 1,
         "velocity": 81
       },
       {
         "track": 1,
-        "pitch": 93,
+        "pitch": 100,
         "start_step": 7,
         "duration_steps": 1,
         "velocity": 72
       },
       {
         "track": 1,
-        "pitch": 88,
+        "pitch": 96,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 114
@@ -762,22 +762,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "Am7",
-      "chord_root": 9,
+      "chord_symbol": "F#m7",
+      "chord_root": 6,
       "chord_tones": [
+        6,
         9,
-        0,
-        4,
-        7
+        1,
+        4
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        6,
-        8,
-        10,
-        0,
-        2,
-        4
+        3,
+        5,
+        7,
+        9,
+        11,
+        1
       ],
       "lcc_level": 5
     }
@@ -794,70 +794,70 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 2,
         "velocity": 103
       },
       {
         "track": 0,
-        "pitch": 40,
+        "pitch": 49,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 83
       },
       {
         "track": 0,
-        "pitch": 43,
+        "pitch": 52,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 118
       },
       {
         "track": 1,
-        "pitch": 81,
+        "pitch": 100,
         "start_step": 0,
         "duration_steps": 2,
         "velocity": 99
       },
       {
         "track": 1,
-        "pitch": 74,
+        "pitch": 105,
         "start_step": 2,
         "duration_steps": 1,
         "velocity": 62
       },
       {
         "track": 1,
-        "pitch": 79,
+        "pitch": 103,
         "start_step": 3,
         "duration_steps": 1,
         "velocity": 62
       },
       {
         "track": 1,
-        "pitch": 67,
+        "pitch": 93,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 73
       },
       {
         "track": 1,
-        "pitch": 72,
+        "pitch": 100,
         "start_step": 8,
         "duration_steps": 1,
         "velocity": 97
       },
       {
         "track": 1,
-        "pitch": 69,
+        "pitch": 96,
         "start_step": 9,
         "duration_steps": 1,
         "velocity": 59
       },
       {
         "track": 1,
-        "pitch": 76,
+        "pitch": 88,
         "start_step": 10,
         "duration_steps": 2,
         "velocity": 67
@@ -893,21 +893,21 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        0,
-        2,
-        4,
-        6,
-        8,
-        10
+        9,
+        11,
+        1,
+        3,
+        5,
+        7
       ],
       "lcc_level": 5
     }
@@ -924,35 +924,35 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 123
       },
       {
         "track": 0,
-        "pitch": 40,
+        "pitch": 49,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 90
       },
       {
         "track": 0,
-        "pitch": 43,
+        "pitch": 52,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 123
       },
       {
         "track": 1,
-        "pitch": 79,
+        "pitch": 76,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 85
       },
       {
         "track": 1,
-        "pitch": 74,
+        "pitch": 72,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 107
@@ -988,22 +988,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Lydian b7",
       "scale_notes": [
-        0,
-        2,
+        9,
+        11,
+        1,
+        3,
         4,
         6,
-        7,
-        9,
-        10
+        7
       ],
       "lcc_level": 4
     }
@@ -1020,28 +1020,28 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 123
       },
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 103
       },
       {
         "track": 0,
-        "pitch": 37,
+        "pitch": 46,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 127
       },
       {
         "track": 1,
-        "pitch": 60,
+        "pitch": 62,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 116
@@ -1084,22 +1084,22 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Lydian Diminished",
       "scale_notes": [
-        0,
-        2,
-        3,
-        6,
-        7,
         9,
-        11
+        11,
+        0,
+        3,
+        4,
+        6,
+        8
       ],
       "lcc_level": 3
     }
@@ -1116,21 +1116,21 @@
     "notes": [
       {
         "track": 0,
-        "pitch": 36,
+        "pitch": 45,
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 119
       },
       {
         "track": 0,
-        "pitch": 41,
+        "pitch": 50,
         "start_step": 4,
         "duration_steps": 4,
         "velocity": 90
       },
       {
         "track": 0,
-        "pitch": 41,
+        "pitch": 50,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 119
@@ -1144,7 +1144,7 @@
       },
       {
         "track": 1,
-        "pitch": 50,
+        "pitch": 45,
         "start_step": 8,
         "duration_steps": 4,
         "velocity": 115
@@ -1180,21 +1180,21 @@
     ],
     "composition_bpm": 120.0,
     "scale_guidance": {
-      "chord_symbol": "C",
-      "chord_root": 0,
+      "chord_symbol": "A",
+      "chord_root": 9,
       "chord_tones": [
-        0,
-        4,
-        7
+        9,
+        1,
+        4
       ],
       "scale_name": "Aux. Augmented",
       "scale_notes": [
-        0,
-        2,
-        4,
-        6,
-        8,
-        10
+        9,
+        11,
+        1,
+        3,
+        5,
+        7
       ],
       "lcc_level": 5
     }

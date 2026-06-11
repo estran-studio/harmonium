@@ -5,7 +5,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "I",
+    "chord_name": "C",
     "chord_root_offset": 0,
     "chord_is_minor": false,
     "notes": [
@@ -136,7 +136,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "IVm",
+    "chord_name": "Fm7",
     "chord_root_offset": 5,
     "chord_is_minor": true,
     "notes": [
@@ -295,7 +295,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "IVm",
+    "chord_name": "Fm7",
     "chord_root_offset": 5,
     "chord_is_minor": true,
     "notes": [
@@ -426,7 +426,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "Im",
+    "chord_name": "Cm7",
     "chord_root_offset": 0,
     "chord_is_minor": true,
     "notes": [
@@ -543,7 +543,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "Im",
+    "chord_name": "Cm7",
     "chord_root_offset": 0,
     "chord_is_minor": true,
     "notes": [
@@ -682,7 +682,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "IVm",
+    "chord_name": "Fm7",
     "chord_root_offset": 5,
     "chord_is_minor": true,
     "notes": [
@@ -848,7 +848,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "IVm",
+    "chord_name": "Fm7",
     "chord_root_offset": 5,
     "chord_is_minor": true,
     "notes": [
@@ -986,7 +986,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "Im",
+    "chord_name": "Cm7",
     "chord_root_offset": 0,
     "chord_is_minor": true,
     "notes": [
@@ -1103,7 +1103,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "IVm",
+    "chord_name": "Fm7",
     "chord_root_offset": 5,
     "chord_is_minor": true,
     "notes": [
@@ -1214,7 +1214,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "Im",
+    "chord_name": "Cm7",
     "chord_root_offset": 0,
     "chord_is_minor": true,
     "notes": [
@@ -1352,7 +1352,7 @@
     "time_sig_numerator": 4,
     "time_sig_denominator": 4,
     "steps": 16,
-    "chord_name": "Im",
+    "chord_name": "Cm7",
     "chord_root_offset": 0,
     "chord_is_minor": true,
     "notes": [
