@@ -119,6 +119,7 @@ fn main() -> Result<()> {
             _live_midi_tx,
             report_rx,
             _font_queue,
+            _transport_position,
             finished_recordings,
         ) = audio::create_timeline_stream(sf2_bytes.as_deref(), backend_type)
             .map_err(|e| anyhow::anyhow!(e))?;

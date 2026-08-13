@@ -1,10 +1,15 @@
-use std::sync::Mutex;
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 
 use harmonium_core::{EngineReport, MeasureSnapshot, params::SessionConfig};
 
 use crate::{
-    FinishedRecordings, FontQueue, audio::AudioBackendType, composer::MusicComposer,
-    playback::PlaybackCommand,
+    FinishedRecordings, FontQueue,
+    audio::AudioBackendType,
+    composer::MusicComposer,
+    playback::{PlaybackCommand, TransportPosition},
 };
 
 /// Owned handle to the live-MIDI monitor channel. Wraps the SPSC producer so
@@ -48,6 +53,9 @@ pub struct NativeHandle {
     stream: SendStream,
     composer: Mutex<MusicComposer>,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
+    /// Shared transport position, packed (bar, step) — written by the audio
+    /// thread, read lock-free through the handle's own Arc clone
+    transport_position: Arc<AtomicU64>,
     /// SPSC producer for the live-MIDI monitor. `take`n once by the MIDI
     /// input subsystem (the controller note-on/off callback), which then
     /// owns it for the life of the connection. `None` after it's taken.
@@ -74,6 +82,7 @@ impl NativeHandle {
             live_midi_tx,
             report_rx,
             font_queue,
+            transport_position,
             finished_recordings,
         ) = crate::audio::create_timeline_stream(sf2_bytes, backend)?;
 
@@ -81,6 +90,7 @@ impl NativeHandle {
             stream: SendStream(stream),
             composer,
             playback_cmd_tx,
+            transport_position,
             live_midi_tx: Some(LiveMidiSender { tx: live_midi_tx }),
             report_rx,
             session_config,
@@ -216,6 +226,23 @@ impl NativeHandle {
     /// Read the current playhead bar (from the shared atomic).
     pub fn playhead_bar(&self) -> usize {
         if let Ok(composer) = self.composer.lock() { composer.playhead_bar() } else { 1 }
+    }
+
+    // === Transport position (lock-free) ===
+
+    /// Read the current transport position at grid resolution.
+    ///
+    /// No lock is taken: the handle holds its own clone of the shared
+    /// atomic, so this is safe to call from a real-time thread (FR-002).
+    pub fn transport_position(&self) -> TransportPosition {
+        TransportPosition::from_packed(self.transport_position.load(Ordering::Relaxed))
+    }
+
+    /// The raw shared position handle, for real-time callers (MIDI
+    /// callback): clone ONCE at input startup, then `load(Ordering::Relaxed)`
+    /// per event and decode with [`crate::playback::unpack`].
+    pub fn transport_position_handle(&self) -> Arc<AtomicU64> {
+        self.transport_position.clone()
     }
 
     /// Apply param changes while preserving the preview window.

@@ -5,7 +5,7 @@
 
 use std::sync::{
     Arc,
-    atomic::{AtomicUsize, Ordering},
+    atomic::{AtomicU64, Ordering},
 };
 
 use arrayvec::ArrayString;
@@ -21,13 +21,14 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
-use crate::mapper::EmotionMapper;
+use crate::{mapper::EmotionMapper, playback::unpack};
 
 /// Main-thread music composer. Generates measures synchronously.
 ///
 /// This struct owns the generation pipeline: TimelineGenerator, Writehead,
 /// MusicalParams, EmotionMapper, and the measure ring buffer producer.
-/// It reads `playhead_bar` via an `Arc<AtomicUsize>` shared with PlaybackEngine.
+/// It reads the packed transport position via an `Arc<AtomicU64>` shared
+/// with PlaybackEngine.
 pub struct MusicComposer {
     pub config: SessionConfig,
 
@@ -66,8 +67,9 @@ pub struct MusicComposer {
     // Pending measure snapshots for the frontend
     pending_measure_snapshots: Vec<harmonium_core::report::MeasureSnapshot>,
 
-    // Shared playhead position (written by PlaybackEngine, read here)
-    playhead_bar: Arc<AtomicUsize>,
+    // Shared transport position, packed (bar, step) — written by
+    // PlaybackEngine, read here as the bar
+    transport_position: Arc<AtomicU64>,
 
     // Font queue (shared with PlaybackEngine via NativeHandle)
     pub font_queue: crate::FontQueue,
@@ -79,19 +81,19 @@ impl MusicComposer {
     pub fn new(
         sample_rate: f64,
         shared_pages: crate::SharedPages,
-        playhead_bar: Arc<AtomicUsize>,
+        transport_position: Arc<AtomicU64>,
         font_queue: crate::FontQueue,
     ) -> Self {
         use rand::Rng;
         let session_seed: u64 = rand::thread_rng().r#gen();
-        Self::new_with_seed(sample_rate, shared_pages, playhead_bar, font_queue, session_seed)
+        Self::new_with_seed(sample_rate, shared_pages, transport_position, font_queue, session_seed)
     }
 
     /// Create with explicit seed for deterministic output.
     pub fn new_with_seed(
         sample_rate: f64,
         shared_pages: crate::SharedPages,
-        playhead_bar: Arc<AtomicUsize>,
+        transport_position: Arc<AtomicU64>,
         font_queue: crate::FontQueue,
         session_seed: u64,
     ) -> Self {
@@ -195,7 +197,7 @@ impl MusicComposer {
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
             pending_measure_snapshots: Vec::new(),
-            playhead_bar,
+            transport_position,
             font_queue,
         }
     }
@@ -211,7 +213,7 @@ impl MusicComposer {
 
     /// Generate measures ahead of the playhead, publishing to shared pages.
     pub fn generate_ahead(&mut self) {
-        let playhead_bar = self.playhead_bar.load(Ordering::Relaxed);
+        let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
 
         while self.writehead.needs_generation(playhead_bar) {
             let bar_idx = self.writehead.current_bar;
@@ -264,7 +266,7 @@ impl MusicComposer {
     /// Invalidate future measures and regenerate from the next bar.
     /// Called when musical params change.
     pub fn invalidate_future(&mut self) {
-        let playhead_bar = self.playhead_bar.load(Ordering::Relaxed);
+        let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
         let regen_from = if playhead_bar == 0 { 1 } else { playhead_bar + 1 };
 
         self.writehead.timeline.invalidate_from(regen_from);
@@ -286,7 +288,7 @@ impl MusicComposer {
     /// Preview bars stay in both timeline and shared pages.
     /// The playback engine reads directly by index — no refill needed.
     pub fn invalidate_after_preview(&mut self, preview_bars: usize) {
-        let playhead_bar = self.playhead_bar.load(Ordering::Relaxed);
+        let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
         let keep_until =
             if playhead_bar == 0 { 1 + preview_bars } else { playhead_bar + preview_bars };
 
@@ -727,9 +729,10 @@ impl MusicComposer {
         self.writehead.current_bar
     }
 
-    /// Current playhead bar (from the shared atomic, written by PlaybackEngine).
+    /// Current playhead bar — the bar half of the shared packed transport
+    /// position (written by PlaybackEngine).
     pub fn playhead_bar(&self) -> usize {
-        self.playhead_bar.load(Ordering::Relaxed)
+        unpack(self.transport_position.load(Ordering::Relaxed)).0
     }
 
     /// Get a reference to a measure from the timeline by bar index.
