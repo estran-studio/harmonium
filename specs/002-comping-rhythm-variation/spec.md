@@ -1,8 +1,10 @@
 ---
 spec_type: per_repo_feature
+meta_epic: 012-w1-chord-voice
+meta_repo_path: harmonium_specs/specs/012-w1-chord-voice/
 plane_history:
   - C-28 — Comping rhythm variation — independent jazz voicing rhythm (Groomed)
-status: groomed
+status: planned
 priority: high
 workstream: W1
 strategy: STRATEGY_2026.md — Hear the harmony (chordal voice)
@@ -17,6 +19,13 @@ strategy: STRATEGY_2026.md — Hear the harmony (chordal voice)
 **Status**: Draft (migrated from Plane)
 
 **Input**: Migrated from Plane on 2026-05-25 as part of the spec-kit transition.
+
+> **Scope correction, 2026-08-13.** The Plane content below describes this
+> work as adding an independent rhythm to voicings that already play. They
+> do not play: the engine has no chord track, the voicing library has no
+> callers, and `enable_voicing` is a no-op wired through six layers. W1 wires
+> the chord voice end to end. Read the corrected Assumptions section and
+> `research.md` R0 before the Plane content.
 
 ## Plane Content (verbatim)
 
@@ -94,6 +103,9 @@ struct CompingParams {
 
 ## Files
 
+*(Plane-era list, superseded — it named two files where the real surface is
+a dozen. See the footer and `plan.md`.)*
+
 - Modify: `harmonium_core/src/timeline/generator.rs` — comping trigger generation + output
 - Modify or new: comping params struct (inline or in `params.rs`)
 - Modify: `harmonium_core/src/params.rs` — add CompingParams to MusicalParams
@@ -125,7 +137,7 @@ A jazz pianist wants the comping to land on the "and of 4" tied into beat 1 (the
 **Acceptance Scenarios**:
 
 1. **Given** `CompingParams { anticipation_probability: 1.0 }`, **When** the engine renders 20 bars, **Then** every bar contains a comping trigger on the "and of 4" step.
-2. **Given** `CompingParams { charleston_probability: 1.0 }`, **When** the engine renders, **Then** each "and of 4" anticipation is followed by a sustained trigger crossing into beat 1 of the next bar [NEEDS CLARIFICATION: precise representation of a "tied" trigger in `MeasureSnapshot` — Plane content describes the gesture but not whether ties span snapshots or are encoded as `duration_steps` on a single trigger].
+2. **Given** `CompingParams { charleston_probability: 1.0 }`, **When** the engine renders, **Then** each "and of 4" anticipation is followed by a sustained trigger crossing into beat 1 of the next bar — encoded as `duration_steps` on a single trigger in its starting bar, never as a re-attacked note in the next bar (resolved: `research.md` R3).
 3. **Given** `responsive_to_melody: true` and a lead track with high note density in a region, **When** the engine generates comping for that region, **Then** comping hits-per-bar is reduced (relative to baseline) for that region.
 
 ### User Story 3 — Style-profile-tuned comping feel (Priority: P3)
@@ -145,7 +157,7 @@ A composer switching between styles wants the comping feel to switch with them �
 ### Edge Cases
 
 - `hits_per_bar = 0.0` — comping is effectively always silent; ensure no division-by-zero in distribution logic.
-- `hits_per_bar` greater than the grid resolution (e.g., 32 hits on a 16-step grid) — clamp or reject [NEEDS CLARIFICATION: behavior not specified].
+- `hits_per_bar` greater than the grid resolution (e.g., 32 hits on a 16-step grid) — clamped to the bar's step count, never rejected. These values arrive from continuous morphing and from the emotion mapper, so an out-of-range transient is normal and must not error on the audio path (resolved: `research.md` R4).
 - `layoff_probability = 1.0` — every bar is silent. Engine must still emit a valid (empty-comping) `MeasureSnapshot`.
 - `responsive_to_melody = true` but the lead track has zero notes — comping should fall back to baseline density, not collapse to zero.
 - `charleston_probability > 0` on the final bar of a piece — the tied note has nowhere to resolve to. Define whether the trigger is dropped, shortened, or allowed to dangle.
@@ -160,7 +172,7 @@ A composer switching between styles wants the comping feel to switch with them �
 - **FR-003**: Across a long run, the mean comping hits per bar MUST be within ±20% of the configured `hits_per_bar` (per Plane testing note).
 - **FR-004**: A bar selected for layoff (per `layoff_probability`) MUST emit zero comping triggers.
 - **FR-005**: An anticipation trigger MUST land on the "and of 4" step relative to the engine's current step grid.
-- **FR-006**: A Charleston-flagged anticipation MUST sustain across the barline into beat 1 of the following bar [NEEDS CLARIFICATION: tie representation in `MeasureSnapshot`].
+- **FR-006**: A Charleston-flagged anticipation MUST sustain across the barline into beat 1 of the following bar. This requires the playhead to schedule note-offs by duration for the chord track — it currently ignores `duration_steps` entirely and cuts notes by replacement, so the gesture is not representable without that work (`research.md` R3).
 - **FR-007**: When `responsive_to_melody` is true, the comping density in a region MUST inversely correlate with lead note density in that region.
 - **FR-008**: Comping triggers MUST carry `step`, `velocity`, and `duration_steps` fields (stab vs sustained).
 - **FR-009**: Each comping trigger MUST resolve to a chord voicing using the existing `voicing_density` / `voicing_tension` pitch-selection pipeline (this spec controls *when*, not *what*).
@@ -171,7 +183,7 @@ A composer switching between styles wants the comping feel to switch with them �
 
 - **CompingParams**: New struct in `harmonium_core/src/params.rs` carrying the five style knobs above. Becomes a member of `MusicalParams` / `TuningParams`.
 - **CompingTrigger**: Per-step record `(step, velocity, duration_steps)` produced by the comping generator and consumed by the voicing pipeline. Independent of kick/snare/hat/lead triggers.
-- **TrackId::Chord**: New (or repurposed) channel on `MeasureSnapshot` carrying the comping voicing output [NEEDS CLARIFICATION: Plane content lists both options — new variant vs. repurpose; pick at planning time].
+- **TrackId::Chord**: New `TrackId` variant on MIDI channel 4 carrying the comping voicing output. Repurposing `Lead` was rejected: improv mode deliberately silences the lead, which is exactly when the chords most need to be heard (resolved: `research.md` R2).
 - **TimelineGenerator**: Existing generator in `harmonium_core/src/timeline/generator.rs` gains a per-measure `comping_pattern: Vec<CompingTrigger>` alongside the sequencer pattern.
 
 ## Success Criteria *(mandatory)*
@@ -182,21 +194,53 @@ A composer switching between styles wants the comping feel to switch with them �
 - **SC-002**: Across 100 bars with `hits_per_bar=2.5`, mean is within ±20% (i.e., 2.0–3.0); across 100 bars with `layoff_probability=0.15`, layoff bar count is within ±5 absolute of the expected 15.
 - **SC-003**: Voicing system, currently disabled by default, becomes enabled by default with reasonable output (Plane testing note: "default `CompingParams` should produce reasonable output").
 - **SC-004**: New tests in `harmonium_core` cover all FRs (FR-001 through FR-011), at minimum one test per FR.
-- **SC-005**: `harmonium_lab` "jazz comping authenticity" composite score (reference: medium swing standards corpus) improves measurably over the current "comping = lead pattern" baseline. [NEEDS CLARIFICATION: target delta — depends on whether harmonium_lab already has a comping-specific metric].
+- **SC-005**: On a B♭ blues at 120 bpm in the medium-swing style, a listener can follow the chord changes by ear alone, without looking at the screen, for a full 12-bar chorus. This is the workstream's stopping criterion — the statistical criteria above prove the generator obeys, only listening proves it was asked the right thing.
+
+  *(The original SC-005 invoked a `harmonium_lab` "comping authenticity" composite score. No such metric exists — `GlobalMetrics` carries voice-leading effort, tension variance, tension/release balance, diatonic percentage, harmonic rhythm, duration and chord-change count, and nothing about comping. Building one is a spec in that repo, not a success criterion here. See `research.md` R7.)*
 
 ## Assumptions
 
-- Voicing pitch selection (which notes are in the voicing) is already implemented and out of scope. This spec is purely about *when* voicings fire.
-- The engine's existing `ChaCha8Rng` seeded determinism extends to the new comping generator without separate seeding plumbing.
-- `TuningParams` (CORELIB-23) is the destination home for `CompingParams`. This spec can ship with `CompingParams` constructed inline / hardcoded if TuningParams lands later.
-- Comping fires on a single chord-instrument channel (typically jazz piano); multi-voice comping (e.g., piano + guitar with different feels) is out of scope.
+> **Corrected 2026-08-13 against the code.** The three assumptions below were
+> written from the Plane migration and two of them were factually wrong. The
+> corrections are load-bearing — they change the size of the work. Evidence in
+> `research.md` R0/R1/R5.
+
+- ~~Voicing pitch selection is already implemented and out of scope.~~
+  **A pitch-selection library exists but is orphaned.** `harmonium_audio::voicing`
+  (`Voicer`, `ShellVoicer`, `BlockChordVoicer`, `CompingPattern`) has zero
+  callers anywhere in the workspace, and `enable_voicing` — plumbed through
+  params, controller, CLI, VST GUI and host — is never read by the generator.
+  There is no chord voice in the engine at all. W1 therefore wires a chord
+  voice end to end; it does not add rhythm to something that already plays.
+- ~~The existing seeded determinism extends to the comping generator without
+  separate seeding plumbing.~~ **It requires separate plumbing.** Drawing from
+  the main RNG stream would shift every subsequent draw, changing melody and
+  drums for a given seed and breaking every saved session's replay. Comping
+  draws from a child stream derived from `(session_seed, bar index)`.
+- `TuningParams` is the destination home for `CompingParams` — **confirmed
+  present** (`harmonium_core/src/tuning.rs:434`, nine sub-structs and a
+  `validate()`); `CompingParams` becomes the tenth. No longer a prerequisite.
+- Comping fires on a single chord-instrument channel (typically jazz piano);
+  multi-voice comping (e.g., piano + guitar with different feels) is out of scope.
+- Populating the 15 style profiles with per-style comping values lives in
+  `harmonium_training/static/profiles/` — another repo, another task
+  (constitution V). The engine ships the struct and its defaults.
 
 ---
 
 ## Footer — File & Branch Pointers
 
-- `harmonium_core/src/timeline/generator.rs` — comping trigger generation + emission
-- `harmonium_core/src/params.rs` — new `CompingParams` struct, integration into `MusicalParams` / `TuningParams`
-- `harmonium_core/src/voicing/` (existing voicing pipeline — pitch selection unchanged)
-- `harmonium_audio/src/voicing/comping.rs` — existing module that may need updating for new trigger source
+The full, verified list of touched files is in [plan.md](./plan.md); the cost
+of the new track is enumerated site by site in [research.md](./research.md) R2.
+Highlights:
+
+- `harmonium_core/src/timeline/mod.rs` — `TrackId::Chord`, MIDI channel 4
+- `harmonium_core/src/timeline/generator.rs` — comping trigger generation
+- `harmonium_core/src/timeline/pointers.rs` — playhead: fixed-size cursor
+  array, and duration-based note-off scheduling for the chord track
+- `harmonium_core/src/voicing/` — **new**, ported from `harmonium_audio`
+- `harmonium_audio/src/voicing/` — **deleted** in the same change
+  (constitution II: no parallel path)
+- `harmonium_core/src/tuning.rs` — `CompingParams` as the tenth `TuningParams`
+  sub-struct
 - **Plane history**: see frontmatter — CORELIB-28 (Groomed)
