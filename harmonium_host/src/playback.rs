@@ -5,7 +5,7 @@
 
 use std::sync::{
     Arc,
-    atomic::{AtomicUsize, Ordering},
+    atomic::{AtomicU64, Ordering},
 };
 
 use arrayvec::ArrayString;
@@ -49,11 +49,7 @@ impl TransportPosition {
     #[must_use]
     pub fn from_packed(packed: u64) -> Self {
         let (bar, step) = unpack(packed);
-        Self {
-            bar,
-            step,
-            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
-        }
+        Self { bar, step, beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0 }
     }
 }
 
@@ -152,8 +148,9 @@ pub struct PlaybackEngine {
     // Report ring buffer (audio thread → main thread)
     report_tx: rtrb::Producer<harmonium_core::EngineReport>,
 
-    // Shared playhead bar (audio thread writes, composer reads)
-    playhead_bar: Arc<AtomicUsize>,
+    // Shared transport position, packed (bar, step) — audio thread writes,
+    // composer and lock-free readers read
+    transport_position: Arc<AtomicU64>,
 
     // Mute state
     output_muted: bool,
@@ -197,7 +194,7 @@ impl PlaybackEngine {
         cmd_rx: rtrb::Consumer<PlaybackCommand>,
         live_rx: rtrb::Consumer<LiveMidiEvent>,
         report_tx: rtrb::Producer<harmonium_core::EngineReport>,
-        playhead_bar: Arc<AtomicUsize>,
+        transport_position: Arc<AtomicU64>,
     ) -> Self {
         let bpm = 120.0;
         let samples_per_step = (sample_rate * 60.0 / (bpm as f64) / 4.0) as usize;
@@ -213,7 +210,7 @@ impl PlaybackEngine {
             cmd_rx,
             live_rx,
             report_tx,
-            playhead_bar,
+            transport_position,
             output_muted: false,
             muted_channels: vec![false; 16],
             last_muted_channels: vec![false; 16],
@@ -284,7 +281,7 @@ impl PlaybackEngine {
                     self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                 }
                 self.playhead.seek_to_bar(start_bar);
-                self.playhead_bar.store(start_bar, Ordering::Relaxed);
+                self.transport_position.store(pack(start_bar, 0), Ordering::Relaxed);
             }
         }
 
@@ -334,8 +331,12 @@ impl PlaybackEngine {
             self.renderer.handle_event(event.clone());
         }
 
-        // Update shared playhead position
-        self.playhead_bar.store(self.playhead.current_bar(), Ordering::Relaxed);
+        // Update shared transport position at grid resolution, after the
+        // tick: (current bar, step within the measure)
+        self.transport_position.store(
+            pack(self.playhead.current_bar(), self.playhead.position.step_in_bar(TICKS_PER_BEAT)),
+            Ordering::Relaxed,
+        );
 
         // Send report periodically
         let current_step = self.playhead.position.step_in_bar(4);
@@ -417,7 +418,7 @@ impl PlaybackEngine {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
                     self.playhead.seek_to_bar(target_bar);
-                    self.playhead_bar.store(target_bar, Ordering::Relaxed);
+                    self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
@@ -426,7 +427,7 @@ impl PlaybackEngine {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
                     self.playhead.seek_to_bar(target_bar);
-                    self.playhead_bar.store(target_bar, Ordering::Relaxed);
+                    self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
                 }
                 PlaybackCommand::SetLoop { start_bar, end_bar } => {
                     let start = start_bar.max(1);

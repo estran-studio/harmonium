@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 
 use harmonium_core::report::MeasureSnapshot;
 use serde::{Deserialize, Serialize};
@@ -162,6 +165,9 @@ pub struct Handle {
     composer: Mutex<composer::MusicComposer>,
     /// Send commands to the audio-thread PlaybackEngine.
     playback_cmd_tx: rtrb::Producer<playback::PlaybackCommand>,
+    /// Shared transport position, packed (bar, step) — written by the audio
+    /// thread, read lock-free through the handle's own Arc clone
+    transport_position: Arc<AtomicU64>,
     /// Receive reports from the audio-thread PlaybackEngine.
     report_rx: rtrb::Consumer<harmonium_core::EngineReport>,
     /// Queue de chargement de SoundFonts (drained by `flush_fonts`).
@@ -203,6 +209,20 @@ impl Handle {
     }
 }
 
+// Plain (non-wasm_bindgen) impl: the raw position handle is a Rust-only
+// escape hatch for real-time callers — `Arc<AtomicU64>` is not
+// JS-representable, so it must live outside the JS-exposed impl block.
+#[cfg(all(feature = "standalone", feature = "wasm"))]
+impl Handle {
+    /// The raw shared position handle, for real-time callers (MIDI
+    /// callback): clone ONCE at input startup, then
+    /// `load(Ordering::Relaxed)` per event and decode with
+    /// [`crate::playback::unpack`].
+    pub fn transport_position_handle(&self) -> Arc<AtomicU64> {
+        self.transport_position.clone()
+    }
+}
+
 #[cfg(all(feature = "standalone", feature = "wasm"))]
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl Handle {
@@ -226,6 +246,16 @@ impl Handle {
 
     pub fn get_steps(&self) -> usize {
         self.steps
+    }
+
+    // === Transport Position (lock-free) ===
+
+    /// Read the current transport position at grid resolution.
+    ///
+    /// No lock is taken: the handle holds its own clone of the shared
+    /// atomic, written by the audio-thread PlaybackEngine.
+    pub fn transport_position(&self) -> playback::TransportPosition {
+        playback::TransportPosition::from_packed(self.transport_position.load(Ordering::Relaxed))
     }
 
     // === Emotion Controls ===
@@ -1364,6 +1394,7 @@ pub fn start_with_backend(sf2_bytes: Option<Box<[u8]>>, backend: &str) -> Result
         _live_midi_tx,
         report_rx,
         font_queue,
+        transport_position,
         finished_recordings,
     ) = audio::create_timeline_stream(sf2_bytes.as_deref(), backend_type)
         .map_err(|e| JsValue::from_str(&e))?;
@@ -1380,6 +1411,7 @@ pub fn start_with_backend(sf2_bytes: Option<Box<[u8]>>, backend: &str) -> Result
         stream,
         composer,
         playback_cmd_tx,
+        transport_position,
         report_rx,
         font_queue,
         finished_recordings,

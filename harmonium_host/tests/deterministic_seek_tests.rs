@@ -8,7 +8,7 @@
 //! 5. NewMelody produces different content
 //! 6. SetSeed restores an identical session
 
-use std::sync::{Arc, Mutex, atomic::AtomicUsize};
+use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use harmonium::{composer::MusicComposer, timeline_engine::TimelineEngine};
 use harmonium_audio::backend::AudioRenderer;
@@ -87,10 +87,15 @@ fn run_engine_bars(
 
 fn create_composer(seed: u64) -> (MusicComposer, Arc<Mutex<Vec<Measure>>>) {
     let shared_pages: Arc<Mutex<Vec<Measure>>> = Arc::new(Mutex::new(Vec::new()));
-    let playhead_bar = Arc::new(AtomicUsize::new(1));
+    let transport_position = Arc::new(AtomicU64::new(harmonium::playback::pack(1, 0)));
     let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let composer =
-        MusicComposer::new_with_seed(44100.0, shared_pages.clone(), playhead_bar, font_queue, seed);
+    let composer = MusicComposer::new_with_seed(
+        44100.0,
+        shared_pages.clone(),
+        transport_position,
+        font_queue,
+        seed,
+    );
     (composer, shared_pages)
 }
 

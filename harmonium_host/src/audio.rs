@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, atomic::AtomicUsize};
+use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 #[cfg(feature = "odin2")]
@@ -10,7 +10,7 @@ use harmonium_core::{log, params::SessionConfig};
 
 use crate::{
     composer::MusicComposer,
-    playback::{PlaybackCommand, PlaybackEngine},
+    playback::{PlaybackCommand, PlaybackEngine, pack},
 };
 
 /// Available audio backend types
@@ -33,6 +33,8 @@ pub enum AudioBackendType {
 /// - `rtrb::Producer<PlaybackCommand>` — send commands to playback engine
 /// - `rtrb::Consumer<EngineReport>` — receive reports from playback engine
 /// - `FontQueue` — SoundFont loading queue
+/// - `Arc<AtomicU64>` — packed transport position `(bar, step)`, written by
+///   the playback engine, read lock-free
 /// - `FinishedRecordings` — completed recordings
 #[allow(clippy::type_complexity)]
 pub fn create_timeline_stream(
@@ -47,6 +49,7 @@ pub fn create_timeline_stream(
         rtrb::Producer<crate::playback::LiveMidiEvent>,
         rtrb::Consumer<harmonium_core::EngineReport>,
         crate::FontQueue,
+        Arc<AtomicU64>,
         crate::FinishedRecordings,
     ),
     String,
@@ -69,8 +72,8 @@ pub fn create_timeline_stream(
     // Shared pages: composer writes by index, playback reads by index
     let shared_pages: crate::SharedPages = Arc::new(Mutex::new(Vec::with_capacity(64)));
 
-    // Shared playhead position
-    let playhead_bar = Arc::new(AtomicUsize::new(1));
+    // Shared transport position, packed (bar, step) — initial (1, 0)
+    let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
 
     // Font queue (shared between NativeHandle and PlaybackEngine)
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -97,7 +100,7 @@ pub fn create_timeline_stream(
     let composer = MusicComposer::new(
         sample_rate,
         shared_pages.clone(),
-        playhead_bar.clone(),
+        transport_position.clone(),
         font_queue.clone(),
     );
     let session_config = composer.config.clone();
@@ -114,7 +117,7 @@ pub fn create_timeline_stream(
         playback_cmd_rx,
         live_midi_rx,
         report_tx,
-        playhead_bar,
+        transport_position.clone(),
     );
 
     let err_fn = |err| log::error(&format!("an error occurred on stream: {}", err));
@@ -142,6 +145,7 @@ pub fn create_timeline_stream(
         live_midi_tx,
         report_rx,
         font_queue,
+        transport_position,
         finished_recordings,
     ))
 }
@@ -171,7 +175,8 @@ pub fn create_offline_engine(
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
     let shared_pages: crate::SharedPages = Arc::new(Mutex::new(Vec::with_capacity(64)));
-    let playhead_bar = Arc::new(AtomicUsize::new(1));
+    // Shared transport position, packed (bar, step) — initial (1, 0)
+    let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let default_routing = if sf2_bytes.is_some() { vec![0, 1, 2, 3] } else { vec![-1, -1, -1, -1] };
@@ -190,8 +195,12 @@ pub fn create_offline_engine(
         sample_rate as u32,
     ));
 
-    let composer =
-        MusicComposer::new(sample_rate, shared_pages.clone(), playhead_bar.clone(), font_queue);
+    let composer = MusicComposer::new(
+        sample_rate,
+        shared_pages.clone(),
+        transport_position.clone(),
+        font_queue,
+    );
 
     let playback = PlaybackEngine::new(
         sample_rate,
@@ -200,7 +209,7 @@ pub fn create_offline_engine(
         playback_cmd_rx,
         live_midi_rx,
         report_tx,
-        playhead_bar,
+        transport_position,
     );
 
     Ok((composer, playback, playback_cmd_tx, report_rx, finished_recordings))

@@ -308,6 +308,7 @@ fn main() {
         _live_midi_tx,
         _report_rx,
         _font_queue,
+        _transport_position,
         finished_recordings,
     ) = audio::create_timeline_stream(sf2_data.as_deref(), backend_type).unwrap_or_else(|e| {
         #[allow(clippy::panic)]

@@ -133,10 +133,6 @@ fn snapshot_stream_unchanged() {
     // ahead of the playhead, and how far it runs depends on the shared
     // position read by the composer — the interaction this change touches.
     let snapshots = composer.take_snapshots();
-    assert!(
-        snapshots.len() >= BARS,
-        "Expected at least {BARS} snapshots, got {}",
-        snapshots.len()
-    );
+    assert!(snapshots.len() >= BARS, "Expected at least {BARS} snapshots, got {}", snapshots.len());
     assert_golden("snapshot_stream_seed42_8bars", &snapshots);
 }
