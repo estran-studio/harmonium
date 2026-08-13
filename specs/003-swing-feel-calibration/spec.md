@@ -4,6 +4,8 @@ plane_history:
   - C-29 — Swing feel calibration — tempo-dependent swing ratio and explicit swing parameter (Groomed)
 status: groomed
 priority: high
+workstream: W1
+strategy: STRATEGY_2026.md — Hear the harmony (feel/swing)
 ---
 
 # Swing feel calibration — tempo-dependent swing ratio and explicit swing parameter

@@ -4,6 +4,8 @@ plane_history:
   - C-28 — Comping rhythm variation — independent jazz voicing rhythm (Groomed)
 status: groomed
 priority: high
+workstream: W1
+strategy: STRATEGY_2026.md — Hear the harmony (chordal voice)
 ---
 
 # Comping rhythm variation — independent jazz voicing rhythm
