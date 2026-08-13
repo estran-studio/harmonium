@@ -12,6 +12,51 @@ use arrayvec::ArrayString;
 use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{events::AudioEvent, log, params::MusicalParams, timeline::Playhead};
 
+/// Grid resolution of the transport, in steps per beat (sixteenth notes).
+/// `TransportPosition::beat` is derived from the step on this grid — it is
+/// never stored separately.
+pub const TICKS_PER_BEAT: usize = 4;
+
+/// Transport position at the engine's grid resolution, packed into a single
+/// lock-free shared value ([`pack`]). `bar` is 1-based, `step` is 0-based
+/// within the measure, and `beat` is derived: `step / TICKS_PER_BEAT + 1.0`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
+pub struct TransportPosition {
+    /// 1-based bar.
+    pub bar: usize,
+    /// Step within the measure, 0-based, on the [`TICKS_PER_BEAT`] grid.
+    pub step: usize,
+    /// Derived beat: `step / TICKS_PER_BEAT + 1.0` (1.0 = first beat).
+    pub beat: f32,
+}
+
+/// Pack a transport position into one 64-bit value: bar in the high 32
+/// bits, step in the low 32 bits. One atomic, one load — a pair read this
+/// way is coherent by construction (spec 006, R3).
+pub const fn pack(bar: usize, step: usize) -> u64 {
+    ((bar as u64) << 32) | (step as u64 & 0xFFFF_FFFF)
+}
+
+/// Unpack a packed transport position into `(bar, step)`.
+pub const fn unpack(packed: u64) -> (usize, usize) {
+    ((packed >> 32) as usize, (packed & 0xFFFF_FFFF) as usize)
+}
+
+impl TransportPosition {
+    /// Decode a packed transport value into a [`TransportPosition`],
+    /// deriving `beat` from the step.
+    #[must_use]
+    pub fn from_packed(packed: u64) -> Self {
+        let (bar, step) = unpack(packed);
+        Self {
+            bar,
+            step,
+            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
+        }
+    }
+}
+
 /// MIDI channel reserved for monitoring the player's own input ("hear
 /// yourself"). Channels 0–3 are the sequenced tracks (lead/bass/kick/hat)
 /// and 9 is GM percussion, so 8 is free and tonal.
@@ -478,5 +523,46 @@ impl PlaybackEngine {
         report.musical_params = self.musical_params.clone();
 
         let _ = self.report_tx.push(report);
+    }
+}
+
+#[cfg(test)]
+mod transport_position_tests {
+    use super::*;
+
+    #[test]
+    fn pack_unpack_roundtrip() {
+        for (bar, step) in [(1, 0), (5, 15), (12, 0), (42, 3), (1000, 15)] {
+            assert_eq!(unpack(pack(bar, step)), (bar, step));
+        }
+    }
+
+    #[test]
+    fn pack_unpack_at_bounds() {
+        // Step is masked to 32 bits; bar keeps its own bits.
+        assert_eq!(unpack(pack(7, u32::MAX as usize)), (7, u32::MAX as usize));
+        assert_eq!(unpack(pack(0, 0)), (0, 0));
+    }
+
+    #[test]
+    fn initial_value_is_bar1_step0() {
+        assert_eq!(pack(1, 0), 1u64 << 32);
+        assert_eq!(unpack(pack(1, 0)), (1, 0));
+    }
+
+    #[test]
+    fn beat_is_derived_from_step() {
+        let at = |bar: usize, step: usize| TransportPosition::from_packed(pack(bar, step));
+        assert_eq!(at(1, 0).beat, 1.0);
+        assert_eq!(at(1, 2).beat, 1.5);
+        assert_eq!(at(1, 6).beat, 2.5);
+        assert_eq!(at(3, 12).beat, 4.0);
+        assert_eq!(at(3, 15).beat, 4.75);
+    }
+
+    #[test]
+    fn step_never_leaks_into_bar_bits() {
+        assert_eq!(TransportPosition::from_packed(pack(7, 12)).bar, 7);
+        assert_eq!(unpack(pack(7, u32::MAX as usize)).0, 7);
     }
 }
