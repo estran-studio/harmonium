@@ -17,6 +17,12 @@ serde-big-array = "0.5"
 rtrb = "0.3"
 serde_json = "1.0"
 toml = "0.8"
+# Unification de features, même pattern que harmonium_host : rand 0.8 ->
+# getrandom 0.2 exige la feature "js" pour compiler sous
+# wasm32-unknown-unknown (principe III de la constitution — le core est
+# wasm de première classe). L'alias n'ajoute aucun crate au graphe :
+# getrandom y est déjà via rand, et la feature "js" est inerte en natif.
+getrandom_v02 = { package = "getrandom", version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 
