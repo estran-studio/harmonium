@@ -8,7 +8,9 @@ use harmonium_core::{log, params::SessionConfig};
 
 use crate::{
     composer::MusicComposer,
-    playback::{PlaybackCommand, PlaybackEngine, pack},
+    playback::{
+        MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure, pack,
+    },
 };
 
 /// Create a decoupled timeline stream for real-time playback.
@@ -55,9 +57,10 @@ pub fn create_timeline_stream(
     let (live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(256);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
-    // Shared pages: composer writes by index, playback reads by index
-    let shared_pages: crate::SharedPages = Arc::new(Mutex::new(Vec::with_capacity(64)));
-
+    // Handoff rings: composer → playback staged measures, playback →
+    // composer returned boxes (deallocated on the main thread).
+    let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
+    let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     // Shared transport position, packed (bar, step) — initial (1, 0)
     let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
 
@@ -79,7 +82,8 @@ pub fn create_timeline_stream(
     // Create composer (main thread)
     let composer = MusicComposer::new(
         sample_rate,
-        shared_pages.clone(),
+        measure_tx,
+        return_rx,
         transport_position.clone(),
         font_queue.clone(),
     );
@@ -93,7 +97,8 @@ pub fn create_timeline_stream(
     let mut playback = PlaybackEngine::new(
         sample_rate,
         recorder_backend,
-        shared_pages,
+        measure_rx,
+        return_tx,
         playback_cmd_rx,
         live_midi_rx,
         report_tx,
@@ -153,7 +158,10 @@ pub fn create_offline_engine(
     let (_live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(1);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
-    let shared_pages: crate::SharedPages = Arc::new(Mutex::new(Vec::with_capacity(64)));
+    // Handoff rings: composer → playback staged measures, playback →
+    // composer returned boxes (deallocated on the main thread).
+    let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
+    let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     // Shared transport position, packed (bar, step) — initial (1, 0)
     let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -171,7 +179,8 @@ pub fn create_offline_engine(
 
     let composer = MusicComposer::new(
         sample_rate,
-        shared_pages.clone(),
+        measure_tx,
+        return_rx,
         transport_position.clone(),
         font_queue,
     );
@@ -179,7 +188,8 @@ pub fn create_offline_engine(
     let playback = PlaybackEngine::new(
         sample_rate,
         recorder_backend,
-        shared_pages,
+        measure_rx,
+        return_tx,
         playback_cmd_rx,
         live_midi_rx,
         report_tx,

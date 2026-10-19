@@ -3,9 +3,12 @@
 //! Owns the generation side: writehead, generator, musical params,
 //! emotion mapping, and measure snapshots. Callable directly (no audio stream needed).
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    collections::BTreeMap,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use arrayvec::ArrayString;
@@ -14,14 +17,17 @@ use harmonium_core::{
     log,
     params::{CurrentState, EngineParams, MusicalParams, SessionConfig, TimeSignature},
     sequencer::Sequencer,
-    timeline::{GenerationContext, Measure, TimelineGenerator, Writehead},
+    timeline::{GenerationContext, TimelineGenerator, Writehead},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
-use crate::{mapper::EmotionMapper, playback::unpack};
+use crate::{
+    mapper::EmotionMapper,
+    playback::{TaggedMeasure, unpack},
+};
 
 /// Main-thread music composer. Generates measures synchronously.
 ///
@@ -36,8 +42,19 @@ pub struct MusicComposer {
     generator: TimelineGenerator,
     writehead: Writehead,
 
-    // Shared pages (Composer writes by index, PlaybackEngine reads by index)
-    shared_pages: crate::SharedPages,
+    // Handoff: staged measures (composer → playback) and returned boxes
+    // (playback → composer). The timeline is the source of truth; `published`
+    // mirrors what playback is believed to hold (bar → epoch at stage time).
+    measure_tx: rtrb::Producer<TaggedMeasure>,
+    return_rx: rtrb::Consumer<TaggedMeasure>,
+    published: BTreeMap<usize, u64>,
+    // Generation epoch, bumped by every invalidation/seek/reset. Staged
+    // boxes carry it; playback treats older boxes as stale.
+    epoch: u64,
+    // Smallest bar the playback engine must evict (>= bar), set by the last
+    // invalidation/seek/reset. Drained by whoever owns the command ring
+    // (NativeHandle, REPL) via `take_pending_drop`, as `DropFrom`.
+    pending_drop: Option<usize>,
 
     // State
     musical_params: MusicalParams,
@@ -77,22 +94,30 @@ pub struct MusicComposer {
 
 impl MusicComposer {
     /// Create a new MusicComposer.
-    #[allow(clippy::type_complexity)]
     pub fn new(
         sample_rate: f64,
-        shared_pages: crate::SharedPages,
+        measure_tx: rtrb::Producer<TaggedMeasure>,
+        return_rx: rtrb::Consumer<TaggedMeasure>,
         transport_position: Arc<AtomicU64>,
         font_queue: crate::FontQueue,
     ) -> Self {
         use rand::Rng;
         let session_seed: u64 = rand::thread_rng().r#gen();
-        Self::new_with_seed(sample_rate, shared_pages, transport_position, font_queue, session_seed)
+        Self::new_with_seed(
+            sample_rate,
+            measure_tx,
+            return_rx,
+            transport_position,
+            font_queue,
+            session_seed,
+        )
     }
 
     /// Create with explicit seed for deterministic output.
     pub fn new_with_seed(
         sample_rate: f64,
-        shared_pages: crate::SharedPages,
+        measure_tx: rtrb::Producer<TaggedMeasure>,
+        return_rx: rtrb::Consumer<TaggedMeasure>,
         transport_position: Arc<AtomicU64>,
         font_queue: crate::FontQueue,
         session_seed: u64,
@@ -179,7 +204,11 @@ impl MusicComposer {
             config,
             generator,
             writehead,
-            shared_pages,
+            measure_tx,
+            return_rx,
+            published: BTreeMap::new(),
+            epoch: 0,
+            pending_drop: None,
             musical_params,
             rng,
             sample_rate,
@@ -211,20 +240,35 @@ impl MusicComposer {
         self.writehead.lookahead = old_lookahead;
     }
 
-    /// Generate measures ahead of the playhead, publishing to shared pages.
+    /// Generate measures ahead of the playhead, staging them for playback.
+    ///
+    /// Also drains the return ring (deallocating played boxes here, on the
+    /// main thread) and republishes generated-but-unstaged bars — e.g. after
+    /// a `DropFrom` eviction or ring backpressure. Staging stops at the first
+    /// full ring and resumes on the next call; generation itself always runs
+    /// to the lookahead bound.
     pub fn generate_ahead(&mut self) {
+        self.drain_returned();
+        self.republish_missing();
+
         let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
 
+        let mut staging_open = true;
         while self.writehead.needs_generation(playhead_bar) {
             let bar_idx = self.writehead.current_bar;
 
             // If this bar already exists in the timeline (e.g. after seek),
-            // ensure it's in shared pages and advance.
-            if let Some(existing) = self.writehead.timeline.get_measure(bar_idx) {
-                self.publish_measure(existing.clone());
-                let mut snapshot = harmonium_core::report::MeasureSnapshot::from_measure(&existing);
-                snapshot.composition_bpm = self.emotion_mapped_bpm;
-                self.pending_measure_snapshots.push(snapshot);
+            // ensure it is staged and advance.
+            if self.writehead.timeline.get_measure(bar_idx).is_some() {
+                if staging_open && !self.is_published(bar_idx) {
+                    staging_open = self.stage_bar(bar_idx);
+                }
+                if let Some(existing) = self.writehead.timeline.get_measure(bar_idx) {
+                    let mut snapshot =
+                        harmonium_core::report::MeasureSnapshot::from_measure(existing);
+                    snapshot.composition_bpm = self.emotion_mapped_bpm;
+                    self.pending_measure_snapshots.push(snapshot);
+                }
                 self.writehead.current_bar = bar_idx + 1;
                 continue;
             }
@@ -241,21 +285,97 @@ impl MusicComposer {
             snapshot.composition_bpm = self.emotion_mapped_bpm;
             self.pending_measure_snapshots.push(snapshot);
 
-            self.publish_measure(measure.clone());
             self.writehead.commit_measure(measure);
+            if staging_open && !self.is_published(bar_idx) {
+                staging_open = self.stage_bar(bar_idx);
+            }
         }
     }
 
-    /// Write a measure into shared pages by index (insert or replace).
-    fn publish_measure(&self, measure: Measure) {
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            let idx = measure.index;
-            if let Some(existing) = pages.iter_mut().find(|m| m.index == idx) {
-                *existing = measure;
-            } else {
-                pages.push(measure);
+    /// Whether `bar` was staged in the current epoch (and not returned or
+    /// evicted since).
+    fn is_published(&self, bar: usize) -> bool {
+        self.published.get(&bar).is_some_and(|epoch| *epoch == self.epoch)
+    }
+
+    /// Stage timeline bar `bar` for playback (epoch-tagged box). Returns
+    /// false on ring backpressure — the caller stops staging and retries on
+    /// the next `generate_ahead`. Only the ring push can fail; a bar missing
+    /// from the timeline is skipped (it is generated by the main loop).
+    fn stage_bar(&mut self, bar: usize) -> bool {
+        if self.measure_tx.is_full() {
+            return false;
+        }
+        let Some(measure) = self.writehead.timeline.get_measure(bar) else { return true };
+        let staged = TaggedMeasure { epoch: self.epoch, measure: Box::new(measure.clone()) };
+        match self.measure_tx.push(staged) {
+            Ok(()) => {
+                self.published.insert(bar, self.epoch);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// Republish generated bars the playback engine no longer holds: staging
+    /// lost to a `DropFrom` eviction or to ring backpressure. Only bars in
+    /// `[playhead, writehead)` present in the timeline are republished, in
+    /// order, stopping at the first full ring.
+    fn republish_missing(&mut self) {
+        let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
+        let end = self.writehead.current_bar;
+        for bar in playhead_bar..end {
+            if self.is_published(bar) {
+                continue;
+            }
+            if self.writehead.timeline.get_measure(bar).is_none() {
+                continue;
+            }
+            if !self.stage_bar(bar) {
+                break;
             }
         }
+    }
+
+    /// Drain the return ring: unmark returned bars (epoch-matched, so a
+    /// republished bar is never unmarked by its stale copy) and drop the
+    /// boxes here, on the main thread. Called from `generate_ahead` and
+    /// every control point that changes what playback should hold.
+    fn drain_returned(&mut self) {
+        while let Ok(returned) = self.return_rx.pop() {
+            let bar = returned.measure.index;
+            if self.published.get(&bar).is_some_and(|epoch| *epoch == returned.epoch) {
+                self.published.remove(&bar);
+            }
+            // `returned` drops here, on the main thread.
+        }
+    }
+
+    /// Move to a new generation epoch: previously staged boxes are stale.
+    /// Bars below `evicted_from` stay in the timeline (their content is
+    /// unchanged, so they keep playing) but are unstaged in `published`:
+    /// the next `generate_ahead` restages them with the new epoch — the
+    /// playback engine hands the stale copies back on sight of the newer
+    /// same-index box, or sweeps them at load time. The caller forwards
+    /// `take_pending_drop` as `DropFrom`.
+    fn bump_epoch(&mut self, evicted_from: usize) {
+        self.drain_returned();
+        self.epoch += 1;
+        self.published.retain(|bar, _| *bar < evicted_from);
+        self.pending_drop =
+            Some(self.pending_drop.map_or(evicted_from, |bar| bar.min(evicted_from)));
+    }
+
+    /// Take the pending eviction request as `(bar, epoch)` for the owner of
+    /// the command ring to send as `PlaybackCommand::DropFrom { bar }`.
+    /// Returns `None` when playback holds nothing stale.
+    pub fn take_pending_drop(&mut self) -> Option<(usize, u64)> {
+        self.pending_drop.take().map(|bar| (bar, self.epoch))
+    }
+
+    /// Current generation epoch (tags every staged box).
+    pub fn epoch(&self) -> u64 {
+        self.epoch
     }
 
     /// Drain pending measure snapshots (called by NativeHandle).
@@ -281,10 +401,10 @@ impl MusicComposer {
         self.writehead.timeline.invalidate_from(regen_from);
         self.writehead.current_bar = regen_from;
 
-        // Clear shared pages beyond invalidation point
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.retain(|m| m.index < regen_from);
-        }
+        // New epoch: staged boxes at or past the cut are stale. The caller
+        // forwards `take_pending_drop` as `DropFrom`; replacements are
+        // staged by the next `generate_ahead`.
+        self.bump_epoch(regen_from);
 
         // Sync generator with updated params and snap current_state
         // so new measures use the correct tempo/density immediately
@@ -294,8 +414,9 @@ impl MusicComposer {
 
     /// Invalidate measures beyond a preview window, preserving N bars ahead of playhead.
     ///
-    /// Preview bars stay in both timeline and shared pages.
-    /// The playback engine reads directly by index — no refill needed.
+    /// Preview bars stay in the timeline and stay staged: the playback
+    /// engine keeps reading them by index — no refill needed. Bars beyond
+    /// are evicted (see `take_pending_drop`) and regenerated with new params.
     pub fn invalidate_after_preview(&mut self, preview_bars: usize) {
         let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
         let keep_until = playhead_bar + preview_bars;
@@ -304,34 +425,38 @@ impl MusicComposer {
         self.writehead.timeline.invalidate_from(keep_until);
         self.writehead.current_bar = keep_until;
 
-        // Clear shared pages beyond preview window
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.retain(|m| m.index < keep_until);
-        }
+        // New epoch: staged boxes at or past the cut are stale.
+        self.bump_epoch(keep_until);
 
         // Update generator with new params
         self.generator.update_params(self.musical_params.clone());
     }
 
-    /// Reset to defaults, clear timeline and shared pages.
+    /// Reset to defaults and clear the timeline. Staged boxes are stale
+    /// (see `take_pending_drop`).
     pub fn reset(&mut self) {
         self.musical_params = MusicalParams::default();
         self.writehead.reset();
         self.generator.update_params(self.musical_params.clone());
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.clear();
-        }
+        self.clear_staged();
     }
 
-    /// Clear timeline, writehead, and shared pages WITHOUT resetting musical_params.
+    /// Clear timeline and writehead WITHOUT resetting musical_params.
     /// Use this when you want to regenerate from scratch with current settings.
     pub fn reset_timeline(&mut self) {
         self.writehead.reset();
         self.generator.reset_chart_index();
         self.generator.update_params(self.musical_params.clone());
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.clear();
-        }
+        self.clear_staged();
+    }
+
+    /// Forget every staged box: new epoch, empty published set, full eviction
+    /// pending (see `take_pending_drop`).
+    fn clear_staged(&mut self) {
+        self.drain_returned();
+        self.epoch += 1;
+        self.published.clear();
+        self.pending_drop = Some(1);
     }
 
     /// Seek the writehead to a specific bar (legacy, non-deterministic).
@@ -343,7 +468,8 @@ impl MusicComposer {
     ///
     /// After this call, the generator and RNG are in the exact state they would
     /// be at `target_bar` if generation had proceeded linearly from bar 1.
-    /// Shared pages from target onward are cleared so they get regenerated.
+    /// Staged boxes from the target onward are evicted (see
+    /// `take_pending_drop`) so they get regenerated.
     pub fn deterministic_seek(&mut self, target_bar: usize) {
         use rand::Rng;
         let target_bar = target_bar.max(1);
@@ -375,10 +501,11 @@ impl MusicComposer {
         self.rng = rng;
         self.writehead.current_bar = target_bar;
 
-        // 6. Clear shared pages from target onward
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.retain(|m| m.index < target_bar);
-        }
+        // 6. New epoch: staged boxes at or past the target are stale (the
+        // caller forwards `take_pending_drop` as `DropFrom`). The timeline
+        // is kept — replayed content is identical — so staged boxes below
+        // the target stay valid.
+        self.bump_epoch(target_bar);
 
         log::info(&format!("Deterministic seek to bar {target_bar}"));
     }
@@ -423,9 +550,7 @@ impl MusicComposer {
         log::info(&format!("New melody with seed {new_seed}"));
         self.apply_seed(new_seed);
         self.writehead.reset();
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.clear();
-        }
+        self.clear_staged();
         self.deterministic_seek(1);
     }
 
@@ -434,9 +559,7 @@ impl MusicComposer {
         log::info(&format!("Set seed to {seed}"));
         self.apply_seed(seed);
         self.writehead.reset();
-        if let Ok(mut pages) = self.shared_pages.lock() {
-            pages.clear();
-        }
+        self.clear_staged();
         self.deterministic_seek(1);
     }
 

@@ -102,7 +102,7 @@ fn snapshot_stream_unchanged() {
         create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Fixed seed: reproducible across runs and machines. set_seed resets
-    // writehead, shared pages and the RNG-driven session (key/scale) —
+    // writehead, staged measures and the RNG-driven session (key/scale) —
     // proven by `set_seed_restores_identical_session` in
     // deterministic_seek_tests.rs.
     composer.set_seed(SEED);

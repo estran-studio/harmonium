@@ -23,8 +23,8 @@ use std::{
 use harmonium::{
     composer::MusicComposer,
     playback::{
-        LiveMidiEvent, PlaybackCommand, PlaybackEngine, TICKS_PER_BEAT, TransportPosition, pack,
-        unpack,
+        LiveMidiEvent, MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP,
+        TICKS_PER_BEAT, TaggedMeasure, TransportPosition, pack, unpack,
     },
 };
 use harmonium_audio::backend::AudioRenderer;
@@ -67,29 +67,41 @@ struct Harness {
     _live_tx: rtrb::Producer<LiveMidiEvent>,
     /// Reports are drained lazily; the consumer just must outlive the engine.
     _report_rx: rtrb::Consumer<harmonium_core::EngineReport>,
+    /// Return ring: played boxes flow back here; kept alive (and drained)
+    /// so the engine's return path never backpressures.
+    _return_rx: rtrb::Consumer<TaggedMeasure>,
 }
 
 fn make_playback(n_bars: usize) -> Harness {
     let (cmd_tx, cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
     let (_live_tx, live_rx) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
+    let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
+    let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
 
-    let pages: Arc<Mutex<Vec<Measure>>> = Arc::new(Mutex::new(
-        (1..=n_bars).map(|i| Measure::new(i, TimeSignature::default(), BPM, 16)).collect(),
-    ));
+    // Stage hand-built measures exactly as the composer would (epoch 0).
+    let mut measure_tx = measure_tx;
+    for i in 1..=n_bars {
+        let staged = TaggedMeasure {
+            epoch: 0,
+            measure: Box::new(Measure::new(i, TimeSignature::default(), BPM, 16)),
+        };
+        assert!(measure_tx.push(staged).is_ok(), "staging bar {i} must fit the ring");
+    }
 
     let transport = Arc::new(AtomicU64::new(pack(1, 0)));
     let engine = PlaybackEngine::new(
         SAMPLE_RATE,
         Box::new(NullRenderer),
-        pages,
+        measure_rx,
+        return_tx,
         cmd_rx,
         live_rx,
         report_tx,
         transport.clone(),
     );
 
-    Harness { engine, transport, cmd_tx, _live_tx, _report_rx: report_rx }
+    Harness { engine, transport, cmd_tx, _live_tx, _report_rx: report_rx, _return_rx: return_rx }
 }
 
 impl Harness {
@@ -272,11 +284,18 @@ fn position_is_stable_between_ticks() {
 /// to composer-lock reads would deadlock here (std Mutex is not reentrant).
 #[test]
 fn position_read_takes_no_composer_lock() {
-    let shared_pages: Arc<Mutex<Vec<Measure>>> = Arc::new(Mutex::new(Vec::new()));
+    let (measure_tx, _measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
+    let (_return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     let transport = Arc::new(AtomicU64::new(pack(1, 0)));
     let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let composer =
-        MusicComposer::new_with_seed(SAMPLE_RATE, shared_pages, transport.clone(), font_queue, 42);
+    let composer = MusicComposer::new_with_seed(
+        SAMPLE_RATE,
+        measure_tx,
+        return_rx,
+        transport.clone(),
+        font_queue,
+        42,
+    );
     let composer = Mutex::new(composer);
 
     let guard = composer.lock().unwrap();

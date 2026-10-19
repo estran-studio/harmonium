@@ -49,10 +49,14 @@ impl ReplState {
         self.cached_state.as_ref()
     }
 
-    /// After param changes: generate 1 bar ahead into shared pages,
-    /// and sync musical params to the playback engine for reporting.
+    /// After param changes: forward the pending eviction (if the timeline
+    /// changed), generate 1 bar ahead for playback, and sync musical params
+    /// to the playback engine for reporting.
     fn send_invalidate(&mut self) {
         if let Ok(mut c) = self.composer.lock() {
+            if let Some((bar, _)) = c.take_pending_drop() {
+                let _ = self.playback_cmd_tx.push(PlaybackCommand::DropFrom { bar });
+            }
             c.generate_bars(1);
             let _ = self
                 .playback_cmd_tx
@@ -263,10 +267,18 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
                 if let (Ok(start), Ok(end)) =
                     (tokens[1].parse::<usize>(), tokens[2].parse::<usize>())
                 {
-                    let _ = state
-                        .playback_cmd_tx
-                        .push(PlaybackCommand::SetLoop { start_bar: start, end_bar: end });
-                    println!("{} Loop set: bars {start}-{end}", "[OK]".green().bold());
+                    if !harmonium::playback::check_loop_len(start, end) {
+                        println!(
+                            "{} Loop too long: at most {} bars fit the playback window",
+                            "[ERROR]".red().bold(),
+                            harmonium::playback::MEASURE_WINDOW_CAP
+                        );
+                    } else {
+                        let _ = state
+                            .playback_cmd_tx
+                            .push(PlaybackCommand::SetLoop { start_bar: start, end_bar: end });
+                        println!("{} Loop set: bars {start}-{end}", "[OK]".green().bold());
+                    }
                 } else {
                     println!("{} Usage: loop <start_bar> <end_bar>", "[ERROR]".red().bold());
                 }
