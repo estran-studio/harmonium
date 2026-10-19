@@ -3,7 +3,7 @@
 //! Parses user input into EngineCommand variants
 
 use anyhow::{anyhow, Result};
-use harmonium_core::{harmony::HarmonyMode, sequencer::RhythmMode, EngineCommand};
+use harmonium_core::{harmony::HarmonyMode, params::Style, sequencer::RhythmMode, EngineCommand};
 
 /// Parse a command line into an EngineCommand
 pub fn parse_command(line: &str) -> Result<EngineCommand> {
@@ -42,6 +42,11 @@ pub fn parse_command(line: &str) -> Result<EngineCommand> {
             }
         }
 
+        "seed" => {
+            let val = tokens.get(1).ok_or_else(|| anyhow!("Usage: seed <u64>"))?;
+            let seed = val.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {val}"))?;
+            Ok(EngineCommand::SetSeed(seed))
+        }
         // === HELP ===
         "help" | "?" => Err(anyhow!("help")), // Special case handled by REPL
         "quit" | "exit" => Err(anyhow!("quit")), // Special case handled by REPL
@@ -209,6 +214,11 @@ fn parse_set_command(tokens: &[&str]) -> Result<EngineCommand> {
             Ok(EngineCommand::SetChannelMute { channel, muted: false })
         }
 
+        "seed" => {
+            let seed = value.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {}", value))?;
+            Ok(EngineCommand::SetSeed(seed))
+        }
+
         _ => {
             Err(anyhow!("Unknown parameter: {}. Type 'help set' for available parameters.", param))
         }
@@ -305,6 +315,10 @@ pub enum CliCommand {
     ClearTempo,
     /// Live visual metronome from `BeatInfo`.
     Beat,
+    /// Switch generation style (`Reel` or `Legacy`).
+    Style(Style),
+    /// Set reel podorythmie density (`0`, `1` or `2`).
+    Feet(u8),
 }
 
 /// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
@@ -326,9 +340,40 @@ pub fn parse_cli_command(tokens: &[&str]) -> Result<CliCommand> {
                 Err(anyhow!("Usage: beat"))
             }
         }
-        Some(other) => Err(anyhow!("Not a clock command: {other}")),
+        Some("style") => parse_style_command(&tokens[1..]),
+        Some("feet") => parse_feet_command(&tokens[1..]),
+        Some(other) => Err(anyhow!("Not a CLI command: {other}")),
         None => Err(anyhow!("Empty command")),
     }
+}
+
+/// Parse `style <reel|legacy>`.
+pub fn parse_style_value(raw: &str) -> Result<Style> {
+    match raw.to_ascii_lowercase().as_str() {
+        "reel" => Ok(Style::Reel),
+        "legacy" => Ok(Style::Legacy),
+        _ => Err(anyhow!("Style inconnu: {raw}. Utiliser: style reel|legacy")),
+    }
+}
+
+fn parse_style_command(tokens: &[&str]) -> Result<CliCommand> {
+    if tokens.len() != 1 {
+        return Err(anyhow!("Usage: style <reel|legacy>"));
+    }
+    Ok(CliCommand::Style(parse_style_value(tokens[0])?))
+}
+
+/// Parse `feet <0|1|2>`.
+fn parse_feet_command(tokens: &[&str]) -> Result<CliCommand> {
+    if tokens.len() != 1 {
+        return Err(anyhow!("Usage: feet <0|1|2>"));
+    }
+    let density: u8 =
+        tokens[0].parse().map_err(|_| anyhow!("Densité invalide: {}. Utiliser: feet 0|1|2", tokens[0]))?;
+    if density > 2 {
+        return Err(anyhow!("Densité hors plage ({density}). Utiliser: feet 0|1|2"));
+    }
+    Ok(CliCommand::Feet(density))
 }
 
 /// Parse `swing <ratio>`: a finite positive number, clamped to
@@ -484,5 +529,25 @@ mod tests {
     fn test_parse_cli_rejects_other_commands() {
         assert!(parse_cli_command(&["set", "bpm", "140"]).is_err());
         assert!(parse_cli_command(&[]).is_err());
+    }
+
+    #[test]
+    fn test_parse_style_and_feet() {
+        assert_eq!(parse_cli_command(&["style", "reel"]).unwrap(), CliCommand::Style(Style::Reel));
+        assert_eq!(parse_cli_command(&["style", "REEL"]).unwrap(), CliCommand::Style(Style::Reel));
+        assert_eq!(
+            parse_cli_command(&["style", "legacy"]).unwrap(),
+            CliCommand::Style(Style::Legacy)
+        );
+        assert!(parse_cli_command(&["style"]).is_err());
+        assert!(parse_cli_command(&["style", "valse"]).is_err());
+
+        for d in 0..=2u8 {
+            let s = d.to_string();
+            assert_eq!(parse_cli_command(&["feet", &s]).unwrap(), CliCommand::Feet(d));
+        }
+        assert!(parse_cli_command(&["feet"]).is_err());
+        assert!(parse_cli_command(&["feet", "3"]).is_err());
+        assert!(parse_cli_command(&["feet", "dense"]).is_err());
     }
 }
