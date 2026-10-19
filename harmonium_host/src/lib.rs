@@ -31,5 +31,3 @@ pub use native_handle::{LiveMidiSender, NativeHandle};
 // Type aliases for complex types
 pub type FontQueue = Arc<Mutex<Vec<(u32, Vec<u8>)>>>;
 pub type FinishedRecordings = Arc<Mutex<Vec<(events::RecordFormat, Vec<u8>)>>>;
-/// Shared measure pages: Composer writes by index, PlaybackEngine reads by index.
-pub type SharedPages = Arc<Mutex<Vec<harmonium_core::timeline::Measure>>>;

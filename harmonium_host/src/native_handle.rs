@@ -150,10 +150,24 @@ impl NativeHandle {
     }
 
     /// Generate ahead of the playhead (incremental). Call this periodically
-    /// during playback to keep shared pages populated.
+    /// during playback to keep the playback window fed.
     pub fn generate_ahead(&self) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.generate_ahead();
+        }
+    }
+
+    /// Forward the composer's pending eviction (if any) as
+    /// `PlaybackCommand::DropFrom`, so the playback engine hands back staged
+    /// boxes at or past the cut before replacements arrive. Epoch tags make
+    /// the order irrelevant for correctness; sending the eviction first
+    /// keeps the window from filling with stale boxes.
+    fn push_pending_drop(
+        composer: &mut MusicComposer,
+        cmd_tx: &mut rtrb::Producer<PlaybackCommand>,
+    ) {
+        if let Some((bar, _)) = composer.take_pending_drop() {
+            let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
         }
     }
 
@@ -161,6 +175,7 @@ impl NativeHandle {
     pub fn reset_composer(&mut self) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.reset();
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
         }
     }
 
@@ -168,14 +183,16 @@ impl NativeHandle {
     pub fn invalidate_and_regenerate(&mut self, bars: usize) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.invalidate_future();
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
             composer.generate_bars(bars);
         }
     }
 
-    /// Full reset + regenerate. Shared pages are updated in-place.
+    /// Full reset + regenerate. Staged boxes are evicted in playback.
     pub fn reset_and_regenerate(&mut self, bars: usize) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.reset();
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
             composer.generate_bars(bars);
         }
         self.measures_buffer.clear();
@@ -187,6 +204,7 @@ impl NativeHandle {
     pub fn regenerate_with_current_params(&mut self, bars: usize) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.reset_timeline();
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
             composer.generate_bars(bars);
         }
         self.measures_buffer.clear();
@@ -208,6 +226,7 @@ impl NativeHandle {
             // Re-seed the RNG/generator for the new key so a later seek back to
             // bar 1 reproduces these bars instead of morphing the melody.
             composer.deterministic_seek(1);
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
             composer.generate_bars(bars);
             composer.session_key_string()
         } else {
@@ -243,11 +262,12 @@ impl NativeHandle {
 
     /// Apply param changes while preserving the preview window.
     ///
-    /// Preview bars stay intact in both timeline and shared pages.
-    /// Bars beyond are invalidated for regeneration with new params.
+    /// Preview bars stay intact in the timeline and stay staged.
+    /// Bars beyond are evicted (via `DropFrom`) for regeneration.
     pub fn apply_params_preserving_preview(&mut self, preview_bars: usize) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.invalidate_after_preview(preview_bars);
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
         }
     }
 
@@ -522,16 +542,21 @@ impl NativeHandle {
     ///
     /// Ensures the composer is in the exact state for `target_bar` as if
     /// generation had proceeded linearly from bar 1 with the session seed.
+    /// Staged boxes from the target onward are evicted first (`DropFrom`),
+    /// then the playhead jumps (`Seek`): no stale measure can play after
+    /// the seek, and positions/snapshots are unchanged from before.
     pub fn seek(&mut self, bar: usize) {
         let target_bar = bar.max(1);
         if let Ok(mut composer) = self.composer.lock() {
             composer.deterministic_seek(target_bar);
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
         }
         let _ = self.playback_cmd_tx.push(PlaybackCommand::Seek(target_bar));
     }
 
     /// Seek playhead without resetting writehead.
-    /// Shared pages already have the measures — playback reads by index.
+    /// Staged measures stay valid — playback reads by index, and a box is
+    /// only loaded when its index equals the playhead bar.
     pub fn seek_playhead(&mut self, bar: usize) {
         let target_bar = bar.max(1);
         let _ = self.playback_cmd_tx.push(PlaybackCommand::SeekPlayhead(target_bar));
@@ -543,8 +568,17 @@ impl NativeHandle {
         while self.report_rx.pop().is_ok() {}
     }
 
-    pub fn set_loop(&mut self, start_bar: usize, end_bar: usize) {
+    /// Set a loop region. Returns `false` (and sends nothing) when the loop
+    /// is longer than the playback window can hold
+    /// (`MEASURE_WINDOW_CAP` bars): a longer loop could not stay fully
+    /// staged and would underflow. Validation happens here on the main
+    /// thread, never in the audio callback.
+    pub fn set_loop(&mut self, start_bar: usize, end_bar: usize) -> bool {
+        if !crate::playback::check_loop_len(start_bar, end_bar) {
+            return false;
+        }
         let _ = self.playback_cmd_tx.push(PlaybackCommand::SetLoop { start_bar, end_bar });
+        true
     }
 
     pub fn clear_loop(&mut self) {
@@ -556,6 +590,7 @@ impl NativeHandle {
     pub fn new_melody(&mut self) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.new_melody();
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
         }
         let _ = self.playback_cmd_tx.push(PlaybackCommand::Seek(1));
     }
@@ -565,6 +600,7 @@ impl NativeHandle {
     pub fn set_seed(&mut self, seed: u64) {
         if let Ok(mut composer) = self.composer.lock() {
             composer.set_seed(seed);
+            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
         }
         let _ = self.playback_cmd_tx.push(PlaybackCommand::Seek(1));
     }

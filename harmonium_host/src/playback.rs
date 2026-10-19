@@ -8,9 +8,69 @@ use std::sync::{
     atomic::{AtomicU64, Ordering},
 };
 
-use arrayvec::ArrayString;
+use arrayvec::{ArrayString, ArrayVec};
 use harmonium_audio::backend::AudioRenderer;
-use harmonium_core::{events::AudioEvent, log, params::MusicalParams, timeline::Playhead};
+use harmonium_core::{
+    events::AudioEvent,
+    log,
+    params::MusicalParams,
+    timeline::{Measure, Playhead},
+};
+
+/// Capacity of the composer → playback staged-measure ring and of the
+/// playback prefetch window. A loop longer than this is refused on the main
+/// thread (see [`check_loop_len`]).
+pub const MEASURE_WINDOW_CAP: usize = 16;
+/// Capacity of the composer → playback ring (same bound as the window: the
+/// composer stops staging when the ring is full and retries later).
+pub const MEASURE_RING_CAP: usize = 16;
+/// Capacity of the playback → composer return ring. It covers every box the
+/// engine can hold at once (window + staged ring + held boxes), so returning
+/// a box on the audio thread cannot fail.
+pub const RETURN_RING_CAP: usize = 64;
+
+/// A measure staged for the audio thread, tagged with the composer's
+/// generation epoch. Boxes published before an invalidation carry an older
+/// epoch and are treated as stale: never loaded, handed straight back.
+/// Moving this value is a pointer move — no allocation, no deallocation.
+pub struct TaggedMeasure {
+    /// Generation epoch at stage time (see `MusicComposer::epoch`).
+    pub epoch: u64,
+    /// The staged measure. Only the main thread may drop it.
+    pub measure: Box<Measure>,
+}
+
+/// Whether a loop region fits the playback window.
+///
+/// Loops longer than [`MEASURE_WINDOW_CAP`] bars are refused by the caller
+/// (main thread) — the playback engine could not hold them without
+/// underflowing. Bar numbers are normalized the same way as
+/// `PlaybackCommand::SetLoop` (1-based, `end >= start`).
+#[must_use]
+pub fn check_loop_len(start_bar: usize, end_bar: usize) -> bool {
+    let start = start_bar.max(1);
+    let end = end_bar.max(start);
+    end - start < MEASURE_WINDOW_CAP
+}
+
+/// RAII marker for the real-time handoff section: entering flags the audio
+/// context (so `RTCheckAllocator` panics on alloc/dealloc in debug builds),
+/// dropping clears it. Every handoff op (ring pop/push, window insert/remove,
+/// box moves) must run inside this guard.
+struct RtGuard;
+
+impl RtGuard {
+    fn enter() -> Self {
+        harmonium_audio::realtime::rt_check::enter_audio_context();
+        Self
+    }
+}
+
+impl Drop for RtGuard {
+    fn drop(&mut self) {
+        harmonium_audio::realtime::rt_check::exit_audio_context();
+    }
+}
 
 /// Grid resolution of the transport, in steps per beat (sixteenth notes).
 /// `TransportPosition::beat` is derived from the step on this grid — it is
@@ -91,6 +151,14 @@ pub enum PlaybackCommand {
     SetMasterVolume(f32),
     Seek(usize),
     SeekPlayhead(usize),
+    /// Evict every staged measure with `index >= bar`, handing the boxes
+    /// back to the composer through the return ring. Sent by the main thread
+    /// after `invalidate_future` / `invalidate_after_preview` / `reset` /
+    /// `reset_timeline` / seek, before the composer publishes replacements
+    /// (epoch tags make the order irrelevant for correctness).
+    DropFrom {
+        bar: usize,
+    },
     SetLoop {
         start_bar: usize,
         end_bar: usize,
@@ -120,8 +188,16 @@ pub enum PlaybackCommand {
 
 /// PlaybackEngine runs on the audio thread inside the CPAL closure.
 ///
-/// It reads measures from the ring buffer, ticks the playhead, and renders audio.
+/// It reads staged measures from the composer → playback ring into an
+/// ordered prefetch window, ticks the playhead, and renders audio.
 /// Generation is NOT done here — that's MusicComposer's job.
+///
+/// Real-time contract: the handoff (ring pop/push, window insert/remove, box
+/// moves) performs no allocation, no deallocation and takes no lock. Played
+/// boxes travel back through the return ring so only the main thread drops
+/// them. A box is only ever loaded when its index equals the playhead bar;
+/// otherwise the engine underflows (silence), exactly like a missing page
+/// before.
 pub struct PlaybackEngine {
     // Playhead
     playhead: Playhead,
@@ -134,8 +210,16 @@ pub struct PlaybackEngine {
     sample_counter: usize,
     samples_per_step: usize,
 
-    // Shared pages (Composer writes by index, Playback reads by index)
-    shared_pages: crate::SharedPages,
+    // Handoff: composer → playback staged measures (epoch-tagged boxes).
+    measure_rx: rtrb::Consumer<TaggedMeasure>,
+    // Handoff: playback → composer return ring (main thread deallocates).
+    return_tx: rtrb::Producer<TaggedMeasure>,
+    // Prefetch window, ordered by measure index.
+    window: ArrayVec<WindowSlot, MEASURE_WINDOW_CAP>,
+    // Highest epoch staged by the composer; older boxes are stale.
+    epoch: u64,
+    // Epoch of the box held by the playhead (current or finished slot).
+    loaded_epoch: Option<u64>,
 
     // Command ring buffer (main thread → audio thread)
     cmd_rx: rtrb::Consumer<PlaybackCommand>,
@@ -184,12 +268,23 @@ pub struct PlaybackEngine {
     first_measure_loaded: bool,
 }
 
+/// One window entry: a staged box plus its generation epoch.
+struct WindowSlot {
+    epoch: u64,
+    measure: Box<Measure>,
+}
+
 impl PlaybackEngine {
     /// Create a new PlaybackEngine.
+    ///
+    /// Eight arguments is the whole wiring (renderer, three rings,
+    /// transport): bundling them would only rename the tuple.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         sample_rate: f64,
         mut renderer: Box<dyn AudioRenderer>,
-        shared_pages: crate::SharedPages,
+        measure_rx: rtrb::Consumer<TaggedMeasure>,
+        return_tx: rtrb::Producer<TaggedMeasure>,
         cmd_rx: rtrb::Consumer<PlaybackCommand>,
         live_rx: rtrb::Consumer<LiveMidiEvent>,
         report_tx: rtrb::Producer<harmonium_core::EngineReport>,
@@ -205,7 +300,11 @@ impl PlaybackEngine {
             sample_rate,
             sample_counter: 0,
             samples_per_step,
-            shared_pages,
+            measure_rx,
+            return_tx,
+            window: ArrayVec::new(),
+            epoch: 0,
+            loaded_epoch: None,
             cmd_rx,
             live_rx,
             report_tx,
@@ -271,49 +370,38 @@ impl PlaybackEngine {
         }
     }
 
-    /// Tick: read from playhead and emit events.
+    /// Tick: stage new boxes, read from the window and emit events.
     fn tick(&mut self) {
+        {
+            let _rt = RtGuard::enter();
+            self.drain_staged();
+            self.reclaim_finished();
+        }
+
         // Check loop region
         if let Some((start_bar, end_bar)) = self.loop_region {
             if self.playhead.current_bar() > end_bar {
                 for ch in 0..4u8 {
                     self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                 }
+                {
+                    let _rt = RtGuard::enter();
+                    self.evict_held();
+                }
                 self.playhead.seek_to_bar(start_bar);
                 self.transport_position.store(pack(start_bar, 0), Ordering::Relaxed);
             }
         }
 
-        // If playhead needs a new measure, read from shared pages by index
+        // If the playhead needs a new measure, load the window box whose
+        // index equals the playhead bar — never any other.
         if self.playhead.needs_measure() {
-            let bar = self.playhead.current_bar();
-            let measure_opt = if let Ok(pages) = self.shared_pages.lock() {
-                pages.iter().find(|m| m.index == bar).cloned()
-            } else {
-                None
+            let loaded = {
+                let _rt = RtGuard::enter();
+                self.try_load()
             };
-
-            if let Some(measure) = measure_opt {
-                // Update timing from measure tempo
-                let steps_per_beat = 4.0f64;
-                let new_sps =
-                    (self.sample_rate * 60.0 / (measure.tempo as f64) / steps_per_beat) as usize;
-                if new_sps != self.samples_per_step {
-                    self.samples_per_step = new_sps;
-                    self.renderer
-                        .handle_event(AudioEvent::TimingUpdate { samples_per_step: new_sps });
-                }
-
-                // Update chord info for reports
-                self.last_chord_name =
-                    ArrayString::from(&measure.chord_context.chord_name).unwrap_or_default();
-                self.last_chord_root_offset = measure.chord_context.root_offset;
-                self.last_chord_is_minor = measure.chord_context.is_minor;
-
-                self.playhead.load_measure(measure);
-                self.first_measure_loaded = true;
-            } else {
-                return; // Underflow — measure not yet generated
+            if !loaded {
+                return; // Underflow — measure not yet staged
             }
         }
 
@@ -341,6 +429,199 @@ impl PlaybackEngine {
         let current_step = self.playhead.position.step_in_bar(4);
         if current_step.is_multiple_of(4) {
             self.send_report();
+        }
+    }
+    /// Drain the staged ring into the window. Must run under [`RtGuard`]:
+    /// pointer moves only. Stops draining while the window is full (the
+    /// composer sees ring backpressure and retries later).
+    fn drain_staged(&mut self) {
+        while self.window.len() < MEASURE_WINDOW_CAP {
+            let item = match self.measure_rx.pop() {
+                Ok(item) => item,
+                Err(_) => break,
+            };
+            // Adopt newer epochs on sight: boxes staged before an
+            // invalidation carry an older epoch and are stale.
+            if item.epoch > self.epoch {
+                self.epoch = item.epoch;
+            }
+            if item.epoch < self.epoch {
+                self.stage_return(item.epoch, item.measure);
+                continue;
+            }
+            let index = item.measure.index;
+            // Duplicate of the currently-playing box: keep playing it,
+            // hand the copy back.
+            if !self.playhead.needs_measure() && self.playhead.current_bar() == index {
+                self.stage_return(item.epoch, item.measure);
+                continue;
+            }
+            if let Some(pos) = self.window.iter().position(|s| s.measure.index == index) {
+                // Same bar staged twice (republish race): keep the newer epoch.
+                if item.epoch > self.window[pos].epoch {
+                    let old = std::mem::replace(&mut self.window[pos].measure, item.measure);
+                    let old_epoch = std::mem::replace(&mut self.window[pos].epoch, item.epoch);
+                    self.stage_return(old_epoch, old);
+                } else {
+                    self.stage_return(item.epoch, item.measure);
+                }
+                continue;
+            }
+            let pos = self
+                .window
+                .iter()
+                .position(|s| s.measure.index > index)
+                .unwrap_or(self.window.len());
+            self.window.insert(pos, WindowSlot { epoch: item.epoch, measure: item.measure });
+        }
+    }
+
+    /// Reclaim the box the playhead left at the last barline. Must run under
+    /// [`RtGuard`]. A box inside the active loop region goes back into the
+    /// window for the next pass; any other box goes to the return ring.
+    fn reclaim_finished(&mut self) {
+        if let Some(measure) = self.playhead.take_finished() {
+            let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
+            self.route_reclaimed(epoch, measure);
+        }
+    }
+
+    /// Evict every box the playhead holds (current + finished). Must run
+    /// under [`RtGuard`]. Used before a jump (seek, loop wrap) so no stale
+    /// box survives the position change.
+    fn evict_held(&mut self) {
+        if let Some(measure) = self.playhead.unload_current() {
+            let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
+            self.route_reclaimed(epoch, measure);
+        }
+        self.reclaim_finished();
+    }
+
+    /// Route a reclaimed box: keep loop-region boxes of the current epoch in
+    /// the window, hand everything else back. Must run under [`RtGuard`].
+    fn route_reclaimed(&mut self, epoch: u64, measure: Box<Measure>) {
+        if epoch >= self.epoch && self.in_loop(measure.index) {
+            // Make room by evicting one non-loop prefetch (the composer
+            // republishes it on demand — it lies ahead of the playhead).
+            if self.window.len() >= MEASURE_WINDOW_CAP
+                && let Some(pos) = self.window.iter().rposition(|s| !self.in_loop(s.measure.index))
+            {
+                let slot = self.window.remove(pos);
+                self.stage_return(slot.epoch, slot.measure);
+            }
+            if self.window.len() < MEASURE_WINDOW_CAP {
+                let index = measure.index;
+                let pos = self
+                    .window
+                    .iter()
+                    .position(|s| s.measure.index > index)
+                    .unwrap_or(self.window.len());
+                self.window.insert(pos, WindowSlot { epoch, measure });
+                return;
+            }
+            // Window full of loop boxes: the loop is longer than the window
+            // (refused upstream, defensive) — hand back, republish later.
+        }
+        self.stage_return(epoch, measure);
+    }
+
+    /// Load the window box matching the playhead bar. Stale boxes found on
+    /// the way are handed back. Must run under [`RtGuard`]. Returns false on
+    /// underflow: the caller stays silent, as with a missing page before.
+    fn try_load(&mut self) -> bool {
+        let bar = self.playhead.current_bar();
+        let mut found: Option<usize> = None;
+        let mut i = 0;
+        while i < self.window.len() {
+            if self.window[i].epoch < self.epoch {
+                let slot = self.window.remove(i);
+                self.stage_return(slot.epoch, slot.measure);
+                continue;
+            }
+            if found.is_none() && self.window[i].measure.index == bar {
+                found = Some(i);
+            }
+            i += 1;
+        }
+        if let Some(pos) = found {
+            let slot = self.window.remove(pos);
+            debug_assert!(slot.epoch == self.epoch);
+            // Update timing from measure tempo
+            let steps_per_beat = 4.0f64;
+            let new_sps =
+                (self.sample_rate * 60.0 / (slot.measure.tempo as f64) / steps_per_beat) as usize;
+            if new_sps != self.samples_per_step {
+                self.samples_per_step = new_sps;
+                self.renderer.handle_event(AudioEvent::TimingUpdate { samples_per_step: new_sps });
+            }
+
+            // Update chord info for reports
+            self.last_chord_name =
+                ArrayString::from(&slot.measure.chord_context.chord_name).unwrap_or_default();
+            self.last_chord_root_offset = slot.measure.chord_context.root_offset;
+            self.last_chord_is_minor = slot.measure.chord_context.is_minor;
+
+            self.playhead.load_measure(slot.measure);
+            self.loaded_epoch = Some(slot.epoch);
+            self.first_measure_loaded = true;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Hand a box back to the composer. Must run under [`RtGuard`]. The
+    /// return ring covers every box the engine can hold at once, so the push
+    /// cannot fail; on the impossible error path the `PushError` still owns
+    /// the box and drops it, which panics loudly in debug builds.
+    fn stage_return(&mut self, epoch: u64, measure: Box<Measure>) {
+        let _ = self.return_tx.push(TaggedMeasure { epoch, measure });
+    }
+
+    /// Whether `bar` lies in the active loop region.
+    fn in_loop(&self, bar: usize) -> bool {
+        self.loop_region.is_some_and(|(start, end)| bar >= start && bar <= end)
+    }
+    /// Prepare a jump to `target_bar`. Must run under [`RtGuard`], before
+    /// [`Playhead::seek_to_bar`]. Re-seeking the loaded bar restarts it
+    /// (the box stays, cursors reset in `seek_to_bar`); any other jump
+    /// unloads the held box, and prefetch behind the target — outside the
+    /// loop region — is handed back. Prefetch at or past the target stays:
+    /// it is still valid (exact-index load guarantees no stale play).
+    fn evict_for_seek(&mut self, target_bar: usize) {
+        if self.playhead.current_bar() == target_bar && !self.playhead.needs_measure() {
+            // Same bar, box loaded: keep it, restart from step 0.
+            // A parked finished box (crossed mid-buffer) is already played.
+            self.reclaim_finished();
+        } else if let Some(measure) = self.playhead.unload_current() {
+            let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
+            self.stage_return(epoch, measure);
+            self.reclaim_finished();
+        } else {
+            self.reclaim_finished();
+        }
+        self.evict_behind_at(target_bar);
+    }
+
+    /// Hand back every window box behind the playhead bar that is outside
+    /// the loop region. Must run under [`RtGuard`].
+    fn evict_behind(&mut self) {
+        let bar = self.playhead.current_bar();
+        self.evict_behind_at(bar);
+    }
+
+    /// Hand back every window box with `index < bar` that is outside the
+    /// loop region. Must run under [`RtGuard`].
+    fn evict_behind_at(&mut self, bar: usize) {
+        let mut i = 0;
+        while i < self.window.len() {
+            let index = self.window[i].measure.index;
+            if index < bar && !self.in_loop(index) {
+                let slot = self.window.remove(i);
+                self.stage_return(slot.epoch, slot.measure);
+            } else {
+                i += 1;
+            }
         }
     }
 
@@ -416,6 +697,10 @@ impl PlaybackEngine {
                     for ch in 0..4u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
+                    {
+                        let _rt = RtGuard::enter();
+                        self.evict_for_seek(target_bar);
+                    }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
                 }
@@ -425,18 +710,51 @@ impl PlaybackEngine {
                     for ch in 0..4u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
+                    {
+                        let _rt = RtGuard::enter();
+                        self.evict_for_seek(target_bar);
+                    }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
+                }
+                PlaybackCommand::DropFrom { bar } => {
+                    let bar = bar.max(1);
+                    // The finished box was already played: always hand it back.
+                    // Window boxes at or past the cut are stale by definition.
+                    let _rt = RtGuard::enter();
+                    if let Some(measure) = self.playhead.take_finished() {
+                        let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
+                        self.stage_return(epoch, measure);
+                    }
+                    let mut i = 0;
+                    while i < self.window.len() {
+                        if self.window[i].measure.index >= bar {
+                            let slot = self.window.remove(i);
+                            self.stage_return(slot.epoch, slot.measure);
+                        } else {
+                            i += 1;
+                        }
+                    }
                 }
                 PlaybackCommand::SetLoop { start_bar, end_bar } => {
                     let start = start_bar.max(1);
                     let end = end_bar.max(start);
                     log::info(&format!("Loop set: bars {start}-{end}"));
                     self.loop_region = Some((start, end));
+                    // Loops longer than the window are refused on the main
+                    // thread; shed prefetch behind the playhead that the new
+                    // region no longer needs.
+                    let _rt = RtGuard::enter();
+                    self.evict_behind();
                 }
                 PlaybackCommand::ClearLoop => {
                     log::info("Loop cleared");
                     self.loop_region = None;
+                    // Former loop boxes behind the playhead will never play
+                    // again: hand them back now instead of occupying the window.
+                    let _rt = RtGuard::enter();
+                    self.reclaim_finished();
+                    self.evict_behind();
                 }
                 PlaybackCommand::StartRecording(format) => {
                     match format {

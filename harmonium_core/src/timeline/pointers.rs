@@ -64,11 +64,20 @@ impl Writehead {
 /// converts them to sample-accurate `AudioEvent`s.
 ///
 /// Critical constraint: ZERO allocations after initialization.
+///
+/// Ownership: the currently-played measure is held as a `Box<Measure>` so
+/// the audio thread only moves a pointer (no clone, no alloc). A measure
+/// the playhead leaves is NOT dropped here — it moves to the `finished`
+/// slot, and the caller reclaims it with [`Playhead::take_finished`] to
+/// hand it back to the main thread (which alone may deallocate it).
 pub struct Playhead {
     /// Current playback position
     pub position: MusicalPosition,
-    /// Current measure being played (pre-loaded from ring buffer)
-    current_measure: Option<Measure>,
+    /// Current measure being played (pointer-moved in, never cloned)
+    current_measure: Option<Box<Measure>>,
+    /// Measure just left by the playhead, awaiting reclaim by the caller.
+    /// Never dropped on this thread: reclaim it and send it back.
+    finished_measure: Option<Box<Measure>>,
     /// Samples accumulated since last step
     sample_counter: usize,
     /// Samples per step at current tempo
@@ -92,10 +101,10 @@ impl Playhead {
     #[must_use]
     pub fn new(sample_rate: f64, ticks_per_beat: usize) -> Self {
         let samples_per_step = (sample_rate * 60.0 / 120.0 / ticks_per_beat as f64) as usize;
-
         Self {
             position: MusicalPosition::new(1, 1, 0),
             current_measure: None,
+            finished_measure: None,
             sample_counter: 0,
             samples_per_step,
             time_signature: TimeSignature::default(),
@@ -107,11 +116,16 @@ impl Playhead {
         }
     }
 
-    /// Load a measure for playback
+    /// Load a measure for playback.
     ///
-    /// Called when the playhead crosses a barline and needs the next measure.
-    /// The measure should be received from the ring buffer.
-    pub fn load_measure(&mut self, measure: Measure) {
+    /// Called when the playhead crosses a barline and needs the next measure
+    /// ([`Playhead::needs_measure`] is true, so no box is currently held).
+    /// Takes the box by pointer move: no clone, no allocation.
+    pub fn load_measure(&mut self, measure: Box<Measure>) {
+        debug_assert!(
+            self.current_measure.is_none(),
+            "load_measure called while a measure is still loaded"
+        );
         self.samples_per_step = {
             let steps_per_beat = self.ticks_per_beat as f64;
             // Recalculate from stored tempo (approximation - real impl uses TempoMap)
@@ -122,6 +136,24 @@ impl Playhead {
         self.time_signature = measure.time_signature;
         self.current_measure = Some(measure);
         self.track_cursors = [0; 4];
+    }
+
+    /// Unload the currently-held measure without dropping it.
+    ///
+    /// The caller owns the returned box (it goes back to the main thread
+    /// through the return ring). After this call the playhead needs a new
+    /// measure. Must be called before [`Playhead::seek_to_bar`].
+    pub fn unload_current(&mut self) -> Option<Box<Measure>> {
+        self.current_measure.take()
+    }
+
+    /// Reclaim the measure the playhead just left at a barline.
+    ///
+    /// Returns the exhausted box so the caller can hand it back to the main
+    /// thread through the return ring. Returns `None` if the playhead has
+    /// not crossed a barline since the last reclaim.
+    pub fn take_finished(&mut self) -> Option<Box<Measure>> {
+        self.finished_measure.take()
     }
 
     /// Process one step's worth of audio events from the current measure.
@@ -211,8 +243,14 @@ impl Playhead {
             if self.position.beat > self.time_signature.numerator {
                 self.position.beat = 1;
                 self.position.bar += 1;
-                // Current measure is exhausted - caller should load next
-                self.current_measure = None;
+                // Current measure is exhausted: park it for the caller to
+                // reclaim with `take_finished` (never dropped on this thread).
+                // The slot is empty here: the caller reclaims after every tick.
+                debug_assert!(
+                    self.finished_measure.is_none(),
+                    "finished measure was not reclaimed"
+                );
+                self.finished_measure = self.current_measure.take();
             }
         }
     }
@@ -229,10 +267,14 @@ impl Playhead {
         self.position.bar
     }
 
-    /// Seek to a specific bar (for rewind/replay)
+    /// Seek to a specific bar (for rewind/replay).
+    ///
+    /// Resets the position, the per-track cursors and the active notes, but
+    /// never touches the held boxes: the caller must [`Playhead::unload_current`]
+    /// (and [`Playhead::take_finished`]) before seeking, or deliberately keep
+    /// the loaded box when re-seeking its own bar (bar restart).
     pub fn seek_to_bar(&mut self, bar: usize) {
         self.position = MusicalPosition::new(bar, 1, 0);
-        self.current_measure = None;
         self.track_cursors = [0; 4];
         // Stop any active notes
         self.active_bass_note = None;
@@ -307,7 +349,7 @@ mod tests {
             },
         );
 
-        ph.load_measure(measure);
+        ph.load_measure(Box::new(measure));
         assert!(!ph.needs_measure());
 
         // First tick should emit the bass note
@@ -332,15 +374,19 @@ mod tests {
     fn test_playhead_bar_crossing() {
         let mut ph = Playhead::new(44100.0, 4);
         let measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
-        ph.load_measure(measure);
+        ph.load_measure(Box::new(measure));
 
         // Tick through an entire 4/4 bar (16 steps)
         for _ in 0..16 {
             ph.tick();
         }
 
-        // Should need a new measure now
+        // Should need a new measure now; the exhausted box is parked for
+        // reclaim instead of being dropped.
         assert!(ph.needs_measure());
         assert_eq!(ph.current_bar(), 2);
+        let finished = ph.take_finished();
+        assert!(finished.is_some_and(|m| m.index == 1));
+        assert!(ph.take_finished().is_none());
     }
 }
