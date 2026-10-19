@@ -127,6 +127,8 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize, swing_ratio: f32)
             let beat = BeatInfo::from_clock(&clock, Instant::now());
             assert_eq!(beat.bar, clock.position.bar);
             assert_eq!(beat.pulse, clock.pulse_in_bar + 1);
+            assert_eq!(beat.pulses_per_bar, pulse.pulses_per_bar);
+            assert!(beat.pulse <= beat.pulses_per_bar);
             assert_eq!(beat.is_downbeat, beat.pulse == 1);
             assert_eq!(beat.is_backbeat, beat.pulse.is_multiple_of(2));
             assert_eq!(beat.next_pulse_frame, clock.next_pulse_frame);
@@ -190,6 +192,7 @@ fn beat_info_from_clock_phase_and_timing() {
     let clock = TransportClock {
         position: TransportPosition { bar: 3, step: 4, beat: 2.0 },
         pulse_in_bar: 1,
+        pulses_per_bar: 4,
         pulse_start_frame: 1000,
         next_pulse_frame: 4000,
         buffer_start_frame: 0,
@@ -204,6 +207,7 @@ fn beat_info_from_clock_phase_and_timing() {
     let at_start = BeatInfo::from_clock(&clock, frame_to_instant(1000));
     assert_eq!(at_start.phase, 0.0);
     assert_eq!(at_start.pulse, 2);
+    assert_eq!(at_start.pulses_per_bar, 4);
     assert_eq!(at_start.bar, 3);
     assert!(!at_start.is_downbeat, "pulse 2 is not a downbeat");
     assert!(at_start.is_backbeat, "pulse 2 is even (backbeat)");
@@ -225,4 +229,89 @@ fn beat_info_from_clock_phase_and_timing() {
     // `next_pulse_at` and `pulse_period` follow the sample rate exactly.
     assert_eq!(at_start.next_pulse_at, frame_to_instant(4000));
     assert_eq!(at_start.pulse_period, Duration::from_secs_f64(3000.0 / f64::from(sample_rate)));
+}
+
+/// Acceptance (3): On a 4/4 → 2/2 transition (`set_time_signature` + `invalidate_future`
+/// during playback), `pulses_per_bar` read during each pulse equals
+/// `Measure.pulse.pulses_per_bar` of the played measure, and `pulse <= pulses_per_bar`
+/// always holds.
+#[test]
+fn time_signature_transition_preserves_pulses_per_bar_consistency() {
+    let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
+        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+
+    composer.set_time_signature(4, 4);
+    composer.set_bpm(120.0);
+    composer.sync_generator();
+    composer.set_writehead_lookahead(8);
+    composer.generate_bars(8);
+
+    let buffer_size = 256usize;
+    let mut buffer = vec![0.0f32; buffer_size * CHANNELS];
+    let mut transition_sent = false;
+    let mut saw_4_4 = false;
+    let mut saw_2_2 = false;
+    let mut verified_pulses = 0usize;
+
+    while clock_reader.read().position.bar < 6 {
+        composer.generate_ahead();
+        buffer.fill(0.0);
+        playback.process_buffer(&mut buffer, CHANNELS, Instant::now());
+
+        let clock = clock_reader.read();
+
+        if !transition_sent && clock.position.bar >= 2 {
+            composer.set_time_signature(2, 2);
+            composer.invalidate_future();
+            if let Some((bar, _)) = composer.take_pending_drop() {
+                let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
+            }
+            composer.generate_ahead();
+            transition_sent = true;
+        }
+
+        if clock.pulse_start_frame > 0 {
+            let beat = BeatInfo::from_clock(&clock, Instant::now());
+            let measure = composer
+                .timeline_measure(clock.position.bar)
+                .expect("played bar must exist in timeline");
+
+            assert_eq!(
+                beat.pulses_per_bar, measure.pulse.pulses_per_bar,
+                "bar {}: beat.pulses_per_bar {} != measure.pulse.pulses_per_bar {}",
+                beat.bar, beat.pulses_per_bar, measure.pulse.pulses_per_bar
+            );
+            assert_eq!(
+                clock.pulses_per_bar, measure.pulse.pulses_per_bar,
+                "bar {}: clock.pulses_per_bar {} != measure.pulse.pulses_per_bar {}",
+                clock.position.bar, clock.pulses_per_bar, measure.pulse.pulses_per_bar
+            );
+            assert!(
+                beat.pulse <= beat.pulses_per_bar,
+                "bar {}: pulse {} exceeds pulses_per_bar {}",
+                beat.bar,
+                beat.pulse,
+                beat.pulses_per_bar
+            );
+            assert!(
+                clock.pulse_in_bar < clock.pulses_per_bar,
+                "bar {}: pulse_in_bar {} >= pulses_per_bar {}",
+                clock.position.bar,
+                clock.pulse_in_bar,
+                clock.pulses_per_bar
+            );
+
+            if beat.pulses_per_bar == 4 {
+                saw_4_4 = true;
+            } else if beat.pulses_per_bar == 2 {
+                saw_2_2 = true;
+            }
+            verified_pulses += 1;
+        }
+    }
+
+    assert!(transition_sent, "transition must have been triggered");
+    assert!(saw_4_4, "must have observed 4/4 pulses before transition");
+    assert!(saw_2_2, "must have observed 2/2 pulses after transition");
+    assert!(verified_pulses > 0, "must have verified pulses");
 }
