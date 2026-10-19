@@ -1,6 +1,32 @@
-.PHONY: run run/debug play test test/sheet test/lab-export fmt lint audit quality
+.PHONY: soundfont run run/debug play test test/sheet test/lab-export fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════
+# ASSETS
+# ════════════════════════════════════════════════════════════════════
+
+## Télécharge la banque GM complète GeneralUser-GS si absente (> 30 Mo)
+soundfont:
+	@if [ -f assets/GeneralUser-GS.sf2 ]; then \
+		size=$$(wc -c < assets/GeneralUser-GS.sf2 | tr -d ' '); \
+		if [ "$$size" -gt 30000000 ]; then \
+			echo "assets/GeneralUser-GS.sf2 déjà présent ($$size octets)."; \
+			exit 0; \
+		fi; \
+		echo "Fichier assets/GeneralUser-GS.sf2 incomplet ($$size octets), retéléchargement..."; \
+	fi; \
+	mkdir -p assets && \
+	echo "Téléchargement de GeneralUser-GS.sf2..." && \
+	curl -fsSL -o assets/GeneralUser-GS.sf2.tmp https://github.com/mrbumpy409/GeneralUser-GS/raw/main/GeneralUser-GS.sf2 && \
+	size=$$(wc -c < assets/GeneralUser-GS.sf2.tmp | tr -d ' ') && \
+	if [ "$$size" -le 30000000 ]; then \
+		echo "Erreur: fichier téléchargé trop petit ($$size octets <= 30 Mo)" >&2; \
+		rm -f assets/GeneralUser-GS.sf2.tmp; \
+		exit 1; \
+	fi && \
+	mv assets/GeneralUser-GS.sf2.tmp assets/GeneralUser-GS.sf2 && \
+	echo "assets/GeneralUser-GS.sf2 installé avec succès ($$size octets)."
+
 # RUN
 # ════════════════════════════════════════════════════════════════════
 

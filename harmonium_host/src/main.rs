@@ -135,6 +135,12 @@ fn main() {
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
+            "--soundfont" | "-s" => {
+                if i + 1 < args.len() && !args[i + 1].starts_with('-') {
+                    sf2_path = Some(args[i + 1].clone());
+                    i += 1;
+                }
+            }
             "--record-wav" => {
                 if i + 1 < args.len() && !args[i + 1].starts_with('-') {
                     record_wav = Some(args[i + 1].clone());
@@ -206,6 +212,9 @@ fn main() {
                 println!();
                 println!("Options:");
                 println!(
+                    "  --soundfont, -s <PATH>     SoundFont file (.sf2) (default: assets/GeneralUser-GS.sf2)"
+                );
+                println!(
                     "  --harmony-mode, -m <MODE>  Harmony engine: 'basic' or 'driver' (default: driver)"
                 );
                 println!("  --record-wav [PATH]        Record to WAV file (default: output.wav)");
@@ -245,21 +254,12 @@ fn main() {
         log::info("Drum Kit Mode: ON (Kick fixed on C1)");
     }
 
-    let sf2_data = if let Some(path) = sf2_path {
-        log::info(&format!("Loading SoundFont: {path}"));
-        match fs::read(&path) {
-            Ok(bytes) => {
-                log::info("SoundFont loaded successfully");
-                Some(bytes)
-            }
-            Err(e) => {
-                log::warn(&format!("Failed to read SoundFont: {e}"));
-                None
-            }
+    let sf2_data = match harmonium::load_soundfont(sf2_path.as_deref()) {
+        Ok(data) => data,
+        Err(e) => {
+            log::warn(&format!("Failed to read SoundFont: {e}"));
+            None
         }
-    } else {
-        log::info("No SoundFont provided. Running without a bank (silence).");
-        None
     };
 
     // === 0.5. Graceful Shutdown Handler ===

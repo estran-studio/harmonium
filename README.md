@@ -21,7 +21,8 @@ Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playba
 ## Démarrer
 
 ```bash
-make run                 # REPL, charge assets/test.sf2 par défaut
+make soundfont           # télécharge la banque GM complète GeneralUser GS (~32 Mo)
+make run                 # REPL, charge assets/GeneralUser-GS.sf2 par défaut (ou repli test.sf2)
 make run ARGS="--soundfont path/to/bank.sf2"
 make play ARGS="--osc"   # lecteur autonome, /harmonium/params (arousal valence density tension) sur UDP 8080
 make test                # cargo test --workspace
