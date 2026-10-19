@@ -89,9 +89,10 @@ Le tempo reste à la noire (constitution).
 
 ### D3 — Swing comme table de timing dans le playback
 
-`MusicalParams.swing_ratio: f32` (0.5 = droit, 0.6 ≈ reel, borné 0.5–0.75),
-dans `TuningParams` pour le défaut par style. Capturé dans
-`Measure.swing_ratio` et `MeasureSnapshot.swing_ratio` à la génération.
+`MusicalParams.swing_ratio: f32` (0.5 = droit, 0.6 ≈ reel, borné 0.5–0.75).
+Le défaut par style passera par `StyleProfile` en phase 1, quand les styles
+existeront ; défaut 0.5 ⇒ snapshot inchangé, pas de rupture de contrat.
+Capturé dans `Measure.swing_ratio` et `MeasureSnapshot.swing_ratio` à la génération.
 
 Le swing porte sur les **paires de croches** : unité de 4 pas (une noire).
 Les pas 0-1 de chaque noire durent chacun `ratio × noire / 2`, les pas 2-3
@@ -144,7 +145,6 @@ Underflow inchangé : `tick()` retourne sans jouer.
 
 ```text
 harmonium_core/src/params.rs        swing_ratio, pulse: PulseSpec
-harmonium_core/src/tuning.rs        swing_ratio par défaut (bump version TuningParams)
 harmonium_core/src/timeline/mod.rs  Measure.swing_ratio
 harmonium_core/src/report.rs        MeasureSnapshot.swing_ratio
 harmonium_core/src/timeline/pointers.rs  cursors N pistes, sample_rate réel
