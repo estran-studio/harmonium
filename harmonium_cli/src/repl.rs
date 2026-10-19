@@ -411,11 +411,7 @@ fn run_beat(state: &mut ReplState) -> Result<bool> {
     terminal::enable_raw_mode()?;
     let _raw = RawGuard;
 
-    let mut pulses_per_bar = 4u8;
     loop {
-        if let Ok(c) = state.composer.lock() {
-            pulses_per_bar = c.musical_params().effective_pulse(4).pulses_per_bar;
-        }
         let clock = state.clock_reader.read();
         let now = Instant::now();
 
@@ -438,7 +434,7 @@ fn run_beat(state: &mut ReplState) -> Result<bool> {
                 "\rBar {:>3} | pulse {:>2}/{} | [{}] {:>3}% | {} | +{}ms  ",
                 info.bar,
                 info.pulse,
-                pulses_per_bar,
+                info.pulses_per_bar,
                 bar_glyphs,
                 (info.phase * 100.0) as u32,
                 marker,
