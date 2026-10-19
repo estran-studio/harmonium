@@ -17,11 +17,12 @@ pub mod mode;
 pub mod plan;
 
 pub use cells::{
-    Cell, CellBank, CellBankError, CellError, CellNote, CellRole, NOTES_PER_CELL, REEL_CELLS_TOML,
+    Cell, CellBank, CellBankError, CellError, CellNote, CellRole, FIFTH_DIATONIC_STEPS,
+    FIFTH_SEMITONES, NOTES_PER_CELL, REEL_CELLS_TOML,
 };
-pub use mode::{Mode, PitchClass, degree_to_diatonic_step, diatonic_step_to_degree};
-pub use plan::{BarRole, ImposedRole, RepeatScheme, Strain, TuneKind, TunePlan};
 pub use fiddle::{
     BARS_PER_STRAIN, CELLS_PER_TUNE, FiddleLine, eighth_velocity, fold_midi_to_tessitura,
     tonic_midi_for_key, transpose_cell_octaves,
 };
+pub use mode::{Mode, PitchClass, degree_to_diatonic_step, diatonic_step_to_degree};
+pub use plan::{BarRole, ImposedRole, RepeatScheme, Strain, TuneKind, TunePlan};

@@ -73,8 +73,7 @@ impl FiddleLine {
             bank
         };
 
-        let tonic_midi =
-            tonic_midi_for_key(plan.key, params.tonic_midi_min, params.tonic_midi_max);
+        let tonic_midi = tonic_midi_for_key(plan.key, params.tonic_midi_min, params.tonic_midi_max);
 
         let mut prev_last_step: Option<i8> = None;
         let cells_a = select_strain_cells(
@@ -167,11 +166,7 @@ pub const fn tonic_midi_for_key(key: PitchClass, min_midi: u8, max_midi: u8) -> 
     let min_pc = min_midi % 12;
     let offset = (12 + key_pc - min_pc) % 12;
     let candidate = min_midi.saturating_add(offset);
-    if candidate <= max_midi {
-        candidate
-    } else {
-        min_midi
-    }
+    if candidate <= max_midi { candidate } else { min_midi }
 }
 
 /// Replie une hauteur MIDI brute par octaves (`±12` demi-tons) pour la maintenir
@@ -290,10 +285,11 @@ fn select_strain_cells(
     prev_last_step: &mut Option<i8>,
     rng: &mut dyn RngCore,
 ) -> [Cell; BARS_PER_STRAIN] {
-    let default_cell = bank.cells.first().cloned().unwrap_or(Cell {
-        role: CellRole::Open,
-        notes: [CellNote::Degree(1); NOTES_PER_CELL],
-    });
+    let default_cell = bank
+        .cells
+        .first()
+        .cloned()
+        .unwrap_or(Cell { role: CellRole::Open, notes: [CellNote::Degree(1); NOTES_PER_CELL] });
     let mut chosen: [Cell; BARS_PER_STRAIN] = std::array::from_fn(|_| default_cell.clone());
     let mut bar1_first_step: Option<i8> = None;
 
@@ -468,10 +464,10 @@ fn pick_cell_for_bar(
         return winner.cell;
     }
 
-    bank.cells.first().cloned().unwrap_or(Cell {
-        role: CellRole::Open,
-        notes: [CellNote::Degree(1); NOTES_PER_CELL],
-    })
+    bank.cells
+        .first()
+        .cloned()
+        .unwrap_or(Cell { role: CellRole::Open, notes: [CellNote::Degree(1); NOTES_PER_CELL] })
 }
 
 /// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`ReelFiddleParams`].
@@ -544,19 +540,11 @@ fn cell_mean_step(cell: &Cell) -> f32 {
             count += 1;
         }
     }
-    if count == 0 {
-        0.0
-    } else {
-        (sum as f32) / (count as f32)
-    }
+    if count == 0 { 0.0 } else { (sum as f32) / (count as f32) }
 }
 
 /// Détermine les décalages d'octave candidats (`[-1, 0, 1]` ramenés à ≤ une quinte de `target_step`, D6).
-fn contour_shifts_for_cell(
-    cell: &Cell,
-    target_step: f32,
-    params: &ReelFiddleParams,
-) -> Vec<i8> {
+fn contour_shifts_for_cell(cell: &Cell, target_step: f32, params: &ReelFiddleParams) -> Vec<i8> {
     let base_mean = cell_mean_step(cell);
     let max_dist = f32::from(params.contour_max_step_distance.max(1));
     let mut shifts = Vec::with_capacity(3);
@@ -618,8 +606,8 @@ fn evaluate_candidate(
     let first_step = cell.first_degree().map_or(0, degree_to_diatonic_step);
     let last_step = cell.last_degree().map_or(first_step, degree_to_diatonic_step);
 
-    let continuity_distance = prev_last_step
-        .map_or(0, |prev| (i16::from(first_step) - i16::from(prev)).abs());
+    let continuity_distance =
+        prev_last_step.map_or(0, |prev| (i16::from(first_step) - i16::from(prev)).abs());
     let max_cont = i16::from(params.max_continuity_step_distance);
     let continuity_excess = (continuity_distance - max_cont).max(0);
 
@@ -647,5 +635,78 @@ fn evaluate_candidate(
         continuity_excess,
         continuity_distance,
         contour_distance_tenths,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+
+    use super::*;
+    use crate::trad::mode::Mode;
+
+    #[test]
+    fn tonic_midi_falls_in_g3_to_fsharp4() {
+        // D -> D4 = 62, G -> G3 = 55, A -> A3 = 57, C -> C4 = 60, F# -> F#4 = 66
+        assert_eq!(tonic_midi_for_key(2, 55, 66), 62);
+        assert_eq!(tonic_midi_for_key(7, 55, 66), 55);
+        assert_eq!(tonic_midi_for_key(9, 55, 66), 57);
+        assert_eq!(tonic_midi_for_key(0, 55, 66), 60);
+        assert_eq!(tonic_midi_for_key(6, 55, 66), 66);
+
+        for pc in 0..12 {
+            let midi = tonic_midi_for_key(pc, 55, 66);
+            assert!((55..=66).contains(&midi));
+            assert_eq!(midi % 12, pc);
+        }
+    }
+
+    #[test]
+    fn velocities_match_d6_accents() {
+        let params = ReelFiddleParams::default();
+        // Croche 1 (idx 0) et croche 5 (idx 4) : 84 + 12 = 96
+        assert_eq!(eighth_velocity(0, &params), 96);
+        assert_eq!(eighth_velocity(4, &params), 96);
+        // Croches paires (idx 1, 3, 5, 7) : 84 - 10 = 74
+        assert_eq!(eighth_velocity(1, &params), 74);
+        assert_eq!(eighth_velocity(3, &params), 74);
+        assert_eq!(eighth_velocity(5, &params), 74);
+        assert_eq!(eighth_velocity(7, &params), 74);
+        // Croches 3 et 7 (idx 2, 6) : 84
+        assert_eq!(eighth_velocity(2, &params), 84);
+        assert_eq!(eighth_velocity(6, &params), 84);
+    }
+
+    #[test]
+    fn hold_extends_previous_note_duration_by_2_steps() {
+        let parsed = Cell::from_notation(CellRole::CadFull, "5 4 3 2 1 - 5, -");
+        assert!(parsed.is_ok());
+        if let Ok(cell) = parsed {
+            let plan = TunePlan::reel(2, Mode::Ionian);
+            let params = ReelFiddleParams::default();
+            let notes = render_cell_notes(&cell, &plan, 62, &params);
+
+            assert_eq!(notes.len(), 6);
+            assert_eq!(notes[0].start_step, 0);
+            assert_eq!(notes[0].duration_steps, 2);
+            assert_eq!(notes[4].start_step, 8);
+            assert_eq!(notes[4].duration_steps, 4);
+            assert_eq!(notes[4].pitch, 62); // D4
+            assert_eq!(notes[5].start_step, 12);
+            assert_eq!(notes[5].duration_steps, 4);
+            assert_eq!(notes[5].pitch, 57); // A3 (5,)
+        }
+    }
+
+    #[test]
+    fn empty_bank_falls_back_without_failure() {
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        let empty_bank = CellBank { cells: Vec::new() };
+        let plan = TunePlan::draw(&mut rng, None);
+        let line = FiddleLine::new(plan, &empty_bank, &mut rng);
+        let tune = line.render_tune();
+        assert_eq!(tune.len(), 32);
+        assert!(tune.iter().all(|bar| !bar.is_empty()));
     }
 }

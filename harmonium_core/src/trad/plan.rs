@@ -252,11 +252,8 @@ impl TunePlan {
 
         if let Some(hint) = key_hint {
             let key = hint % 12;
-            let total: u32 = candidates
-                .iter()
-                .filter(|&&(k, _, _)| k == key)
-                .map(|&(_, _, w)| w)
-                .sum();
+            let total: u32 =
+                candidates.iter().filter(|&&(k, _, _)| k == key).map(|&(_, _, w)| w).sum();
             if total == 0 {
                 return Self::reel(key, Mode::Ionian);
             }
