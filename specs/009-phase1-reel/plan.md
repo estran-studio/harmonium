@@ -1,6 +1,6 @@
 # Phase 1 — Un reel identifiable
 
-**Statut** : en cours | **Date** : 2026-10-19 | **Dépend de** : phase 0 (horloge, swing, rampe)
+**Statut** : point d’arrêt — P1-T1..T5 mergées, P1-T6 en attente du verdict | **Date** : 2026-10-19 | **Dépend de** : phase 0 (horloge, swing, rampe)
 
 ## But
 
@@ -168,3 +168,60 @@ Bass → 33 (basse acoustique, 32), Heel → percussion 36, Toe → percussion 3
   avant l'algorithme.
 - **Violon GM** : laid mais suffisant pour juger la forme et le rythme.
 - **Pieds mal transcrits** : tables en données, correctibles sans code.
+
+## État au point d'arrêt (2026-10-19)
+
+| Tâche | État |
+|---|---|
+| P1-T1 Fondations (`TrackId` 5 pistes, `Style`, `trad::{mode, cells, plan}`, 31 cellules) | mergée |
+| P1-T2 Plan de tune + ligne de violon | mergée |
+| P1-T3 Podorythmie (table en données) | mergée |
+| P1-T4 Harmonisation + accompagnement | mergée |
+| P1-T5 `TradGenerator` câblé, CLI `style`/`feet`, programmes GM | mergée |
+| SF1 GeneralUser GS par défaut (`make soundfont`), détection GM réelle | mergée |
+| P1-T6 Suppression du chemin Legacy | **en attente** |
+
+Vérifié par le coordinateur, sur le flux MIDI des démos (seeds 1 et 2) :
+A1 = A2, B1 = B2, mesures 5-6 = 1-2, B ≠ A ; pieds audibles et différents
+entre `feet 1` et `feet 2`. 434 tests verts.
+
+**Écoute (humain)** : « pas si pire, ça ressemble un peu à ce qu'on veut ».
+Direction validée, identifiabilité pas encore atteinte → le critère 6 n'est
+pas rempli ; P1-T6 reste en attente.
+
+Reproduire les démos :
+
+```bash
+make soundfont
+cargo run -p harmonium-cli --release -- --export --bars 64 --style reel --seed 1 --feet 1 \
+  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid
+```
+
+Dette connue, à traiter au passage :
+- `assets/test.sf2` ne contient ni violon, ni guitare acier, ni basse
+  acoustique, ni kit : inutilisable pour juger le reel (les tests s'en
+  servent seulement pour le flux).
+- Warning clippy `large_enum_variant` sur l'enum `Generator` du composer :
+  disparaît avec P1-T6.
+- `harmonium_host/src/soundfont.rs` : tests qui figent la taille de
+  `test.sf2` et dépendent de la présence de GeneralUser ; à réécrire.
+- Logs du générateur Legacy imprimés en plein REPL (`→ Chord: …`).
+
+## Suite proposée (prochaine session)
+
+1. **Écoute ciblée, 30 min** : noter par élément ce qui sonne « pas trad »
+   (cellules, pieds, swing, tempo, cadences, accompagnement). Correction en
+   données d'abord.
+2. **Phase 2 — l'idiome** (ce qui manque le plus à l'oreille) :
+   ornements rendus en temps-échantillon (cut, roll, triolet d'archet,
+   double-corde), variation d'ornementation aux reprises, accordéon en
+   doublure, humanisation des pieds, puis gigue 6/8 et valse.
+3. **P1-T6** dès que l'écoute dit « c'est un reel ».
+4. **Phase 3 — le jeu** : plugin Bevy sur `create_offline_engine`, couche
+   `GameMood` (sacre, faim, intensité) → paramètres trad.
+
+Orchestration : agent `omp` dans des worktrees Orca, un worktree par tâche,
+merge `--no-ff` par le coordinateur après tests + clippy + fmt + écoute.
+Routage des modèles : Antigravity (gemini-4-argon difficile,
+claude-sonnet-5-5 moyen, gemini-3.8-flash mécanique), repli Muse, puis
+DeepInfra (DeepSeek-V4-Pro / V4-Flash) quand un quota tombe.
