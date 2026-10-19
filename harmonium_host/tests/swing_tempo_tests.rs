@@ -36,9 +36,9 @@ fn swing_unit_has_exact_durations() {
 /// Acceptance (2) — on the engine: every swung 4/4 pulse lasts exactly one
 /// quarter (22050 frames at 120 BPM), so a measure lasts 88200 frames.
 #[test]
-fn swing_quarter_lasts_exactly_22050_frames() {
+fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
     let (mut composer, mut playback, _cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, SAMPLE_RATE)?;
 
     composer.set_time_signature(4, 4);
     composer.set_swing_ratio(0.6);
@@ -49,6 +49,10 @@ fn swing_quarter_lasts_exactly_22050_frames() {
     let mut buffer = vec![0.0f32; 512 * CHANNELS];
     let mut checked = 0usize;
     let mut last_next = 0u64;
+    // Bar-start frames: consecutive entries must be exactly one swung
+    // measure apart (4 × 22050 = 88200 frames).
+    let mut bar_starts: Vec<u64> = Vec::new();
+    let mut last_bar = 0usize;
     for _ in 0..800 {
         composer.generate_ahead();
         buffer.fill(0.0);
@@ -63,11 +67,22 @@ fn swing_quarter_lasts_exactly_22050_frames() {
             last_next = clock.next_pulse_frame;
             checked += 1;
         }
+        if clock.position.bar != last_bar {
+            last_bar = clock.position.bar;
+            if clock.pulse_start_frame > 0 {
+                bar_starts.push(clock.pulse_start_frame);
+            }
+        }
         if clock.position.bar > 3 {
             break;
         }
     }
     assert!(checked >= 12, "only checked {checked} pulses");
+    assert!(bar_starts.len() >= 3, "only saw {} bar starts", bar_starts.len());
+    for pair in bar_starts.windows(2) {
+        assert_eq!(pair[1] - pair[0], 88200, "swung 4/4 measure must last exactly 88200 frames");
+    }
+    Ok(())
 }
 
 /// Acceptance (3) — tempo ramp: `SetTempo { 240, 8 }` received during a pulse
@@ -75,9 +90,9 @@ fn swing_quarter_lasts_exactly_22050_frames() {
 /// on a 240 BPM quarter (11025 frames); `ClearTempo` reverts to the measure
 /// tempo at the next boundary.
 #[test]
-fn tempo_ramp_reaches_target_then_clears() {
+fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, SAMPLE_RATE)?;
 
     composer.set_time_signature(4, 4);
     composer.set_bpm(120.0);
@@ -133,4 +148,5 @@ fn tempo_ramp_reaches_target_then_clears() {
         }
     };
     assert_eq!(cleared_duration, 22048, "ClearTempo must revert to the 120 BPM measure tempo");
+    Ok(())
 }
