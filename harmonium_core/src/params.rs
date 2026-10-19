@@ -147,6 +147,73 @@ impl TimeSignature {
     }
 }
 
+/// Specifies the dance pulse (the beat the player acts on) of a time
+/// signature, derived from the notated meter rather than the quarter-note
+/// tempo (constitution : le tempo reste à la noire, la pulse est dérivée).
+///
+/// The pulse is expressed as a number of grid steps and a number of pulses
+/// per bar. For every supported meter (denominator 2, 4 or 8) the pulse tiles
+/// the bar exactly: `steps_per_pulse * pulses_per_bar == steps_per_bar`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PulseSpec {
+    /// Number of grid steps in one pulse.
+    pub steps_per_pulse: u8,
+    /// Number of pulses in one bar.
+    pub pulses_per_bar: u8,
+}
+
+impl Default for PulseSpec {
+    /// Default pulse: the quarter note of 4/4 (4 steps, 4 pulses).
+    fn default() -> Self {
+        Self { steps_per_pulse: 4, pulses_per_bar: 4 }
+    }
+}
+
+impl PulseSpec {
+    /// Derive the dance pulse from a time signature.
+    ///
+    /// - Compound meter — denominator 8 with a numerator that is a multiple
+    ///   of 3 and strictly greater than 3 (6/8, 9/8, 12/8) — pulses on the
+    ///   dotted quarter (3 eighth-note steps).
+    /// - Any other meter pulses on the denominator note value: a quarter in
+    ///   4/4 (4 steps), a half in 2/2 (8 steps), a quarter in 3/4 (4 steps), …
+    ///
+    /// The pulse tiles the bar exactly for the supported meters (denominator
+    /// 2, 4 or 8). For an exotic meter where integer truncation in
+    /// [`TimeSignature::steps_per_bar`] breaks that tiling, this falls back to
+    /// pulse = one denominator step (documented, best effort).
+    #[must_use]
+    pub fn from_time_signature(ts: TimeSignature, ticks_per_beat: usize) -> Self {
+        // Steps per denominator-note value (quarter for /4, eighth for /8, …).
+        let steps_per_denominator = (ticks_per_beat * 4) / ts.denominator;
+
+        let compound = ts.denominator == 8 && ts.numerator > 3 && ts.numerator.is_multiple_of(3);
+
+        let (steps_per_pulse, pulses_per_bar) = if compound {
+            (steps_per_denominator * 3, ts.numerator / 3)
+        } else {
+            (steps_per_denominator, ts.numerator)
+        };
+
+        // Invariant: the pulse must tile the bar exactly (see struct doc).
+        let fits = steps_per_pulse * pulses_per_bar == ts.steps_per_bar(ticks_per_beat);
+
+        let (steps_per_pulse, pulses_per_bar) = if fits {
+            (steps_per_pulse, pulses_per_bar)
+        } else {
+            // Fallback: pulse = one denominator step (pulses = numerator).
+            (steps_per_denominator, ts.numerator)
+        };
+
+        // Meter inputs are constrained in practice (ticks_per_beat = 4, small
+        // denominators), so values always fit u8; saturate rather than panic.
+        Self {
+            steps_per_pulse: u8::try_from(steps_per_pulse).unwrap_or(u8::MAX),
+            pulses_per_bar: u8::try_from(pulses_per_bar).unwrap_or(u8::MAX),
+        }
+    }
+}
+
 /// Per-track instrument configuration for note range and transposition.
 ///
 /// Applies after all musical decisions, before storage in `TimelineNote`.
@@ -437,6 +504,18 @@ pub struct MusicalParams {
     #[serde(default)]
     pub time_signature: TimeSignature,
 
+    /// Swing ratio applied to pairs of eighth notes (unit = 4 steps, one
+    /// quarter note). 0.5 = straight, ~0.6 ≈ reel. Bounded 0.5..=0.75 via
+    /// [`MusicalParams::set_swing_ratio`]. Ignored in compound meter (a
+    /// dotted-quarter pulse of 6 steps).
+    #[serde(default = "default_swing_ratio")]
+    pub swing_ratio: f32,
+
+    /// Dance pulse override. `None` = derived from `time_signature` (see
+    /// [`MusicalParams::effective_pulse`]).
+    #[serde(default)]
+    pub pulse: Option<PulseSpec>,
+
     /// Volume master (0.0 - 1.0)
     #[serde(default = "default_master_volume")]
     pub master_volume: f32,
@@ -642,6 +721,11 @@ pub struct MusicalParams {
 const fn default_master_volume() -> f32 {
     1.0
 }
+/// Swing par défaut : droit (0.5). Partagé par `MusicalParams` et
+/// `MeasureSnapshot` (serde `default`), d'où sa visibilité `pub`.
+pub const fn default_swing_ratio() -> f32 {
+    0.5
+}
 const fn default_true() -> bool {
     true
 }
@@ -703,6 +787,8 @@ impl Default for MusicalParams {
             // Global
             bpm: 120.0,
             time_signature: TimeSignature::default(),
+            swing_ratio: default_swing_ratio(),
+            pulse: None,
             master_volume: default_master_volume(),
 
             // Modules
@@ -790,6 +876,19 @@ impl MusicalParams {
     #[must_use]
     pub fn with_bpm(bpm: f32) -> Self {
         Self { bpm, ..Default::default() }
+    }
+
+    /// Dance pulse effective for these params: the explicit override, or the
+    /// one derived from `time_signature` when `pulse` is `None`.
+    #[must_use]
+    pub fn effective_pulse(&self, ticks_per_beat: usize) -> PulseSpec {
+        self.pulse
+            .unwrap_or_else(|| PulseSpec::from_time_signature(self.time_signature, ticks_per_beat))
+    }
+
+    /// Set the swing ratio, clamped to the valid range 0.5..=0.75.
+    pub fn set_swing_ratio(&mut self, ratio: f32) {
+        self.swing_ratio = ratio.clamp(0.5, 0.75);
     }
 
     /// Builder pattern: set BPM
@@ -937,6 +1036,78 @@ mod tests {
             .instrument_bass(InstrumentConfig::concert_pitch(28, 55));
         assert_eq!(params.instrument_lead.transposition_semitones, 2);
         assert_eq!(params.instrument_bass.min_note, 28);
+    }
+
+    /// Table-driven check of `PulseSpec::from_time_signature`, including the
+    /// tiling invariant `steps_per_pulse * pulses_per_bar == steps_per_bar`.
+    #[test]
+    fn test_pulse_spec_from_time_signature() {
+        const TPB: usize = 4;
+        // (numerator, denominator, expected steps_per_pulse, expected pulses_per_bar)
+        let cases: [(usize, usize, u8, u8); 6] = [
+            (4, 4, 4, 4),  // 4/4 → quarter
+            (2, 2, 8, 2),  // 2/2 → half
+            (3, 4, 4, 3),  // 3/4 → quarter
+            (6, 8, 6, 2),  // 6/8 → dotted quarter
+            (9, 8, 6, 3),  // 9/8 → dotted quarter
+            (12, 8, 6, 4), // 12/8 → dotted quarter
+        ];
+
+        for (num, den, steps_per_pulse, pulses_per_bar) in cases {
+            let ts = TimeSignature::new(num, den);
+            let pulse = PulseSpec::from_time_signature(ts, TPB);
+
+            assert_eq!(pulse.steps_per_pulse, steps_per_pulse, "{num}/{den}");
+            assert_eq!(pulse.pulses_per_bar, pulses_per_bar, "{num}/{den}");
+
+            // Tiling invariant must hold for every supported meter.
+            assert_eq!(
+                usize::from(pulse.steps_per_pulse) * usize::from(pulse.pulses_per_bar),
+                ts.steps_per_bar(TPB),
+                "pulse does not tile {num}/{den}",
+            );
+        }
+    }
+
+    /// The pulse override wins over the derived one; `None` derives from the
+    /// signature.
+    #[test]
+    fn test_effective_pulse_override() {
+        let params = MusicalParams::default();
+        assert_eq!(params.effective_pulse(4), PulseSpec { steps_per_pulse: 4, pulses_per_bar: 4 });
+
+        // 6/8 derives a dotted-quarter pulse (6 steps).
+        let gigue =
+            MusicalParams { time_signature: TimeSignature::new(6, 8), ..MusicalParams::default() };
+        assert_eq!(gigue.effective_pulse(4).steps_per_pulse, 6);
+
+        // An explicit override wins over the derived pulse.
+        let overridden = MusicalParams {
+            time_signature: TimeSignature::new(6, 8),
+            pulse: Some(PulseSpec { steps_per_pulse: 3, pulses_per_bar: 4 }),
+            ..MusicalParams::default()
+        };
+        assert_eq!(
+            overridden.effective_pulse(4),
+            PulseSpec { steps_per_pulse: 3, pulses_per_bar: 4 }
+        );
+    }
+
+    #[test]
+    fn test_swing_ratio_default_and_bounds() {
+        assert!((MusicalParams::default().swing_ratio - 0.5).abs() < f32::EPSILON);
+
+        let mut params = MusicalParams::default();
+        params.set_swing_ratio(0.6);
+        assert!((params.swing_ratio - 0.6).abs() < f32::EPSILON);
+
+        // Below the lower bound → clamped to 0.5.
+        params.set_swing_ratio(0.2);
+        assert!((params.swing_ratio - 0.5).abs() < f32::EPSILON);
+
+        // Above the upper bound → clamped to 0.75.
+        params.set_swing_ratio(1.0);
+        assert!((params.swing_ratio - 0.75).abs() < f32::EPSILON);
     }
 }
 

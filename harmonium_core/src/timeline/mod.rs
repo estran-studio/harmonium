@@ -22,7 +22,7 @@ pub use pointers::{Playhead, Writehead};
 use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 use serde::{Deserialize, Serialize};
 
-use crate::params::{CurrentState, TimeSignature};
+use crate::params::{CurrentState, PulseSpec, TimeSignature};
 
 /// Context needed to deterministically reconstruct a generation session from scratch.
 ///
@@ -204,6 +204,10 @@ pub struct Measure {
     pub tempo: f32,
     /// Number of steps in this measure (time_sig.steps_per_bar(ticks_per_beat))
     pub steps: usize,
+    /// Swing ratio captured at generation time (see `MusicalParams::swing_ratio`)
+    pub swing_ratio: f32,
+    /// Dance pulse captured at generation time (see `MusicalParams::pulse`)
+    pub pulse: PulseSpec,
     /// Chord context for this measure
     pub chord_context: ChordContext,
     /// State snapshot at generation time
@@ -226,6 +230,8 @@ impl Measure {
             time_signature,
             tempo,
             steps,
+            swing_ratio: 0.5,
+            pulse: PulseSpec::default(),
             chord_context: ChordContext::default(),
             state_snapshot: StateSnapshot::default(),
             tracks,

@@ -128,6 +128,11 @@
         6
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -286,6 +291,11 @@
         10
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -409,6 +419,11 @@
         10
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -560,6 +575,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -677,6 +697,11 @@
         6
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -830,6 +855,11 @@
         3
       ],
       "lcc_level": 4
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -954,6 +984,11 @@
         3
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1091,6 +1126,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1228,6 +1268,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1352,6 +1397,11 @@
         6
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1490,6 +1540,11 @@
         5
       ],
       "lcc_level": 4
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1627,6 +1682,11 @@
         10
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1757,6 +1817,11 @@
         10
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -1902,6 +1967,11 @@
         5
       ],
       "lcc_level": 4
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2048,6 +2118,11 @@
         0
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2199,6 +2274,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2364,6 +2444,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2522,6 +2607,11 @@
         10
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2653,6 +2743,11 @@
         11
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2811,6 +2906,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -2962,6 +3062,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -3100,6 +3205,11 @@
         6
       ],
       "lcc_level": 3
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -3237,6 +3347,11 @@
         5
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   },
   {
@@ -3410,6 +3525,11 @@
         6
       ],
       "lcc_level": 5
+    },
+    "swing_ratio": 0.5,
+    "pulse": {
+      "steps_per_pulse": 4,
+      "pulses_per_bar": 4
     }
   }
 ]
