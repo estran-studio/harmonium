@@ -265,9 +265,18 @@ impl MusicComposer {
 
     /// Invalidate future measures and regenerate from the next bar.
     /// Called when musical params change.
+    ///
+    /// The bar under the playhead is kept only if it was actually generated:
+    /// at startup (or after an underflow) the playhead already points at bar
+    /// N while nothing exists yet, and regenerating from N+1 would leave the
+    /// playback engine waiting for bar N forever.
     pub fn invalidate_future(&mut self) {
         let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
-        let regen_from = if playhead_bar == 0 { 1 } else { playhead_bar + 1 };
+        let regen_from = if self.writehead.timeline.get_measure(playhead_bar).is_some() {
+            playhead_bar + 1
+        } else {
+            playhead_bar
+        };
 
         self.writehead.timeline.invalidate_from(regen_from);
         self.writehead.current_bar = regen_from;
@@ -289,8 +298,7 @@ impl MusicComposer {
     /// The playback engine reads directly by index — no refill needed.
     pub fn invalidate_after_preview(&mut self, preview_bars: usize) {
         let playhead_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
-        let keep_until =
-            if playhead_bar == 0 { 1 + preview_bars } else { playhead_bar + preview_bars };
+        let keep_until = playhead_bar + preview_bars;
 
         // Invalidate timeline from keep_until onward (preview bars stay intact)
         self.writehead.timeline.invalidate_from(keep_until);

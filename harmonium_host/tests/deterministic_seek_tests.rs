@@ -142,3 +142,46 @@ fn set_seed_restores_identical_session() {
 
     assert_measures_equal(&snapshots_a, &snapshots_b, "SetSeed restores identical session");
 }
+
+// ─── Test 5: invalidate_future before any generation keeps the playhead bar ───
+
+/// The standalone binary and the game both set params then call
+/// `invalidate_future()` before a single bar exists. The playhead already
+/// points at bar 1; regenerating from bar 2 would leave the playback engine
+/// waiting for bar 1 forever (silent output).
+#[test]
+fn invalidate_future_before_generation_starts_at_playhead_bar() {
+    let (mut composer, pages) = create_composer(7);
+    composer.invalidate_future();
+    composer.generate_ahead();
+
+    let first = composer.take_snapshots().first().map(|m| m.index);
+    assert_eq!(first, Some(1), "first generated bar must be the playhead bar");
+    let published = pages.lock().is_ok_and(|pages| pages.iter().any(|m| m.index == 1));
+    assert!(published, "bar 1 must be published to shared pages");
+}
+
+/// Once the playhead bar exists, invalidation must keep it and regenerate
+/// from the next bar only.
+#[test]
+fn invalidate_future_after_generation_keeps_playhead_bar() {
+    let (mut composer, _pages) = create_composer(7);
+    composer.generate_bars(4);
+    let before: Vec<_> = composer.take_snapshots();
+
+    composer.set_bpm(150.0);
+    composer.invalidate_future();
+    composer.generate_bars(4);
+    let after = composer.take_snapshots();
+
+    assert_eq!(
+        after.first().map(|m| m.index),
+        Some(2),
+        "regeneration starts after the playhead bar"
+    );
+    assert_eq!(before[0].tempo, 120.0, "bar 1 kept its original tempo");
+    assert!(
+        after.iter().all(|m| (m.tempo - 150.0).abs() < f32::EPSILON),
+        "regenerated bars use the new tempo"
+    );
+}
