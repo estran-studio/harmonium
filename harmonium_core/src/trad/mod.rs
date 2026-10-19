@@ -11,9 +11,12 @@
 //! - [`harmony`] : accords candidats par mode, harmonisation par demi-mesure
 //!   ([`harmonize_bar`], [`TuneHarmony`]) ;
 //! - [`accomp`] : basse et guitare d'accompagnement du reel (D8).
+//! - [`feet`] : podorythmie du reel (D9), validation de table TOML et
+//!   génération de notes de talon et pointe via [`feet_notes`].
 
 pub mod accomp;
 pub mod cells;
+pub mod feet;
 pub mod harmony;
 pub mod mode;
 pub mod plan;
@@ -21,6 +24,10 @@ pub mod plan;
 pub use accomp::{Guitarist, bass_bar};
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, NOTES_PER_CELL, REEL_CELLS_TOML,
+};
+pub use feet::{
+    DEFAULT_HEEL_VELOCITY, DEFAULT_TOE_VELOCITY, FeetPattern, FeetTable, FeetTableError, FootHit,
+    PITCH_HEEL, PITCH_TOE, REEL_FEET_TOML, REEL_STEPS, feet_notes,
 };
 pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,
