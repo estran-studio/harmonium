@@ -4,6 +4,10 @@ use std::sync::{Arc, Mutex};
 pub mod composer;
 pub mod playback;
 
+// SoundFont resolution and fallback
+pub mod soundfont;
+pub use soundfont::load_soundfont;
+
 // Predictive transport clock (D1/D2): TransportClock, BeatInfo, ClockReader.
 pub mod clock;
 pub use clock::{BeatInfo, ClockReader, TransportClock};

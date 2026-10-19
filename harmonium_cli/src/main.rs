@@ -22,8 +22,8 @@ use harmonium::audio;
 #[command(name = "harmonium-cli")]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Path to a SoundFont file (.sf2). Defaults to `assets/test.sf2` in the
-    /// current directory when it exists; otherwise the engine runs silent.
+    /// Path to a SoundFont file (.sf2). Defaults to `assets/GeneralUser-GS.sf2`
+    /// when present, else `assets/test.sf2` (with warning), else runs silent.
     #[arg(short, long)]
     soundfont: Option<String>,
 
@@ -87,11 +87,20 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let sf2_bytes = load_soundfont(args.soundfont.as_deref())?;
+    let sf2_bytes = harmonium::load_soundfont(args.soundfont.as_deref())?;
 
     if args.export {
         // Export mode: offline rendering, no audio device
         println!("Initializing offline engine...");
+        let record_wav = if args.record_wav.is_none()
+            && args.record_midi.is_none()
+            && args.record_musicxml.is_none()
+            && args.record_truth.is_none()
+        {
+            Some("output.wav".to_string())
+        } else {
+            args.record_wav
+        };
         export::run(
             sf2_bytes.as_deref(),
             args.duration,
@@ -99,7 +108,7 @@ fn main() -> Result<()> {
             parsed_style,
             args.seed,
             args.feet,
-            args.record_wav,
+            record_wav,
             args.record_midi,
             args.record_musicxml,
             args.record_truth,
@@ -150,29 +159,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Default SoundFont used when `--soundfont` is absent.
-const DEFAULT_SOUNDFONT: &str = "assets/test.sf2";
-
-/// Read the SoundFont to load: the explicit `--soundfont` path (an unreadable
-/// file is an error), else `assets/test.sf2` relative to the current
-/// directory when present, else `None` (silent engine).
-fn load_soundfont(explicit: Option<&str>) -> Result<Option<Vec<u8>>> {
-    let path = match explicit {
-        Some(p) => p,
-        None if std::path::Path::new(DEFAULT_SOUNDFONT).is_file() => DEFAULT_SOUNDFONT,
-        None => {
-            eprintln!(
-                "Warning: no --soundfont given and {DEFAULT_SOUNDFONT} not found; \
-                 running without a SoundFont (silent)."
-            );
-            return Ok(None);
-        }
-    };
-    println!("Loading SoundFont: {path}");
-    let bytes =
-        std::fs::read(path).map_err(|e| anyhow::anyhow!("Failed to load SoundFont {path}: {e}"))?;
-    println!("Loaded SoundFont ({} bytes)", bytes.len());
-    Ok(Some(bytes))
 }
