@@ -7,7 +7,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{harmony::steedman_grammar::GrammarStyle, trad::cells::CellBank};
+use crate::{
+    harmony::steedman_grammar::GrammarStyle,
+    trad::{cells::CellBank, harmony::ChordDegree},
+};
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
 ///
@@ -431,6 +434,63 @@ impl Default for EmotionalQuadrantParams {
     }
 }
 
+/// Harmonisation et accompagnement du reel (D7, D8) : poids de vote, ordre de
+/// priorité des égalités, rythme et tessiture de la basse et de la guitare.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TradHarmonyParams {
+    /// Pas de la demi-mesure sur lesquels les notes comptent double (`[0, 8]`).
+    pub strong_steps: Vec<usize>,
+    /// Poids de vote d'une note placée sur un temps fort (défaut 2).
+    pub strong_weight: u32,
+    /// Poids de vote d'une note placée ailleurs (défaut 1).
+    pub weak_weight: u32,
+    /// Ordre de priorité en cas d'égalité de score (`[I, V, IV]`) ; les degrés
+    /// absents passent après, dans l'ordre des accords candidats du mode.
+    pub tie_priority: Vec<ChordDegree>,
+    /// Pas de la basse dans la mesure (`[0, 8]` : fondamentale puis quinte).
+    pub bass_steps: Vec<usize>,
+    /// Durée d'une note de basse en pas (4 = noire en 2/2 à 16 pas).
+    pub bass_duration_steps: usize,
+    /// Vélocité de la basse.
+    pub bass_velocity: u8,
+    /// Note MIDI la plus grave de la basse (40 = E2).
+    pub bass_low: u8,
+    /// Note MIDI la plus aiguë de la basse (50 = D3).
+    pub bass_high: u8,
+    /// Pas des « chops » de guitare (`[4, 12]`).
+    pub chop_steps: Vec<usize>,
+    /// Durée d'un chop en pas (1).
+    pub chop_duration_steps: usize,
+    /// Vélocité accentuée d'un chop.
+    pub chop_velocity: u8,
+    /// Note MIDI autour de laquelle se placent les voicings (60 = C4).
+    pub guitar_center: u8,
+    /// Écart maximal, en demi-tons, entre le centre du voicing et
+    /// `guitar_center` (borne la dérive du voice-leading).
+    pub guitar_max_drift: u8,
+}
+
+impl Default for TradHarmonyParams {
+    fn default() -> Self {
+        Self {
+            strong_steps: vec![0, 8],
+            strong_weight: 2,
+            weak_weight: 1,
+            tie_priority: vec![ChordDegree::I, ChordDegree::V, ChordDegree::IV],
+            bass_steps: vec![0, 8],
+            bass_duration_steps: 4,
+            bass_velocity: 90,
+            bass_low: 40,
+            bass_high: 50,
+            chop_steps: vec![4, 12],
+            chop_duration_steps: 1,
+            chop_velocity: 100,
+            guitar_center: 60,
+            guitar_max_drift: 6,
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Root TuningParams
 // ---------------------------------------------------------------------------
@@ -451,6 +511,9 @@ pub struct TuningParams {
     /// Banque de cellules mélodiques du reel traditionnel québécois (D5, constitution V).
     #[serde(default)]
     pub reel_cells: CellBank,
+    /// Harmonisation et accompagnement du reel (D7, D8).
+    #[serde(default)]
+    pub trad_harmony: TradHarmonyParams,
 }
 
 impl Default for TuningParams {
@@ -466,6 +529,7 @@ impl Default for TuningParams {
             arrangement: ArrangementParams::default(),
             emotional_quadrant: EmotionalQuadrantParams::default(),
             reel_cells: CellBank::default(),
+            trad_harmony: TradHarmonyParams::default(),
         }
     }
 }
@@ -887,6 +951,26 @@ impl TuningParams {
             errors.push(ValidationError { field: "reel_cells", message: err.to_string() });
         }
 
+        // --- TradHarmonyParams (D7, D8) ---
+        let th = &self.trad_harmony;
+        let mut check_th = |ok: bool, message: &str| {
+            if !ok {
+                errors.push(ValidationError { field: "trad_harmony", message: message.to_owned() });
+            }
+        };
+        check_th(th.strong_weight > 0 && th.weak_weight > 0, "les poids de vote doivent être > 0");
+        check_th(!th.tie_priority.is_empty(), "tie_priority ne doit pas être vide");
+        check_th(
+            th.bass_low <= th.bass_high && th.bass_high <= 127,
+            "bass_low <= bass_high <= 127 requis",
+        );
+        check_th(th.bass_duration_steps > 0 && th.chop_duration_steps > 0, "durées en pas > 0");
+        check_th(
+            th.bass_steps.iter().chain(&th.chop_steps).all(|&s| s < 16),
+            "pas d'accompagnement hors mesure (< 16)",
+        );
+        check_th(th.guitar_center <= 127, "guitar_center <= 127 requis");
+
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 }
@@ -1137,6 +1221,8 @@ pub struct TuningOverlay {
     pub emotional_quadrant: Option<EmotionalQuadrantOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reel_cells: Option<CellBank>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trad_harmony: Option<TradHarmonyParams>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1280,6 +1366,10 @@ impl TuningParams {
 
         if let Some(reel_cells) = &overlay.reel_cells {
             result.reel_cells = reel_cells.clone();
+        }
+
+        if let Some(trad_harmony) = &overlay.trad_harmony {
+            result.trad_harmony = trad_harmony.clone();
         }
 
         result

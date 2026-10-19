@@ -7,14 +7,24 @@
 //!   notation D5, validation et [`CellBank`] chargée depuis `reel_cells.toml` ;
 //! - [`plan`] : grille D3 (`TuneKind::Reel`), structure AABB (`Strain`,
 //!   `RepeatScheme`, `TunePlan`) et rôles imposés par mesure (`BarRole`,
-//!   `ImposedRole`).
+//!   `ImposedRole`) ;
+//! - [`harmony`] : accords candidats par mode, harmonisation par demi-mesure
+//!   ([`harmonize_bar`], [`TuneHarmony`]) ;
+//! - [`accomp`] : basse et guitare d'accompagnement du reel (D8).
 
+pub mod accomp;
 pub mod cells;
+pub mod harmony;
 pub mod mode;
 pub mod plan;
 
+pub use accomp::{Guitarist, bass_bar};
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, NOTES_PER_CELL, REEL_CELLS_TOML,
+};
+pub use harmony::{
+    ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,
+    harmonize_bar,
 };
 pub use mode::{Mode, PitchClass, degree_to_diatonic_step, diatonic_step_to_degree};
 pub use plan::{BarRole, ImposedRole, RepeatScheme, Strain, TuneKind, TunePlan};
