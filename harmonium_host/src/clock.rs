@@ -27,6 +27,8 @@ pub struct TransportClock {
     pub position: TransportPosition,
     /// Dance-pulse index within the bar, 0-based.
     pub pulse_in_bar: u8,
+    /// Total number of dance pulses in the current bar.
+    pub pulses_per_bar: u8,
     /// Global frame counter at the start of the current pulse.
     pub pulse_start_frame: u64,
     /// Exact frame where the next pulse begins.
@@ -48,6 +50,7 @@ impl TransportClock {
         Self {
             position: TransportPosition { bar: 1, step: 0, beat: 1.0 },
             pulse_in_bar: 0,
+            pulses_per_bar: 4,
             pulse_start_frame: 0,
             next_pulse_frame: 0,
             buffer_start_frame: 0,
@@ -65,6 +68,8 @@ pub struct BeatInfo {
     pub bar: usize,
     /// 1-based pulse within the bar.
     pub pulse: u8,
+    /// Total number of dance pulses in the current bar.
+    pub pulses_per_bar: u8,
     /// Phase within the pulse, `0.0..1.0`, interpolated in frames.
     pub phase: f32,
     /// `pulse == 1`.
@@ -111,6 +116,7 @@ impl BeatInfo {
         Self {
             bar: clock.position.bar,
             pulse,
+            pulses_per_bar: clock.pulses_per_bar,
             phase,
             is_downbeat: pulse == 1,
             is_backbeat: pulse.is_multiple_of(2),

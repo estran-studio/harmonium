@@ -670,6 +670,7 @@ impl PlaybackEngine {
 
         let pulse_duration = self.step_durations[..self.step_count].iter().sum::<usize>() as u64;
         self.clock.pulse_in_bar = (step / steps_per_pulse) as u8;
+        self.clock.pulses_per_bar = self.current_pulse.pulses_per_bar;
         self.clock.pulse_start_frame = self.frame_counter;
         self.clock.next_pulse_frame = self.frame_counter + pulse_duration;
     }
