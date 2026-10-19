@@ -9,13 +9,16 @@
 //!   `RepeatScheme`, `TunePlan`) et rôles imposés par mesure (`BarRole`,
 //!   `ImposedRole`) ;
 //! - [`harmony`] : accords candidats par mode, harmonisation par demi-mesure
-//!   ([`harmonize_bar`], [`TuneHarmony`]).
+//!   ([`harmonize_bar`], [`TuneHarmony`]) ;
+//! - [`accomp`] : basse et guitare d'accompagnement du reel (D8).
 
+pub mod accomp;
 pub mod cells;
 pub mod harmony;
 pub mod mode;
 pub mod plan;
 
+pub use accomp::{Guitarist, bass_bar};
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, NOTES_PER_CELL, REEL_CELLS_TOML,
 };
