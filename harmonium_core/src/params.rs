@@ -490,6 +490,19 @@ pub enum HarmonyStrategy {
     Auto,
 }
 
+/// Style de génération musicale (D1 : générateur legacy transitoire vs reel trad québécois).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Style {
+    /// Générateur procédural legacy (transitoire jusqu'à P1-T6).
+    #[default]
+    #[serde(alias = "Legacy")]
+    Legacy,
+    /// Reel traditionnel québécois (forme AABB, cellules en croches, podorythmie).
+    #[serde(alias = "Reel")]
+    Reel,
+}
+
 /// Paramètres purement techniques. Le moteur obéit à ça directement.
 /// Aucune interprétation émotionnelle - juste des valeurs musicales concrètes.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -519,6 +532,14 @@ pub struct MusicalParams {
     /// Volume master (0.0 - 1.0)
     #[serde(default = "default_master_volume")]
     pub master_volume: f32,
+
+    /// Style de génération musicale (`Legacy` par défaut).
+    #[serde(default)]
+    pub style: Style,
+
+    /// Densité de podorythmie (0..=2, défaut 1 ; bornée via [`MusicalParams::set_feet_density`]).
+    #[serde(default = "default_feet_density")]
+    pub feet_density: u8,
 
     // ═══════════════════════════════════════════════════════════════════
     // MODULES ON/OFF (pour debug/tests)
@@ -725,6 +746,9 @@ pub struct MusicalParams {
 const fn default_master_volume() -> f32 {
     1.0
 }
+const fn default_feet_density() -> u8 {
+    1
+}
 /// Swing par défaut : droit (0.5). Partagé par `MusicalParams` et
 /// `MeasureSnapshot` (serde `default`), d'où sa visibilité `pub`.
 pub const fn default_swing_ratio() -> f32 {
@@ -797,6 +821,8 @@ impl Default for MusicalParams {
             swing_ratio: default_swing_ratio(),
             pulse: None,
             master_volume: default_master_volume(),
+            style: Style::default(),
+            feet_density: default_feet_density(),
 
             // Modules
             enable_rhythm: true,
@@ -899,6 +925,16 @@ impl MusicalParams {
         self.swing_ratio = ratio.clamp(0.5, 0.75);
     }
 
+    /// Définit le style de génération (`Legacy` ou `Reel`).
+    pub const fn set_style(&mut self, style: Style) {
+        self.style = style;
+    }
+
+    /// Définit la densité de podorythmie, bornée à `0..=2`.
+    pub fn set_feet_density(&mut self, density: u8) {
+        self.feet_density = density.min(2);
+    }
+
     /// Builder pattern: set BPM
     #[must_use]
     pub const fn bpm(mut self, bpm: f32) -> Self {
@@ -938,6 +974,20 @@ impl MusicalParams {
     #[must_use]
     pub const fn instrument_bass(mut self, config: InstrumentConfig) -> Self {
         self.instrument_bass = config;
+        self
+    }
+
+    /// Builder pattern: set musical style
+    #[must_use]
+    pub const fn style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+
+    /// Builder pattern: set feet density (clamped to `0..=2`)
+    #[must_use]
+    pub const fn feet_density(mut self, density: u8) -> Self {
+        self.feet_density = if density > 2 { 2 } else { density };
         self
     }
 }
@@ -1116,6 +1166,27 @@ mod tests {
         // Above the upper bound → clamped to 0.75.
         params.set_swing_ratio(1.0);
         assert!((params.swing_ratio - 0.75).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_style_and_feet_density_defaults_and_bounds() {
+        let mut params = MusicalParams::default();
+        assert_eq!(params.style, Style::Legacy);
+        assert_eq!(params.feet_density, 1);
+
+        params.set_style(Style::Reel);
+        assert_eq!(params.style, Style::Reel);
+
+        params.set_feet_density(0);
+        assert_eq!(params.feet_density, 0);
+        params.set_feet_density(2);
+        assert_eq!(params.feet_density, 2);
+        params.set_feet_density(99);
+        assert_eq!(params.feet_density, 2);
+
+        let built = MusicalParams::default().style(Style::Reel).feet_density(5);
+        assert_eq!(built.style, Style::Reel);
+        assert_eq!(built.feet_density, 2);
     }
 }
 

@@ -597,6 +597,14 @@ impl MusicComposer {
         self.musical_params.set_swing_ratio(ratio);
     }
 
+    pub fn set_style(&mut self, style: harmonium_core::params::Style) {
+        self.musical_params.set_style(style);
+    }
+
+    pub fn set_feet_density(&mut self, density: u8) {
+        self.musical_params.set_feet_density(density);
+    }
+
     pub fn enable_rhythm(&mut self, e: bool) {
         self.musical_params.enable_rhythm = e;
     }
@@ -778,6 +786,8 @@ impl MusicComposer {
         // Preserve runtime state that shouldn't be overwritten by the mapper
         let mut new_params = mapped;
         new_params.rhythm_mode = self.musical_params.rhythm_mode;
+        new_params.style = self.musical_params.style;
+        new_params.feet_density = self.musical_params.feet_density;
         new_params.enable_rhythm = self.musical_params.enable_rhythm;
         new_params.enable_harmony = self.musical_params.enable_harmony;
         new_params.enable_melody = self.musical_params.enable_melody;

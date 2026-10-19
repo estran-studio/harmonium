@@ -115,7 +115,7 @@ pub fn timeline_to_musicxml_with_instruments(
         .unwrap();
     writeln!(xml, "    <score-part id=\"P2\"><part-name>{lead_name}</part-name></score-part>")
         .unwrap();
-    writeln!(xml, "    <score-part id=\"P3\"><part-name>Chords</part-name></score-part>").unwrap();
+    let _ = writeln!(xml, "    <score-part id=\"P3\"><part-name>Chords</part-name></score-part>");
     writeln!(xml, "    <score-part id=\"P4\"><part-name>Drums</part-name></score-part>").unwrap();
     writeln!(xml, "  </part-list>").unwrap();
 
