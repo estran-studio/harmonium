@@ -35,7 +35,7 @@ pub use feet::{
 };
 pub use fiddle::{
     BARS_PER_STRAIN, CELLS_PER_TUNE, FiddleLine, eighth_velocity, fold_midi_to_tessitura,
-    tonic_midi_for_key, transpose_cell_octaves,
+    same_cell_up_to_octave, tonic_midi_for_key, transpose_cell_octaves,
 };
 pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,
