@@ -1,6 +1,6 @@
 # Phase 0 — Horloge et playback
 
-**Statut** : en cours | **Date** : 2026-10-18 | **Crates** : `harmonium_host` (principal), `harmonium_core` (types), `harmonium_cli` (vérification)
+**Statut** : terminée (2026-10-19) | **Date** : 2026-10-18 | **Crates** : `harmonium_host` (principal), `harmonium_core` (types), `harmonium_cli` (vérification)
 
 ## Problème
 

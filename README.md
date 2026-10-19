@@ -6,7 +6,7 @@ canadien-français, piloté en temps réel par l'état d'un jeu. Conçu pour
 émotionnelles du personnage pilotent la musique.
 
 Direction et principes : [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
-Phase en cours : [`specs/008-phase0-clock-playback/plan.md`](specs/008-phase0-clock-playback/plan.md).
+Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playback/plan.md).
 
 ## Workspace
 
