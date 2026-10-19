@@ -291,6 +291,82 @@ fn parse_record_command(tokens: &[&str]) -> Result<EngineCommand> {
     Ok(EngineCommand::StartRecording(format))
 }
 
+/// CLI-only commands, handled directly by the REPL (they need the playback
+/// ring or the clock reader, so they do not go through `EngineCommand`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CliCommand {
+    /// Set the swing ratio (already clamped to 0.5..=0.75; `clamped` tells
+    /// whether the user's value was out of range).
+    Swing { ratio: f32, clamped: bool },
+    /// Audible tempo override, reached linearly over `ramp_pulses` pulse
+    /// boundaries (`0` = jump at the next boundary).
+    Tempo { bpm: f32, ramp_pulses: u8 },
+    /// Back to the measures' tempo at the next pulse boundary.
+    ClearTempo,
+    /// Live visual metronome from `BeatInfo`.
+    Beat,
+}
+
+/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
+pub const SWING_MIN: f32 = 0.5;
+/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
+pub const SWING_MAX: f32 = 0.75;
+
+/// Parse the CLI-only commands (`swing`, `tempo`, `beat`). `tokens[0]` is the
+/// command name; anything else is an error (this parser never shadows the
+/// `EngineCommand` table above).
+pub fn parse_cli_command(tokens: &[&str]) -> Result<CliCommand> {
+    match tokens.first().copied() {
+        Some("swing") => parse_swing_command(&tokens[1..]),
+        Some("tempo") => parse_tempo_command(&tokens[1..]),
+        Some("beat") => {
+            if tokens.len() == 1 {
+                Ok(CliCommand::Beat)
+            } else {
+                Err(anyhow!("Usage: beat"))
+            }
+        }
+        Some(other) => Err(anyhow!("Not a clock command: {other}")),
+        None => Err(anyhow!("Empty command")),
+    }
+}
+
+/// Parse `swing <ratio>`: a finite positive number, clamped to
+/// 0.5..=0.75 (out-of-range values are clamped, not rejected).
+fn parse_swing_command(tokens: &[&str]) -> Result<CliCommand> {
+    if tokens.len() != 1 {
+        return Err(anyhow!("Usage: swing <0.5-0.75>"));
+    }
+    let ratio: f32 =
+        tokens[0].parse().map_err(|_| anyhow!("Invalid swing ratio: {}", tokens[0]))?;
+    if !ratio.is_finite() || ratio <= 0.0 {
+        return Err(anyhow!("Invalid swing ratio: {}", tokens[0]));
+    }
+    let clamped = ratio.clamp(SWING_MIN, SWING_MAX);
+    Ok(CliCommand::Swing { ratio: clamped, clamped: clamped != ratio })
+}
+
+/// Parse `tempo <bpm> [pulses]` or `tempo off`. The engine clamps the BPM to
+/// its 40–300 range; `pulses` is a `u8` ramp length (`0` = jump).
+fn parse_tempo_command(tokens: &[&str]) -> Result<CliCommand> {
+    if tokens.len() == 1 && tokens[0].eq_ignore_ascii_case("off") {
+        return Ok(CliCommand::ClearTempo);
+    }
+    if tokens.len() != 1 && tokens.len() != 2 {
+        return Err(anyhow!("Usage: tempo <bpm> [pulses] | tempo off"));
+    }
+    let bpm: f32 = tokens[0].parse().map_err(|_| anyhow!("Invalid tempo: {}", tokens[0]))?;
+    if !bpm.is_finite() || bpm <= 0.0 {
+        return Err(anyhow!("Invalid tempo: {}", tokens[0]));
+    }
+    let ramp_pulses = if tokens.len() == 2 {
+        tokens[1].parse().map_err(|_| anyhow!("Invalid pulse count: {}", tokens[1]))?
+    } else {
+        0u8
+    };
+    Ok(CliCommand::Tempo { bpm, ramp_pulses })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,5 +411,78 @@ mod tests {
     fn test_invalid_command() {
         let result = parse_command("invalid");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_swing() {
+        assert!(matches!(
+            parse_cli_command(&["swing", "0.6"]),
+            Ok(CliCommand::Swing { ratio, clamped: false }) if ratio == 0.6
+        ));
+        assert!(matches!(
+            parse_cli_command(&["swing", "0.5"]),
+            Ok(CliCommand::Swing { ratio, clamped: false }) if ratio == 0.5
+        ));
+    }
+
+    #[test]
+    fn test_parse_swing_clamps_out_of_range() {
+        assert!(matches!(
+            parse_cli_command(&["swing", "0.9"]),
+            Ok(CliCommand::Swing { ratio, clamped: true }) if ratio == SWING_MAX
+        ));
+        assert!(matches!(
+            parse_cli_command(&["swing", "0.1"]),
+            Ok(CliCommand::Swing { ratio, clamped: true }) if ratio == SWING_MIN
+        ));
+    }
+
+    #[test]
+    fn test_parse_swing_invalid() {
+        assert!(parse_cli_command(&["swing"]).is_err());
+        assert!(parse_cli_command(&["swing", "0.6", "0.7"]).is_err());
+        assert!(parse_cli_command(&["swing", "lourd"]).is_err());
+        assert!(parse_cli_command(&["swing", "-1.0"]).is_err());
+        assert!(parse_cli_command(&["swing", "NaN"]).is_err());
+    }
+
+    #[test]
+    fn test_parse_tempo() {
+        assert!(matches!(
+            parse_cli_command(&["tempo", "200"]),
+            Ok(CliCommand::Tempo { bpm, ramp_pulses: 0 }) if bpm == 200.0
+        ));
+        assert!(matches!(
+            parse_cli_command(&["tempo", "200", "8"]),
+            Ok(CliCommand::Tempo { bpm, ramp_pulses: 8 }) if bpm == 200.0
+        ));
+    }
+
+    #[test]
+    fn test_parse_tempo_off() {
+        assert!(matches!(parse_cli_command(&["tempo", "off"]), Ok(CliCommand::ClearTempo)));
+        assert!(matches!(parse_cli_command(&["tempo", "OFF"]), Ok(CliCommand::ClearTempo)));
+    }
+
+    #[test]
+    fn test_parse_tempo_invalid() {
+        assert!(parse_cli_command(&["tempo"]).is_err());
+        assert!(parse_cli_command(&["tempo", "vite"]).is_err());
+        assert!(parse_cli_command(&["tempo", "-40"]).is_err());
+        assert!(parse_cli_command(&["tempo", "200", "huit"]).is_err());
+        assert!(parse_cli_command(&["tempo", "200", "300"]).is_err());
+        assert!(parse_cli_command(&["tempo", "200", "8", "x"]).is_err());
+    }
+
+    #[test]
+    fn test_parse_beat() {
+        assert!(matches!(parse_cli_command(&["beat"]), Ok(CliCommand::Beat)));
+        assert!(parse_cli_command(&["beat", "vite"]).is_err());
+    }
+
+    #[test]
+    fn test_parse_cli_rejects_other_commands() {
+        assert!(parse_cli_command(&["set", "bpm", "140"]).is_err());
+        assert!(parse_cli_command(&[]).is_err());
     }
 }
