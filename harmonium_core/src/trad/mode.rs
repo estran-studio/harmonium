@@ -89,6 +89,30 @@ impl Mode {
             raw as u8
         }
     }
+
+    /// Retourne le degré d'échelle dans `1..=7` si la note MIDI appartient au
+    /// mode pour la tonique `key` (`0..12`), ou `None` si la note est hors du mode.
+    #[must_use]
+    pub const fn scale_degree_of_midi(self, key: PitchClass, midi: u8) -> Option<u8> {
+        let key_pc = (key % 12) as i8;
+        let midi_pc = (midi % 12) as i8;
+        let semitones = (midi_pc - key_pc).rem_euclid(12);
+        let intervals = self.intervals();
+        let mut i = 0usize;
+        while i < 7 {
+            if intervals[i] == semitones {
+                return Some((i as u8) + 1);
+            }
+            i += 1;
+        }
+        None
+    }
+
+    /// Indique si la note MIDI appartient au mode pour la tonique `key`.
+    #[must_use]
+    pub const fn contains_midi(self, key: PitchClass, midi: u8) -> bool {
+        self.scale_degree_of_midi(key, midi).is_some()
+    }
 }
 
 /// Convertit un degré (`1` = tonique, `8` = octave, `5,` = `-3`, `7,` = `-1`)

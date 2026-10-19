@@ -11,7 +11,11 @@ use super::{
     cells::CellRole,
     mode::{Mode, PitchClass},
 };
-use crate::params::{PulseSpec, TimeSignature};
+use crate::{
+    harmony::RngCore,
+    params::{PulseSpec, TimeSignature},
+    tuning::ReelFiddleParams,
+};
 
 /// Type de pièce traditionnelle québécoise (D3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -220,6 +224,70 @@ impl TunePlan {
         Self::new(key, mode, TuneKind::Reel, RepeatScheme::Aabb)
     }
 
+    /// Tire un [`TunePlan`] de reel en forme AABB selon la distribution par
+    /// défaut de [`ReelFiddleParams`] (D4, constitution V) :
+    /// - `D Ionian` (poids 3), `G Ionian` (poids 3), `A Ionian` (poids 2),
+    ///   `A Mixolydian` (poids 1), `D Mixolydian` (poids 1) ;
+    /// - si `key_hint` est fourni, force la tonique `key_hint % 12`.
+    #[must_use]
+    pub fn draw(rng: &mut dyn RngCore, key_hint: Option<PitchClass>) -> Self {
+        Self::draw_with_params(rng, key_hint, &ReelFiddleParams::default())
+    }
+
+    /// Tire un [`TunePlan`] de reel en forme AABB à partir des poids de
+    /// [`ReelFiddleParams`] (portés par [`crate::tuning::TuningParams`]).
+    #[must_use]
+    pub fn draw_with_params(
+        rng: &mut dyn RngCore,
+        key_hint: Option<PitchClass>,
+        params: &ReelFiddleParams,
+    ) -> Self {
+        let candidates: [(PitchClass, Mode, u32); 5] = [
+            (2, Mode::Ionian, params.weight_d_ionian),
+            (7, Mode::Ionian, params.weight_g_ionian),
+            (9, Mode::Ionian, params.weight_a_ionian),
+            (9, Mode::Mixolydian, params.weight_a_mixolydian),
+            (2, Mode::Mixolydian, params.weight_d_mixolydian),
+        ];
+
+        if let Some(hint) = key_hint {
+            let key = hint % 12;
+            let total: u32 = candidates
+                .iter()
+                .filter(|&&(k, _, _)| k == key)
+                .map(|&(_, _, w)| w)
+                .sum();
+            if total == 0 {
+                return Self::reel(key, Mode::Ionian);
+            }
+            let mut pick = rng.next_range_usize(0..(total as usize)) as u32;
+            for &(k, mode, weight) in &candidates {
+                if k == key && weight > 0 {
+                    if pick < weight {
+                        return Self::reel(key, mode);
+                    }
+                    pick -= weight;
+                }
+            }
+            return Self::reel(key, Mode::Ionian);
+        }
+
+        let total: u32 = candidates.iter().map(|&(_, _, w)| w).sum();
+        if total == 0 {
+            return Self::default();
+        }
+        let mut pick = rng.next_range_usize(0..(total as usize)) as u32;
+        for &(key, mode, weight) in &candidates {
+            if weight > 0 {
+                if pick < weight {
+                    return Self::reel(key, mode);
+                }
+                pick -= weight;
+            }
+        }
+        Self::default()
+    }
+
     /// Nombre total de mesures du tune (32 en forme AABB).
     #[must_use]
     pub const fn total_bars(&self) -> usize {
@@ -312,5 +380,35 @@ mod tests {
         // Vérifie le repli modulo 32 au-delà d'un tune complet
         assert_eq!(plan.bar_role(32), plan.bar_role(0));
         assert_eq!(plan.bar_role(47), plan.bar_role(15));
+    }
+
+    #[test]
+    fn draw_respects_weights_and_key_hint() {
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
+
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let mut counts = std::collections::HashMap::new();
+        for _ in 0..1000 {
+            let plan = TunePlan::draw(&mut rng, None);
+            assert_eq!(plan.kind, TuneKind::Reel);
+            assert_eq!(plan.scheme, RepeatScheme::Aabb);
+            *counts.entry((plan.key, plan.mode)).or_insert(0usize) += 1;
+        }
+
+        // Les 5 combinaisons D/G/A Ionian + A/D Mixolydian doivent apparaître
+        assert_eq!(counts.len(), 5);
+        assert!(counts[&(2, Mode::Ionian)] > counts[&(2, Mode::Mixolydian)]);
+        assert!(counts[&(7, Mode::Ionian)] > counts[&(9, Mode::Mixolydian)]);
+        assert!(counts[&(9, Mode::Ionian)] > counts[&(9, Mode::Mixolydian)]);
+
+        // Avec indice de tonalité
+        let hinted_g = TunePlan::draw(&mut rng, Some(7));
+        assert_eq!(hinted_g.key, 7);
+        assert_eq!(hinted_g.mode, Mode::Ionian);
+
+        let hinted_c = TunePlan::draw(&mut rng, Some(0));
+        assert_eq!(hinted_c.key, 0);
+        assert_eq!(hinted_c.mode, Mode::Ionian);
     }
 }
