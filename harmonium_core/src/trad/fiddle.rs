@@ -33,7 +33,7 @@ pub const BARS_PER_STRAIN: usize = 8;
 pub const CELLS_PER_TUNE: usize = 16;
 
 /// État d'une ligne de violon pour un tune en cours (D4, D6).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FiddleLine {
     plan: TunePlan,
     cells_a: [Cell; BARS_PER_STRAIN],

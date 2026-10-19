@@ -14,16 +14,18 @@
 //!   ([`harmonize_bar`], [`TuneHarmony`]) ;
 //! - [`accomp`] : basse et guitare d'accompagnement du reel (D8) ;
 //! - [`feet`] : podorythmie du reel (D9), validation de table TOML et
-//!   génération de notes de talon et pointe via [`feet_notes`].
+//!   génération de notes de talon et pointe via [`feet_notes`] ;
+//! - [`generator`] : [`TradGenerator`] assemblant plan, violon, harmonie,
+//!   accompagnement et podorythmie en [`crate::timeline::Measure`] (D1).
 
 pub mod accomp;
 pub mod cells;
 pub mod feet;
 pub mod fiddle;
+pub mod generator;
 pub mod harmony;
 pub mod mode;
 pub mod plan;
-
 pub use accomp::{Guitarist, bass_bar};
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, FIFTH_DIATONIC_STEPS,
@@ -36,6 +38,10 @@ pub use feet::{
 pub use fiddle::{
     BARS_PER_STRAIN, CELLS_PER_TUNE, FiddleLine, eighth_velocity, fold_midi_to_tessitura,
     same_cell_up_to_octave, tonic_midi_for_key, transpose_cell_octaves,
+};
+pub use generator::{
+    ActiveTune, BARS_PER_TUNE, TradGenerator, build_chord_context, draw_next_tune_plan,
+    is_same_or_relative_plan, pitch_class_name, relative_tune_plan, trad_chord_name,
 };
 pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,
