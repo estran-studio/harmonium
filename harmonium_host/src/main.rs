@@ -287,6 +287,7 @@ fn main() {
         _report_rx,
         _font_queue,
         _transport_position,
+        _clock_reader,
         finished_recordings,
     ) = audio::create_timeline_stream(sf2_data.as_deref()).unwrap_or_else(|e| {
         #[allow(clippy::panic)]

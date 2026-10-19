@@ -21,6 +21,7 @@ harmonium_audio = { path = "../harmonium_audio" }
 
 cpal = { version = "0.15", optional = true }
 rtrb = "0.3"
+triple_buffer = "8"
 arrayvec = "0.7"
 rosc = "0.10"
 rand = "0.8.5"
@@ -30,3 +31,4 @@ ctrlc = "3.4"
 
 [dev-dependencies]
 serde_json = "1.0"
+triple_buffer = "8"

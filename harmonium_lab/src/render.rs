@@ -4,7 +4,7 @@
 //! without requiring an audio device. Uses the same offline engine as the CLI
 //! export command.
 
-use std::path::Path;
+use std::{path::Path, time::Instant};
 
 use anyhow::{Context, Result};
 use harmonium::{audio, playback::PlaybackCommand};
@@ -64,7 +64,7 @@ pub fn render_to_wav(
     config: &RenderConfig,
     sf2_bytes: Option<&[u8]>,
 ) -> Result<RenderOutput> {
-    let (mut composer, mut playback, mut cmd_tx, mut report_rx, finished_recordings) =
+    let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock_reader, finished_recordings) =
         audio::create_offline_engine(sf2_bytes, SAMPLE_RATE)
             .map_err(|e| anyhow::anyhow!("Failed to create offline engine: {}", e))?;
 
@@ -117,7 +117,7 @@ pub fn render_to_wav(
             *s = 0.0;
         }
 
-        playback.process_buffer(&mut buffer[..chunk_len], CHANNELS);
+        playback.process_buffer(&mut buffer[..chunk_len], CHANNELS, Instant::now());
         rendered_samples += chunk_samples;
 
         // Drain reports to avoid ring buffer backup
@@ -130,7 +130,7 @@ pub fn render_to_wav(
     let _ = cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::MusicXml));
     // Process stop commands
     let mut stop_buf = vec![0.0f32; BUFFER_SIZE * CHANNELS];
-    playback.process_buffer(&mut stop_buf, CHANNELS);
+    playback.process_buffer(&mut stop_buf, CHANNELS, Instant::now());
 
     // Collect WAV + MIDI + MusicXML bytes
     let recordings =

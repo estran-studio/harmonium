@@ -1,12 +1,16 @@
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Instant,
 };
 
 use harmonium_core::{EngineReport, MeasureSnapshot, params::SessionConfig};
 
 use crate::{
     FinishedRecordings, FontQueue,
+    clock::{BeatInfo, ClockReader},
     composer::MusicComposer,
     playback::{PlaybackCommand, TransportPosition},
 };
@@ -55,6 +59,10 @@ pub struct NativeHandle {
     /// Shared transport position, packed (bar, step) — written by the audio
     /// thread, read lock-free through the handle's own Arc clone
     transport_position: Arc<AtomicU64>,
+    /// Lock-free reader of the published predictive clock. Single-consumer:
+    /// `beat_info` reads it on the owning thread; `clock_reader()` hands it
+    /// to a third thread.
+    clock_reader: ClockReader,
     /// SPSC producer for the live-MIDI monitor. `take`n once by the MIDI
     /// input subsystem (the controller note-on/off callback), which then
     /// owns it for the life of the connection. `None` after it's taken.
@@ -82,6 +90,7 @@ impl NativeHandle {
             report_rx,
             font_queue,
             transport_position,
+            clock_reader,
             finished_recordings,
         ) = crate::audio::create_timeline_stream(sf2_bytes)?;
 
@@ -90,6 +99,7 @@ impl NativeHandle {
             composer,
             playback_cmd_tx,
             transport_position,
+            clock_reader,
             live_midi_tx: Some(LiveMidiSender { tx: live_midi_tx }),
             report_rx,
             session_config,
@@ -258,6 +268,27 @@ impl NativeHandle {
     /// per event and decode with [`crate::playback::unpack`].
     pub fn transport_position_handle(&self) -> Arc<AtomicU64> {
         self.transport_position.clone()
+    }
+
+    // === Beat clock (predictive, lock-free) ===
+
+    /// Read the latest [`BeatInfo`] for the given wall-clock instant.
+    ///
+    /// Lock-free: advancing the single-consumer clock reader is a `&mut`
+    /// operation on the owning thread. To read from a dedicated thread, move
+    /// the reader out with [`Self::clock_reader`] instead.
+    pub fn beat_info(&mut self, now: Instant) -> BeatInfo {
+        let clock = self.clock_reader.read();
+        BeatInfo::from_clock(&clock, now)
+    }
+
+    /// Hand the lock-free clock reader to a third thread (the game).
+    ///
+    /// Moves the single-consumer reader out, replacing the handle's own with
+    /// a disconnected one (always reports the initial clock), so the handle
+    /// stays valid for later [`Self::beat_info`] calls.
+    pub fn clock_reader(&mut self) -> ClockReader {
+        std::mem::replace(&mut self.clock_reader, ClockReader::disconnected())
     }
 
     /// Apply param changes while preserving the preview window.
