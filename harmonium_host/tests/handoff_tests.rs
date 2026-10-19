@@ -94,6 +94,8 @@ fn make_harness(seed: u64) -> Harness {
         seed,
     );
     let log = EventLog::default();
+    let initial_clock = harmonium::TransportClock::initial(SAMPLE_RATE as u32);
+    let (clock_tx, _clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
     let engine = PlaybackEngine::new(
         SAMPLE_RATE,
         Box::new(RecordingRenderer { log: log.clone() }),
@@ -103,6 +105,7 @@ fn make_harness(seed: u64) -> Harness {
         live_rx,
         report_tx,
         transport.clone(),
+        clock_tx,
     );
 
     Harness { composer, engine, transport, cmd_tx, report_rx, log }
@@ -146,7 +149,7 @@ impl Harness {
     fn render_checked_step(&mut self, expect_bar: usize, step: usize) {
         self.composer.generate_ahead();
         let mut buffer = vec![0.0f32; SAMPLES_PER_STEP * CHANNELS];
-        self.engine.process_buffer(&mut buffer, CHANNELS);
+        self.engine.process_buffer(&mut buffer, CHANNELS, std::time::Instant::now());
         while self.report_rx.pop().is_ok() {}
         let played = played_step_notes(&self.log);
         let expected = expected_step_notes(&self.composer, expect_bar, step);
@@ -176,7 +179,7 @@ impl Harness {
         for _ in 0..STEPS_PER_BAR {
             self.composer.generate_ahead();
             let mut buffer = vec![0.0f32; SAMPLES_PER_STEP * CHANNELS];
-            self.engine.process_buffer(&mut buffer, CHANNELS);
+            self.engine.process_buffer(&mut buffer, CHANNELS, std::time::Instant::now());
             while self.report_rx.pop().is_ok() {}
             collected.extend(played_step_notes(&self.log));
         }
@@ -333,7 +336,7 @@ fn control_storm_stays_rt_clean() {
             let _ = h.cmd_tx.push(PlaybackCommand::Seek(1));
         }
         buffer.fill(0.0);
-        h.engine.process_buffer(&mut buffer, CHANNELS);
+        h.engine.process_buffer(&mut buffer, CHANNELS, std::time::Instant::now());
         while h.report_rx.pop().is_ok() {}
         h.log.drain();
     }

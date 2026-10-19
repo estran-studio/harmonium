@@ -1,12 +1,16 @@
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Instant,
 };
 
 use harmonium_core::{EngineReport, MeasureSnapshot, params::SessionConfig};
 
 use crate::{
     FinishedRecordings, FontQueue,
+    clock::{BeatInfo, ClockReader},
     composer::MusicComposer,
     playback::{PlaybackCommand, TransportPosition},
 };
@@ -55,6 +59,11 @@ pub struct NativeHandle {
     /// Shared transport position, packed (bar, step) — written by the audio
     /// thread, read lock-free through the handle's own Arc clone
     transport_position: Arc<AtomicU64>,
+    /// Lock-free reader of the published predictive clock. Single-consumer:
+    /// `beat_info` reads it on the owning thread; `take_clock_reader` hands it
+    /// to a third thread (the game). `None` while it is taken — `beat_info`
+    /// then reports `None` rather than a false beat.
+    clock_reader: Option<ClockReader>,
     /// SPSC producer for the live-MIDI monitor. `take`n once by the MIDI
     /// input subsystem (the controller note-on/off callback), which then
     /// owns it for the life of the connection. `None` after it's taken.
@@ -82,6 +91,7 @@ impl NativeHandle {
             report_rx,
             font_queue,
             transport_position,
+            clock_reader,
             finished_recordings,
         ) = crate::audio::create_timeline_stream(sf2_bytes)?;
 
@@ -90,6 +100,7 @@ impl NativeHandle {
             composer,
             playback_cmd_tx,
             transport_position,
+            clock_reader: Some(clock_reader),
             live_midi_tx: Some(LiveMidiSender { tx: live_midi_tx }),
             report_rx,
             session_config,
@@ -258,6 +269,37 @@ impl NativeHandle {
     /// per event and decode with [`crate::playback::unpack`].
     pub fn transport_position_handle(&self) -> Arc<AtomicU64> {
         self.transport_position.clone()
+    }
+
+    // === Beat clock (predictive, lock-free) ===
+
+    /// Read the latest [`BeatInfo`] for the given wall-clock instant.
+    ///
+    /// Returns `None` while the clock reader is taken (see
+    /// [`Self::take_clock_reader`]): the handle never fabricates a beat, so a
+    /// caller that holds the reader on another thread gets a truthful "no
+    /// data" instead of a false one. Lock-free: advancing the single-consumer
+    /// clock reader is a `&mut` operation on the owning thread.
+    pub fn beat_info(&mut self, now: Instant) -> Option<BeatInfo> {
+        let clock = self.clock_reader.as_mut()?.read();
+        Some(BeatInfo::from_clock(&clock, now))
+    }
+
+    /// Hand the lock-free clock reader to a third thread (the game).
+    ///
+    /// Returns `Some` the first time (moved to the game thread), `None`
+    /// thereafter — the caller is responsible for returning it via
+    /// [`Self::restore_clock_reader`] so the handle can read beats again.
+    /// Mirrors [`Self::take_live_midi_sender`].
+    pub fn take_clock_reader(&mut self) -> Option<ClockReader> {
+        self.clock_reader.take()
+    }
+
+    /// Return a previously-taken clock reader so [`Self::beat_info`] can read
+    /// the beat again (the reader is single-consumer, not cloneable). Mirrors
+    /// [`Self::restore_live_midi_sender`].
+    pub fn restore_clock_reader(&mut self, reader: ClockReader) {
+        self.clock_reader = Some(reader);
     }
 
     /// Apply param changes while preserving the preview window.
@@ -637,5 +679,43 @@ impl NativeHandle {
                 let _ = self.playback_cmd_tx.push(PlaybackCommand::LoadFont { id, bytes });
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The take/restore contract: while the clock reader is taken, `beat_info`
+    /// reports `None` — never a fabricated beat — and after restore it reports
+    /// `Some` coherent with the restored reader.
+    #[test]
+    fn take_and_restore_clock_reader_never_fabricates_a_beat() -> Result<(), String> {
+        // `start_paused` opens a real output stream (available on the macOS
+        // workstation and CI); on a device-less host the contract cannot be
+        // exercised and the test is a no-op.
+        let Ok(mut handle) = NativeHandle::start_paused(None) else {
+            return Ok(());
+        };
+        let now = Instant::now();
+
+        // Reader present: a real beat.
+        assert!(handle.beat_info(now).is_some(), "beat_info before take");
+
+        // Take it: the game owns the reader, the handle must report None.
+        let mut reader = handle.take_clock_reader().ok_or("reader present before take")?;
+        assert!(handle.take_clock_reader().is_none(), "reader is single-instance");
+        assert!(handle.beat_info(now).is_none(), "no fabricated beat while taken");
+
+        // The game reads the clock through the moved-out reader.
+        let clock = reader.read();
+
+        // Restore it: beat_info is Some again and coherent with the reader.
+        handle.restore_clock_reader(reader);
+        let beat = handle.beat_info(now).ok_or("beat after restore")?;
+        assert_eq!(beat.bar, clock.position.bar);
+        assert_eq!(beat.pulse, clock.pulse_in_bar + 1);
+        assert_eq!(beat.next_pulse_frame, clock.next_pulse_frame);
+        Ok(())
     }
 }

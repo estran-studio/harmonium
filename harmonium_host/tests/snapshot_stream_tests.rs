@@ -98,7 +98,7 @@ fn first_diff_location(a: &str, b: &str) -> (usize, usize) {
 /// transport-position change.
 #[test]
 fn snapshot_stream_unchanged() {
-    let (mut composer, mut playback, _cmd_tx, _report_rx, _recordings) =
+    let (mut composer, mut playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
         create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Fixed seed: reproducible across runs and machines. set_seed resets
@@ -124,7 +124,7 @@ fn snapshot_stream_unchanged() {
 
         composer.generate_ahead();
         buffer[..buf_len].fill(0.0);
-        playback.process_buffer(&mut buffer[..buf_len], channels);
+        playback.process_buffer(&mut buffer[..buf_len], channels, std::time::Instant::now());
         processed += this_chunk;
     }
 

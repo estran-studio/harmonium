@@ -3,9 +3,12 @@
 //! Minimal audio-thread component: reads pre-generated measures from a ring buffer,
 //! ticks the playhead, renders audio events. No generation, no allocations in steady state.
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Instant,
 };
 
 use arrayvec::{ArrayString, ArrayVec};
@@ -13,9 +16,11 @@ use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{
     events::AudioEvent,
     log,
-    params::MusicalParams,
+    params::{MusicalParams, PulseSpec},
     timeline::{Measure, Playhead},
 };
+
+use crate::clock::TransportClock;
 
 /// Capacity of the composer → playback staged-measure ring and of the
 /// playback prefetch window. A loop longer than this is refused on the main
@@ -209,6 +214,17 @@ pub struct PlaybackEngine {
     // Timing
     sample_counter: usize,
     samples_per_step: usize,
+    // Global frame counter: total frames rendered since engine start. The
+    // clock's pulse/buffer fields live in this frame space.
+    frame_counter: u64,
+
+    // Predictive clock (D1): the current state plus the triple-buffer
+    // producer half. `clock` is copied into the buffer on each publish (a
+    // plain memcpy, no allocation, no lock). `current_pulse` is the
+    // dance-pulse spec of the measure under the playhead, captured at load.
+    clock: TransportClock,
+    clock_tx: triple_buffer::Input<TransportClock>,
+    current_pulse: PulseSpec,
 
     // Handoff: composer → playback staged measures (epoch-tagged boxes).
     measure_rx: rtrb::Consumer<TaggedMeasure>,
@@ -277,8 +293,8 @@ struct WindowSlot {
 impl PlaybackEngine {
     /// Create a new PlaybackEngine.
     ///
-    /// Eight arguments is the whole wiring (renderer, three rings,
-    /// transport): bundling them would only rename the tuple.
+    /// Nine arguments is the whole wiring (renderer, three rings,
+    /// transport, clock producer): bundling them would only rename the tuple.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         sample_rate: f64,
@@ -289,6 +305,7 @@ impl PlaybackEngine {
         live_rx: rtrb::Consumer<LiveMidiEvent>,
         report_tx: rtrb::Producer<harmonium_core::EngineReport>,
         transport_position: Arc<AtomicU64>,
+        clock_tx: triple_buffer::Input<TransportClock>,
     ) -> Self {
         let bpm = 120.0;
         let samples_per_step = (sample_rate * 60.0 / (bpm as f64) / 4.0) as usize;
@@ -300,6 +317,10 @@ impl PlaybackEngine {
             sample_rate,
             sample_counter: 0,
             samples_per_step,
+            frame_counter: 0,
+            clock: TransportClock::initial(sample_rate as u32),
+            clock_tx,
+            current_pulse: PulseSpec::default(),
             measure_rx,
             return_tx,
             window: ArrayVec::new(),
@@ -329,11 +350,27 @@ impl PlaybackEngine {
     }
 
     /// Audio thread: process a buffer of audio samples.
-    pub fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
+    ///
+    /// `buffer_start_instant` is the audible wall-clock instant of this
+    /// buffer's first frame — computed by the cpal path from the
+    /// `OutputCallbackInfo` timestamps (fallback `Instant::now()`), or just
+    /// `Instant::now()` for offline rendering.
+    pub fn process_buffer(
+        &mut self,
+        output: &mut [f32],
+        channels: usize,
+        buffer_start_instant: Instant,
+    ) {
         // Process commands first (outside rt context)
         self.process_commands();
         // Voice any notes the player pressed on their MIDI controller.
         self.process_live_midi();
+
+        // Publish the buffer anchor once per buffer: the wall-clock/frame
+        // mapping the reader interpolates from.
+        self.clock.buffer_start_frame = self.frame_counter;
+        self.clock.buffer_start_instant = buffer_start_instant;
+        self.publish_clock();
 
         let total_samples = output.len() / channels;
         let mut processed = 0;
@@ -353,6 +390,7 @@ impl PlaybackEngine {
 
             self.renderer.process_buffer(chunk, channels);
             self.sample_counter += chunk_size;
+            self.frame_counter += chunk_size as u64;
             processed += chunk_size;
 
             if self.sample_counter >= self.samples_per_step {
@@ -405,6 +443,21 @@ impl PlaybackEngine {
             }
         }
 
+        // Freeze the pulse timing at its boundary and refresh the clock
+        // position. Both use the *entry* step (the step about to be played),
+        // so `pulse_in_bar` and `position.step` always agree (the D1 planning
+        // invariant: step durations of an in-flight pulse never change).
+        let step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
+        let steps_per_pulse = usize::from(self.current_pulse.steps_per_pulse).max(1);
+        if step.is_multiple_of(steps_per_pulse) {
+            self.freeze_pulse(step, steps_per_pulse);
+        }
+        self.clock.position = TransportPosition {
+            bar: self.playhead.current_bar(),
+            step,
+            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
+        };
+
         // Tick the playhead
         let events = self.playhead.tick();
 
@@ -425,12 +478,38 @@ impl PlaybackEngine {
             Ordering::Relaxed,
         );
 
+        // Publish the clock once per step (position + pulse fields).
+        self.publish_clock();
+
         // Send report periodically
         let current_step = self.playhead.position.step_in_bar(4);
         if current_step.is_multiple_of(4) {
             self.send_report();
         }
     }
+    /// Freeze the pulse timing at a pulse boundary (step 0, `spp`, `2·spp`, …).
+    ///
+    /// The pulse duration is `steps_per_pulse × samples_per_step` frames and
+    /// is fixed for the whole pulse: `next_pulse_frame` is therefore exact by
+    /// construction (the D1 invariant). Called before the playhead ticks, so
+    /// a measure's new tempo — loaded at the same boundary — already applies.
+    fn freeze_pulse(&mut self, step: usize, steps_per_pulse: usize) {
+        let pulse_duration = steps_per_pulse * self.samples_per_step;
+        self.clock.pulse_in_bar = (step / steps_per_pulse) as u8;
+        self.clock.pulse_start_frame = self.frame_counter;
+        self.clock.next_pulse_frame = self.frame_counter + pulse_duration as u64;
+    }
+
+    /// Publish the current clock into the triple buffer.
+    ///
+    /// Runs under [`RtGuard`]: the producer `write` is a memcpy + atomic
+    /// swap (no allocation, no lock), and the guard makes a debug build
+    /// panic if that ever regresses.
+    fn publish_clock(&mut self) {
+        let _rt = RtGuard::enter();
+        self.clock_tx.write(self.clock);
+    }
+
     /// Drain the staged ring into the window. Must run under [`RtGuard`]:
     /// pointer moves only. Stops draining while the window is full (the
     /// composer sees ring backpressure and retries later).
@@ -560,6 +639,10 @@ impl PlaybackEngine {
                 ArrayString::from(&slot.measure.chord_context.chord_name).unwrap_or_default();
             self.last_chord_root_offset = slot.measure.chord_context.root_offset;
             self.last_chord_is_minor = slot.measure.chord_context.is_minor;
+
+            // Capture the dance-pulse spec before the box moves into the
+            // playhead (Copy field read through the box).
+            self.current_pulse = slot.measure.pulse;
 
             self.playhead.load_measure(slot.measure);
             self.loaded_epoch = Some(slot.epoch);

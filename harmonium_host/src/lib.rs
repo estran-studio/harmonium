@@ -4,6 +4,9 @@ use std::sync::{Arc, Mutex};
 pub mod composer;
 pub mod playback;
 
+// Predictive transport clock (D1/D2): TransportClock, BeatInfo, ClockReader.
+pub mod clock;
+pub use clock::{BeatInfo, ClockReader, TransportClock};
 // Re-exports from workspace crates
 pub use harmonium_audio::{backend, realtime, voice_manager, voicing};
 pub use harmonium_core::{events, fractal, harmony, log, mapper, params, sequencer};

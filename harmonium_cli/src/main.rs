@@ -90,6 +90,7 @@ fn main() -> Result<()> {
             report_rx,
             _font_queue,
             _transport_position,
+            _clock_reader,
             finished_recordings,
         ) = audio::create_timeline_stream(sf2_bytes.as_deref()).map_err(|e| anyhow::anyhow!(e))?;
 

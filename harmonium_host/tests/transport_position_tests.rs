@@ -90,6 +90,8 @@ fn make_playback(n_bars: usize) -> Harness {
     }
 
     let transport = Arc::new(AtomicU64::new(pack(1, 0)));
+    let initial_clock = harmonium::TransportClock::initial(SAMPLE_RATE as u32);
+    let (clock_tx, _clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
     let engine = PlaybackEngine::new(
         SAMPLE_RATE,
         Box::new(NullRenderer),
@@ -99,6 +101,7 @@ fn make_playback(n_bars: usize) -> Harness {
         live_rx,
         report_tx,
         transport.clone(),
+        clock_tx,
     );
 
     Harness { engine, transport, cmd_tx, _live_tx, _report_rx: report_rx, _return_rx: return_rx }
@@ -115,7 +118,7 @@ impl Harness {
         while processed < total_samples {
             let chunk = (total_samples - processed).min(READ_EVERY);
             let buf = &mut buffer[..chunk * 2];
-            self.engine.process_buffer(buf, 2);
+            self.engine.process_buffer(buf, 2, std::time::Instant::now());
             processed += chunk;
             observed.push(self.transport.load(Ordering::Relaxed));
         }
@@ -188,18 +191,18 @@ fn seek_and_seekplayhead_publish_bar_step_zero() {
     // the command's write.
     h.cmd_tx.push(PlaybackCommand::Seek(3)).unwrap();
     let mut empty: [f32; 0] = [];
-    h.engine.process_buffer(&mut empty, 2);
+    h.engine.process_buffer(&mut empty, 2, std::time::Instant::now());
     assert_eq!(h.position(), TransportPosition { bar: 3, step: 0, beat: 1.0 });
 
     // One full step later (counter starts at 0: exactly one tick), the
     // post-tick write publishes (3, 1).
     let mut one_step = vec![0.0f32; SAMPLES_PER_STEP * 2];
-    h.engine.process_buffer(&mut one_step, 2);
+    h.engine.process_buffer(&mut one_step, 2, std::time::Instant::now());
     let after_tick = h.position();
     assert_eq!((after_tick.bar, after_tick.step), (3, 1));
 
     h.cmd_tx.push(PlaybackCommand::SeekPlayhead(5)).unwrap();
-    h.engine.process_buffer(&mut empty, 2);
+    h.engine.process_buffer(&mut empty, 2, std::time::Instant::now());
     assert_eq!(h.position(), TransportPosition { bar: 5, step: 0, beat: 1.0 });
 }
 
@@ -264,7 +267,7 @@ fn position_is_stable_between_ticks() {
 
     // One full step of samples = exactly one tick (counter starts at 0).
     let mut one_step = vec![0.0f32; SAMPLES_PER_STEP * 2];
-    h.engine.process_buffer(&mut one_step, 2);
+    h.engine.process_buffer(&mut one_step, 2, std::time::Instant::now());
     let after_tick = h.position();
     assert_eq!((after_tick.bar, after_tick.step), (1, 1));
 

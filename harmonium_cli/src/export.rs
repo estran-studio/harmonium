@@ -26,8 +26,14 @@ pub fn run(
     record_musicxml: Option<String>,
     record_truth: Option<String>,
 ) -> Result<()> {
-    let (mut composer, mut playback, mut playback_cmd_tx, mut report_rx, finished_recordings) =
-        audio::create_offline_engine(sf2_bytes, SAMPLE_RATE).map_err(|e| anyhow::anyhow!(e))?;
+    let (
+        mut composer,
+        mut playback,
+        mut playback_cmd_tx,
+        mut report_rx,
+        _clock_reader,
+        finished_recordings,
+    ) = audio::create_offline_engine(sf2_bytes, SAMPLE_RATE).map_err(|e| anyhow::anyhow!(e))?;
 
     // Pre-generate bars into the ring buffer
     composer.set_writehead_lookahead(64);
@@ -79,7 +85,7 @@ pub fn run(
         }
 
         // Drive the playback engine
-        playback.process_buffer(&mut buffer[..chunk_len], CHANNELS);
+        playback.process_buffer(&mut buffer[..chunk_len], CHANNELS, std::time::Instant::now());
         rendered_samples += chunk_samples;
 
         // Poll reports
@@ -145,7 +151,7 @@ pub fn run(
 
     // The engine needs one more process_buffer call to handle the stop commands
     buffer.fill(0.0);
-    playback.process_buffer(&mut buffer, CHANNELS);
+    playback.process_buffer(&mut buffer, CHANNELS, std::time::Instant::now());
 
     // Collect finished recordings
     save_recordings(&finished_recordings, &record_wav, &record_midi, &record_musicxml);

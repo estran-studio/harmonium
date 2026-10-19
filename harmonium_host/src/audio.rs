@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex, atomic::AtomicU64};
+use std::{
+    sync::{Arc, Mutex, atomic::AtomicU64},
+    time::Instant,
+};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use harmonium_audio::backend::{
@@ -7,6 +10,7 @@ use harmonium_audio::backend::{
 use harmonium_core::{log, params::SessionConfig};
 
 use crate::{
+    clock::{ClockReader, TransportClock},
     composer::MusicComposer,
     playback::{
         MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure, pack,
@@ -24,6 +28,8 @@ use crate::{
 /// - `FontQueue` — SoundFont loading queue
 /// - `Arc<AtomicU64>` — packed transport position `(bar, step)`, written by
 ///   the playback engine, read lock-free
+/// - `ClockReader` — lock-free reader of the published [`TransportClock`],
+///   for a third thread (the game)
 /// - `FinishedRecordings` — completed recordings
 #[allow(clippy::type_complexity)]
 pub fn create_timeline_stream(
@@ -38,6 +44,7 @@ pub fn create_timeline_stream(
         rtrb::Consumer<harmonium_core::EngineReport>,
         crate::FontQueue,
         Arc<AtomicU64>,
+        ClockReader,
         crate::FinishedRecordings,
     ),
     String,
@@ -63,6 +70,11 @@ pub fn create_timeline_stream(
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     // Shared transport position, packed (bar, step) — initial (1, 0)
     let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
+
+    // Predictive clock: single writer (audio callback) → lock-free reader.
+    let initial_clock = TransportClock::initial(sample_rate as u32);
+    let (clock_tx, clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
+    let clock_reader = ClockReader::from_output(clock_output);
 
     // Font queue (shared between NativeHandle and PlaybackEngine)
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -103,6 +115,7 @@ pub fn create_timeline_stream(
         live_midi_rx,
         report_tx,
         transport_position.clone(),
+        clock_tx,
     );
 
     let err_fn = |err| log::error(&format!("an error occurred on stream: {}", err));
@@ -110,8 +123,16 @@ pub fn create_timeline_stream(
     let stream = device
         .build_output_stream(
             &config.into(),
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                playback.process_buffer(data, channels);
+            move |data: &mut [f32], info: &cpal::OutputCallbackInfo| {
+                // Audible instant of this buffer's first frame: callback
+                // entry time + (playback − callback) device latency. Falls
+                // back to no offset when the timestamps don't line up
+                // (documented degraded path, never silent).
+                let now = Instant::now();
+                let ts = info.timestamp();
+                let buffer_start_instant =
+                    ts.playback.duration_since(&ts.callback).map_or(now, |offset| now + offset);
+                playback.process_buffer(data, channels, buffer_start_instant);
             },
             err_fn,
             None,
@@ -131,6 +152,7 @@ pub fn create_timeline_stream(
         report_rx,
         font_queue,
         transport_position,
+        clock_reader,
         finished_recordings,
     ))
 }
@@ -149,6 +171,7 @@ pub fn create_offline_engine(
         PlaybackEngine,
         rtrb::Producer<PlaybackCommand>,
         rtrb::Consumer<harmonium_core::EngineReport>,
+        ClockReader,
         crate::FinishedRecordings,
     ),
     String,
@@ -164,6 +187,12 @@ pub fn create_offline_engine(
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     // Shared transport position, packed (bar, step) — initial (1, 0)
     let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
+
+    // Predictive clock: single writer (audio callback) → lock-free reader.
+    let initial_clock = TransportClock::initial(sample_rate as u32);
+    let (clock_tx, clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
+    let clock_reader = ClockReader::from_output(clock_output);
+
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let default_routing = vec![0, 0, 0, 0];
@@ -194,9 +223,10 @@ pub fn create_offline_engine(
         live_midi_rx,
         report_tx,
         transport_position,
+        clock_tx,
     );
 
-    Ok((composer, playback, playback_cmd_tx, report_rx, finished_recordings))
+    Ok((composer, playback, playback_cmd_tx, report_rx, clock_reader, finished_recordings))
 }
 
 #[cfg(test)]
@@ -208,7 +238,7 @@ mod tests {
         let sample_rate = 44100.0;
         let channels = 2;
 
-        let (mut composer, mut playback, mut _cmd_tx, mut _report_rx, _recordings) =
+        let (mut composer, mut playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Pre-generate bars
@@ -224,7 +254,7 @@ mod tests {
             for s in buffer.iter_mut() {
                 *s = 0.0;
             }
-            playback.process_buffer(&mut buffer, channels);
+            playback.process_buffer(&mut buffer, channels, Instant::now());
             total_energy += buffer.iter().map(|s| (*s as f64) * (*s as f64)).sum::<f64>();
         }
 
@@ -238,7 +268,7 @@ mod tests {
     fn test_invalidate_after_preview_preserves_bars() {
         let sample_rate = 44100.0;
 
-        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
+        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Generate 8 bars with default params
@@ -290,7 +320,7 @@ mod tests {
     fn test_bpm_override_persists_through_emotion_change() {
         let sample_rate = 44100.0;
 
-        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
+        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Set explicit BPM override
@@ -316,7 +346,7 @@ mod tests {
     fn test_reset_bpm_reverts_to_emotion_mapped() {
         let sample_rate = 44100.0;
 
-        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
+        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Switch to emotion mode and set emotions to establish a mapped BPM
@@ -345,7 +375,7 @@ mod tests {
     fn test_set_bpm_without_emotion_mode() {
         let sample_rate = 44100.0;
 
-        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
+        let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // In direct mode, set_bpm should work normally
