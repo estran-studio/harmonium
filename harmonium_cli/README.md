@@ -144,6 +144,20 @@ stop musicxml                    # Stop specific format
 
 **Note**: Recordings are saved to the current directory when stopped.
 
+### Beat, Swing & Tempo (phase 0)
+
+```bash
+beat                             # Visual metronome from BeatInfo (Enter/Esc/q/Ctrl+C to exit)
+swing 0.6                        # Eighth-note swing 0.5-0.75 (takes effect at the next measure)
+tempo 200 8                      # Ramp the audible tempo to 200 BPM over 8 pulses
+tempo 200                        # Jump to 200 BPM at the next pulse
+tempo off                        # Back to the measures' tempo
+```
+
+`swing` out of range is clamped and reported. `tempo` drives the playback
+ahead of the measures (`set bpm` stays the nominal generated tempo); the
+engine clamps it to 40–300 BPM and `state` shows the audible BPM.
+
 ### Utility
 
 ```bash

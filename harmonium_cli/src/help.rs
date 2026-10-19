@@ -26,6 +26,19 @@ pub fn print_help() {
     );
 
     print_section(
+        "BEAT, SWING & TEMPO (phase 0)",
+        &[
+            ("beat", "Métronome visuel calé sur BeatInfo (Entrée/Échap/q/Ctrl+C pour sortir)"),
+            ("swing <0.5-0.75>", "Swing des croches (0.5 = droit ; effet à la prochaine mesure)"),
+            (
+                "tempo <bpm> [pulses]",
+                "Rampe vers le tempo audible (défaut : saut, moteur borné à 40–300)",
+            ),
+            ("tempo off", "Retour au tempo des mesures"),
+        ],
+    );
+
+    print_section(
         "RHYTHM PARAMETERS",
         &[
             ("set rhythm_mode <mode>", "euclidean | perfect | classic"),
@@ -195,6 +208,55 @@ pub fn print_command_help(command: &str) {
             println!("  stop");
         }
 
+        "swing" => {
+            println!("{}", "SWING".bold().cyan());
+            println!("{}", "=".repeat(60).dimmed());
+            println!();
+            println!("Règle le swing des paires de croches (phase 0, D3).");
+            println!();
+            println!("{}", "SYNTAX:".bold());
+            println!("  swing <0.5-0.75>");
+            println!();
+            println!("0.5 = droit, 0.6 ≈ reel. Hors plage : borné et signalé.");
+            println!("Prend effet à la prochaine mesure générée.");
+            println!();
+            println!("{}", "EXAMPLES:".bold());
+            println!("  swing 0.6");
+        }
+
+        "tempo" => {
+            println!("{}", "TEMPO".bold().cyan());
+            println!("{}", "=".repeat(60).dimmed());
+            println!();
+            println!("Tempo audible du playback (phase 0, D4), distinct du");
+            println!("`set bpm` (tempo nominal des mesures générées).");
+            println!();
+            println!("{}", "SYNTAX:".bold());
+            println!("  tempo <bpm> [pulses]");
+            println!("  tempo off                    - retour au tempo des mesures");
+            println!();
+            println!("Sans `pulses` : saut à la prochaine pulse. Avec `pulses` :");
+            println!("rampe linéaire atteignant la cible à la N-ième frontière.");
+            println!("Le moteur borne à 40–300 BPM. `EngineReport.bpm` suit l'audible.");
+            println!();
+            println!("{}", "EXAMPLES:".bold());
+            println!("  tempo 200 8");
+            println!("  tempo off");
+        }
+
+        "beat" => {
+            println!("{}", "BEAT".bold().cyan());
+            println!("{}", "=".repeat(60).dimmed());
+            println!();
+            println!("Métronome visuel calé sur `BeatInfo` (~60 lectures/s) :");
+            println!("mesure, pulse, barre de phase, marqueur de temps fort.");
+            println!("Aucune décision sur `Instant::now` : seule `BeatInfo` compte.");
+            println!();
+            println!("{}", "SYNTAX:".bold());
+            println!("  beat");
+            println!();
+            println!("Sortie : Entrée, Échap, q ou Ctrl+C (retour au REPL).");
+        }
         _ => {
             println!("{}", format!("No detailed help available for '{}'", command).yellow());
             println!("Type {} for a list of all commands.", "help".green());

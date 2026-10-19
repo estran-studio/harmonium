@@ -24,7 +24,8 @@ impl HarmoniumCompleter {
         Self {
             commands: vec![
                 "set", "emotion", "direct", "enable", "disable", "record", "stop", "state", "show",
-                "status", "seek", "loop", "reset", "help", "quit", "exit",
+                "status", "seek", "loop", "reset", "swing", "tempo", "beat", "help", "quit",
+                "exit",
             ],
             set_params: vec![
                 "bpm",

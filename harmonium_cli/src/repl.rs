@@ -8,11 +8,15 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use colored::Colorize;
-use harmonium::{composer::MusicComposer, playback::PlaybackCommand};
+use harmonium::{composer::MusicComposer, playback::PlaybackCommand, BeatInfo, ClockReader};
 use harmonium_core::{events::RecordFormat, EngineCommand, EngineReport};
 use rustyline::{error::ReadlineError, Editor};
 
-use crate::{completer::HarmoniumCompleter, help, parser};
+use crate::{
+    completer::HarmoniumCompleter,
+    help,
+    parser::{self, CliCommand},
+};
 
 /// Emotion state for relative adjustments
 struct EmotionState {
@@ -33,6 +37,7 @@ struct ReplState {
     composer: Arc<Mutex<MusicComposer>>,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
     report_rx: rtrb::Consumer<EngineReport>,
+    clock_reader: ClockReader,
     cached_state: Option<EngineReport>,
     emotion_state: EmotionState,
     finished_recordings: Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>,
@@ -70,12 +75,14 @@ pub fn run(
     composer: Arc<Mutex<MusicComposer>>,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
     report_rx: rtrb::Consumer<EngineReport>,
+    clock_reader: ClockReader,
     finished_recordings: Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>,
 ) -> Result<()> {
     let mut state = ReplState {
         composer,
         playback_cmd_tx,
         report_rx,
+        clock_reader,
         cached_state: None,
         emotion_state: EmotionState::default(),
         finished_recordings,
@@ -301,6 +308,12 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
             return handle_profile_command(state, &tokens[1..]);
         }
 
+        // Phase-0 clock commands: swing, tempo, beat (parsed locally, they
+        // need the playback ring / clock reader, not `EngineCommand`).
+        "swing" | "tempo" | "beat" => {
+            return handle_clock_command(state, &tokens);
+        }
+
         _ => {}
     }
 
@@ -317,6 +330,139 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
         }
     }
 
+    Ok(true)
+}
+
+// ---------------------------------------------------------------------------
+// Phase-0 clock commands: swing, tempo, beat
+// ---------------------------------------------------------------------------
+
+/// Handle `swing`, `tempo` and `beat` (parsed by `parser::parse_cli_command`).
+fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> {
+    match parser::parse_cli_command(tokens) {
+        Ok(CliCommand::Swing { ratio, clamped }) => {
+            if let Ok(mut c) = state.composer.lock() {
+                c.set_swing_ratio(ratio);
+                c.invalidate_future();
+            }
+            state.send_invalidate();
+            if clamped {
+                println!(
+                    "{} Swing hors plage (0.5–0.75), borné à {:.2}",
+                    "[WARN]".yellow().bold(),
+                    ratio
+                );
+            }
+            print_success_msg(&format!(
+                "Swing réglé à {ratio:.2} (prend effet à la prochaine mesure)"
+            ));
+        }
+        Ok(CliCommand::Tempo { bpm, ramp_pulses }) => {
+            let _ = state.playback_cmd_tx.push(PlaybackCommand::SetTempo { bpm, ramp_pulses });
+            if ramp_pulses == 0 {
+                print_success_msg(&format!(
+                    "Tempo {bpm:.0} BPM : saut à la prochaine pulse (moteur borne à 40–300)"
+                ));
+            } else {
+                print_success_msg(&format!(
+                    "Tempo {bpm:.0} BPM : rampe sur {ramp_pulses} pulses (moteur borne à 40–300)"
+                ));
+            }
+        }
+        Ok(CliCommand::ClearTempo) => {
+            let _ = state.playback_cmd_tx.push(PlaybackCommand::ClearTempo);
+            print_success_msg("Tempo audible : retour au tempo des mesures");
+        }
+        Ok(CliCommand::Beat) => {
+            return run_beat(state);
+        }
+        Err(e) => {
+            println!("{} {}", "[ERROR]".red().bold(), e);
+        }
+    }
+    Ok(true)
+}
+
+/// Live visual metronome driven only by `BeatInfo` (~60 reads/s, one rewritten
+/// line). Exit with Enter, Esc, `q` or Ctrl+C; the REPL resumes afterwards.
+///
+/// Key reading uses crossterm in raw mode (enabled only for the loop, restored
+/// by `RawGuard` on every exit path): a blocking `read_line` thread would race
+/// rustyline for the next input line, and plain std has no key polling.
+fn run_beat(state: &mut ReplState) -> Result<bool> {
+    use std::{
+        io::Write as _,
+        time::{Duration, Instant},
+    };
+
+    use crossterm::{
+        event::{self, Event, KeyCode, KeyModifiers},
+        terminal,
+    };
+
+    struct RawGuard;
+    impl Drop for RawGuard {
+        fn drop(&mut self) {
+            let _ = terminal::disable_raw_mode();
+        }
+    }
+
+    println!("Métronome — Entrée, Échap, q ou Ctrl+C pour sortir :");
+    terminal::enable_raw_mode()?;
+    let _raw = RawGuard;
+
+    let mut pulses_per_bar = 4u8;
+    loop {
+        if let Ok(c) = state.composer.lock() {
+            pulses_per_bar = c.musical_params().effective_pulse(4).pulses_per_bar;
+        }
+        let clock = state.clock_reader.read();
+        let now = Instant::now();
+
+        if clock.next_pulse_frame == 0 {
+            print!("\rEn attente de l'horloge… (Entrée pour sortir)   ");
+        } else {
+            let info = BeatInfo::from_clock(&clock, now);
+            let width = 16usize;
+            let filled = ((info.phase * width as f32) as usize).min(width);
+            let bar_glyphs = "█".repeat(filled) + &"░".repeat(width - filled);
+            let marker = if info.is_downbeat {
+                "● TEMPS FORT"
+            } else if info.is_backbeat {
+                "◐"
+            } else {
+                "○"
+            };
+            let countdown = info.next_pulse_at.saturating_duration_since(now).as_millis();
+            print!(
+                "\rBar {:>3} | pulse {:>2}/{} | [{}] {:>3}% | {} | +{}ms  ",
+                info.bar,
+                info.pulse,
+                pulses_per_bar,
+                bar_glyphs,
+                (info.phase * 100.0) as u32,
+                marker,
+                countdown
+            );
+        }
+        std::io::stdout().flush().ok();
+
+        if event::poll(Duration::from_millis(16))? {
+            if let Event::Key(key) = event::read()? {
+                let ctrl_c =
+                    key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL);
+                if matches!(key.code, KeyCode::Enter | KeyCode::Esc | KeyCode::Char('q' | 'Q'))
+                    || ctrl_c
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    drop(_raw);
+    println!();
+    print_success_msg("Métronome arrêté");
     Ok(true)
 }
 
@@ -791,7 +937,16 @@ fn print_state(state: &mut ReplState) {
 
         // Timing
         println!("{}", "TIMING:".yellow().bold());
-        println!("  BPM: {}", format!("{:.1}", report.musical_params.bpm).green());
+        println!("  BPM (audible): {}", format!("{:.1}", report.musical_params.bpm).green());
+        println!(
+            "  Swing: {}",
+            format!("{:.2} (0.5 = droit)", report.musical_params.swing_ratio).green()
+        );
+        let pulse = report.musical_params.effective_pulse(4);
+        println!(
+            "  Pulse: {}",
+            format!("{} pas × {} par mesure", pulse.steps_per_pulse, pulse.pulses_per_bar).green()
+        );
         println!(
             "  Time Signature: {}",
             format!("{}/{}", report.time_signature.numerator, report.time_signature.denominator)
