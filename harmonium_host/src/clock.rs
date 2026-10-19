@@ -137,16 +137,6 @@ impl ClockReader {
         Self { output }
     }
 
-    /// A reader over a disconnected buffer: always yields the initial clock
-    /// (`next_pulse_frame == 0`, so `BeatInfo::from_clock` reports pulse 1 at
-    /// phase 0). Used as a placeholder after [`crate::native_handle::NativeHandle::clock_reader`]
-    /// hands the real reader out.
-    pub(crate) fn disconnected() -> Self {
-        let initial = TransportClock::initial(44_100);
-        let (_, output) = triple_buffer::TripleBuffer::new(&initial).split();
-        Self { output }
-    }
-
     /// Read the latest published clock, copying it out.
     ///
     /// Lock-free: an atomic swap on the shared back-buffer index, no lock, no
