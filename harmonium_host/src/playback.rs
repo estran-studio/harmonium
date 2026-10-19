@@ -245,10 +245,23 @@ pub struct PlaybackEngine {
     // Timing
     sample_counter: usize,
     samples_per_step: usize,
+    // Frozen frame length of the step being rendered, captured at its entry
+    // (`enter_step`): the next entry renders a new capture, so a pulse
+    // freeze mid-step never corrupts the rendering in flight.
+    current_step_frames: usize,
+    // Whether an entered step is rendering: its position/clock publication
+    // happens at its completion (`complete_step`), mirroring the historical
+    // post-step publication timing. False while underflowing (free-run) or
+    // right after a seek (the in-flight step is cut by the jump).
+    step_open: bool,
+    // The step being rendered (bar 1-based, step 0-based in bar), captured at
+    // its entry: `clock.position` reports it, the packed atomic the upcoming
+    // step. Updated before the playhead advances, published at completion.
+    entered_bar: usize,
+    entered_step: usize,
     // Global frame counter: total frames rendered since engine start. The
     // clock's pulse/buffer fields live in this frame space.
     frame_counter: u64,
-
     // Per-step timing (D3 swing + D4 ramp): `step_durations[..step_count]`
     // is the frozen frame length of each step of the current pulse (the D1
     // invariant), `step_index` the step currently being rendered.
@@ -372,6 +385,10 @@ impl PlaybackEngine {
             sample_rate,
             sample_counter: 0,
             samples_per_step,
+            current_step_frames: samples_per_step,
+            entered_bar: 1,
+            entered_step: 0,
+            step_open: false,
             frame_counter: 0,
             step_durations: [samples_per_step; 16],
             step_count: 4,
@@ -449,15 +466,25 @@ impl PlaybackEngine {
         let mut processed = 0;
 
         while processed < total_samples {
+            // Step entry: freeze the pulse if this step opens one (the D1
+            // invariant), voice the step's notes at the exact frame where the
+            // step begins (clock/audio coincidence), then render the entered
+            // step's frozen duration.
+            if self.sample_counter == 0 {
+                match self.enter_step() {
+                    Some(frames) => {
+                        self.current_step_frames = frames.max(1);
+                        self.step_open = true;
+                    }
+                    // Underflow — nothing entered: free-run the stale duration
+                    // and retry the load at the next entry (no publication).
+                    None => self.step_open = false,
+                }
+            }
             let remaining = total_samples - processed;
-            let step_duration = self.step_durations[self.step_index];
-            let samples_until_tick = if step_duration > self.sample_counter {
-                step_duration - self.sample_counter
-            } else {
-                1
-            };
+            let samples_until_entry = self.current_step_frames - self.sample_counter;
 
-            let chunk_size = std::cmp::min(remaining, samples_until_tick);
+            let chunk_size = std::cmp::min(remaining, samples_until_entry);
             let start_idx = processed * channels;
             let end_idx = (processed + chunk_size) * channels;
             let chunk = &mut output[start_idx..end_idx];
@@ -467,9 +494,14 @@ impl PlaybackEngine {
             self.frame_counter += chunk_size as u64;
             processed += chunk_size;
 
-            if self.sample_counter >= step_duration {
+            if self.sample_counter >= self.current_step_frames {
                 self.sample_counter = 0;
-                self.tick();
+                // Step completion: publish the entered step's position, at the
+                // same frame the historical post-step tick published it.
+                if self.step_open {
+                    self.step_open = false;
+                    self.complete_step();
+                }
             }
         }
 
@@ -482,8 +514,18 @@ impl PlaybackEngine {
         }
     }
 
-    /// Tick: stage new boxes, read from the window and emit events.
-    fn tick(&mut self) {
+    /// Step entry: run the per-step bookkeeping for the step the playhead
+    /// currently sits on. Returns how many frames to render before the next
+    /// entry, or `None` on underflow (nothing entered: the grid does not
+    /// advance, the next entry retries the load).
+    ///
+    /// At the tick that enters step S: (a) the pulse is frozen if S opens one
+    /// (the D1 invariant — `next_pulse_frame` exact by construction), (b) S's
+    /// notes are voiced from the current frame on (the NoteOn frame IS the
+    /// grid position: clock/audio coincidence), (c) the returned duration is
+    /// S's frozen length. Position/clock publication happens at the step's
+    /// completion (`complete_step`), one step duration later.
+    fn enter_step(&mut self) -> Option<usize> {
         {
             let _rt = RtGuard::enter();
             self.drain_staged();
@@ -512,11 +554,34 @@ impl PlaybackEngine {
                 self.try_load()
             };
             if !loaded {
-                return; // Underflow — measure not yet staged
+                // Underflow — measure not yet staged. The grid does not
+                // advance; the next entry retries the load.
+                return None;
             }
+            // The freshly loaded step 0 always opens a pulse: fall through to
+            // the freeze below, which stamps the true boundary.
         }
 
-        // Tick the playhead: emits the current step, advances, and parks the
+        // The entered step, captured before the playhead advances: it is what
+        // renders now (notes, duration) and what `clock.position` reports.
+        self.entered_bar = self.playhead.current_bar();
+        self.entered_step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
+
+        // Pulse freeze for the ENTERED step (the D1 invariant): if S opens a
+        // pulse, its whole-step table is frozen now — before S renders — so
+        // `pulse_start_frame` is S's exact entry frame and `next_pulse_frame`
+        // the pulse's exact end. (Freezing on the advanced step would stamp
+        // the previous step's frame, one step early.)
+        let step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
+        let steps_per_pulse = usize::from(self.current_pulse.steps_per_pulse).max(1);
+        if step.is_multiple_of(steps_per_pulse) {
+            self.freeze_pulse(step, steps_per_pulse);
+        }
+
+        // Frozen duration of the entered step, from its pulse's fresh table.
+        let duration = self.step_durations[self.step_index];
+
+        // Tick the playhead: emits the entered step, advances, and parks the
         // finished measure when a barline is crossed.
         let events = self.playhead.tick();
 
@@ -537,39 +602,42 @@ impl PlaybackEngine {
             let _rt = RtGuard::enter();
             self.reclaim_finished();
             if self.playhead.needs_measure() && !self.try_load() {
-                // Underflow — measure not yet staged. Publish the position and
-                // stay silent; the next tick retries the load.
+                // Underflow at a barline — the entered step was emitted and
+                // its duration is returned, but the grid freezes here: no
+                // pulse freeze, no cursor advance. Publication (of the frozen
+                // grid position) happens at the step's completion.
                 self.step_index = 0;
-                self.transport_position.store(
-                    pack(
-                        self.playhead.current_bar(),
-                        self.playhead.position.step_in_bar(TICKS_PER_BEAT),
-                    ),
-                    Ordering::Relaxed,
-                );
-                self.publish_clock();
-                return;
+                return Some(duration);
             }
         }
 
-        // Post-tick pulse freeze: freeze the *new* pulse's step durations
-        // (swing included) before its first step is rendered, and advance the
-        // step cursor. `pulse_in_bar` and `position.step` both use this step,
-        // so they stay consistent.
-        let step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
-        let steps_per_pulse = usize::from(self.current_pulse.steps_per_pulse).max(1);
-        if step.is_multiple_of(steps_per_pulse) {
-            self.freeze_pulse(step, steps_per_pulse);
+        // Cursor for the next entry: the advanced step's slot in the current
+        // table (a newly opened pulse is frozen at its own entry above).
+        let next = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
+        if next.is_multiple_of(steps_per_pulse) {
+            self.step_index = 0;
         } else {
             self.step_index += 1;
         }
 
+        // The clock position is the RENDERED step (what sounds now); the
+        // packed atomic below reports the upcoming step (see `complete_step`
+        // and the `TransportClock.position` contract).
         self.clock.position = TransportPosition {
-            bar: self.playhead.current_bar(),
-            step,
-            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
+            bar: self.entered_bar,
+            step: self.entered_step,
+            beat: self.entered_step as f32 / TICKS_PER_BEAT as f32 + 1.0,
         };
 
+        Some(duration)
+    }
+
+    /// Step completion: publish the entered step, exactly one step duration
+    /// after its notes were voiced. This preserves the historical post-step
+    /// publication timing. The packed atomic reports the upcoming step (fast
+    /// scoring loops, spec 006); the clock position reports the rendered step
+    /// (gameplay truth, alongside the pulse fields).
+    fn complete_step(&mut self) {
         // Update shared transport position at grid resolution, after the tick.
         self.transport_position.store(
             pack(self.playhead.current_bar(), self.playhead.position.step_in_bar(TICKS_PER_BEAT)),
@@ -786,19 +854,11 @@ impl PlaybackEngine {
             self.playhead.load_measure(slot.measure);
             self.loaded_epoch = Some(slot.epoch);
 
-            // Freeze the opening pulse's step durations now (the very first
-            // measure is loaded before any pulse boundary, so no freeze will
-            // fire for it otherwise). The post-tick freeze recomputes this at
-            // every later boundary (with the tempo ramp applied).
-            let spp = usize::from(self.current_pulse.steps_per_pulse).max(1);
-            self.compute_pulse_steps(spp);
-            self.step_index = self.playhead.position.step_in_bar(TICKS_PER_BEAT) % spp;
-            let pulse_duration =
-                self.step_durations[..self.step_count].iter().sum::<usize>() as u64;
-            self.clock.pulse_in_bar = 0;
-            self.clock.pulse_start_frame = self.frame_counter;
-            self.clock.next_pulse_frame = self.frame_counter + pulse_duration;
-
+            // The opening pulse is NOT frozen here: `enter_step` freezes the
+            // entered step's pulse before it renders — including this freshly
+            // loaded step 0, which always opens a pulse — so the pulse fields
+            // are stamped at the true boundary, never at the load frame (a
+            // post-crossing load precedes its barline).
             self.first_measure_loaded = true;
             true
         } else {
@@ -939,6 +999,11 @@ impl PlaybackEngine {
                     }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
+                    // A jump cuts the in-flight step: drop its remainder and its
+                    // pending completion publication, so the next entry starts
+                    // the target bar from step 0.
+                    self.sample_counter = 0;
+                    self.step_open = false;
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
@@ -952,6 +1017,9 @@ impl PlaybackEngine {
                     }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
+                    // Same cut as `Seek` above: fresh entry at the target bar.
+                    self.sample_counter = 0;
+                    self.step_open = false;
                 }
                 PlaybackCommand::DropFrom { bar } => {
                     let bar = bar.max(1);
