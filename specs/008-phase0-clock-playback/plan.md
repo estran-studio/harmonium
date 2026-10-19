@@ -32,19 +32,32 @@ si le beat ne tient pas, le reste ne sert à rien.
 
 ### D1 — `TransportClock` prédictif, publié par le callback
 
-Le callback publie, via `triple_buffer` (déjà dépendance workspace), un
-`TransportClock` :
+Invariant de planification : **le playback fige la durée de chaque pas d'une
+pulse au moment où la pulse commence** (swing compris). Un changement de
+tempo (D4) ne s'applique qu'à la frontière de pulse suivante. La prochaine
+pulse est donc connue exactement dès le début de la pulse courante : la
+prédiction est exacte par construction, pas une estimation.
+
+Le callback publie, via `triple_buffer` (à ajouter aux dépendances de
+`harmonium_host`), un `TransportClock` :
 
 ```rust
 pub struct TransportClock {
     pub position: TransportPosition,   // bar, step (inchangé)
-    pub frames_at_last_step: u64,      // compteur global de frames au dernier tick
-    pub frames_per_step: u32,          // après swing (voir D3)
+    pub pulse_in_bar: u8,              // 0-based
+    pub pulse_start_frame: u64,        // compteur global de frames au début de la pulse courante
+    pub next_pulse_frame: u64,         // frame exact où la prochaine pulse commence
     pub buffer_start_frame: u64,       // premier frame du buffer en cours
-    pub buffer_start_instant: Instant, // cpal playback timestamp → Instant
+    pub buffer_start_instant: Instant, // instant de sortie audible de ce frame
     pub sample_rate: u32,
 }
 ```
+
+`buffer_start_instant` = `Instant::now()` à l'entrée du callback +
+(`timestamp.playback − timestamp.callback`) de `cpal::OutputCallbackInfo`.
+Le rendu hors ligne (`create_offline_engine`) n'a pas de cpal : le
+`PlaybackEngine` expose la donnée en frames, et la conversion en temps mur
+n'est faite que par le chemin cpal.
 
 L'`AtomicU64` packé reste pour les lecteurs qui ne veulent que la position
 (spec 006, contrat inchangé). `TransportClock` s'ajoute à côté parce que ce
@@ -59,10 +72,11 @@ Calculé côté lecteur à partir de `TransportClock` + `PulseSpec` :
 pub struct PulseSpec { pub steps_per_pulse: u8, pub pulses_per_bar: u8 }  // reel 2/2: 8, 2 ; gigue 6/8: 6, 2 ; valse 3/4: 4, 3
 pub struct BeatInfo {
     pub bar: usize,
-    pub pulse: u8,            // 1-based dans la mesure
-    pub phase: f32,           // 0.0..1.0 dans la pulse, interpolé en frames
-    pub is_downbeat: bool,    // pulse == 1
-    pub is_backbeat: bool,    // pulse paire
+    pub pulse: u8,             // 1-based dans la mesure
+    pub phase: f32,            // 0.0..1.0 dans la pulse, interpolé en frames
+    pub is_downbeat: bool,     // pulse == 1
+    pub is_backbeat: bool,     // pulse paire
+    pub next_pulse_frame: u64, // vérité, en frames
     pub next_pulse_at: Instant,
     pub pulse_period: Duration,
 }
@@ -78,9 +92,14 @@ Le tempo reste à la noire (constitution).
 `MusicalParams.swing_ratio: f32` (0.5 = droit, 0.6 ≈ reel, borné 0.5–0.75),
 dans `TuningParams` pour le défaut par style. Capturé dans
 `Measure.swing_ratio` et `MeasureSnapshot.swing_ratio` à la génération.
-`PlaybackEngine` dérive deux longueurs de pas : pas pairs (sur la croche)
-allongés, pas impairs raccourcis, somme conservée par paire. La position
-publiée reste sur la grille ; seul le timing audio bouge.
+
+Le swing porte sur les **paires de croches** : unité de 4 pas (une noire).
+Les pas 0-1 de chaque noire durent chacun `ratio × noire / 2`, les pas 2-3
+`(1 − ratio) × noire / 2`. Arrondi en frames entiers, la somme de l'unité
+est conservée exactement (le reste d'arrondi va au dernier pas de l'unité),
+donc aucune dérive sur la durée. En mesure composée (pulse de 6 pas), le
+swing est ignoré — documenté sur le champ. La position publiée reste sur la
+grille ; seul le timing audio bouge.
 
 Rejeté : passer la grille à 12 ticks/temps. Touche `[usize;16]`,
 `rhythm_steps`, l'export, le contrat snapshot, pour un gain que la table de
@@ -89,8 +108,9 @@ timing donne sans rien casser.
 ### D4 — Rampe de tempo par pulse dans le playback
 
 `PlaybackCommand::SetTempo { bpm: f32, ramp_pulses: u8 }` : interpolation
-linéaire de `frames_per_step` à chaque pulse, immédiate (ring buffer de
-commandes, déjà traité en tête de callback). Le tempo des mesures générées
+linéaire du tempo appliquée **à chaque frontière de pulse** (invariant D1),
+reçue immédiatement (ring buffer de commandes, déjà traité en tête de
+callback). `ramp_pulses = 0` : saut à la prochaine pulse. Le tempo des mesures générées
 devient la valeur *nominale* ; `EngineReport.musical_params.bpm` reflète le
 tempo audible. Le snapshot garde le tempo nominal : l'horloge
 (`BeatInfo`) est la vérité pour le jeu, pas le snapshot.
@@ -106,7 +126,11 @@ tempo audible. Le snapshot garde le tempo nominal : l'horloge
 - `PlaybackCommand::DropFrom { bar }` pour `invalidate_future` et `seek` :
   le playback renvoie les mesures `>= bar` au composer, qui régénère.
 
-Le playback garde une `ArrayVec<Box<Measure>, 16>` ordonnée par index.
+Le playback garde une `ArrayVec<Box<Measure>, 16>` ordonnée par index. Une
+mesure jouée est renvoyée au composer dès que le playhead la quitte, **sauf**
+si elle appartient à la région de boucle active : celles-ci restent jusqu'au
+`ClearLoop`. Une boucle plus longue que la capacité de la fenêtre est
+refusée par `set_loop` (erreur côté thread principal, jamais côté callback).
 Underflow inchangé : `tick()` retourne sans jouer.
 
 ### D6 — Hygiène
@@ -135,11 +159,12 @@ harmonium_host/tests/beat_info_tests.rs  (nouveau)
 
 ## Acceptation (observable)
 
-1. **Prédiction exacte hors ligne** : avec `create_offline_engine`, pour
-   chaque buffer, `next_pulse_at` prédit depuis le `TransportClock` publié
-   au buffer *k* tombe sur le frame exact où le playhead franchit la pulse
-   au buffer *k+n*. Erreur : 0 frame, sur 64 mesures, en 4/4, 2/2, 6/8,
-   3/4, avec et sans swing, pendant une rampe de tempo.
+1. **Prédiction exacte hors ligne** : avec `create_offline_engine`, le
+   `next_pulse_frame` publié pendant chaque pulse est égal au compteur de
+   frames où le playhead entre effectivement dans la pulse suivante.
+   Erreur : 0 frame, sur 64 mesures, en 4/4, 2/2, 6/8, 3/4, avec et sans
+   swing, pendant une rampe de tempo, avec des tailles de buffer variables
+   (64, 333, 1024 frames).
 2. **Swing mesurable** : à `swing_ratio = 0.6`, l'écart entre deux NoteOn
    consécutifs sur croches vaut 0.6 / 0.4 de la noire, à ±1 frame.
 3. **Rampe** : `SetTempo { 240, ramp_pulses: 8 }` atteint 240 BPM
@@ -165,6 +190,19 @@ harmonium_host/tests/beat_info_tests.rs  (nouveau)
   `set_loop`, `invalidate_future`, `reset`. Chacun a déjà un test dans
   `transport_position_tests.rs` et `deterministic_seek_tests.rs` ; ils
   doivent rester verts sans modification.
+
+## Découpage (orchestration)
+
+Chaque tâche : une branche/worktree depuis `main`, revue + `cargo test
+--workspace` + clippy + fmt par le coordinateur, merge `--no-ff`.
+
+| Tâche | Décisions | Dépend de | Acceptation |
+|---|---|---|---|
+| T1 Types core | D3 (types seulement), D6, `PulseSpec` | — | 4 |
+| T2 Handoff sans verrou | D5 | — | 5, tests seek/loop/transport inchangés |
+| T3 Horloge | D1, D2 | T1, T2 | 1 (sans swing ni rampe) |
+| T4 Swing + rampe | D3 (playback), D4 | T3 | 1 complet, 2, 3 |
+| T5 CLI | — | T4 | 6 |
 
 ## Suite
 
