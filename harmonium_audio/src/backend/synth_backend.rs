@@ -26,9 +26,23 @@ impl SynthBackend {
         // After routing is established, configure GM defaults if a SoundFont is loaded.
         // This must happen after set_channel_route() because that sends ProgramChange(0)
         // which would overwrite the correct GM programs.
-        // Heuristic: SF files > 1MB are likely GM-compliant (e.g. MuseScore General).
-        if let Some(bytes) = sf2_bytes {
-            let gm_compatible = bytes.len() > 1_000_000;
+        // Détection réelle de la conformité GM : présence d'un preset en banque 128 (kit de batterie).
+        // Calculé à l'initialisation, strictement hors du callback temps réel.
+        if sf2_bytes.is_some() {
+            let gm_compatible = voice_manager.has_bank_128_preset();
+            if !gm_compatible {
+                let missing = voice_manager.missing_gm_programs();
+                let missing_list =
+                    if missing.is_empty() { "aucun".to_string() } else { missing.join(", ") };
+                let warning_msg = format!(
+                    "Avertissement : la banque SoundFont n'est pas compatible General MIDI \
+                     (aucun kit de batterie en banque 128). \
+                     Programmes GM demandés absents : {missing_list}. \
+                     Le canal 9 ne sera pas remappé vers la banque 128."
+                );
+                eprintln!("{warning_msg}");
+                harmonium_core::log::warn(&warning_msg);
+            }
             voice_manager.configure_gm_defaults(gm_compatible);
         }
 

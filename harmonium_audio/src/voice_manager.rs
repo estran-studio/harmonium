@@ -47,6 +47,11 @@ pub const fn gm_programs_for_style(style: harmonium_core::params::Style) -> [(u8
         }
     }
 }
+/// Détermine si une séquence de numéros de banques contient la banque 128 (kit de batterie GM).
+#[must_use]
+pub fn has_bank_128_in_presets(banks: impl IntoIterator<Item = u32>) -> bool {
+    banks.into_iter().any(|bank| bank == 128)
+}
 
 pub struct VoiceManager {
     pub synth: oxisynth::Synth,
@@ -148,11 +153,11 @@ impl VoiceManager {
     /// - All channels use program 0 (first available patch)
     /// - No drum remapping (drums play as pitched notes)
     pub fn configure_gm_defaults(&mut self, gm_compatible: bool) {
-        // Remap drum/feet logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums, D10)
-        self.midi_channel_map[3] = GM_DRUM_CHANNEL;
-        self.midi_channel_map[4] = GM_DRUM_CHANNEL;
-
         if gm_compatible {
+            // Remap drum/feet logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums, D10)
+            self.midi_channel_map[3] = GM_DRUM_CHANNEL;
+            self.midi_channel_map[4] = GM_DRUM_CHANNEL;
+
             // Set up MIDI channel 9 as drum bank (GM standard bank 128)
             let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                 channel: GM_DRUM_CHANNEL,
@@ -160,8 +165,11 @@ impl VoiceManager {
                 value: 128,
             });
         } else {
-            // Non-GM SoundFont without bank 128: keep channel 9 on bank 0 so oxisynth
-            // substitutes preset (0, 0) instead of leaving channel 9 silent.
+            // Non-GM SoundFont: pas de remap du canal 9.
+            // Les pieds restent sur leurs canaux logiques (3 et 4) vers les canaux MIDI 3 et 4.
+            self.midi_channel_map[3] = 3;
+            self.midi_channel_map[4] = 4;
+
             let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                 channel: GM_DRUM_CHANNEL,
                 ctrl: 0,
@@ -174,6 +182,93 @@ impl VoiceManager {
         });
 
         self.apply_style_programs(harmonium_core::params::Style::Legacy);
+    }
+
+    /// Détermine si la SoundFont chargée dans oxisynth contient un preset en banque 128 (kit de batterie GM).
+    pub fn has_bank_128_preset(&mut self) -> bool {
+        // Le canal 9 est configuré avec banknum 128 par défaut dans oxisynth.
+        // Si le SoundFont possède le preset 0 en banque 128 (Standard Drum Kit),
+        // channel_preset(9) retourne Some(...) avec un banknum de 128.
+        if let Some(preset) = self.synth.channel_preset(GM_DRUM_CHANNEL) {
+            if preset.banknum() == 128 {
+                return true;
+            }
+        }
+
+        // Si le preset 0 n'est pas présent, teste les programmes 1..=127 au cas où un kit spécialisé est utilisé
+        for prog in 1..=127 {
+            let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
+                channel: GM_DRUM_CHANNEL,
+                program_id: prog,
+            });
+            if let Some(preset) = self.synth.channel_preset(GM_DRUM_CHANNEL) {
+                if preset.banknum() == 128 {
+                    let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
+                        channel: GM_DRUM_CHANNEL,
+                        program_id: 0,
+                    });
+                    return true;
+                }
+            }
+        }
+
+        let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
+            channel: GM_DRUM_CHANNEL,
+            program_id: 0,
+        });
+        false
+    }
+
+    /// Liste les programmes GM demandés par Harmonium absents de la SoundFont chargée.
+    ///
+    /// Calculé lors de l'initialisation hors du callback temps réel.
+    pub fn missing_gm_programs(&mut self) -> Vec<&'static str> {
+        let mut missing = Vec::new();
+
+        if !self.has_bank_128_preset() {
+            missing.push("kit de batterie (banque 128)");
+        }
+
+        // Teste les instruments mélodiques et harmoniques en banque 0 sur le canal 15
+        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+            channel: 15,
+            ctrl: 0,
+            value: 0,
+        });
+
+        let required = [
+            (GM_PROGRAM_PIANO, "piano acoustique (programme 0)"),
+            (GM_PROGRAM_STEEL_GUITAR, "guitare acier (programme 24)"),
+            (GM_PROGRAM_ACOUSTIC_BASS, "basse acoustique (programme 32)"),
+            (GM_PROGRAM_VIOLIN, "violon (programme 40)"),
+        ];
+
+        for (prog, name) in required {
+            let _ = self
+                .synth
+                .send_event(oxisynth::MidiEvent::ProgramChange { channel: 15, program_id: prog });
+            let present = match self.synth.channel_preset(15) {
+                Some(p) => p.banknum() == 0 && p.num() == u32::from(prog),
+                None => false,
+            };
+            if !present {
+                missing.push(name);
+            }
+        }
+
+        // Rétablit le canal 15 selon son état nominal
+        let route = self.channel_routing[15];
+        let prog = self.current_programs[15];
+        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+            channel: 15,
+            ctrl: 0,
+            value: route.bank as u8,
+        });
+        let _ = self
+            .synth
+            .send_event(oxisynth::MidiEvent::ProgramChange { channel: 15, program_id: prog });
+
+        missing
     }
 
     /// Applique les programmes GM d'un [`harmonium_core::params::Style`] (D10).
@@ -360,5 +455,76 @@ mod tests {
         assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_PIANO));
         assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
         assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
+    }
+
+    #[test]
+    fn test_bank_128_detection_synthetic() {
+        let mut bytes = match std::fs::read("../assets/test.sf2") {
+            Ok(b) => b,
+            Err(_) => return,
+        };
+        let phdr_pos = match bytes.windows(4).position(|w| w == b"phdr") {
+            Some(pos) => pos,
+            None => return,
+        };
+        let bank_offset = phdr_pos + 8 + 22;
+        bytes[bank_offset] = 128;
+        bytes[bank_offset + 1] = 0;
+
+        let mut vm = VoiceManager::new(Some(&bytes), 44100.0);
+        assert!(
+            vm.has_bank_128_preset(),
+            "La SoundFont synthétique avec banque 128 doit être détectée GM"
+        );
+    }
+
+    #[test]
+    fn test_bank_128_detection_test_sf2_is_false() {
+        let bytes = match std::fs::read("../assets/test.sf2") {
+            Ok(b) => b,
+            Err(_) => return,
+        };
+        let mut vm = VoiceManager::new(Some(&bytes), 44100.0);
+        assert!(!vm.has_bank_128_preset(), "test.sf2 ne contient pas de banque 128");
+
+        let missing = vm.missing_gm_programs();
+        assert!(missing.contains(&"kit de batterie (banque 128)"));
+        assert!(missing.contains(&"guitare acier (programme 24)"));
+        assert!(missing.contains(&"basse acoustique (programme 32)"));
+        assert!(missing.contains(&"violon (programme 40)"));
+        assert!(!missing.contains(&"piano acoustique (programme 0)"));
+    }
+
+    #[test]
+    fn test_bank_128_detection_generaluser_gs() {
+        if let Ok(bytes) = std::fs::read("../assets/GeneralUser-GS.sf2") {
+            let mut vm = VoiceManager::new(Some(&bytes), 44100.0);
+            assert!(vm.has_bank_128_preset(), "GeneralUser-GS doit être détecté GM");
+            let missing = vm.missing_gm_programs();
+            assert!(
+                missing.is_empty(),
+                "GeneralUser-GS contient tous les programmes requis: {missing:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_has_bank_128_in_presets_list() {
+        assert!(!has_bank_128_in_presets([0, 1, 2]));
+        assert!(has_bank_128_in_presets([0, 128, 1]));
+        assert!(has_bank_128_in_presets(vec![128]));
+        assert!(!has_bank_128_in_presets(Vec::<u32>::new()));
+    }
+
+    #[test]
+    fn test_configure_gm_defaults_remapping() {
+        let mut vm = VoiceManager::new(None, 44100.0);
+        vm.configure_gm_defaults(true);
+        assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL);
+        assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL);
+
+        vm.configure_gm_defaults(false);
+        assert_eq!(vm.midi_channel_map[3], 3, "Pas de remap sur canal 9 quand non-GM");
+        assert_eq!(vm.midi_channel_map[4], 4, "Pas de remap sur canal 9 quand non-GM");
     }
 }
