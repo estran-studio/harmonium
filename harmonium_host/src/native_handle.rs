@@ -411,6 +411,15 @@ impl NativeHandle {
         }
     }
 
+    /// Set the swing ratio (0.5..=0.75). Takes effect on the next generated
+    /// measure: call `invalidate_and_regenerate` / `apply_params_preserving_preview`
+    /// to make it audible, like the other structural setters.
+    pub fn set_swing_ratio(&self, ratio: f32) {
+        if let Ok(mut c) = self.composer.lock() {
+            c.set_swing_ratio(ratio);
+        }
+    }
+
     pub fn set_density(&self, density: f32) {
         if let Ok(mut c) = self.composer.lock() {
             c.set_rhythm_density(density);
@@ -625,6 +634,19 @@ impl NativeHandle {
 
     pub fn clear_loop(&mut self) {
         let _ = self.playback_cmd_tx.push(PlaybackCommand::ClearLoop);
+    }
+
+    /// Start (or ramp to) an audible tempo override (D4). `ramp_pulses == 0`
+    /// jumps to `bpm` at the next pulse boundary; otherwise the tempo ramps
+    /// linearly over `ramp_pulses` pulse boundaries. Overrides the measure
+    /// tempo until `clear_tempo`.
+    pub fn set_tempo(&mut self, bpm: f32, ramp_pulses: u8) {
+        let _ = self.playback_cmd_tx.push(PlaybackCommand::SetTempo { bpm, ramp_pulses });
+    }
+
+    /// Revert to the measure tempo at the next pulse boundary.
+    pub fn clear_tempo(&mut self) {
+        let _ = self.playback_cmd_tx.push(PlaybackCommand::ClearTempo);
     }
 
     /// Generate a new melody with a fresh random seed.
