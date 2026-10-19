@@ -28,7 +28,7 @@ indicatif = "0.17"
 
 # File system
 walkdir = "2.5"
-zip = "0.6"
+zip = "9.0"
 
 # MusicXML parsing
 musicxml = "1.1"

@@ -150,15 +150,17 @@ impl MusicXMLIngester {
 
         // Fallback: look for any .xml file that looks like MusicXML
         for i in 0..archive.len() {
-            if let Ok(mut file) = archive.by_index(i) {
-                let name = file.name().to_string();
-                if name.ends_with(".xml") && !name.contains("META-INF") {
-                    let mut content = String::new();
-                    if file.read_to_string(&mut content).is_ok()
-                        && content.contains("<score-partwise")
-                    {
-                        return Ok(content);
-                    }
+            let Ok(mut file) = archive.by_index(i) else {
+                continue;
+            };
+            let Ok(name) = file.name() else {
+                continue;
+            };
+            if name.ends_with(".xml") && !name.contains("META-INF") {
+                let mut content = String::new();
+                if file.read_to_string(&mut content).is_ok() && content.contains("<score-partwise")
+                {
+                    return Ok(content);
                 }
             }
         }
@@ -914,5 +916,58 @@ mod tests {
         let parsed: crate::dna_types::MusicalDNA = serde_json::from_str(&json).unwrap();
 
         assert_eq!(dna.harmonic_profile.len(), parsed.harmonic_profile.len());
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_read_mxl_file() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("mxl_test_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let mxl_path = dir.join("test.mxl");
+
+        let file = std::fs::File::create(&mxl_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+
+        zip.start_file("META-INF/container.xml", options).unwrap();
+        zip.write_all(br#"<?xml version="1.0"?><container><rootfiles><rootfile full-path="score.xml"/></rootfiles></container>"#).unwrap();
+
+        zip.start_file("score.xml", options).unwrap();
+        zip.write_all(SIMPLE_MUSICXML.as_bytes()).unwrap();
+
+        zip.finish().unwrap();
+
+        let ingester = MusicXMLIngester::new();
+        let content = ingester.read_mxl_file(&mxl_path).unwrap();
+        assert_eq!(content, SIMPLE_MUSICXML);
+
+        let _ = std::fs::remove_file(&mxl_path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn test_read_mxl_file_fallback() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("mxl_test_fallback_{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let mxl_path = dir.join("test_fallback.mxl");
+
+        let file = std::fs::File::create(&mxl_path).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default();
+
+        zip.start_file("myscore.xml", options).unwrap();
+        zip.write_all(SIMPLE_MUSICXML.as_bytes()).unwrap();
+
+        zip.finish().unwrap();
+
+        let ingester = MusicXMLIngester::new();
+        let content = ingester.read_mxl_file(&mxl_path).unwrap();
+        assert_eq!(content, SIMPLE_MUSICXML);
+
+        let _ = std::fs::remove_file(&mxl_path);
+        let _ = std::fs::remove_dir(&dir);
     }
 }
