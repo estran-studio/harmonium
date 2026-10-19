@@ -7,7 +7,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{harmony::steedman_grammar::GrammarStyle, trad::cells::CellBank};
+use crate::{
+    harmony::steedman_grammar::GrammarStyle,
+    trad::{cells::CellBank, feet::FeetTable},
+};
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
 ///
@@ -451,6 +454,9 @@ pub struct TuningParams {
     /// Banque de cellules mélodiques du reel traditionnel québécois (D5, constitution V).
     #[serde(default)]
     pub reel_cells: CellBank,
+    /// Table de podorythmie du reel traditionnel québécois (D9, constitution V).
+    #[serde(default)]
+    pub reel_feet: FeetTable,
 }
 
 impl Default for TuningParams {
@@ -466,6 +472,7 @@ impl Default for TuningParams {
             arrangement: ArrangementParams::default(),
             emotional_quadrant: EmotionalQuadrantParams::default(),
             reel_cells: CellBank::default(),
+            reel_feet: FeetTable::default(),
         }
     }
 }
@@ -886,6 +893,10 @@ impl TuningParams {
         if let Err(err) = self.reel_cells.validate() {
             errors.push(ValidationError { field: "reel_cells", message: err.to_string() });
         }
+        // --- Reel FeetTable (D9) ---
+        if let Err(err) = self.reel_feet.validate() {
+            errors.push(ValidationError { field: "reel_feet", message: err.to_string() });
+        }
 
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
@@ -1137,6 +1148,8 @@ pub struct TuningOverlay {
     pub emotional_quadrant: Option<EmotionalQuadrantOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reel_cells: Option<CellBank>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reel_feet: Option<FeetTable>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1281,6 +1294,9 @@ impl TuningParams {
         if let Some(reel_cells) = &overlay.reel_cells {
             result.reel_cells = reel_cells.clone();
         }
+        if let Some(reel_feet) = &overlay.reel_feet {
+            result.reel_feet = reel_feet.clone();
+        }
 
         result
     }
@@ -1409,5 +1425,23 @@ mod tests {
         tp.neo_riemannian.positive_p_cumulative = 0.5;
         let errs = tp.validate().unwrap_err();
         assert!(errs.iter().any(|e| e.field.contains("positive_r/p")));
+    }
+    #[test]
+    fn validation_catches_invalid_reel_feet() {
+        let mut tp = TuningParams::default();
+        tp.reel_feet.patterns.clear();
+        let errs = tp.validate().unwrap_err();
+        assert!(errs.iter().any(|e| e.field == "reel_feet"));
+    }
+
+    #[test]
+    fn overlay_applies_reel_feet() {
+        let base = TuningParams::default();
+        let mut custom_feet = FeetTable::default();
+        custom_feet.heel_base_velocity = 115;
+
+        let overlay = TuningOverlay { reel_feet: Some(custom_feet.clone()), ..Default::default() };
+        let result = base.with_overlay(&overlay);
+        assert_eq!(result.reel_feet.heel_base_velocity, 115);
     }
 }

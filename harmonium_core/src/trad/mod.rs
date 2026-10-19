@@ -7,14 +7,21 @@
 //!   notation D5, validation et [`CellBank`] chargée depuis `reel_cells.toml` ;
 //! - [`plan`] : grille D3 (`TuneKind::Reel`), structure AABB (`Strain`,
 //!   `RepeatScheme`, `TunePlan`) et rôles imposés par mesure (`BarRole`,
-//!   `ImposedRole`).
+//!   `ImposedRole`) ;
+//! - [`feet`] : podorythmie du reel (D9), validation de table TOML et
+//!   génération de notes de talon et pointe via [`feet_notes`].
 
 pub mod cells;
+pub mod feet;
 pub mod mode;
 pub mod plan;
 
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, NOTES_PER_CELL, REEL_CELLS_TOML,
+};
+pub use feet::{
+    DEFAULT_HEEL_VELOCITY, DEFAULT_TOE_VELOCITY, FeetPattern, FeetTable, FeetTableError, FootHit,
+    PITCH_HEEL, PITCH_TOE, REEL_FEET_TOML, REEL_STEPS, feet_notes,
 };
 pub use mode::{Mode, PitchClass, degree_to_diatonic_step, diatonic_step_to_degree};
 pub use plan::{BarRole, ImposedRole, RepeatScheme, Strain, TuneKind, TunePlan};
