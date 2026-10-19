@@ -13,11 +13,12 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
-    harmony::{Chord, ChordType, HarmonicDriver, HarmonyNavigator},
+    harmony::{Chord, ChordType, HarmonicDriver, HarmonyNavigator, RngCore},
     log,
-    params::{CurrentState, EngineParams, MusicalParams, SessionConfig, TimeSignature},
+    params::{CurrentState, EngineParams, MusicalParams, SessionConfig, Style, TimeSignature},
     sequencer::Sequencer,
-    timeline::{GenerationContext, TimelineGenerator, Writehead},
+    timeline::{GenerationContext, Measure, TimelineGenerator, Writehead},
+    trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -29,9 +30,108 @@ use crate::{
     playback::{TaggedMeasure, unpack},
 };
 
+/// Abstraction minimale de générateur de mesures choisie selon [`Style`] (D1).
+///
+/// Unifie `TimelineGenerator` (`Style::Legacy`) et `TradGenerator` (`Style::Reel`)
+/// derrière les 6 opérations utilisées par [`MusicComposer`] :
+/// `generate_measure`, `update_params`, `update_tuning`, `reset_to_initial`,
+/// `silent_advance` et `snap_current_state`.
+pub enum Generator {
+    /// Générateur procédural legacy (conservé jusqu'à P1-T6).
+    Legacy(Box<TimelineGenerator>),
+    /// Générateur de musique traditionnelle québécoise (`Style::Reel`).
+    Reel(TradGenerator),
+}
+
+impl Generator {
+    /// Style actif porté par cette variante du générateur.
+    #[must_use]
+    pub const fn style(&self) -> Style {
+        match self {
+            Self::Legacy(_) => Style::Legacy,
+            Self::Reel(_) => Style::Reel,
+        }
+    }
+
+    /// Génère la mesure `bar_index` avec le RNG injecté.
+    pub fn generate_measure(&mut self, bar_index: usize, rng: &mut dyn RngCore) -> Measure {
+        match self {
+            Self::Legacy(g) => g.generate_measure(bar_index, rng),
+            Self::Reel(g) => g.generate_measure(bar_index, rng),
+        }
+    }
+
+    /// Met à jour les paramètres musicaux courants.
+    pub fn update_params(&mut self, params: MusicalParams) {
+        match self {
+            Self::Legacy(g) => g.update_params(params),
+            Self::Reel(g) => g.update_params(params),
+        }
+    }
+
+    /// Met à jour les paramètres de tuning (`TuningParams`).
+    pub fn update_tuning(&mut self, tuning: TuningParams) {
+        match self {
+            Self::Legacy(g) => g.update_tuning(tuning),
+            Self::Reel(g) => g.update_tuning(tuning),
+        }
+    }
+
+    /// Réinitialise le générateur à son état initial pour le seek déterministe.
+    pub fn reset_to_initial(&mut self, ctx: &GenerationContext) {
+        match self {
+            Self::Legacy(g) => g.reset_to_initial(ctx),
+            Self::Reel(g) => g.reset_to_initial(ctx),
+        }
+    }
+
+    /// Avance silencieusement jusqu'à `target_bar` (exclus) en rejouant `1..target_bar`.
+    pub fn silent_advance(&mut self, target_bar: usize, rng: &mut dyn RngCore) {
+        match self {
+            Self::Legacy(g) => g.silent_advance(target_bar, rng),
+            Self::Reel(g) => g.silent_advance(target_bar, rng),
+        }
+    }
+
+    /// Aligne immédiatement l'état courant sur `MusicalParams` (sans effet en `Reel`
+    /// où les paramètres sont lus directement sans morphing).
+    pub fn snap_current_state(&mut self) {
+        match self {
+            Self::Legacy(g) => g.snap_current_state(),
+            Self::Reel(g) => g.snap_current_state(),
+        }
+    }
+
+    /// Réinitialise l'indice de grille / cache de tunes lors d'une régénération complète.
+    pub fn reset_chart_index(&mut self) {
+        match self {
+            Self::Legacy(g) => g.reset_chart_index(),
+            Self::Reel(g) => g.reset_chart_index(),
+        }
+    }
+
+    /// Référence aux paramètres de tuning actifs.
+    #[must_use]
+    pub fn tuning(&self) -> &TuningParams {
+        match self {
+            Self::Legacy(g) => &g.tuning,
+            Self::Reel(g) => &g.tuning,
+        }
+    }
+
+    /// En `Style::Reel`, retourne le `(TunePlan, BarRole)` de la mesure 1-based `bar_number`.
+    #[must_use]
+    pub fn reel_bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
+        match self {
+            Self::Legacy(_) => None,
+            Self::Reel(g) => g.bar_info(bar_number),
+        }
+    }
+}
+
 /// Main-thread music composer. Generates measures synchronously.
 ///
-/// This struct owns the generation pipeline: TimelineGenerator, Writehead,
+/// This struct owns the generation pipeline: Generator, Writehead,
 /// MusicalParams, EmotionMapper, and the measure ring buffer producer.
 /// It reads the packed transport position via an `Arc<AtomicU64>` shared
 /// with PlaybackEngine.
@@ -39,9 +139,8 @@ pub struct MusicComposer {
     pub config: SessionConfig,
 
     // Generation
-    generator: TimelineGenerator,
+    generator: Generator,
     writehead: Writehead,
-
     // Handoff: staged measures (composer → playback) and returned boxes
     // (playback → composer). The timeline is the source of truth; `published`
     // mirrors what playback is believed to hold (bar → epoch at stage time).
@@ -55,6 +154,8 @@ pub struct MusicComposer {
     // invalidation/seek/reset. Drained by whoever owns the command ring
     // (NativeHandle, REPL) via `take_pending_drop`, as `DropFrom`.
     pending_drop: Option<usize>,
+    // Pending GM Program Change commands `(channel, program)` queued on style change.
+    pending_program_changes: Vec<(u8, u8)>,
 
     // State
     musical_params: MusicalParams,
@@ -188,7 +289,7 @@ impl MusicComposer {
             ..CurrentState::default()
         };
 
-        let generator = TimelineGenerator::new(
+        let generator = Generator::Legacy(Box::new(TimelineGenerator::new(
             sequencer_primary,
             sequencer_secondary,
             harmony,
@@ -196,7 +297,7 @@ impl MusicComposer {
             musical_params.clone(),
             initial_state,
             tuning,
-        );
+        )));
 
         let writehead = Writehead::new(sample_rate, 4);
 
@@ -209,6 +310,7 @@ impl MusicComposer {
             published: BTreeMap::new(),
             epoch: 0,
             pending_drop: None,
+            pending_program_changes: Vec::new(),
             musical_params,
             rng,
             sample_rate,
@@ -274,6 +376,10 @@ impl MusicComposer {
             }
 
             let measure = self.generator.generate_measure(bar_idx, &mut self.rng);
+            if let Some((plan, _)) = self.generator.reel_bar_info(bar_idx) {
+                self.config.key = pitch_class_name(plan.key).to_string();
+                self.config.scale = format!("{:?}", plan.mode);
+            }
 
             // Update report cache
             self.last_chord_name =
@@ -373,6 +479,12 @@ impl MusicComposer {
         self.pending_drop.take().map(|bar| (bar, self.epoch))
     }
 
+    /// Drain pending GM Program Change pairs `(logical_channel, program)` queued by
+    /// a style transition (D10), to be forwarded as `PlaybackCommand::ProgramChange`.
+    pub fn take_pending_program_changes(&mut self) -> Vec<(u8, u8)> {
+        std::mem::take(&mut self.pending_program_changes)
+    }
+
     /// Current generation epoch (tags every staged box).
     pub fn epoch(&self) -> u64 {
         self.epoch
@@ -436,7 +548,10 @@ impl MusicComposer {
     /// (see `take_pending_drop`).
     pub fn reset(&mut self) {
         self.musical_params = MusicalParams::default();
+        self.bpm_override = None;
+        self.emotion_mapped_bpm = self.musical_params.bpm;
         self.writehead.reset();
+        self.set_style(Style::Legacy);
         self.generator.update_params(self.musical_params.clone());
         self.clear_staged();
     }
@@ -471,18 +586,10 @@ impl MusicComposer {
     /// Staged boxes from the target onward are evicted (see
     /// `take_pending_drop`) so they get regenerated.
     pub fn deterministic_seek(&mut self, target_bar: usize) {
-        use rand::Rng;
         let target_bar = target_bar.max(1);
 
-        // 1. Re-seed RNG from session seed
-        let mut rng = ChaCha8Rng::seed_from_u64(self.session_seed);
-
-        // 2. Consume the same init draws as new_with_seed() to advance RNG past init
-        let keys_len = 7usize;
-        let scales_len = 2usize;
-        let _ = rng.gen_range(0..keys_len);
-        let _ = rng.gen_range(0..scales_len);
-
+        // 1. Re-seed RNG from session seed (past initial key/scale draws)
+        let mut rng = Self::seeded_rng_past_init(self.session_seed);
         // 3. Reset generator to initial state
         let ctx = GenerationContext {
             session_seed: self.session_seed,
@@ -508,6 +615,42 @@ impl MusicComposer {
         self.bump_epoch(target_bar);
 
         log::info(&format!("Deterministic seek to bar {target_bar}"));
+    }
+
+    fn seeded_rng_past_init(session_seed: u64) -> ChaCha8Rng {
+        use rand::Rng;
+        let mut rng = ChaCha8Rng::seed_from_u64(session_seed);
+        let _ = rng.gen_range(0..7usize);
+        let _ = rng.gen_range(0..2usize);
+        rng
+    }
+
+    fn build_legacy_generator(&self, tuning: TuningParams) -> TimelineGenerator {
+        let bpm = 120.0f32;
+        let steps = 16usize;
+        let initial_pulses = 4usize;
+        let sequencer_primary = Sequencer::new(steps, initial_pulses, bpm);
+        let default_density = 0.4f32;
+        let secondary_pulses = std::cmp::min((default_density * 8.0) as usize + 1, 12);
+        let sequencer_secondary = Sequencer::new_with_rotation(12, secondary_pulses, bpm, 0);
+        let harmony = HarmonyNavigator::new(self.init_key, self.init_scale, 4);
+        let harmonic_driver = Some(HarmonicDriver::new(self.init_key_pc, &tuning.harmony_driver));
+        let initial_state = CurrentState {
+            bpm,
+            density: self.musical_params.rhythm_density,
+            tension: self.musical_params.rhythm_tension,
+            smoothness: self.musical_params.melody_smoothness,
+            ..CurrentState::default()
+        };
+        TimelineGenerator::new(
+            sequencer_primary,
+            sequencer_secondary,
+            harmony,
+            harmonic_driver,
+            self.musical_params.clone(),
+            initial_state,
+            tuning,
+        )
     }
 
     /// Re-derive init key/scale from a seed and update stored init params.
@@ -597,8 +740,54 @@ impl MusicComposer {
         self.musical_params.set_swing_ratio(ratio);
     }
 
-    pub fn set_style(&mut self, style: harmonium_core::params::Style) {
+    /// Change le style de génération (`Legacy` ou `Reel`), applique les défauts
+    /// du style depuis [`TuningParams`] (D3, constitution V) et prépare les
+    /// changements de programmes GM (D10).
+    pub fn set_style(&mut self, style: Style) {
+        let tuning = self.generator.tuning().clone();
+        let style_changed = self.generator.style() != style;
         self.musical_params.set_style(style);
+
+        match style {
+            Style::Reel => {
+                let rf = &tuning.reel_fiddle;
+                self.musical_params.bpm = rf.default_bpm;
+                self.emotion_mapped_bpm = rf.default_bpm;
+                self.bpm_override = None;
+                self.musical_params.set_swing_ratio(rf.default_swing_ratio);
+                self.musical_params.time_signature = rf.default_time_signature;
+                self.config.bpm = self.musical_params.bpm;
+                if style_changed {
+                    self.rng = Self::seeded_rng_past_init(self.session_seed);
+                    self.generator =
+                        Generator::Reel(TradGenerator::new(self.musical_params.clone(), tuning));
+                } else {
+                    self.generator.update_params(self.musical_params.clone());
+                }
+            }
+            Style::Legacy => {
+                let defaults = MusicalParams::default();
+                self.musical_params.bpm = defaults.bpm;
+                self.emotion_mapped_bpm = defaults.bpm;
+                self.bpm_override = None;
+                self.musical_params.set_swing_ratio(defaults.swing_ratio);
+                self.musical_params.time_signature = defaults.time_signature;
+                self.config.bpm = self.musical_params.bpm;
+                self.config.key = format!("{}", self.init_key);
+                self.config.scale = format!("{:?}", self.init_scale);
+                if style_changed {
+                    self.rng = Self::seeded_rng_past_init(self.session_seed);
+                    let tgen = self.build_legacy_generator(tuning);
+                    self.generator = Generator::Legacy(Box::new(tgen));
+                } else {
+                    self.generator.update_params(self.musical_params.clone());
+                }
+            }
+        }
+
+        self.pending_program_changes.clear();
+        self.pending_program_changes
+            .extend_from_slice(&harmonium_audio::voice_manager::gm_programs_for_style(style));
     }
 
     pub fn set_feet_density(&mut self, density: u8) {
@@ -696,14 +885,15 @@ impl MusicComposer {
         self.init_key_pc = key_pc;
         self.config.key = format!("{symbol}");
         self.musical_params.key_root = key_pc;
-        // Rebuild the scale navigator on the new tonic (keep the current scale).
-        self.generator.harmony = HarmonyNavigator::new(symbol, self.init_scale, 4);
-        // Re-root the procedural harmonic driver so chords centre on the new key.
-        if let Some(driver) = self.generator.harmonic_driver.as_mut() {
-            driver.set_key(key_pc);
+        if let Generator::Legacy(tgen) = &mut self.generator {
+            // Rebuild the scale navigator on the new tonic (keep the current scale).
+            tgen.harmony = HarmonyNavigator::new(symbol, self.init_scale, 4);
+            // Re-root the procedural harmonic driver so chords centre on the new key.
+            if let Some(driver) = tgen.harmonic_driver.as_mut() {
+                driver.set_key(key_pc);
+            }
         }
         // Push key_root into the generator's own params copy — it converts
-        // relative chord offsets to sounding pitches with it (issue #26).
         self.generator.update_params(self.musical_params.clone());
         log::info(&format!("Session re-keyed to {symbol} (pc {key_pc})"));
         true
@@ -889,6 +1079,11 @@ impl MusicComposer {
         self.writehead.timeline.get_measure(bar)
     }
 
+    /// En `Style::Reel`, retourne le [`TunePlan`] et le [`BarRole`] de la mesure 1-based `bar`.
+    #[must_use]
+    pub fn reel_bar_info(&self, bar: usize) -> Option<(TunePlan, BarRole)> {
+        self.generator.reel_bar_info(bar)
+    }
     pub fn last_chord_name(&self) -> &ArrayString<64> {
         &self.last_chord_name
     }

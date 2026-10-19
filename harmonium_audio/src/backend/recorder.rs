@@ -66,8 +66,7 @@ pub struct RecorderBackend {
     midi_track: Option<Vec<TrackEvent<'static>>>,
     midi_steps_since_last: f64, // Changed from midi_samples_since_last: u64
     current_samples_per_step: usize,
-
-    // MusicXML State
+    channel_programs: [u8; 16],
     musicxml_events: Option<Vec<(f64, AudioEvent)>>, // Changed from Vec<(u64, AudioEvent)>
     musicxml_steps_elapsed: f64,                     // Changed from musicxml_samples_elapsed: u64
     musicxml_params: MusicalParams,
@@ -88,6 +87,15 @@ impl RecorderBackend {
             midi_track: None,
             midi_steps_since_last: 0.0, // Changed to f64
             current_samples_per_step: 11025,
+            channel_programs: {
+                let mut progs = [0u8; 16];
+                for (ch, prog) in
+                    crate::voice_manager::gm_programs_for_style(harmonium_core::params::Style::Legacy)
+                {
+                    progs[ch as usize] = prog;
+                }
+                progs
+            },
             musicxml_events: None,
             musicxml_steps_elapsed: 0.0, // Changed to f64
             musicxml_params: MusicalParams::default(),
@@ -132,10 +140,23 @@ impl RecorderBackend {
         // Use actual BPM from musical params, falling back to 120 if unset
         let bpm = if self.musicxml_params.bpm > 0.0 { self.musicxml_params.bpm } else { 120.0 };
         let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
-        let track = vec![TrackEvent {
+        let mut track = vec![TrackEvent {
             delta: 0.into(),
             kind: TrackEventKind::Meta(MetaMessage::Tempo(microseconds_per_beat.into())),
         }];
+
+        // Émet les programmes GM initiaux pour Melody (0), Chords (1) et Bass (2)
+        for ch in 0..3u8 {
+            track.push(TrackEvent {
+                delta: 0.into(),
+                kind: TrackEventKind::Midi {
+                    channel: ch.into(),
+                    message: MidiMessage::ProgramChange {
+                        program: self.channel_programs[ch as usize].into(),
+                    },
+                },
+            });
+        }
 
         self.midi_track = Some(track);
         self.midi_steps_since_last = 0.0;
@@ -234,6 +255,9 @@ impl AudioRenderer for RecorderBackend {
                         });
                     }
                 }
+                for (ch, prog) in crate::voice_manager::gm_programs_for_style(params.style) {
+                    self.channel_programs[ch as usize] = prog;
+                }
                 self.musicxml_params = *params.clone();
             }
             AudioEvent::NoteOn { .. } | AudioEvent::NoteOff { .. } => {
@@ -245,9 +269,30 @@ impl AudioRenderer for RecorderBackend {
             _ => {}
         }
 
-        // MIDI recording logic - convert step delta to ticks
+        // MIDI recording logic - convert step delta to ticks (Heel=3, Toe=4 mapped to GM ch 9)
+        let map_midi_ch = |ch: u8| -> u8 {
+            if ch == 3 || ch == 4 { crate::voice_manager::GM_DRUM_CHANNEL } else { ch }
+        };
         match &event {
+            AudioEvent::ProgramChange { channel, program } => {
+                if (*channel as usize) < 16 {
+                    self.channel_programs[*channel as usize] = *program;
+                }
+                let midi_ch = map_midi_ch(*channel);
+                let delta = self.steps_to_ticks(self.midi_steps_since_last);
+                if let Some(track) = &mut self.midi_track {
+                    self.midi_steps_since_last = 0.0;
+                    track.push(TrackEvent {
+                        delta: delta.into(),
+                        kind: TrackEventKind::Midi {
+                            channel: midi_ch.into(),
+                            message: MidiMessage::ProgramChange { program: (*program).into() },
+                        },
+                    });
+                }
+            }
             AudioEvent::NoteOn { note, velocity, channel } => {
+                let midi_ch = map_midi_ch(*channel);
                 // Compute delta before mutable borrow
                 let delta = self.steps_to_ticks(self.midi_steps_since_last);
                 if let Some(track) = &mut self.midi_track {
@@ -255,7 +300,7 @@ impl AudioRenderer for RecorderBackend {
                     track.push(TrackEvent {
                         delta: delta.into(),
                         kind: TrackEventKind::Midi {
-                            channel: (*channel).into(),
+                            channel: midi_ch.into(),
                             message: MidiMessage::NoteOn {
                                 key: (*note).into(),
                                 vel: (*velocity).into(),
@@ -265,6 +310,7 @@ impl AudioRenderer for RecorderBackend {
                 }
             }
             AudioEvent::NoteOff { note, channel } => {
+                let midi_ch = map_midi_ch(*channel);
                 // Compute delta before mutable borrow
                 let delta = self.steps_to_ticks(self.midi_steps_since_last);
                 if let Some(track) = &mut self.midi_track {
@@ -272,7 +318,7 @@ impl AudioRenderer for RecorderBackend {
                     track.push(TrackEvent {
                         delta: delta.into(),
                         kind: TrackEventKind::Midi {
-                            channel: (*channel).into(),
+                            channel: midi_ch.into(),
                             message: MidiMessage::NoteOff { key: (*note).into(), vel: 0.into() },
                         },
                     });
@@ -280,7 +326,6 @@ impl AudioRenderer for RecorderBackend {
             }
             _ => {}
         }
-
         self.inner.handle_event(event);
     }
 
