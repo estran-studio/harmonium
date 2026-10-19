@@ -36,7 +36,7 @@ fn samples_per_step(bpm: f64) -> usize {
 ///
 /// Returns `(pulse_transitions, max_bar)` — the number of pulse-boundary
 /// transitions verified and the highest bar the playhead reached.
-fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize) {
+fn run_prediction(time_sig: TimeSignature, buffer_size: usize, swing_ratio: f32) -> (usize, usize) {
     let pulse = PulseSpec::from_time_signature(time_sig, TICKS_PER_BEAT);
     let steps_per_pulse = usize::from(pulse.steps_per_pulse);
     let pulses_per_bar = usize::from(pulse.pulses_per_bar);
@@ -49,6 +49,7 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize)
     // Bars 1..=32 at BPM1, then set_bpm + invalidation for bars 2..=64 at BPM2.
     composer.set_time_signature(time_sig.numerator, time_sig.denominator);
     composer.set_bpm(BPM1 as f32);
+    composer.set_swing_ratio(swing_ratio);
     composer.sync_generator();
     composer.set_writehead_lookahead(64);
     composer.generate_bars(32);
@@ -72,6 +73,7 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize)
     let mut last_next_pulse: Option<u64> = None;
     let mut pulse_transitions = 0usize;
     let mut max_bar = 0usize;
+    let mut ramp_sent = false;
 
     while frames_driven < total_frames {
         composer.generate_ahead();
@@ -81,6 +83,13 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize)
 
         let clock = clock_reader.read();
 
+        // Launch a tempo ramp mid-measure (bar 2, pulse 1): the prediction
+        // must stay exact *during* the ramp (D4 + D1 invariant).
+        if !ramp_sent && clock.position.bar == 2 && clock.pulse_in_bar == 1 {
+            let _ = cmd_tx.push(PlaybackCommand::SetTempo { bpm: 240.0, ramp_pulses: 8 });
+            ramp_sent = true;
+        }
+
         // The D1 invariant: when the playhead enters a new pulse, its start
         // frame equals the previous pulse's `next_pulse_frame` — 0-frame error.
         if let (Some(prev_start), Some(prev_next)) = (last_pulse_start, last_next_pulse)
@@ -89,7 +98,7 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize)
             assert_eq!(
                 clock.pulse_start_frame,
                 prev_next,
-                "{}:{} buffer={}: predicted next_pulse_frame {} != actual {}",
+                "{}:{} swing={swing_ratio} buffer={}: predicted next_pulse_frame {} != actual {}",
                 time_sig.numerator,
                 time_sig.denominator,
                 buffer_size,
@@ -145,8 +154,9 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize) -> (usize, usize)
 }
 
 /// Acceptance (1): `next_pulse_frame` is exact (0-frame error) across 4/4,
-/// 2/2, 6/8, 3/4, on 64 measures, at buffer sizes 64, 333 and 1024, with a
-/// nominal BPM change between measures (`set_bpm` + invalidation).
+/// 2/2, 6/8, 3/4, on 64 measures, at buffer sizes 64, 333 and 1024, at swing
+/// 0.5 and 0.62, with a nominal BPM change between measures (`set_bpm` +
+/// invalidation) and a `SetTempo { 240, 8 }` ramp launched mid-measure.
 #[test]
 fn prediction_is_exact_across_meters_and_buffer_sizes() {
     let signatures = [
@@ -156,12 +166,14 @@ fn prediction_is_exact_across_meters_and_buffer_sizes() {
         TimeSignature::new(3, 4),
     ];
     for ts in signatures {
-        for &buffer_size in &[64usize, 333, 1024] {
-            let (transitions, max_bar) = run_prediction(ts, buffer_size);
-            eprintln!(
-                "[observed-proof] {}/{} buffer={}: {} pulse transitions, playhead reached bar {}",
-                ts.numerator, ts.denominator, buffer_size, transitions, max_bar
-            );
+        for &swing in &[0.5f32, 0.62] {
+            for &buffer_size in &[64usize, 333, 1024] {
+                let (transitions, max_bar) = run_prediction(ts, buffer_size, swing);
+                eprintln!(
+                    "[observed-proof] {}/{} swing={swing} buffer={}: {} pulse transitions, playhead reached bar {}",
+                    ts.numerator, ts.denominator, buffer_size, transitions, max_bar
+                );
+            }
         }
     }
 }
