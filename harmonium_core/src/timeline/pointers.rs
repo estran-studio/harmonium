@@ -241,7 +241,16 @@ impl Playhead {
         if self.position.tick >= self.ticks_per_beat {
             self.position.tick = 0;
             self.position.beat += 1;
-            if self.position.beat > self.time_signature.numerator {
+            // A bar is `steps_per_bar` grid steps, not `numerator ×
+            // ticks_per_beat`: 2/2 has four quarter-note beats (two half
+            // notes), 6/8 has three (six eighths grouped in twos). For x/4
+            // the numerator already equals the grid-beat count, so 4/4 and
+            // 3/4 are unchanged. `.max(1)` keeps an exotic sub-grid meter
+            // from wrapping at beat 0.
+            let beats_per_bar = (self.time_signature.steps_per_bar(self.ticks_per_beat)
+                / self.ticks_per_beat)
+                .max(1);
+            if self.position.beat > beats_per_bar {
                 self.position.beat = 1;
                 self.position.bar += 1;
                 // Current measure is exhausted: park it for the caller to
