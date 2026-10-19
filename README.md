@@ -1,86 +1,52 @@
-# Harmonium: Reactive Procedural Music Generation
+# Harmonium
 
-Harmonium is a Rust ecosystem for creating procedural music driven by emotions. It combines music theory, geometric rhythms, and advanced synthesis into a reactive engine designed for applications, games, and interactive installations.
+Moteur Rust de musique procédurale de style folklorique québécois /
+canadien-français, piloté en temps réel par l'état d'un jeu. Conçu pour
+« 1837 » (roguelike Rust/Bevy) : le beat est exposé au gameplay, les jauges
+émotionnelles du personnage pilotent la musique.
 
-## Architecture
+Direction et principes : [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
+Phase en cours : [`specs/008-phase0-clock-playback/plan.md`](specs/008-phase0-clock-playback/plan.md).
 
-The project is organized as a Cargo workspace with specialized crates:
+## Workspace
 
-| Crate | Role | Description |
-|-------|------|-------------|
-| **`harmonium_core`** | **The Brain** | Platform-agnostic logic. Contains the `MusicKernel`, `Sequencer`, and `HarmonicDriver`. Generates abstract `AudioEvent`s. |
-| **`harmonium_audio`** | **The Lung** | Sound generation engine. Supports hot-swappable backends (**Odin2**, **FundSP**, **SoundFonts**) and handles emotional timbre morphing. |
-| **`harmonium_ai`** | **The Soul** | Semantic layer. Uses **Candle** (BERT) to translate natural language into emotional parameters (Valence/Arousal/Tension). |
-| **`harmonium_host`** | **The Body** | Runtime environment. Bridges logic and audio, managing threads, **Triple Buffers**, and platform integration (CLI, VST3, WASM). |
-| **`web`** | **The Face** | SvelteKit frontend. Provides the UI for the WASM build and the VST editor. |
+| Crate | Rôle |
+|---|---|
+| `harmonium_core` | Types purs et génération : grille de pas, `Measure`, `TimelineGenerator`, `Writehead`/`Playhead`, harmonie, `TuningParams`/`StyleProfile`, mapping émotion → paramètres. Aucune I/O. |
+| `harmonium_audio` | Rendu SoundFont (oxisynth), enregistrement WAV / MIDI / MusicXML, garde d'allocation temps réel. |
+| `harmonium_host` | `MusicComposer` (thread principal) + `PlaybackEngine` (callback cpal), transport lock-free, `NativeHandle`, `create_offline_engine`, binaire `harmonium` avec contrôle OSC. |
+| `harmonium_cli` | REPL d'écoute et de test (`harmonium-cli`). |
+| `harmonium_lab` | Ingestion de corpus MusicXML, métriques de distance, tuning assisté. |
 
-## The Method: From Emotion to Sound
-
-Harmonium translates a high-level "Emotional State" into concrete audio through five distinct layers:
-
-### 1. The Context (AI & Input) -> `harmonium_ai`
-*   **Input**: User text ("A dark, mysterious cave") or direct parameters (Valence, Arousal).
-*   **Processing**: A **BERT** model (via `candle`) computes semantic embeddings and maps them to **Russell's Circumplex Model**.
-*   **Output**: `EngineParams` (BPM, Scale, Density, Tension).
-
-### 2. The Skeleton (Rhythm) -> `harmonium_core::sequencer`
-*   **Euclidean Rhythms**: Uses Bjorklund’s algorithm to distribute pulses evenly (e.g., 3 hits in 8 steps = Tresillo).
-*   **Perfect Balance**: Implements "Well-Formed" rhythms by superimposing regular polygons (Triangle, Square) based on XronoMorph theory.
-*   **Polyrhythm**: Dual sequencers run in parallel (e.g., 16 steps vs 12 steps) to create phasing patterns (Steve Reich style).
-
-### 3. The Body (Harmony) -> `harmonium_core::harmony`
-*   **Generative Grammar**: Uses **Steedman's Grammar** to create logical, resolving jazz/pop phrases (Syntax Trees).
-*   **Neo-Riemannian Theory**: Uses the **Tonnetz** topology (PLR transformations) to connect chords that are geometrically close but tonally distant, creating cinematic transitions.
-*   **Lydian Chromatic Concept**: Filters all pitch choices through George Russell's "Tonal Gravity" to ensure coherence regardless of complexity.
-
-### 4. The Voice (Melody & Voicing) -> `harmonium_audio::voicing`
-*   **Fractal Melody**: Melodic contours are guided by **Pink Noise (1/f)** to balance unpredictability with structure.
-*   **Smart Voicing**:
-    *   **Block Chords**: George Shearing style (locked hands).
-    *   **Shell Voicings**: Be-Bop style (Root, 3rd, 7th).
-    *   **Drop-2**: Spreads close voicings for a more open sound.
-
-### 5. The Lung (Audio Synthesis) -> `harmonium_audio::backend`
-*   **Odin 2 Integration**: Embeds the powerful **Odin 2** synthesizer engine (ported to Rust).
-*   **Emotional Morphing**: Synthesizer presets are mapped to emotional quadrants. The engine bilinearly interpolates parameters in real-time, morphing the timbre from "Sad" to "Angry" seamlessly.
-*   **Hybrid Engine**: Fallback to **FundSP** (Functional DSP) and **OxiSynth** (SoundFonts) for lightweight targets.
-
-## Usage
-
-### Standalone (CLI)
-Real-time playback, OSC control, and recording.
+## Démarrer
 
 ```bash
-# Run with default settings
-cargo run --release --bin harmonium
-
-# Record to WAV/MIDI
-cargo run --release --bin harmonium -- --record-wav output.wav --record-midi output.mid
-
-# Enable OSC control (UDP 8080)
-cargo run --release --bin harmonium -- --osc
+make run                 # REPL, charge assets/test.sf2 par défaut
+make run ARGS="--soundfont path/to/bank.sf2"
+make play ARGS="--osc"   # lecteur autonome, /harmonium/params (arousal valence density tension) sur UDP 8080
+make test                # cargo test --workspace
+make quality             # fmt + clippy + tests
 ```
 
-### VST3 / CLAP Plugin
-Runs as a MIDI generator in your DAW.
+## Architecture d'exécution
 
-```bash
-# Build plugin bundle
-cargo xtask bundle harmonium --release
+```mermaid
+flowchart LR
+  G[Jeu / CLI / OSC] -->|setters| C[MusicComposer\nthread principal]
+  C -->|Measure| P[PlaybackEngine\ncallback cpal]
+  P -->|AudioEvent| S[oxisynth SF2]
+  P -->|AtomicU64 bar,step| G
+  C -->|MeasureSnapshot| G
 ```
 
-## Technology Stack
+Le composer génère des mesures d'avance ; le callback audio les joue pas à
+pas et publie la position sans verrou. Les paramètres structurels prennent
+effet à la mesure suivante ; gains, mute, programmes GM et seek sont
+immédiats.
 
-*   **Logic**: `rust-music-theory`, `midly`, `rand`
-*   **Audio**: `cpal` (I/O), `odin2-core` (Synth), `fundsp` (DSP), `oxisynth` (SF2), `hound` (WAV)
-*   **AI**: `candle-core`, `candle-transformers`, `tokenizers`
-*   **Plugin**: `nih_plug`
-*   **Web**: `wasm-bindgen`, SvelteKit
+## Intégration dans un jeu
 
-## Scientific Foundations
-
-*   **Loy, Gareth**: *Musimathics* (Mathematical Foundations)
-*   **Toussaint, Godfried**: *The Geometry of Musical Rhythm*
-*   **Russell, George**: *The Lydian Chromatic Concept of Tonal Organization*
-*   **Steedman, Mark**: *A Generative Grammar for Jazz Chord Sequences*
-*   **Cohn, Richard**: *Audacious Euphony* (Neo-Riemannian Theory)
+`harmonium::audio::create_offline_engine(sf2, sample_rate)` rend un
+`MusicComposer` et un `PlaybackEngine` sans ouvrir de périphérique : le jeu
+appelle `playback.process_buffer()` depuis son propre callback audio et
+`composer.generate_ahead()` depuis sa boucle principale.

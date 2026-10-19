@@ -1,6 +1,6 @@
-//! Unified command interface for controlling the HarmoniumEngine
+//! Unified command interface for controlling the engine
 //!
-//! All control flows through EngineCommand (CLI, Web, VST).
+//! All control flows through EngineCommand (CLI, OSC).
 //! This replaces the previous triple buffer + SPSC rings + mutex architecture
 //! with a single lock-free command queue.
 
@@ -10,8 +10,8 @@ use crate::{
     events::RecordFormat, harmony::HarmonyMode, params::HarmonyStrategy, sequencer::RhythmMode,
 };
 
-/// Unified command interface for controlling the HarmoniumEngine
-/// All control flows through these commands (CLI, Web, VST)
+/// Unified command interface for controlling the engine
+/// All control flows through these commands (CLI, OSC)
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum EngineCommand {
     // === GLOBAL ===
@@ -104,7 +104,7 @@ pub enum EngineCommand {
     /// Set channel mute (channel 0-15)
     SetChannelMute { channel: u8, muted: bool },
 
-    /// Set channel routing (channel 0-15, bank_id: -1=FundSP, >=0=Oxisynth)
+    /// Set channel routing (channel 0-15, bank_id: -1 = default bank 0, >=0 = oxisynth bank)
     SetChannelRoute { channel: u8, bank_id: i32 },
 
     /// Set velocity base (channel 0-15, velocity 0-127)
@@ -117,15 +117,14 @@ pub enum EngineCommand {
     /// Stop recording (Wav | Midi | MusicXml)
     StopRecording(RecordFormat),
 
-    // === CONTROL MODE (for EmotionMapper controller) ===
+    // === CONTROL MODE (emotion mapping vs direct) ===
     /// Switch to emotion control mode
     UseEmotionMode,
 
     /// Switch to direct technical control mode
     UseDirectMode,
 
-    /// Set emotional parameters (arousal, valence, density, tension)
-    /// This command is sent by HarmoniumController when in emotion mode
+    /// Set emotional parameters (arousal, valence, density, tension), applied in emotion mode
     SetEmotionParams { arousal: f32, valence: f32, density: f32, tension: f32 },
 
     // === BATCH OPERATIONS ===

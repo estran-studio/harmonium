@@ -7,7 +7,6 @@ use harmonium_core::{EngineReport, MeasureSnapshot, params::SessionConfig};
 
 use crate::{
     FinishedRecordings, FontQueue,
-    audio::AudioBackendType,
     composer::MusicComposer,
     playback::{PlaybackCommand, TransportPosition},
 };
@@ -45,7 +44,7 @@ unsafe impl Send for SendStream {}
 #[allow(unsafe_code)]
 unsafe impl Sync for SendStream {}
 
-/// Native (non-WASM) handle for driving the Harmonium engine.
+/// Native handle for driving the Harmonium engine.
 ///
 /// Owns a `MusicComposer` (direct calls via Mutex) and a `PlaybackCommand`
 /// producer for sending commands to the audio-thread PlaybackEngine.
@@ -73,7 +72,7 @@ pub struct NativeHandle {
 
 impl NativeHandle {
     /// Start the engine and immediately begin playback.
-    pub fn start(sf2_bytes: Option<&[u8]>, backend: AudioBackendType) -> Result<Self, String> {
+    pub fn start(sf2_bytes: Option<&[u8]>) -> Result<Self, String> {
         let (
             stream,
             session_config,
@@ -84,7 +83,7 @@ impl NativeHandle {
             font_queue,
             transport_position,
             finished_recordings,
-        ) = crate::audio::create_timeline_stream(sf2_bytes, backend)?;
+        ) = crate::audio::create_timeline_stream(sf2_bytes)?;
 
         Ok(Self {
             stream: SendStream(stream),
@@ -102,11 +101,8 @@ impl NativeHandle {
     }
 
     /// Start the engine in a paused state.
-    pub fn start_paused(
-        sf2_bytes: Option<&[u8]>,
-        backend: AudioBackendType,
-    ) -> Result<Self, String> {
-        let handle = Self::start(sf2_bytes, backend)?;
+    pub fn start_paused(sf2_bytes: Option<&[u8]>) -> Result<Self, String> {
+        let handle = Self::start(sf2_bytes)?;
         handle.pause()?;
         Ok(handle)
     }

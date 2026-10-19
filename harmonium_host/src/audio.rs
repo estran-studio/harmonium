@@ -1,8 +1,6 @@
 use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-#[cfg(feature = "odin2")]
-use harmonium_audio::backend::odin2_backend::Odin2Backend;
 use harmonium_audio::backend::{
     AudioRenderer, recorder::RecorderBackend, synth_backend::SynthBackend,
 };
@@ -12,17 +10,6 @@ use crate::{
     composer::MusicComposer,
     playback::{PlaybackCommand, PlaybackEngine, pack},
 };
-
-/// Available audio backend types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum AudioBackendType {
-    /// FundSP + Oxisynth backend (default)
-    #[default]
-    FundSP,
-    /// Odin2 synthesizer backend
-    #[cfg(feature = "odin2")]
-    Odin2,
-}
 
 /// Create a decoupled timeline stream for real-time playback.
 ///
@@ -39,7 +26,6 @@ pub enum AudioBackendType {
 #[allow(clippy::type_complexity)]
 pub fn create_timeline_stream(
     sf2_bytes: Option<&[u8]>,
-    backend_type: AudioBackendType,
 ) -> Result<
     (
         cpal::Stream,
@@ -78,16 +64,10 @@ pub fn create_timeline_stream(
     // Font queue (shared between NativeHandle and PlaybackEngine)
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
-    // Create renderer
-    // Route to Oxisynth only when a SoundFont is loaded; otherwise use FundSP
-    let default_routing = if sf2_bytes.is_some() { vec![0, 1, 2, 3] } else { vec![-1, -1, -1, -1] };
-    let inner_backend: Box<dyn AudioRenderer> = match backend_type {
-        AudioBackendType::FundSP => {
-            Box::new(SynthBackend::new(sample_rate, sf2_bytes, &default_routing))
-        }
-        #[cfg(feature = "odin2")]
-        AudioBackendType::Odin2 => Box::new(Odin2Backend::new(sample_rate)),
-    };
+    // Create renderer: every logical channel on SoundFont bank 0
+    let default_routing = vec![0, 0, 0, 0];
+    let inner_backend: Box<dyn AudioRenderer> =
+        Box::new(SynthBackend::new(sample_rate, sf2_bytes, &default_routing));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     let recorder_backend = Box::new(RecorderBackend::new(
@@ -157,7 +137,6 @@ pub fn create_timeline_stream(
 #[allow(clippy::type_complexity)]
 pub fn create_offline_engine(
     sf2_bytes: Option<&[u8]>,
-    backend_type: AudioBackendType,
     sample_rate: f64,
 ) -> Result<
     (
@@ -179,14 +158,9 @@ pub fn create_offline_engine(
     let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
-    let default_routing = if sf2_bytes.is_some() { vec![0, 1, 2, 3] } else { vec![-1, -1, -1, -1] };
-    let inner_backend: Box<dyn AudioRenderer> = match backend_type {
-        AudioBackendType::FundSP => {
-            Box::new(SynthBackend::new(sample_rate, sf2_bytes, &default_routing))
-        }
-        #[cfg(feature = "odin2")]
-        AudioBackendType::Odin2 => Box::new(Odin2Backend::new(sample_rate)),
-    };
+    let default_routing = vec![0, 0, 0, 0];
+    let inner_backend: Box<dyn AudioRenderer> =
+        Box::new(SynthBackend::new(sample_rate, sf2_bytes, &default_routing));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     let recorder_backend = Box::new(RecorderBackend::new(
@@ -225,8 +199,7 @@ mod tests {
         let channels = 2;
 
         let (mut composer, mut playback, mut _cmd_tx, mut _report_rx, _recordings) =
-            create_offline_engine(None, AudioBackendType::FundSP, sample_rate)
-                .expect("create_offline_engine failed");
+            create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Pre-generate bars
         composer.set_writehead_lookahead(16);
@@ -256,8 +229,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
-            create_offline_engine(None, AudioBackendType::FundSP, sample_rate)
-                .expect("create_offline_engine failed");
+            create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Generate 8 bars with default params
         composer.set_writehead_lookahead(16);
@@ -309,8 +281,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
-            create_offline_engine(None, AudioBackendType::FundSP, sample_rate)
-                .expect("create_offline_engine failed");
+            create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Set explicit BPM override
         composer.set_bpm(140.0);
@@ -336,8 +307,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
-            create_offline_engine(None, AudioBackendType::FundSP, sample_rate)
-                .expect("create_offline_engine failed");
+            create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // Switch to emotion mode and set emotions to establish a mapped BPM
         composer.use_emotion_mode();
@@ -366,8 +336,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _recordings) =
-            create_offline_engine(None, AudioBackendType::FundSP, sample_rate)
-                .expect("create_offline_engine failed");
+            create_offline_engine(None, sample_rate).expect("create_offline_engine failed");
 
         // In direct mode, set_bpm should work normally
         composer.set_bpm(155.0);

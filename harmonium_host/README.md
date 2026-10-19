@@ -1,71 +1,41 @@
 # Harmonium Host
 
-`harmonium_host` is the runtime environment that bridges the pure logic of `harmonium_core` with the audio generation of `harmonium_audio`. It provides the platform-specific implementations for running Harmonium as a **Standalone Application**, **VST Plugin**, or **Web Assembly (WASM)** module.
+`harmonium_host` (crate `harmonium`) wires the pure music logic of `harmonium_core` to the oxisynth renderer of `harmonium_audio` and to a `cpal` output stream. It exposes a native Rust API (`NativeHandle`) and a CLI binary.
 
 ## Architecture
 
-The central component is the **`HarmoniumEngine`** (`src/engine.rs`). It acts as the "glue" that synchronizes the musical logic with the audio callback.
+Generation and playback are decoupled across two threads, communicating only through lock-free structures:
 
 ```mermaid
-graph TD
-    CLI/DAW/Web --> Inputs[Triple Buffer (Params)]
-    Inputs --> Engine[HarmoniumEngine]
-    Engine --> Core[MusicKernel (Sequencer/Harmony)]
-    Engine --> Audio[AudioRenderer (Odin2/Synth)]
-    Audio --> Output[Audio/MIDI Output]
-    Engine --> Queue[Ring Buffer (Events)]
-    Queue --> UI[Visualization/GUI]
+graph LR
+    Composer[MusicComposer (main thread)] -- SharedPages --> Playback[PlaybackEngine (cpal callback)]
+    Composer -- PlaybackCommand (rtrb) --> Playback
+    Playback -- EngineReport (rtrb) --> Composer
+    Playback -- AtomicU64 (bar, step) --> Composer
+    MIDI[LiveMidiSender] -- LiveMidiEvent (rtrb) --> Playback
 ```
 
-### Concurrency Model
-To ensure glitch-free audio performance, the host employs a strict lock-free architecture for communication between the UI/Control thread and the Audio thread:
-
-*   **UI → Audio**: A **Triple Buffer** is used to pass `EngineParams`. This allows the UI to write updates atomically without blocking the audio thread.
-*   **Audio → UI**: **Ring Buffers (SPSC)** are used to stream `VisualizationEvent`s and `HarmonyState` back to the UI for real-time feedback.
-
-## Build Targets
-
-### 1. Standalone CLI
-*   **Entry Point**: `src/main.rs`
-*   **Audio Backend**: Uses `cpal` for cross-platform audio output.
-*   **Features**:
-    *   Real-time audio playback.
-    *   OSC (Open Sound Control) server for remote control (port 8080).
-    *   File recording (WAV, MIDI, MusicXML).
-    *   Command-line arguments for configuration.
-
-```bash
-# Run standalone with default settings
-cargo run --release --bin harmonium
-
-# Record to WAV for 30 seconds
-cargo run --release --bin harmonium -- --record-wav output.wav --duration 30
-```
-
-### 2. VST3 / CLAP Plugin
-*   **Entry Point**: `src/vst_plugin.rs`
-*   **Framework**: Built using `nih_plug`.
-*   **Functionality**: Acts as a MIDI Generator plugin. It syncs with the DAW's transport and outputs MIDI notes to drive other virtual instruments.
-*   **GUI**: Features a webview-based editor (`src/vst_gui`) that embeds the Svelte frontend.
-
-```bash
-# Build VST3 plugin
-cargo xtask bundle harmonium --release
-```
-
-### 3. Web Assembly (WASM)
-*   **Entry Point**: `src/lib.rs` (wasm-bindgen exports)
-*   **Usage**: Compiled to WASM to run directly in the browser, powering the web interface.
-*   **Audio**: Uses `WebAudioContext` (via `cpal` wasm backend or custom implementation).
-
-## Key Components
-
-*   **`HarmoniumEngine`**: Orchestrates the `tick()` loop (logic update) and `process_buffer()` (audio generation). It manages the "Emotional Morphing" interpolation.
-*   **`EmotionMapper`**: Translates high-level emotional parameters (Valence, Arousal) into low-level musical parameters (BPM, Scale, Density, Tension).
-*   **`FontQueue`**: A thread-safe queue for loading SoundFonts dynamically.
+*   **`MusicComposer`** (`src/composer.rs`): main-thread generation. Owns the `TimelineGenerator`, `Writehead`, `MusicalParams` and the `EmotionMapper` (from `harmonium_core::mapper`). `generate_ahead()` fills `SharedPages` (a `Mutex<Vec<Measure>>` indexed by bar) ahead of the transport and emits `MeasureSnapshot`s.
+*   **`PlaybackEngine`** (`src/playback.rs`): audio-thread playback. Reads measures from `SharedPages`, ticks the `Playhead`, feeds `AudioEvent`s to the `AudioRenderer` (oxisynth), and handles recording (WAV / MIDI / MusicXML). No allocation in steady state (enforced in debug builds by `RTCheckAllocator`).
+*   **Transport position**: packed `(bar, step)` in a single `Arc<AtomicU64>` (`playback::pack` / `playback::unpack`), written by the audio thread and read lock-free by anyone holding the `Arc`. `TransportPosition::from_packed` derives the beat on a `TICKS_PER_BEAT` grid.
+*   **`audio::create_timeline_stream(sf2_bytes)`** (`src/audio.rs`): builds the whole graph plus a `cpal::Stream`. `audio::create_offline_engine(sf2_bytes, sample_rate)` builds the same graph without a stream, for tests and offline rendering. `sf2_bytes = None` runs oxisynth without a bank (silence, but the engine and snapshot stream work).
+*   **`NativeHandle`** (`src/native_handle.rs`): owned handle over the stream, composer and command producer. `NativeHandle::start(sf2)` / `start_paused(sf2)`, transport control, emotion/mixer setters, `take_live_midi_sender()` for monitoring the player's own MIDI input on `MONITOR_CHANNEL`.
 
 ## Features
 
-*   **Multiple Backends**: Hot-swappable support for `Odin2` (Synthesizer), `FundSP` (DSP Graph), or MIDI output.
-*   **Graceful Shutdown**: Handles Ctrl+C signals to ensure recordings are finalized and saved correctly before exiting.
-*   **Simulation Mode**: Can run an internal "AI Simulator" thread that randomly mutates emotional parameters to test the morphing engine.
+*   `standalone` (default): enables `cpal`, `audio`, `native_handle` and the binary. `composer` and `playback` are always available.
+
+## CLI
+
+Binary `harmonium-cli` (`src/main.rs`):
+
+```bash
+cargo run --release --bin harmonium-cli -- [OPTIONS] [SOUNDFONT.sf2]
+```
+
+Options:
+
+*   `--osc` — listen on UDP `127.0.0.1:8080`; `/harmonium/params <arousal> <valence> <density> <tension>` (4 floats) updates the emotion mapper.
+*   `--simulate` — randomly change emotions every 5 s.
+*   `--record-wav [PATH]`, `--record-midi [PATH]`, `--record-musicxml [PATH]` — record; finalized on Ctrl+C or when `--duration <SECONDS>` elapses.
+*   `--harmony-mode, -m basic|driver|chart`, `--poly-steps, -p <STEPS>`, `--drum-kit`.

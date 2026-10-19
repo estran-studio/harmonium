@@ -9,11 +9,7 @@ use std::{
     time::Duration,
 };
 
-#[cfg(feature = "ai")]
-use harmonium::ai::EmotionEngine;
-use harmonium::{
-    audio, audio::AudioBackendType, harmony::HarmonyMode, log, playback::PlaybackCommand,
-};
+use harmonium::{audio, harmony::HarmonyMode, log, playback::PlaybackCommand};
 use harmonium_core::events::RecordFormat;
 use rand::Rng;
 use rosc::{OscPacket, OscType};
@@ -123,7 +119,6 @@ fn perform_graceful_shutdown(
 
 fn main() {
     log::info("Harmonium - Procedural Music Generator");
-    log::info("State Management + Morphing Engine active");
 
     // === 0. Parse Arguments ===
     let args: Vec<String> = env::args().collect();
@@ -132,13 +127,10 @@ fn main() {
     let mut record_midi: Option<String> = None;
     let mut record_musicxml: Option<String> = None;
     let mut use_osc = false;
+    let mut simulate = false;
     let mut duration_secs = 0; // 0 = infinite
     let mut harmony_mode = HarmonyMode::Driver;
     let mut poly_steps: usize = 48;
-    #[cfg(feature = "odin2")]
-    let mut backend_type = AudioBackendType::Odin2;
-    #[cfg(not(feature = "odin2"))]
-    let mut backend_type = AudioBackendType::FundSP;
     let mut fixed_kick = false;
     let mut i = 1;
     while i < args.len() {
@@ -168,6 +160,7 @@ fn main() {
                 }
             }
             "--osc" => use_osc = true,
+            "--simulate" => simulate = true,
             "--drum-kit" | "--fixed-kick" => fixed_kick = true,
             "--harmony-mode" | "-m" => {
                 if i + 1 < args.len() {
@@ -208,20 +201,6 @@ fn main() {
                     i += 1;
                 }
             }
-            "--backend" | "-b" => {
-                if i + 1 < args.len() {
-                    backend_type = match args[i + 1].to_lowercase().as_str() {
-                        "fundsp" | "synth" | "default" => AudioBackendType::FundSP,
-                        #[cfg(feature = "odin2")]
-                        "odin2" | "odin" => AudioBackendType::Odin2,
-                        _ => {
-                            log::warn(&format!("Unknown backend '{}', using default", args[i + 1]));
-                            AudioBackendType::default()
-                        }
-                    };
-                    i += 1;
-                }
-            }
             "--help" | "-h" => {
                 println!("Usage: harmonium [OPTIONS] [SOUNDFONT.sf2]");
                 println!();
@@ -229,22 +208,22 @@ fn main() {
                 println!(
                     "  --harmony-mode, -m <MODE>  Harmony engine: 'basic' or 'driver' (default: driver)"
                 );
-                println!(
-                    "  --backend, -b <BACKEND>    Audio backend: 'fundsp' or 'odin2' (default: fundsp)"
-                );
                 println!("  --record-wav [PATH]        Record to WAV file (default: output.wav)");
                 println!("  --record-midi [PATH]       Record to MIDI file (default: output.mid)");
                 println!(
                     "  --record-musicxml [PATH]   Record to MusicXML file (default: output.musicxml)"
                 );
                 println!("  --osc                      Enable OSC control (UDP 8080)");
+                println!("  --simulate                 Random emotion change every 5s");
                 println!(
                     "  --duration <SECONDS>       Recording duration (0 = infinite, Ctrl+C to stop)"
                 );
                 println!(
                     "  --poly-steps, -p <STEPS>   Polyrythm resolution: 48, 96, 192... (default: 48)"
                 );
-                println!("  --drum-kit                 Fixed kick on C1 (for VST drums/samplers)");
+                println!(
+                    "  --drum-kit                 Fixed kick on C1 (for external drum samplers)"
+                );
                 println!("  --help, -h                 Show this help");
                 println!();
                 println!("Harmony Modes:");
@@ -262,7 +241,6 @@ fn main() {
     }
 
     log::info(&format!("Harmony Mode: {harmony_mode:?}"));
-    log::info(&format!("Audio Backend: {backend_type:?}"));
     if fixed_kick {
         log::info("Drum Kit Mode: ON (Kick fixed on C1)");
     }
@@ -280,7 +258,7 @@ fn main() {
             }
         }
     } else {
-        log::info("No SoundFont provided. Using default synthesis.");
+        log::info("No SoundFont provided. Running without a bank (silence).");
         None
     };
 
@@ -310,7 +288,7 @@ fn main() {
         _font_queue,
         _transport_position,
         finished_recordings,
-    ) = audio::create_timeline_stream(sf2_data.as_deref(), backend_type).unwrap_or_else(|e| {
+    ) = audio::create_timeline_stream(sf2_data.as_deref()).unwrap_or_else(|e| {
         #[allow(clippy::panic)]
         {
             panic!("Failed to create audio stream: {}", e);
@@ -370,7 +348,7 @@ fn main() {
         }
     });
 
-    // === 4. OSC or Simulator Thread ===
+    // === 4. OSC Listener (opt-in) ===
     if use_osc {
         let osc_composer = composer.clone();
         let osc_shutdown = shutdown_flag.clone();
@@ -388,46 +366,6 @@ fn main() {
                 }
             };
 
-            #[cfg(feature = "ai")]
-            let emotion_engine: Option<EmotionEngine> = {
-                let config_path = "web/static/models/config.json";
-                let weights_path = "web/static/models/model.safetensors";
-                let tokenizer_path = "web/static/models/tokenizer.json";
-
-                if fs::metadata(config_path).is_ok()
-                    && fs::metadata(weights_path).is_ok()
-                    && fs::metadata(tokenizer_path).is_ok()
-                {
-                    log::info("Loading AI Model for OSC...");
-                    if let (Ok(c), Ok(w), Ok(t)) =
-                        (fs::read(config_path), fs::read(weights_path), fs::read(tokenizer_path))
-                    {
-                        match EmotionEngine::new(&c, &w, &t) {
-                            Ok(engine) => {
-                                log::info("AI Model loaded successfully!");
-                                Some(engine)
-                            }
-                            Err(e) => {
-                                log::error(&format!("Failed to init AI engine: {e:?}"));
-                                None
-                            }
-                        }
-                    } else {
-                        log::error("Failed to read model files");
-                        None
-                    }
-                } else {
-                    log::warn(
-                        "AI Model files not found in web/static/models. OSC will only accept raw params.",
-                    );
-                    log::warn("Run 'make models/download' to enable AI features.");
-                    None
-                }
-            };
-
-            #[cfg(not(feature = "ai"))]
-            let _emotion_engine: Option<()> = None;
-
             let mut buf = [0u8; 4096];
             loop {
                 if osc_shutdown.load(Ordering::Relaxed) {
@@ -439,42 +377,6 @@ fn main() {
                         if let Ok((_, OscPacket::Message(msg))) =
                             rosc::decoder::decode_udp(&buf[..size])
                         {
-                            #[cfg(feature = "ai")]
-                            if msg.addr == "/harmonium/label" {
-                                let args = msg.args.clone();
-                                if let Some(OscType::String(label)) = args.first() {
-                                    log::info(&format!("OSC LABEL RECEIVED: {label}"));
-
-                                    if let Some(engine) = &emotion_engine {
-                                        match engine.predict_native(label) {
-                                            Ok(predicted_params) => {
-                                                if let Ok(mut c) = osc_composer.lock() {
-                                                    c.set_emotions(
-                                                        predicted_params.arousal,
-                                                        predicted_params.valence,
-                                                        predicted_params.density,
-                                                        predicted_params.tension,
-                                                    );
-                                                    c.invalidate_future();
-                                                    log::info(&format!(
-                                                        "AI UPDATE: Arousal {:.2} | Valence {:.2} | Density {:.2} | Tension {:.2}",
-                                                        predicted_params.arousal,
-                                                        predicted_params.valence,
-                                                        predicted_params.density,
-                                                        predicted_params.tension
-                                                    ));
-                                                }
-                                            }
-                                            Err(e) => {
-                                                log::error(&format!("AI Prediction failed: {e}"));
-                                            }
-                                        }
-                                    } else {
-                                        log::warn("AI Engine not loaded. Ignoring label.");
-                                    }
-                                }
-                            }
-
                             if msg.addr == "/harmonium/params" {
                                 let args = msg.args;
                                 if args.len() >= 4 {
@@ -507,7 +409,10 @@ fn main() {
         });
     } else {
         log::info("OSC disabled. Use --osc to enable external control.");
+    }
 
+    // === 4.5. Emotion Simulator (opt-in) ===
+    if simulate {
         // Simulator thread: random emotion changes every 5 seconds
         let simulator_composer = composer.clone();
         let simulator_shutdown = shutdown_flag.clone();
@@ -516,7 +421,7 @@ fn main() {
             let mut rng = rand::thread_rng();
             thread::sleep(Duration::from_secs(3));
 
-            log::info("AI Simulator started (changes every 5s)");
+            log::info("Emotion simulator started (changes every 5s)");
 
             loop {
                 if simulator_shutdown.load(Ordering::Relaxed) {

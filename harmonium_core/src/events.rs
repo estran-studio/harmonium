@@ -24,15 +24,11 @@ pub enum AudioEvent {
         id: u32,
         bytes: Vec<u8>,
     },
-    /// Load an Odin 2 preset from raw bytes
-    LoadOdinPreset {
-        channel: u8,
-        bytes: Vec<u8>,
-    },
+    /// Route a logical channel to a SoundFont bank (-1 = default bank 0, >=0 = oxisynth bank)
     SetChannelRoute {
         channel: u8,
         bank: i32,
-    }, // -1 = FundSP, >=0 = Oxisynth Bank
+    },
     /// Send a GM Program Change to a logical channel
     ProgramChange {
         channel: u8,

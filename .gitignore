@@ -1,16 +1,9 @@
 /target
 /test
-/dist
 
 /.claude
 
 *.abc
-
-*.venv
-
-dist/
-
-pkg/
 
 .DS_Store
 *.musicxml

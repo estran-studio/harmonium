@@ -225,7 +225,7 @@ enum Commands {
         #[arg(short, long, default_value = "./render.wav")]
         output: PathBuf,
 
-        /// Path to SF2 soundfont file (uses FundSP synth if not specified)
+        /// Path to an SF2 SoundFont file (renders silence if not specified)
         #[arg(long)]
         soundfont: Option<PathBuf>,
 

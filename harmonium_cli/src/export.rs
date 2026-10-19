@@ -20,7 +20,6 @@ const BUFFER_SIZE: usize = 1024;
 /// Run the engine offline for the given duration, saving recordings and snapshots.
 pub fn run(
     sf2_bytes: Option<&[u8]>,
-    backend_type: audio::AudioBackendType,
     duration_secs: u64,
     record_wav: Option<String>,
     record_midi: Option<String>,
@@ -28,8 +27,7 @@ pub fn run(
     record_truth: Option<String>,
 ) -> Result<()> {
     let (mut composer, mut playback, mut playback_cmd_tx, mut report_rx, finished_recordings) =
-        audio::create_offline_engine(sf2_bytes, backend_type, SAMPLE_RATE)
-            .map_err(|e| anyhow::anyhow!(e))?;
+        audio::create_offline_engine(sf2_bytes, SAMPLE_RATE).map_err(|e| anyhow::anyhow!(e))?;
 
     // Pre-generate bars into the ring buffer
     composer.set_writehead_lookahead(64);

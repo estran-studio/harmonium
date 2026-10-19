@@ -1,5 +1,2 @@
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-specs/006-sub-beat-transport-position/plan.md
-<!-- SPECKIT END -->
+Direction du projet et principes non négociables : `.specify/memory/constitution.md`.
+Phase en cours : `specs/008-phase0-clock-playback/plan.md`.

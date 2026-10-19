@@ -5,9 +5,9 @@
 //!
 //! ## Architecture
 //! ```text
-//! [UI/IA] → EngineParams → EmotionMapper → MusicalParams → HarmoniumEngine
+//! [UI] → EngineParams → EmotionMapper → MusicalParams → moteur
 //!                   ou
-//! [Debug] → MusicalParams → HarmoniumEngine (bypass émotionnel)
+//! [Debug] → MusicalParams → moteur (bypass émotionnel)
 //! ```
 
 use arrayvec::ArrayString;
@@ -504,7 +504,7 @@ pub struct MusicalParams {
 
     /// Mode du Kick : true = Note fixe 36 (Drum Kit), false = Harmonisé (Synth Bass)
     /// - true: Idéal pour VST Drums, Samplers, Percussions
-    /// - false: Idéal pour Synthwave, Basses mélodiques (Odin2)
+    /// - false: Idéal pour Synthwave, Basses mélodiques
     #[serde(default)]
     pub fixed_kick: bool,
 
@@ -613,7 +613,7 @@ pub struct MusicalParams {
     // ═══════════════════════════════════════════════════════════════════
     // ROUTAGE & MUTING
     // ═══════════════════════════════════════════════════════════════════
-    /// Routage des canaux MIDI (-1 = `FundSP`, >=0 = Oxisynth Bank ID)
+    /// Routage des canaux MIDI (-1 = banque 0 par défaut, >=0 = banque oxisynth)
     #[serde(default = "default_channel_routing")]
     pub channel_routing: Vec<i32>,
 

@@ -49,10 +49,6 @@ use crate::params::MusicalParams;
 
 /// Get current date in YYYY-MM-DD format (no external dependencies)
 fn chrono_date() -> String {
-    #[cfg(target_arch = "wasm32")]
-    return String::from("2024-01-01");
-
-    #[cfg(not(target_arch = "wasm32"))]
     {
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
         let secs = duration.as_secs();

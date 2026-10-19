@@ -12,7 +12,6 @@ const MAX_LOG_SIZE: u64 = 5 * 1024 * 1024;
 /// Initialize file logging to the given directory.
 /// Creates `harmonium.log` (and rotates to `harmonium.log.old` when full).
 /// Safe to call multiple times — only the first call takes effect.
-#[cfg(not(target_arch = "wasm32"))]
 pub fn init_file_logging(log_dir: &std::path::Path) {
     LOG_FILE.get_or_init(|| {
         let log_path = log_dir.join("harmonium.log");
@@ -39,11 +38,10 @@ pub fn init_file_logging(log_dir: &std::path::Path) {
 }
 
 /// Write a formatted line to the log file (if initialized).
-#[cfg(not(target_arch = "wasm32"))]
 fn write_to_file(level: &str, msg: &str) {
     if let Some(mutex) = LOG_FILE.get() {
         if let Ok(mut guard) = mutex.lock() {
-            if let Some(ref mut file) = *guard {
+            if let Some(file) = &mut *guard {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs())
@@ -57,36 +55,21 @@ fn write_to_file(level: &str, msg: &str) {
 }
 
 pub fn info(msg: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::log_1(&msg.into());
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        write_to_file("INFO", msg);
-        if std::env::var("HARMONIUM_CLI").is_err() {
-            eprintln!("{msg}");
-        }
+    write_to_file("INFO", msg);
+    if std::env::var("HARMONIUM_CLI").is_err() {
+        eprintln!("{msg}");
     }
 }
 
 pub fn warn(msg: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::warn_1(&msg.into());
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        write_to_file("WARN", msg);
-        if std::env::var("HARMONIUM_CLI").is_err() {
-            eprintln!("WARN: {msg}");
-        }
+    write_to_file("WARN", msg);
+    if std::env::var("HARMONIUM_CLI").is_err() {
+        eprintln!("WARN: {msg}");
     }
 }
 
 pub fn error(msg: &str) {
-    #[cfg(target_arch = "wasm32")]
-    web_sys::console::error_1(&msg.into());
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        write_to_file("ERROR", msg);
-        // Always show errors even in CLI mode
-        eprintln!("ERROR: {msg}");
-    }
+    write_to_file("ERROR", msg);
+    // Always show errors even in CLI mode
+    eprintln!("ERROR: {msg}");
 }

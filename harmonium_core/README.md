@@ -1,19 +1,21 @@
 # Harmonium Core
 
-`harmonium_core` is the brain of the Harmonium project. It contains the platform-agnostic logic for music generation, harmonic analysis, rhythmic sequencing, and event scheduling. It is designed to be compiled to both native targets (for the VST/Desktop app) and WASM (for the Web interface).
+`harmonium_core` is the brain of the Harmonium project. It contains the platform-agnostic logic for music generation, harmonic analysis, rhythmic sequencing, emotion→parameter mapping, and event scheduling. It has no audio dependencies; `harmonium_host` drives it and renders its events.
 
 ## Architecture
 
-The core revolves around the **`MusicKernel`**, which acts as the central conductor. It orchestrates the interaction between the **Sequencer** (Rhythm) and the **Harmonic Driver** (Pitch/Harmony) to generate abstract `AudioEvent`s.
+The core revolves around the **`TimelineGenerator`** (`src/timeline`), which composes bars ahead of time into a shared timeline. The **Sequencer** (Rhythm) and the **Harmonic Driver** (Pitch/Harmony) feed it, and the **`EmotionMapper`** (`src/mapper.rs`) translates `EngineParams` (arousal/valence/density/tension) into the technical `MusicalParams` it consumes.
 
 ```mermaid
 graph TD
-    Params[MusicalParams] --> Kernel[MusicKernel]
-    Kernel --> Seq[Sequencer]
-    Kernel --> Har[Harmonic Driver]
-    Seq --> Events[AudioEvents]
-    Har --> Events
-    Events --> AudioEngine[Audio Engine (Odin2/FluidSynth)]
+    Emotions[EngineParams] --> Mapper[EmotionMapper]
+    Mapper --> Params[MusicalParams]
+    Params --> Gen[TimelineGenerator]
+    Gen --> Seq[Sequencer]
+    Gen --> Har[Harmonic Driver]
+    Seq --> Timeline[Timeline / AudioEvents]
+    Har --> Timeline
+    Timeline --> Host[harmonium_host playback → oxisynth]
 ```
 
 ## Key Modules
@@ -52,40 +54,23 @@ Defines the protocol for musical actions. The core outputs these events, which a
 
 *   `NoteOn` / `NoteOff`: Standard MIDI-like note events.
 *   `ControlChange`: Parameter automation.
-*   `LoadOdinPreset`: Loads patches for the Odin2 synthesizer.
+*   `SetChannelRoute`: Routes a logical channel to a SoundFont bank (`-1` = default bank 0).
 *   `StartRecording` / `StopRecording`: Controls audio/MIDI export.
 
 ## Usage
 
-The `MusicKernel` is initialized with `Sequencer` and `MusicalParams`.
+The crate is normally driven through `harmonium_host` (`Composer` writes bars with a `Writehead`, `PlaybackEngine` reads them with a `Playhead`). Standalone, the mapper and generator can be used directly:
 
 ```rust
-use harmonium_core::{MusicKernel, Sequencer, MusicalParams};
-use harmonium_core::sequencer::RhythmMode;
+use harmonium_core::{EmotionMapper, EngineParams};
 
-// 1. Setup Parameters
-let params = MusicalParams::default();
-
-// 2. Initialize Sequencer
-let sequencer = Sequencer::new_with_mode(
-    16, // Steps
-    4,  // Pulses
-    120.0, // BPM
-    RhythmMode::Euclidean
-);
-
-// 3. Create Kernel
-let mut kernel = MusicKernel::new(sequencer, params);
-
-// 4. In your audio loop (e.g., every buffer processing)
-let dt = 0.005; // Time delta in seconds
-let events = kernel.update(dt);
-
-for event in events {
-    // Dispatch event to audio engine
-    println!("Event: {:?}", event);
-}
+let mapper = EmotionMapper::default();
+let emotions = EngineParams { arousal: 0.8, valence: 0.5, ..Default::default() };
+let params = mapper.map(&emotions);
+println!("BPM: {}", params.bpm);
 ```
+
+See `harmonium_host/src/composer.rs` for the full generation loop.
 
 ## Dependencies
 

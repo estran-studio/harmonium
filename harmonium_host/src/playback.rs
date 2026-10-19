@@ -21,7 +21,6 @@ pub const TICKS_PER_BEAT: usize = 4;
 /// lock-free shared value ([`pack`]). `bar` is 1-based, `step` is 0-based
 /// within the measure, and `beat` is derived: `step / TICKS_PER_BEAT + 1.0`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "wasm", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct TransportPosition {
     /// 1-based bar.
     pub bar: usize,

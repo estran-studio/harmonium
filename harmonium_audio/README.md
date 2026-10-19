@@ -1,73 +1,58 @@
 # Harmonium Audio
 
-`harmonium_audio` is the sound generation engine for the Harmonium project. It consumes abstract `AudioEvent`s from `harmonium_core` and renders them into audio signals using various synthesis backends.
+`harmonium_audio` renders the abstract `AudioEvent`s produced by `harmonium_core` into sound. Synthesis is SoundFont-only, through [oxisynth](https://crates.io/crates/oxisynth).
 
 ## Architecture
 
-The system is designed around the **`AudioRenderer`** trait, allowing for hot-swappable audio backends. The **`AudioProcessor`** wraps the active renderer and exposes a simplified API for event handling and buffer processing.
+Everything implements the **`AudioRenderer`** trait (`handle_event` / `process_buffer`). **`AudioProcessor`** wraps a renderer and exposes event + buffer processing.
 
 ```mermaid
 graph TD
     Events[AudioEvents] --> Processor[AudioProcessor]
-    Processor --> Renderer[Trait: AudioRenderer]
-    Renderer --> Odin2[Odin2Backend]
-    Renderer --> Synth[SynthBackend]
-    Renderer --> Recorder[Wav/MidiBackend]
-    Odin2 --> Output[Audio Buffer]
-    Synth --> Output
+    Processor --> Recorder[RecorderBackend]
+    Recorder --> Synth[SynthBackend / oxisynth]
+    Synth --> Output[Audio Buffer]
+    Recorder --> Files[WAV / MIDI / MusicXML]
 ```
 
-## Key Modules
+## Modules
 
-### 1. Backends (`src/backend`)
+### `backend`
 
-*   **`Odin2Backend` (Primary)**:
-    *   Utilizes `odin2-core`, a Rust port of the powerful Odin 2 synthesizer.
-    *   **Multi-timbral**: Manages 5 independent synth engines (Bass, Lead, Snare, Hat, Poly).
-    *   **Emotional Morphing**: Implements a unique feature where instrument presets are mapped to the 4 quadrants of Russell's Circumplex (Anger, Joy, Sadness, Calm). The engine bilinearly interpolates between these presets in real-time based on the `Valence` and `Arousal` parameters.
+* **`SynthBackend`** — the synthesizer. `SynthBackend::new(sample_rate, sf2_bytes, &initial_routing)`; `sf2_bytes = None` renders silence until a `LoadFont` event arrives. Handles `LoadFont`, `SetChannelRoute` (bank per logical channel), `ProgramChange`, `SetMixerGains` (CC 7), `AllNotesOff`, `ControlChange` (CC 1 drives filter/resonance/pitch-bend tension on channels 0–3).
+* **`RecorderBackend`** — wraps a renderer and captures WAV, MIDI and MusicXML on `StartRecording` / `StopRecording`.
+* **`MidiBackend`** / **`WavBackend`** — standalone file exporters.
 
-*   **`SynthBackend` (Fallback/Lightweight)**:
-    *   **Hybrid Engine**: Combines `fundsp` (Functional DSP) for subtractive/FM synthesis and `oxisynth` for SoundFont playback.
-    *   Constructs a hardcoded DSP graph for basic drums and synths when Odin2 is not available or too heavy.
+### `voice_manager`
 
-*   **`MidiBackend` & `WavBackend`**:
-    *   Specialized backends for exporting the session to standard MIDI or WAV files.
+`VoiceManager` owns the `oxisynth::Synth`, the logical→MIDI channel map (GM drums on MIDI 9 when a GM-sized SoundFont is loaded) and the per-channel bank routing (`ChannelRoute`; a negative bank id means bank 0).
 
-### 2. Synthesis (`src/synthesis`)
-Contains the logic for the **Emotional Morphing** system.
-*   **`EmotionalMorpher`**: Handles the parameter interpolation logic.
-*   **`presets.toml`**: Defines the parameter mappings for different emotional states.
+### `voicing`
 
-### 3. Voicing (`src/voicing`)
-Implements advanced jazz voicing algorithms to transform simple melodies into rich harmonic textures.
-*   **`BlockChordVoicer`**: Implements "Shearing-style" (locked hands) block chords, harmonizing the melody with close-position chords.
-*   **`ShellVoicer`**: Generates "Shell voicings" (Root, 3rd, 7th) common in Be-Bop and comping.
-*   **`Drop-2`**: A utility to spread open close voicings for a more open sound.
+Jazz voicing algorithms: `BlockChordVoicer` (locked-hands block chords), `ShellVoicer` (root/3rd/7th shells), drop-2 spreading, comping patterns.
+
+### `realtime`
+
+`RTCheckAllocator`: debug-build allocation tracker that panics on allocations inside the audio callback.
 
 ## Dependencies
 
-*   **`odin2-core`**: The synthesis engine (optional feature `odin2`).
-*   **`fundsp`**: For functional DSP graph construction.
-*   **`oxisynth`**: A SoundFont 2 synthesizer.
-*   **`hound`**: For WAV encoding.
-*   **`midly`**: For MIDI encoding.
+* **`oxisynth`** — SoundFont 2/3 synthesizer.
+* **`hound`** — WAV encoding.
+* **`midly`** — MIDI encoding.
+* **`rand`** — pitch-instability wobble.
 
 ## Usage
 
 ```rust
-use harmonium_audio::{AudioProcessor, backend::odin2_backend::Odin2Backend};
+use harmonium_audio::{AudioProcessor, backend::synth_backend::SynthBackend};
 
-// 1. Initialize the backend
-let sample_rate = 44100.0;
-let backend = Box::new(Odin2Backend::new(sample_rate));
-
-// 2. Create the processor
+let sf2 = std::fs::read("assets/test.sf2").ok();
+let backend = Box::new(SynthBackend::new(44100.0, sf2.as_deref(), &[0, 0, 0, 0]));
 let mut processor = AudioProcessor::new(backend);
 
-// 3. In audio callback
-let output_buffer = &mut [0.0; 512]; // Stereo buffer
-let events = vec![]; // Events from core
-
+// In the audio callback:
+let output_buffer = &mut [0.0f32; 512]; // interleaved stereo
 processor.process_events(&events);
 processor.process_audio(output_buffer, 2);
 ```

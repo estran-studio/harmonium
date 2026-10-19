@@ -14,7 +14,7 @@
 //!
 //! To regenerate golden files, delete `tests/golden_measures/` and re-run tests.
 
-use harmonium::audio::{AudioBackendType, create_offline_engine};
+use harmonium::audio::create_offline_engine;
 use harmonium_core::report::MeasureSnapshot;
 
 const SEED: u64 = 42;
@@ -99,8 +99,7 @@ fn first_diff_location(a: &str, b: &str) -> (usize, usize) {
 #[test]
 fn snapshot_stream_unchanged() {
     let (mut composer, mut playback, _cmd_tx, _report_rx, _recordings) =
-        create_offline_engine(None, AudioBackendType::FundSP, SAMPLE_RATE)
-            .expect("create_offline_engine failed");
+        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Fixed seed: reproducible across runs and machines. set_seed resets
     // writehead, shared pages and the RNG-driven session (key/scale) —

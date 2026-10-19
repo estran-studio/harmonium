@@ -315,9 +315,4 @@ impl AudioRenderer for RecorderBackend {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-
-    #[cfg(feature = "odin2")]
-    fn odin2_backend_mut(&mut self) -> Option<&mut crate::backend::odin2_backend::Odin2Backend> {
-        self.inner.odin2_backend_mut()
-    }
 }

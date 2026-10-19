@@ -6,6 +6,9 @@ authors = ["BasCanada"]
 description = "Interactive CLI for Harmonium generative music engine"
 license = "MIT"
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "harmonium-cli"
 path = "src/main.rs"
@@ -14,7 +17,6 @@ path = "src/main.rs"
 # Core Harmonium dependencies
 harmonium_core = { path = "../harmonium_core" }
 harmonium_audio = { path = "../harmonium_audio" }
-harmonium_ai = { path = "../harmonium_ai" }
 harmonium = { path = "../harmonium_host", default-features = false, features = ["standalone"] }
 
 # CLI dependencies
@@ -32,4 +34,3 @@ serde_json = "1.0"
 dirs = "5.0"        # Home directory location
 toml = "0.8"        # Profile TOML parsing
 
-[dev-dependencies]

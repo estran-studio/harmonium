@@ -1,79 +1,89 @@
-# harmonium (core) Constitution
+# Constitution Harmonium
 
-This document extends the [meta constitution] in `harmonium_specs/.specify/memory/constitution.md`.
-On conflict, the meta document wins. The principles below are repo-local additions
-specific to the engine workspace.
+Harmonium est un moteur Rust de musique procédurale **de style folklorique
+québécois / canadien-français**, piloté en temps réel par l'état d'un jeu
+(« 1837 », roguelike Rust/Bevy). Le beat est exposé au gameplay ; deux
+jauges émotionnelles (sacre, faim) et l'intensité de l'action pilotent la
+musique.
 
-[meta constitution]: https://github.com/estran-studio/harmonium_specs/blob/main/.specify/memory/constitution.md
+Ce document est court à dessein. Il fixe ce qui ne se renégocie pas à chaque
+feature. Le reste se décide en écoutant.
 
-## Repo-Local Principles
+## Principes
 
-### I. The Audio Contract is `MeasureSnapshot`
+### I. Le contrat audio, c'est `MeasureSnapshot` + `BeatInfo`
 
-The engine's only commitment to the outside world is the stream of
-`MeasureSnapshot` values it produces, with bar/beat/tick positions in the
-documented coordinate system (1-based bars and beats; tick is step-grid
-multiples). Internal layout (Conductor, Sequencer, HarmonicDriver,
-MelodyGenerator, fractal noise, tuning params) is implementation detail
-and may change. The contract is the snapshot stream.
+Le moteur s'engage sur deux flux : les `MeasureSnapshot` générés (notes par
+piste, accord, tempo, signature ; bars et beats 1-based, tick sur la grille)
+et l'horloge `BeatInfo` lue par le gameplay (pulse courante, phase, temps
+fort, prochaine pulse en temps mur). Tout l'intérieur — générateur,
+harmonisation, banques de cellules, playhead — est détail d'implémentation.
 
-When a change to the engine would alter the snapshot for the same seed +
-inputs, it is a breaking change and requires explicit migration (a version
-bump on `TuningParams` is the canonical mechanism).
+Un changement qui altère le snapshot pour un même seed + mêmes entrées est
+une rupture : bump de version de `TuningParams`, goldens régénérés
+explicitement dans le même commit.
 
-### II. Tests Cover the Snapshot, Not the Internals
+### II. Déterminisme
 
-The 280+ tests in `harmonium_core` are organized to assert properties of the
-snapshot stream (note timing, chord progression, density envelopes) rather
-than to introspect internal RNG state or sequencer step indices. Tests that
-reach into private state are fragile and discouraged.
+Même seed, mêmes paramètres, même musique. Pas d'aléa hors du
+`ChaCha8Rng` injecté ; aucune lecture d'horloge murale dans la génération.
+La position lue par le jeu vient du playhead, jamais interpolée depuis une
+horloge externe côté moteur.
 
-### III. wasm32 is a First-Class Target
+### III. Temps réel sans compromis
 
-The core compiles to `wasm32-unknown-unknown` without conditional
-`cfg(target_arch = "wasm32")` workarounds in shared modules. Any code that
-truly cannot run in wasm (audio device access, threading, OS file I/O)
-lives in `harmonium_host` and its native-only modules — never in
-`harmonium_core`. The browser port's correctness depends on this rule.
+Le callback audio n'alloue pas, ne prend pas de verrou bloquant, ne fait
+pas d'I/O. `RTCheckAllocator` panique en debug sur une allocation dans le
+callback : c'est voulu. Thread principal → thread audio par SPSC `rtrb` ou
+atomiques ; jamais par `Mutex` partagé sur le chemin chaud.
 
-### IV. Workspace Boundaries
+### IV. Pas de chemin parallèle, pas de legacy
 
-The workspace members and their roles:
+Une seule façon de faire chaque chose. On remplace, on ne double pas. Code
+mort, alias de compatibilité, `#[cfg]` sans consommateur, commentaires
+« removed » : supprimés dans le commit qui les rend obsolètes.
 
-- `harmonium_core` — pure types, no I/O, no audio device, fully wasm-safe
-- `harmonium_ai` — ML-adjacent features behind a feature flag
-- `harmonium_audio` — DSP primitives (filters, envelopes, mixers)
-- `harmonium_host` — OS integration: `cpal::Stream`, `NativeHandle`,
-  thread management. Not wasm-compatible.
-- `harmonium_bevy` — visualization layer (Bevy renderer)
-- `harmonium_cli` — command-line entry point for local runs
-- `xtask` — build automation, not shipped
+### V. Le style est en données, les algorithmes en code
 
-A crate that needs `tokio`, threads, or device handles belongs in `_host`
-or higher, never in `_core` or `_audio`.
+Tout ce qui définit la personnalité musicale (patterns de pieds, cellules
+mélodiques, seuils, vélocités, tessitures, tonalités permises, tempos par
+type de tune) vit dans `TuningParams` / `StyleProfile` (TOML), jamais en
+constante inline. `harmonium_lab` mesure la distance entre le généré et un
+corpus de référence ; les décisions de style s'appuient sur cette mesure et
+sur l'écoute, dans cet ordre.
 
-### V. Tuning Parameters Live in Config, Not Constants
+### VI. Tests sur le contrat, pas sur les internes
 
-The ~83 style parameters that define engine personality are accessed via
-`TuningParams`. New constants that affect musical output (rhythm thresholds,
-voice-leading rules, melody weights) MUST be added to `TuningParams`, not
-declared inline. The LLM tuning pipeline (`harmonium_lab`) depends on
-exhaustive parameter coverage.
+Les tests portent sur le flux de snapshots et sur `BeatInfo` : timing des
+notes, cadences, répétition de forme, position publiée. Un test qui lit un
+état privé est fragile et refusé.
 
-## Tech Constraints (Repo-Specific)
+## Périmètre du workspace
 
-- Rust 2024 edition workspace; `unsafe_code = "deny"` and strict clippy.
-- `gen` is reserved — use `tgen` or domain-specific names in identifiers.
-- `ChaCha8Rng` is the canonical RNG. Adding another RNG type requires a
-  written justification in the relevant spec's `plan.md`.
-- `opt-level = 2` for dependencies (already configured in `Cargo.toml`);
-  audio paths benefit measurably from optimized rustc output even in debug.
+- `harmonium_core` — types purs, génération, aucune I/O.
+- `harmonium_audio` — rendu SoundFont (oxisynth), enregistrement WAV/MIDI/MusicXML.
+- `harmonium_host` — `MusicComposer` (thread principal), `PlaybackEngine`
+  (callback cpal), `NativeHandle`, `create_offline_engine`, binaire
+  `harmonium` avec contrôle OSC.
+- `harmonium_cli` — REPL d'écoute et de test.
+- `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
 
-## Spec Scope
+Pas de frontend dans ce repo. L'intégration Bevy vit dans le jeu, sur
+`create_offline_engine`.
 
-Per-repo specs in this repo live in `specs/` and cover changes to the
-engine workspace. Cross-cutting work (e.g., a feature that changes the
-snapshot contract AND the training app's lookahead consumer) lives in
-`harmonium_specs/` and references this repo via `participating_repos:`.
+## Contraintes techniques
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-25 | **Last Amended**: 2026-05-25
+- Rust 2024, `unsafe_code = "deny"`, clippy strict. `gen` est réservé.
+- `ChaCha8Rng` est le seul RNG.
+- Synthèse : SoundFont uniquement. Banque de test : `assets/test.sf2`.
+- Tempo exprimé à la noire ; la pulse dansée (blanche en reel, noire
+  pointée en gigue) est dérivée dans `BeatInfo`, pas dans le tempo.
+
+## Processus
+
+Un `plan.md` par phase dans `specs/NNN-nom/` : problème, décisions,
+fichiers touchés, critère d'acceptation observable. Pas de template, pas de
+spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
+plan de la phase *après* validation à l'oreille et au lab.
+
+**Version** : 2.0.0 | **Ratifiée** : 2026-10-18

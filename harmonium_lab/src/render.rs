@@ -7,10 +7,7 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use harmonium::{
-    audio::{self, AudioBackendType},
-    playback::PlaybackCommand,
-};
+use harmonium::{audio, playback::PlaybackCommand};
 use harmonium_core::{events::RecordFormat, tuning::TuningParams};
 
 const SAMPLE_RATE: f64 = 44100.0;
@@ -68,7 +65,7 @@ pub fn render_to_wav(
     sf2_bytes: Option<&[u8]>,
 ) -> Result<RenderOutput> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, finished_recordings) =
-        audio::create_offline_engine(sf2_bytes, AudioBackendType::FundSP, SAMPLE_RATE)
+        audio::create_offline_engine(sf2_bytes, SAMPLE_RATE)
             .map_err(|e| anyhow::anyhow!("Failed to create offline engine: {}", e))?;
 
     // Apply tuning parameters (style personality)

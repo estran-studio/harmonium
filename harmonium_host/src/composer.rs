@@ -1,6 +1,6 @@
 //! MusicComposer - Main-thread music generation, decoupled from audio playback.
 //!
-//! Extracts the generation side of TimelineEngine: writehead, generator, musical params,
+//! Owns the generation side: writehead, generator, musical params,
 //! emotion mapping, and measure snapshots. Callable directly (no audio stream needed).
 
 use std::sync::{

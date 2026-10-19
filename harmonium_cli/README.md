@@ -46,13 +46,7 @@ harmonium-cli
 harmonium-cli --soundfont path/to/soundfont.sf2
 ```
 
-### With Backend Selection
-
-```bash
-harmonium-cli --backend fundsp
-# or
-harmonium-cli --backend odin2  # if compiled with odin2 feature
-```
+Without `--soundfont`, the CLI loads `assets/test.sf2` from the current directory if it exists; otherwise it runs without a SoundFont (silent) and prints a warning.
 
 ### Keyboard Shortcuts
 
@@ -236,33 +230,22 @@ Goodbye!
 
 ## Architecture
 
-The CLI validates the new command/report queue architecture:
+The REPL drives the host's decoupled engine directly:
 
 ```
-┌─────────────┐
-│     CLI     │
-│    (REPL)   │
-└──────┬──────┘
-       │
-       ↓
-┌──────────────────┐     Commands      ┌─────────────────┐
-│ HarmoniumController├──────────────────→│  Command Queue  │
-│                    │                   │  (SPSC 1024)    │
-│                  ←─┼───────────────────┤  Report Queue   │
-│                    │     Reports       │  (SPSC 256)     │
-└──────────────────┘                   └────────┬────────┘
-                                                │
-                                                ↓
-                                        ┌───────────────┐
-                                        │  Audio Thread │
-                                        │ HarmoniumEngine│
-                                        └───────────────┘
+┌─────────────┐  setters (Mutex<MusicComposer>)   ┌─────────────────┐
+│   REPL      ├──────────────────────────────────→│  MusicComposer  │ main thread: generates measures ahead
+│             │                                   └────────┬────────┘
+│             │  PlaybackCommand (SPSC 256)                │ Measure
+│             ├─────────────────────────────┐              ↓
+│             │  EngineReport (SPSC 256)    │     ┌─────────────────┐
+│             │←────────────────────────────┴─────┤  PlaybackEngine │ cpal callback: plays steps, publishes (bar, step)
+└─────────────┘                                   └─────────────────┘
 ```
 
-- **Lock-free communication**: No mutexes, no blocking
-- **Unidirectional flow**: Commands UI→Audio, Reports Audio→UI
-- **Real-time safe**: No allocations in audio thread
-- **Allocation-free reports**: Fixed-size arrays for patterns
+- Structural parameters (tempo, emotions, harmony) take effect on the next generated measure.
+- Gains, mute, GM program changes and seek are immediate (ring buffer, processed at the top of the audio callback).
+- No allocation in the audio callback: `RTCheckAllocator` panics on violation in debug builds.
 
 ## Development
 
@@ -272,14 +255,10 @@ The CLI validates the new command/report queue architecture:
 cargo test -p harmonium-cli
 ```
 
-### Building with Different Backends
+### Building
 
 ```bash
-# FundSP (default)
 cargo build -p harmonium-cli
-
-# Odin2
-cargo build -p harmonium-cli --features odin2
 ```
 
 ## Status

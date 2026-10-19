@@ -1,6 +1,5 @@
 pub mod backend;
 pub mod realtime;
-pub mod synthesis;
 pub mod voice_manager;
 pub mod voicing;
 

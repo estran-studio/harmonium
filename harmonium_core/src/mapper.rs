@@ -21,7 +21,7 @@
 //!              Low Arousal
 //! ```
 
-use harmonium_core::{
+use crate::{
     params::{EngineParams, HarmonyStrategy, MusicalParams, TensionState},
     sequencer::RhythmMode,
 };

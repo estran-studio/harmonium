@@ -22,11 +22,8 @@ use harmonium::audio;
 #[command(name = "harmonium-cli")]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Audio backend to use (fundsp or odin2)
-    #[arg(short, long, default_value = "fundsp")]
-    backend: String,
-
-    /// Path to SoundFont file (.sf2) for audio synthesis
+    /// Path to a SoundFont file (.sf2). Defaults to `assets/test.sf2` in the
+    /// current directory when it exists; otherwise the engine runs silent.
     #[arg(short, long)]
     soundfont: Option<String>,
 
@@ -67,40 +64,13 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // Parse backend type
-    let backend_type = match args.backend.as_str() {
-        "fundsp" => audio::AudioBackendType::FundSP,
-        #[cfg(feature = "odin2")]
-        "odin2" => audio::AudioBackendType::Odin2,
-        _ => {
-            eprintln!("Unknown backend: {}. Using fundsp.", args.backend);
-            audio::AudioBackendType::FundSP
-        }
-    };
-
-    // Load SoundFont if provided
-    let sf2_bytes = if let Some(sf2_path) = args.soundfont {
-        println!("Loading SoundFont: {}", sf2_path);
-        match std::fs::read(&sf2_path) {
-            Ok(bytes) => {
-                println!("Loaded SoundFont ({} bytes)", bytes.len());
-                Some(bytes)
-            }
-            Err(e) => {
-                eprintln!("Failed to load SoundFont: {}", e);
-                return Err(e.into());
-            }
-        }
-    } else {
-        None
-    };
+    let sf2_bytes = load_soundfont(args.soundfont.as_deref())?;
 
     if args.export {
         // Export mode: offline rendering, no audio device
         println!("Initializing offline engine...");
         export::run(
             sf2_bytes.as_deref(),
-            backend_type,
             args.duration.unwrap(),
             args.record_wav,
             args.record_midi,
@@ -121,8 +91,7 @@ fn main() -> Result<()> {
             _font_queue,
             _transport_position,
             finished_recordings,
-        ) = audio::create_timeline_stream(sf2_bytes.as_deref(), backend_type)
-            .map_err(|e| anyhow::anyhow!(e))?;
+        ) = audio::create_timeline_stream(sf2_bytes.as_deref()).map_err(|e| anyhow::anyhow!(e))?;
 
         // Wrap composer in Arc for sharing with the generation thread
         let composer = Arc::new(composer_mutex);
@@ -154,4 +123,29 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Default SoundFont used when `--soundfont` is absent.
+const DEFAULT_SOUNDFONT: &str = "assets/test.sf2";
+
+/// Read the SoundFont to load: the explicit `--soundfont` path (an unreadable
+/// file is an error), else `assets/test.sf2` relative to the current
+/// directory when present, else `None` (silent engine).
+fn load_soundfont(explicit: Option<&str>) -> Result<Option<Vec<u8>>> {
+    let path = match explicit {
+        Some(p) => p,
+        None if std::path::Path::new(DEFAULT_SOUNDFONT).is_file() => DEFAULT_SOUNDFONT,
+        None => {
+            eprintln!(
+                "Warning: no --soundfont given and {DEFAULT_SOUNDFONT} not found; \
+                 running without a SoundFont (silent)."
+            );
+            return Ok(None);
+        }
+    };
+    println!("Loading SoundFont: {path}");
+    let bytes =
+        std::fs::read(path).map_err(|e| anyhow::anyhow!("Failed to load SoundFont {path}: {e}"))?;
+    println!("Loaded SoundFont ({} bytes)", bytes.len());
+    Ok(Some(bytes))
 }

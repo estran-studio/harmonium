@@ -1,53 +1,34 @@
 use std::io::Cursor;
 
-use fundsp::hacker32::Shared;
 use harmonium_core::events::AudioEvent;
 use rand::Rng;
 
+/// Routing of a logical channel to a SoundFont bank.
+///
+/// Every channel is rendered by oxisynth; `bank` selects the SoundFont bank
+/// (CC 0) used for the channel. A negative bank id in `channel_routing` /
+/// `SetChannelRoute` means bank 0.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ChannelType {
-    FundSP,
-    Oxisynth { bank: u32 },
+pub struct ChannelRoute {
+    pub bank: u32,
+}
+
+impl ChannelRoute {
+    /// Build a route from a signed bank id: `-1` (or any negative) ⇒ bank 0.
+    #[must_use]
+    pub const fn from_bank_id(bank_id: i32) -> Self {
+        Self { bank: if bank_id < 0 { 0 } else { bank_id as u32 } }
+    }
 }
 
 pub struct VoiceManager {
-    // === HYBRID ENGINE ===
     pub synth: oxisynth::Synth,
-    pub channel_routing: [ChannelType; 16],
-    pub current_banks: [u32; 16], // Track current bank to avoid redundant CCs
+    pub channel_routing: [ChannelRoute; 16],
+    /// Bank currently selected on each logical channel; `None` until the first
+    /// `set_channel_route` so the initial Bank Select / Program Change is sent.
+    pub current_banks: [Option<u32>; 16],
     /// Maps logical channels to MIDI channels (e.g. drums ch2/ch3 → MIDI ch9)
     pub midi_channel_map: [u8; 16],
-
-    // === LEAD ===
-    pub frequency_lead: Shared,
-    pub gate_lead: Shared,
-    pub gate_timer_lead: usize,
-
-    // === BASS ===
-    pub frequency_bass: Shared,
-    pub gate_bass: Shared,
-    pub gate_timer_bass: usize,
-
-    // === DRUMS ===
-    pub gate_snare: Shared,
-    pub gate_timer_snare: usize,
-    pub gate_hat: Shared,
-    pub gate_timer_hat: usize,
-
-    // === EFFECTS ===
-    pub cutoff: Shared,
-    pub resonance: Shared,
-    pub distortion: Shared,
-    pub fm_ratio: Shared,
-    pub fm_amount: Shared,
-    pub timbre_mix: Shared,
-    pub reverb_mix: Shared,
-
-    // === MIXER GAINS ===
-    pub gain_lead: Shared,
-    pub gain_bass: Shared,
-    pub gain_snare: Shared,
-    pub gain_hat: Shared,
 }
 
 /// Default identity map: logical channel N → MIDI channel N
@@ -60,70 +41,20 @@ fn default_midi_channel_map() -> [u8; 16] {
 }
 
 impl VoiceManager {
-    #[allow(clippy::too_many_arguments)]
     #[must_use]
-    pub fn new(
-        sf2_bytes: Option<&[u8]>,
-        sample_rate: f32,
-        frequency_lead: Shared,
-        gate_lead: Shared,
-        frequency_bass: Shared,
-        gate_bass: Shared,
-        gate_snare: Shared,
-        gate_hat: Shared,
-        cutoff: Shared,
-        resonance: Shared,
-        distortion: Shared,
-        fm_ratio: Shared,
-        fm_amount: Shared,
-        timbre_mix: Shared,
-        reverb_mix: Shared,
-        gain_lead: Shared,
-        gain_bass: Shared,
-        gain_snare: Shared,
-        gain_hat: Shared,
-    ) -> Self {
+    pub fn new(sf2_bytes: Option<&[u8]>, sample_rate: f32) -> Self {
         let mut synth = oxisynth::Synth::default();
         synth.set_sample_rate(sample_rate);
 
-        let channel_routing = [ChannelType::FundSP; 16];
-        let current_banks = [0; 16];
-        let midi_channel_map = default_midi_channel_map();
-
         let mut vm = Self {
             synth,
-            channel_routing,
-            current_banks,
-            midi_channel_map,
-            frequency_lead,
-            gate_lead,
-            gate_timer_lead: 0,
-            frequency_bass,
-            gate_bass,
-            gate_timer_bass: 0,
-            gate_snare,
-            gate_timer_snare: 0,
-            gate_hat,
-            gate_timer_hat: 0,
-            cutoff,
-            resonance,
-            distortion,
-            fm_ratio,
-            fm_amount,
-            timbre_mix,
-            reverb_mix,
-            gain_lead,
-            gain_bass,
-            gain_snare,
-            gain_hat,
+            channel_routing: [ChannelRoute { bank: 0 }; 16],
+            current_banks: [None; 16],
+            midi_channel_map: default_midi_channel_map(),
         };
 
         if let Some(bytes) = sf2_bytes {
             vm.add_font(0, bytes);
-            // Note: configure_gm_defaults() is NOT called here because
-            // SynthBackend::new() applies initial_routing via set_channel_route()
-            // which would overwrite the GM programs. The caller must call
-            // configure_gm_defaults() after routing is established.
         }
 
         vm
@@ -215,178 +146,113 @@ impl VoiceManager {
         }
     }
 
-    pub fn set_channel_route(&mut self, channel: usize, mode: ChannelType) {
+    /// Route a logical channel to a SoundFont bank. Sends Bank Select (CC 0)
+    /// and Program Change 0 only when the bank actually changes.
+    pub fn set_channel_route(&mut self, channel: usize, route: ChannelRoute) {
         if channel < 16 {
-            self.channel_routing[channel] = mode;
+            self.channel_routing[channel] = route;
 
-            // If switching to Oxisynth, ensure bank is selected
-            if let ChannelType::Oxisynth { bank } = mode
-                && self.current_banks[channel] != bank
-            {
+            if self.current_banks[channel] != Some(route.bank) {
                 let midi_ch = self.midi_channel_map[channel];
-                // Send Bank Select (CC 0)
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                     channel: midi_ch,
                     ctrl: 0,
-                    value: bank as u8,
+                    value: route.bank as u8,
                 });
-                // Send Program Change (default to 0 for now)
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
                     channel: midi_ch,
                     program_id: 0,
                 });
-                self.current_banks[channel] = bank;
+                self.current_banks[channel] = Some(route.bank);
             }
         }
     }
 
-    pub fn process_event(&mut self, event: AudioEvent, samples_per_step: usize) {
+    /// Mixer gains for the four instrument channels (bass=0, lead=1, snare=2,
+    /// hat=3), applied as MIDI Channel Volume (CC 7). In GM mode snare and hat
+    /// share MIDI channel 9, so the hat gain is applied last and wins.
+    pub fn set_gains(&mut self, lead: f32, bass: f32, snare: f32, hat: f32) {
+        for (channel, gain) in [(0usize, bass), (1, lead), (2, snare), (3, hat)] {
+            let midi_ch = self.midi_channel_map[channel];
+            let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+                channel: midi_ch,
+                ctrl: 7,
+                value: (gain.clamp(0.0, 1.0) * 127.0) as u8,
+            });
+        }
+    }
+
+    pub fn process_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::NoteOn { note, velocity, channel } => {
-                if let ChannelType::Oxisynth { .. } = self.channel_routing[channel as usize] {
-                    let midi_ch = self.midi_channel_map[channel as usize];
-                    let _ = self.synth.send_event(oxisynth::MidiEvent::NoteOn {
-                        channel: midi_ch,
-                        key: note,
-                        vel: velocity,
-                    });
-                    return;
-                }
-
-                let freq = 440.0 * ((f32::from(note) - 69.0) / 12.0).exp2();
-                let vel = f32::from(velocity) / 127.0;
-
-                match channel {
-                    0 => {
-                        // Bass
-                        self.frequency_bass.set_value(freq);
-                        self.gate_bass.set_value(vel);
-                        self.gate_timer_bass = (samples_per_step as f32 * 0.6) as usize;
-                    }
-                    1 => {
-                        // Lead
-                        self.frequency_lead.set_value(freq);
-                        self.gate_lead.set_value(vel);
-                        self.gate_timer_lead = (samples_per_step as f32 * 0.5) as usize;
-                    }
-                    2 => {
-                        // Snare
-                        self.gate_snare.set_value(vel);
-                        self.gate_timer_snare = (samples_per_step as f32 * 0.3) as usize;
-                    }
-                    3 => {
-                        // Hat
-                        self.gate_hat.set_value(vel);
-                        self.gate_timer_hat = (samples_per_step as f32 * 0.1) as usize;
-                    }
-                    _ => {}
-                }
+                let midi_ch = self.midi_channel_map[channel as usize];
+                let _ = self.synth.send_event(oxisynth::MidiEvent::NoteOn {
+                    channel: midi_ch,
+                    key: note,
+                    vel: velocity,
+                });
             }
             AudioEvent::NoteOff { note, channel } => {
-                if let ChannelType::Oxisynth { .. } = self.channel_routing[channel as usize] {
-                    let midi_ch = self.midi_channel_map[channel as usize];
-                    let _ = self
-                        .synth
-                        .send_event(oxisynth::MidiEvent::NoteOff { channel: midi_ch, key: note });
-                    return;
-                }
-
-                match channel {
-                    0 => self.gate_bass.set_value(0.0),
-                    1 => self.gate_lead.set_value(0.0),
-                    2 => self.gate_snare.set_value(0.0),
-                    3 => self.gate_hat.set_value(0.0),
-                    _ => {}
-                }
+                let midi_ch = self.midi_channel_map[channel as usize];
+                let _ = self
+                    .synth
+                    .send_event(oxisynth::MidiEvent::NoteOff { channel: midi_ch, key: note });
             }
             AudioEvent::AllNotesOff { channel } => {
                 let midi_ch = self.midi_channel_map[channel as usize];
-                // Envoyer All Notes Off (CC 123) + Sustain Off (CC 64) pour vraiment couper
+                // Sustain Off (CC 64) + All Notes Off (CC 123) pour vraiment couper
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                     channel: midi_ch,
-                    ctrl: 64, // Sustain pedal off
+                    ctrl: 64,
                     value: 0,
                 });
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                     channel: midi_ch,
-                    ctrl: 123, // All Notes Off
+                    ctrl: 123,
                     value: 0,
                 });
-
-                // Pour FundSP, couper les gates
-                match channel {
-                    0 => self.gate_bass.set_value(0.0),
-                    1 => self.gate_lead.set_value(0.0),
-                    2 => self.gate_snare.set_value(0.0),
-                    3 => self.gate_hat.set_value(0.0),
-                    _ => {}
-                }
             }
             AudioEvent::ControlChange { ctrl, value, channel } => {
                 let midi_ch = self.midi_channel_map[channel as usize];
-                // Send CC to mapped MIDI channel
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                     channel: midi_ch,
                     ctrl,
                     value,
                 });
 
-                let val_norm = f32::from(value) / 127.0;
-                match ctrl {
-                    1 => {
-                        // Modulation / Tension
-                        self.fm_ratio.set_value(1.0 + (val_norm * 4.0));
-                        self.fm_amount.set_value(val_norm * 0.8);
-                        self.timbre_mix.set_value(val_norm);
-                        self.cutoff.set_value(500.0 + (val_norm * 3500.0));
-                        self.resonance.set_value(1.0 + (val_norm * 4.0));
+                if ctrl == 1 {
+                    // Modulation / Tension: filter, resonance and pitch
+                    // instability on the four instrument channels.
+                    let val_norm = f32::from(value) / 127.0;
+                    let cutoff_val = ((30.0 + val_norm * 97.0) as i32).clamp(0, 127) as u8;
+                    let res_val = ((val_norm * 90.0) as i32).clamp(0, 127) as u8;
+                    for ch in 0..4 {
+                        let mapped_ch = self.midi_channel_map[ch];
+                        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+                            channel: mapped_ch,
+                            ctrl: 74,
+                            value: cutoff_val,
+                        });
+                        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+                            channel: mapped_ch,
+                            ctrl: 71,
+                            value: res_val,
+                        });
 
-                        // === SOUNDFONT TENSION EFFECTS ===
-                        // Apply to all channels (0-3 are used)
-                        for ch in 0..4 {
-                            if let ChannelType::Oxisynth { .. } = self.channel_routing[ch] {
-                                let mapped_ch = self.midi_channel_map[ch];
-                                // 1. Standard: Filter & Resonance
-                                let cutoff_val = (30.0 + val_norm * 97.0) as i32;
-                                let res_val = (val_norm * 90.0) as i32;
-
-                                let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                                    channel: mapped_ch,
-                                    ctrl: 74,
-                                    value: cutoff_val.clamp(0, 127) as u8,
-                                });
-                                let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                                    channel: mapped_ch,
-                                    ctrl: 71,
-                                    value: res_val.clamp(0, 127) as u8,
-                                });
-
-                                // 2. Horror: Pitch Instability (Detune)
-                                let bend_val = if val_norm > 0.6 {
-                                    let mut rng = rand::thread_rng();
-                                    let wobble_amount = (val_norm - 0.6) * 2000.0;
-                                    let random_bend = rng.gen_range(-0.5..0.5) * wobble_amount;
-                                    (8192.0 + random_bend) as i32
-                                } else {
-                                    8192
-                                };
-
-                                let _ = self.synth.send_event(oxisynth::MidiEvent::PitchBend {
-                                    channel: mapped_ch,
-                                    value: bend_val.clamp(0, 16383) as u16,
-                                });
-                            }
-                        }
+                        // Horror: Pitch Instability (Detune)
+                        let bend_val = if val_norm > 0.6 {
+                            let mut rng = rand::thread_rng();
+                            let wobble_amount = (val_norm - 0.6) * 2000.0;
+                            let random_bend = rng.gen_range(-0.5..0.5) * wobble_amount;
+                            (8192.0 + random_bend) as i32
+                        } else {
+                            8192
+                        };
+                        let _ = self.synth.send_event(oxisynth::MidiEvent::PitchBend {
+                            channel: mapped_ch,
+                            value: bend_val.clamp(0, 16383) as u16,
+                        });
                     }
-                    11 => {
-                        // Expression / Arousal
-                        self.distortion.set_value(val_norm * 0.8);
-                    }
-                    91 => {
-                        // Reverb
-                        self.reverb_mix.set_value(0.1 + (val_norm * 0.4));
-                    }
-                    _ => {}
                 }
             }
             AudioEvent::ProgramChange { channel, program } => {
@@ -398,56 +264,18 @@ impl VoiceManager {
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
             | AudioEvent::StopRecording { .. }
-            | AudioEvent::SetMixerGains { .. }
-            | AudioEvent::LoadOdinPreset { .. } => {}
+            | AudioEvent::SetMixerGains { .. } => {}
         }
     }
 
-    pub fn update_timers(&mut self) {
-        if self.gate_timer_lead > 0 {
-            self.gate_timer_lead -= 1;
-            if self.gate_timer_lead == 0 {
-                self.gate_lead.set_value(0.0);
-            }
-        }
-        if self.gate_timer_bass > 0 {
-            self.gate_timer_bass -= 1;
-            if self.gate_timer_bass == 0 {
-                self.gate_bass.set_value(0.0);
-            }
-        }
-        if self.gate_timer_snare > 0 {
-            self.gate_timer_snare -= 1;
-            if self.gate_timer_snare == 0 {
-                self.gate_snare.set_value(0.0);
-            }
-        }
-        if self.gate_timer_hat > 0 {
-            self.gate_timer_hat -= 1;
-            if self.gate_timer_hat == 0 {
-                self.gate_hat.set_value(0.0);
-            }
-        }
-    }
-
-    pub fn process_audio(&mut self) -> (f32, f32) {
-        let mut buffer = [0.0; 2];
-        // Catch panics from OxiSynth rendering (shouldn't happen, but
-        // a corrupt font or bad state must not crash the audio thread)
+    /// Render one interleaved stereo buffer. Panics inside oxisynth are caught
+    /// so a corrupt font or bad state cannot take down the audio thread.
+    pub fn render(&mut self, output: &mut [f32]) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.synth.write(&mut buffer[..]);
+            self.synth.write(&mut *output);
         }));
         if result.is_err() {
-            // Return silence; log only once to avoid flooding
-            return (0.0, 0.0);
+            output.fill(0.0);
         }
-        (buffer[0], buffer[1])
-    }
-
-    pub fn set_gains(&mut self, lead: f32, bass: f32, snare: f32, hat: f32) {
-        self.gain_lead.set_value(lead);
-        self.gain_bass.set_value(bass);
-        self.gain_snare.set_value(snare);
-        self.gain_hat.set_value(hat);
     }
 }
