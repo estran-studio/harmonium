@@ -107,6 +107,25 @@ pub const fn unpack(packed: u64) -> (usize, usize) {
     ((packed >> 32) as usize, (packed & 0xFFFF_FFFF) as usize)
 }
 
+/// Swing timing for one quarter note (unit = 4 steps).
+///
+/// Steps 0-1 last `ratio × quarter / 2` frames each, steps 2-3
+/// `(1 − ratio) × quarter / 2`, rounded to whole frames with the rounding
+/// remainder folded into the last step — so the unit sums to exactly
+/// `quarter_frames` (no drift, the D3 invariant). `ratio = 0.5` yields a
+/// straight quarter (four near-equal steps). Pure and deterministic.
+#[must_use]
+pub fn swing_unit(quarter_frames: usize, ratio: f32) -> [usize; 4] {
+    let q = quarter_frames as f64;
+    let r = f64::from(ratio);
+    let first = (r * q / 2.0).round() as i64;
+    let second = ((1.0 - r) * q / 2.0).round() as i64;
+    let mut unit = [first, first, second, second];
+    let sum: i64 = unit.iter().sum();
+    unit[3] += quarter_frames as i64 - sum;
+    unit.map(|d| d as usize)
+}
+
 impl TransportPosition {
     /// Decode a packed transport value into a [`TransportPosition`],
     /// deriving `beat` from the step.
@@ -189,6 +208,18 @@ pub enum PlaybackCommand {
     SetMutedChannels(Vec<bool>),
     /// Update musical params snapshot for recording/reporting
     UpdateMusicalParams(Box<MusicalParams>),
+    /// Start (or ramp to) an audible tempo override (D4).
+    ///
+    /// `ramp_pulses == 0` jumps to `bpm` at the next pulse boundary;
+    /// otherwise the audible tempo advances linearly over `ramp_pulses` pulse
+    /// boundaries and lands exactly on `bpm`. Overrides the measure tempo
+    /// until [`PlaybackCommand::ClearTempo`].
+    SetTempo {
+        bpm: f32,
+        ramp_pulses: u8,
+    },
+    /// Revert to the measure tempo at the next pulse boundary.
+    ClearTempo,
 }
 
 /// PlaybackEngine runs on the audio thread inside the CPAL closure.
@@ -217,6 +248,21 @@ pub struct PlaybackEngine {
     // Global frame counter: total frames rendered since engine start. The
     // clock's pulse/buffer fields live in this frame space.
     frame_counter: u64,
+
+    // Per-step timing (D3 swing + D4 ramp): `step_durations[..step_count]`
+    // is the frozen frame length of each step of the current pulse (the D1
+    // invariant), `step_index` the step currently being rendered.
+    step_durations: [usize; 16],
+    step_count: usize,
+    step_index: usize,
+    // Swing ratio of the measure under the playhead (0.5 = straight).
+    swing_ratio: f32,
+    // Nominal tempo of the measure under the playhead (Measure.tempo) and the
+    // audible tempo actually used for timing (overridden by a tempo ramp).
+    measure_bpm: f32,
+    audible_bpm: f32,
+    // Active tempo override (D4). `None` = follow the measure tempo.
+    tempo_override: Option<TempoRamp>,
 
     // Predictive clock (D1): the current state plus the triple-buffer
     // producer half. `clock` is copied into the buffer on each publish (a
@@ -290,6 +336,15 @@ struct WindowSlot {
     measure: Box<Measure>,
 }
 
+/// An in-flight tempo ramp (D4): the audible tempo advances by `step` BPM at
+/// each pulse boundary until `remaining` reaches zero, landing exactly on
+/// `target`.
+struct TempoRamp {
+    target: f32,
+    remaining: u8,
+    step: f32,
+}
+
 impl PlaybackEngine {
     /// Create a new PlaybackEngine.
     ///
@@ -318,6 +373,13 @@ impl PlaybackEngine {
             sample_counter: 0,
             samples_per_step,
             frame_counter: 0,
+            step_durations: [samples_per_step; 16],
+            step_count: 4,
+            step_index: 0,
+            swing_ratio: 0.5,
+            measure_bpm: bpm,
+            audible_bpm: bpm,
+            tempo_override: None,
             clock: TransportClock::initial(sample_rate as u32),
             clock_tx,
             current_pulse: PulseSpec::default(),
@@ -372,13 +434,25 @@ impl PlaybackEngine {
         self.clock.buffer_start_instant = buffer_start_instant;
         self.publish_clock();
 
+        // Pre-load the first measure (or the measure after a seek) before
+        // rendering, so the opening pulse is frozen at the right frame and the
+        // first step's notes are emitted.
+        if self.playhead.needs_measure() {
+            let _loaded = {
+                let _rt = RtGuard::enter();
+                self.drain_staged();
+                self.try_load()
+            };
+        }
+
         let total_samples = output.len() / channels;
         let mut processed = 0;
 
         while processed < total_samples {
             let remaining = total_samples - processed;
-            let samples_until_tick = if self.samples_per_step > self.sample_counter {
-                self.samples_per_step - self.sample_counter
+            let step_duration = self.step_durations[self.step_index];
+            let samples_until_tick = if step_duration > self.sample_counter {
+                step_duration - self.sample_counter
             } else {
                 1
             };
@@ -393,7 +467,7 @@ impl PlaybackEngine {
             self.frame_counter += chunk_size as u64;
             processed += chunk_size;
 
-            if self.sample_counter >= self.samples_per_step {
+            if self.sample_counter >= step_duration {
                 self.sample_counter = 0;
                 self.tick();
             }
@@ -413,7 +487,6 @@ impl PlaybackEngine {
         {
             let _rt = RtGuard::enter();
             self.drain_staged();
-            self.reclaim_finished();
         }
 
         // Check loop region
@@ -431,8 +504,8 @@ impl PlaybackEngine {
             }
         }
 
-        // If the playhead needs a new measure, load the window box whose
-        // index equals the playhead bar — never any other.
+        // If a seek (loop wrap or command) left the playhead at a barline with
+        // nothing loaded, load the measure before emitting the step's notes.
         if self.playhead.needs_measure() {
             let loaded = {
                 let _rt = RtGuard::enter();
@@ -443,25 +516,12 @@ impl PlaybackEngine {
             }
         }
 
-        // Freeze the pulse timing at its boundary and refresh the clock
-        // position. Both use the *entry* step (the step about to be played),
-        // so `pulse_in_bar` and `position.step` always agree (the D1 planning
-        // invariant: step durations of an in-flight pulse never change).
-        let step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
-        let steps_per_pulse = usize::from(self.current_pulse.steps_per_pulse).max(1);
-        if step.is_multiple_of(steps_per_pulse) {
-            self.freeze_pulse(step, steps_per_pulse);
-        }
-        self.clock.position = TransportPosition {
-            bar: self.playhead.current_bar(),
-            step,
-            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
-        };
-
-        // Tick the playhead
+        // Tick the playhead: emits the current step, advances, and parks the
+        // finished measure when a barline is crossed.
         let events = self.playhead.tick();
 
-        // Forward events to renderer, filtering muted channels
+        // Forward events to renderer, filtering muted channels. Done first so
+        // the `events` borrow of the playhead is released before the handoff.
         for event in events {
             if let AudioEvent::NoteOn { channel, .. } = &event {
                 if self.muted_channels.get(*channel as usize).copied().unwrap_or(false) {
@@ -471,8 +531,46 @@ impl PlaybackEngine {
             self.renderer.handle_event(event.clone());
         }
 
-        // Update shared transport position at grid resolution, after the
-        // tick: (current bar, step within the measure)
+        // Reclaim the finished measure, then load the next one — in that
+        // order, so the epoch tags stay aligned. Runs under RtGuard.
+        {
+            let _rt = RtGuard::enter();
+            self.reclaim_finished();
+            if self.playhead.needs_measure() && !self.try_load() {
+                // Underflow — measure not yet staged. Publish the position and
+                // stay silent; the next tick retries the load.
+                self.step_index = 0;
+                self.transport_position.store(
+                    pack(
+                        self.playhead.current_bar(),
+                        self.playhead.position.step_in_bar(TICKS_PER_BEAT),
+                    ),
+                    Ordering::Relaxed,
+                );
+                self.publish_clock();
+                return;
+            }
+        }
+
+        // Post-tick pulse freeze: freeze the *new* pulse's step durations
+        // (swing included) before its first step is rendered, and advance the
+        // step cursor. `pulse_in_bar` and `position.step` both use this step,
+        // so they stay consistent.
+        let step = self.playhead.position.step_in_bar(TICKS_PER_BEAT);
+        let steps_per_pulse = usize::from(self.current_pulse.steps_per_pulse).max(1);
+        if step.is_multiple_of(steps_per_pulse) {
+            self.freeze_pulse(step, steps_per_pulse);
+        } else {
+            self.step_index += 1;
+        }
+
+        self.clock.position = TransportPosition {
+            bar: self.playhead.current_bar(),
+            step,
+            beat: step as f32 / TICKS_PER_BEAT as f32 + 1.0,
+        };
+
+        // Update shared transport position at grid resolution, after the tick.
         self.transport_position.store(
             pack(self.playhead.current_bar(), self.playhead.position.step_in_bar(TICKS_PER_BEAT)),
             Ordering::Relaxed,
@@ -487,17 +585,61 @@ impl PlaybackEngine {
             self.send_report();
         }
     }
-    /// Freeze the pulse timing at a pulse boundary (step 0, `spp`, `2·spp`, …).
-    ///
-    /// The pulse duration is `steps_per_pulse × samples_per_step` frames and
-    /// is fixed for the whole pulse: `next_pulse_frame` is therefore exact by
-    /// construction (the D1 invariant). Called before the playhead ticks, so
-    /// a measure's new tempo — loaded at the same boundary — already applies.
+    /// Freeze the pulse timing at a pulse boundary: apply one tempo-ramp step
+    /// (D4), compute the pulse's whole-frame step durations (swing, D3) and
+    /// fix `pulse_start_frame` / `next_pulse_frame` (the D1 invariant — exact
+    /// by construction).
     fn freeze_pulse(&mut self, step: usize, steps_per_pulse: usize) {
-        let pulse_duration = steps_per_pulse * self.samples_per_step;
+        if let Some(ramp) = &mut self.tempo_override
+            && ramp.remaining > 0
+        {
+            ramp.remaining -= 1;
+            self.audible_bpm =
+                if ramp.remaining == 0 { ramp.target } else { self.audible_bpm + ramp.step };
+        }
+        self.compute_pulse_steps(steps_per_pulse);
+        self.step_index = 0;
+
+        let pulse_duration = self.step_durations[..self.step_count].iter().sum::<usize>() as u64;
         self.clock.pulse_in_bar = (step / steps_per_pulse) as u8;
         self.clock.pulse_start_frame = self.frame_counter;
-        self.clock.next_pulse_frame = self.frame_counter + pulse_duration as u64;
+        self.clock.next_pulse_frame = self.frame_counter + pulse_duration;
+    }
+
+    /// Compute the whole-frame duration of each step of a `steps_per_pulse`
+    /// pulse at the current audible tempo and swing ratio (D3), frozen in
+    /// `step_durations`. Compound pulses (6 steps) ignore the swing.
+    fn compute_pulse_steps(&mut self, steps_per_pulse: usize) {
+        let truncated_step = (self.sample_rate * 60.0 / f64::from(self.audible_bpm) / 4.0) as usize;
+        // Swing or a tempo ramp use the *rounded* quarter (no truncation
+        // drift); a plain straight pulse keeps the pre-swing truncated step,
+        // so the snapshot stream is unchanged.
+        let rounded = self.swing_ratio > 0.5 || self.tempo_override.is_some();
+        let quarter = (self.sample_rate * 60.0 / f64::from(self.audible_bpm)).round() as usize;
+
+        if rounded && steps_per_pulse != 6 {
+            // Swing unit (ratio 0.5 under a ramp still yields a straight but
+            // rounded quarter) — the unit sums to the rounded quarter.
+            let unit = swing_unit(quarter, self.swing_ratio);
+            for u in 0..steps_per_pulse / 4 {
+                self.step_durations[u * 4..u * 4 + 4].copy_from_slice(&unit);
+            }
+        } else {
+            // Straight without swing/ramp, or compound (swing ignored):
+            // uniform truncated steps.
+            for slot in &mut self.step_durations[..steps_per_pulse] {
+                *slot = truncated_step;
+            }
+        }
+        self.step_count = steps_per_pulse;
+
+        // Base step duration (the recorder's TimingUpdate) stays the nominal
+        // truncated step regardless of swing.
+        if truncated_step != self.samples_per_step {
+            self.samples_per_step = truncated_step;
+            self.renderer
+                .handle_event(AudioEvent::TimingUpdate { samples_per_step: truncated_step });
+        }
     }
 
     /// Publish the current clock into the triple buffer.
@@ -625,14 +767,15 @@ impl PlaybackEngine {
         if let Some(pos) = found {
             let slot = self.window.remove(pos);
             debug_assert!(slot.epoch == self.epoch);
-            // Update timing from measure tempo
-            let steps_per_beat = 4.0f64;
-            let new_sps =
-                (self.sample_rate * 60.0 / (slot.measure.tempo as f64) / steps_per_beat) as usize;
-            if new_sps != self.samples_per_step {
-                self.samples_per_step = new_sps;
-                self.renderer.handle_event(AudioEvent::TimingUpdate { samples_per_step: new_sps });
+
+            // Capture the measure's nominal tempo, swing ratio and dance-pulse
+            // spec before the box moves into the playhead (Copy fields).
+            self.measure_bpm = slot.measure.tempo;
+            self.swing_ratio = slot.measure.swing_ratio;
+            if self.tempo_override.is_none() {
+                self.audible_bpm = self.measure_bpm;
             }
+            self.current_pulse = slot.measure.pulse;
 
             // Update chord info for reports
             self.last_chord_name =
@@ -640,12 +783,22 @@ impl PlaybackEngine {
             self.last_chord_root_offset = slot.measure.chord_context.root_offset;
             self.last_chord_is_minor = slot.measure.chord_context.is_minor;
 
-            // Capture the dance-pulse spec before the box moves into the
-            // playhead (Copy field read through the box).
-            self.current_pulse = slot.measure.pulse;
-
             self.playhead.load_measure(slot.measure);
             self.loaded_epoch = Some(slot.epoch);
+
+            // Freeze the opening pulse's step durations now (the very first
+            // measure is loaded before any pulse boundary, so no freeze will
+            // fire for it otherwise). The post-tick freeze recomputes this at
+            // every later boundary (with the tempo ramp applied).
+            let spp = usize::from(self.current_pulse.steps_per_pulse).max(1);
+            self.compute_pulse_steps(spp);
+            self.step_index = self.playhead.position.step_in_bar(TICKS_PER_BEAT) % spp;
+            let pulse_duration =
+                self.step_durations[..self.step_count].iter().sum::<usize>() as u64;
+            self.clock.pulse_in_bar = 0;
+            self.clock.pulse_start_frame = self.frame_counter;
+            self.clock.next_pulse_frame = self.frame_counter + pulse_duration;
+
             self.first_measure_loaded = true;
             true
         } else {
@@ -896,6 +1049,22 @@ impl PlaybackEngine {
                 PlaybackCommand::UpdateMusicalParams(params) => {
                     self.musical_params = *params;
                 }
+                PlaybackCommand::SetTempo { bpm, ramp_pulses } => {
+                    // D4: the audible tempo advances at pulse boundaries only
+                    // (the D1 invariant); `ramp_pulses == 0` is a jump applied
+                    // at the next boundary.
+                    let target = bpm.clamp(40.0, 300.0);
+                    let (remaining, step) = if ramp_pulses == 0 {
+                        (1u8, target - self.audible_bpm)
+                    } else {
+                        (ramp_pulses, (target - self.audible_bpm) / f32::from(ramp_pulses))
+                    };
+                    self.tempo_override = Some(TempoRamp { target, remaining, step });
+                }
+                PlaybackCommand::ClearTempo => {
+                    self.tempo_override = None;
+                    self.audible_bpm = self.measure_bpm;
+                }
             }
         }
     }
@@ -922,6 +1091,9 @@ impl PlaybackEngine {
         report.secondary_pulses = self.musical_params.rhythm_secondary_pulses;
 
         report.musical_params = self.musical_params.clone();
+        // The audible tempo (override/ramp) is the truth for the game, not the
+        // measure's nominal tempo.
+        report.musical_params.bpm = self.audible_bpm;
 
         let _ = self.report_tx.push(report);
     }
