@@ -434,6 +434,78 @@ impl Default for EmotionalQuadrantParams {
     }
 }
 
+/// Paramètres de planification et de ligne de violon du reel traditionnel (D4, D6, constitution V).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReelFiddleParams {
+    /// Poids de tirage pour Ré majeur (`D Ionian`, D4).
+    pub weight_d_ionian: u32,
+    /// Poids de tirage pour Sol majeur (`G Ionian`, D4).
+    pub weight_g_ionian: u32,
+    /// Poids de tirage pour La majeur (`A Ionian`, D4).
+    pub weight_a_ionian: u32,
+    /// Poids de tirage pour La mixolydien (`A Mixolydian`, D4).
+    pub weight_a_mixolydian: u32,
+    /// Poids de tirage pour Ré mixolydien (`D Mixolydian`, D4).
+    pub weight_d_mixolydian: u32,
+    /// Poids de tirage du rôle libre `CellRole::Run` (D6).
+    pub weight_role_run: u32,
+    /// Poids de tirage du rôle libre `CellRole::Arp` (D6).
+    pub weight_role_arp: u32,
+    /// Poids de tirage du rôle libre `CellRole::Turn` (D6).
+    pub weight_role_turn: u32,
+    /// Écart diatonique maximal (en pas) pour la continuité stricte entre mesures (2 = tierce, D6).
+    pub max_continuity_step_distance: i8,
+    /// Nombre maximal d'essais `N` de tirage pour satisfaire la continuité avant repli (D6).
+    pub continuity_max_retries: usize,
+    /// Plage de degrés cibles du centre mélodique de la strain A (`[3, 5]`, D6).
+    pub strain_a_center_range: [i8; 2],
+    /// Plage de degrés cibles du centre mélodique de la strain B (`[6, 8]`, D6).
+    pub strain_b_center_range: [i8; 2],
+    /// Distance maximale en pas diatoniques entre le centre d'une cellule et la cible avant transposition d'octave (4 = quinte, D6).
+    pub contour_max_step_distance: i8,
+    /// Borne inférieure MIDI pour le choix de l'octave de la tonique (`55` = G3, D6).
+    pub tonic_midi_min: u8,
+    /// Borne supérieure MIDI pour le choix de l'octave de la tonique (`66` = F#4, D6).
+    pub tonic_midi_max: u8,
+    /// Borne inférieure de la tessiture du violon (`55` = G3, D6).
+    pub tessitura_min: u8,
+    /// Borne supérieure de la tessiture du violon (`83` = B5, D6).
+    pub tessitura_max: u8,
+    /// Vélocité MIDI de base d'une croche de violon (`84`, D6).
+    pub base_velocity: u8,
+    /// Accent de vélocité sur les temps forts (croches 1 et 5 : `+12`, D6).
+    pub strong_eighth_velocity_offset: i8,
+    /// Atténuation de vélocité sur les croches paires (`-10`, D6).
+    pub even_eighth_velocity_offset: i8,
+}
+
+impl Default for ReelFiddleParams {
+    fn default() -> Self {
+        Self {
+            weight_d_ionian: 3,
+            weight_g_ionian: 3,
+            weight_a_ionian: 2,
+            weight_a_mixolydian: 1,
+            weight_d_mixolydian: 1,
+            weight_role_run: 4,
+            weight_role_arp: 3,
+            weight_role_turn: 3,
+            max_continuity_step_distance: 2,
+            continuity_max_retries: 16,
+            strain_a_center_range: [3, 5],
+            strain_b_center_range: [6, 8],
+            contour_max_step_distance: 4,
+            tonic_midi_min: 55,
+            tonic_midi_max: 66,
+            tessitura_min: 55,
+            tessitura_max: 83,
+            base_velocity: 84,
+            strong_eighth_velocity_offset: 12,
+            even_eighth_velocity_offset: -10,
+        }
+    }
+}
+
 /// Harmonisation et accompagnement du reel (D7, D8) : poids de vote, ordre de
 /// priorité des égalités, rythme et tessiture de la basse et de la guitare.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -508,6 +580,9 @@ pub struct TuningParams {
     pub perfect_balance: PerfectBalanceParams,
     pub arrangement: ArrangementParams,
     pub emotional_quadrant: EmotionalQuadrantParams,
+    /// Paramètres de planification et de ligne de violon du reel (D4, D6, constitution V).
+    #[serde(default)]
+    pub reel_fiddle: ReelFiddleParams,
     /// Banque de cellules mélodiques du reel traditionnel québécois (D5, constitution V).
     #[serde(default)]
     pub reel_cells: CellBank,
@@ -531,6 +606,7 @@ impl Default for TuningParams {
             perfect_balance: PerfectBalanceParams::default(),
             arrangement: ArrangementParams::default(),
             emotional_quadrant: EmotionalQuadrantParams::default(),
+            reel_fiddle: ReelFiddleParams::default(),
             reel_cells: CellBank::default(),
             trad_harmony: TradHarmonyParams::default(),
             reel_feet: FeetTable::default(),
@@ -950,6 +1026,94 @@ impl TuningParams {
             eq.energetic_tension_threshold,
         );
 
+        // --- ReelFiddleParams (D4, D6) ---
+        let rf = &self.reel_fiddle;
+        let key_weight_sum = rf
+            .weight_d_ionian
+            .saturating_add(rf.weight_g_ionian)
+            .saturating_add(rf.weight_a_ionian)
+            .saturating_add(rf.weight_a_mixolydian)
+            .saturating_add(rf.weight_d_mixolydian);
+        if key_weight_sum == 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.weight_*_ionian/mixolydian",
+                message: "at least one key/mode weight must be > 0".to_string(),
+            });
+        }
+        let role_weight_sum = rf
+            .weight_role_run
+            .saturating_add(rf.weight_role_arp)
+            .saturating_add(rf.weight_role_turn);
+        if role_weight_sum == 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.weight_role_*",
+                message: "at least one free role weight must be > 0".to_string(),
+            });
+        }
+        if rf.continuity_max_retries == 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.continuity_max_retries",
+                message: "expected >= 1, got 0".to_string(),
+            });
+        }
+        if rf.max_continuity_step_distance < 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.max_continuity_step_distance",
+                message: format!("expected >= 0, got {}", rf.max_continuity_step_distance),
+            });
+        }
+        if rf.contour_max_step_distance <= 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.contour_max_step_distance",
+                message: format!("expected >= 1, got {}", rf.contour_max_step_distance),
+            });
+        }
+        if rf.strain_a_center_range[0] > rf.strain_a_center_range[1] {
+            errors.push(ValidationError {
+                field: "reel_fiddle.strain_a_center_range",
+                message: format!(
+                    "min ({}) must be <= max ({})",
+                    rf.strain_a_center_range[0], rf.strain_a_center_range[1]
+                ),
+            });
+        }
+        if rf.strain_b_center_range[0] > rf.strain_b_center_range[1] {
+            errors.push(ValidationError {
+                field: "reel_fiddle.strain_b_center_range",
+                message: format!(
+                    "min ({}) must be <= max ({})",
+                    rf.strain_b_center_range[0], rf.strain_b_center_range[1]
+                ),
+            });
+        }
+        if rf.tonic_midi_min > rf.tonic_midi_max || rf.tonic_midi_max > 127 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.tonic_midi_min/max",
+                message: format!(
+                    "invalid tonic MIDI range {}..={}",
+                    rf.tonic_midi_min, rf.tonic_midi_max
+                ),
+            });
+        }
+        if rf.tessitura_min > rf.tessitura_max
+            || rf.tessitura_max.saturating_sub(rf.tessitura_min) < 12
+            || rf.tessitura_max > 127
+        {
+            errors.push(ValidationError {
+                field: "reel_fiddle.tessitura_min/max",
+                message: format!(
+                    "invalid tessitura range {}..={} (must span at least 12 semitones)",
+                    rf.tessitura_min, rf.tessitura_max
+                ),
+            });
+        }
+        if rf.base_velocity == 0 || rf.base_velocity > 127 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.base_velocity",
+                message: format!("expected 1..=127, got {}", rf.base_velocity),
+            });
+        }
+
         // --- Reel CellBank (D5) ---
         if let Err(err) = self.reel_cells.validate() {
             errors.push(ValidationError { field: "reel_cells", message: err.to_string() });
@@ -1202,6 +1366,51 @@ pub struct EmotionalQuadrantOverlay {
     pub energetic_tension_threshold: Option<f32>,
 }
 
+/// Partial overlay for `ReelFiddleParams`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReelFiddleOverlay {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_d_ionian: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_g_ionian: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_a_ionian: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_a_mixolydian: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_d_mixolydian: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_role_run: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_role_arp: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight_role_turn: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_continuity_step_distance: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continuity_max_retries: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strain_a_center_range: Option<[i8; 2]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strain_b_center_range: Option<[i8; 2]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contour_max_step_distance: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tonic_midi_min: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tonic_midi_max: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tessitura_min: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tessitura_max: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_velocity: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strong_eighth_velocity_offset: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub even_eighth_velocity_offset: Option<i8>,
+}
+
 // ---------------------------------------------------------------------------
 // Root TuningOverlay
 // ---------------------------------------------------------------------------
@@ -1227,6 +1436,8 @@ pub struct TuningOverlay {
     pub arrangement: Option<ArrangementOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub emotional_quadrant: Option<EmotionalQuadrantOverlay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reel_fiddle: Option<ReelFiddleOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reel_cells: Option<CellBank>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1371,6 +1582,30 @@ impl TuningParams {
             apply!(b.happy_valence_threshold, o.happy_valence_threshold);
             apply!(b.sad_valence_threshold, o.sad_valence_threshold);
             apply!(b.energetic_tension_threshold, o.energetic_tension_threshold);
+        }
+
+        if let Some(o) = &overlay.reel_fiddle {
+            let b = &mut result.reel_fiddle;
+            apply!(b.weight_d_ionian, o.weight_d_ionian);
+            apply!(b.weight_g_ionian, o.weight_g_ionian);
+            apply!(b.weight_a_ionian, o.weight_a_ionian);
+            apply!(b.weight_a_mixolydian, o.weight_a_mixolydian);
+            apply!(b.weight_d_mixolydian, o.weight_d_mixolydian);
+            apply!(b.weight_role_run, o.weight_role_run);
+            apply!(b.weight_role_arp, o.weight_role_arp);
+            apply!(b.weight_role_turn, o.weight_role_turn);
+            apply!(b.max_continuity_step_distance, o.max_continuity_step_distance);
+            apply!(b.continuity_max_retries, o.continuity_max_retries);
+            apply!(b.strain_a_center_range, o.strain_a_center_range);
+            apply!(b.strain_b_center_range, o.strain_b_center_range);
+            apply!(b.contour_max_step_distance, o.contour_max_step_distance);
+            apply!(b.tonic_midi_min, o.tonic_midi_min);
+            apply!(b.tonic_midi_max, o.tonic_midi_max);
+            apply!(b.tessitura_min, o.tessitura_min);
+            apply!(b.tessitura_max, o.tessitura_max);
+            apply!(b.base_velocity, o.base_velocity);
+            apply!(b.strong_eighth_velocity_offset, o.strong_eighth_velocity_offset);
+            apply!(b.even_eighth_velocity_offset, o.even_eighth_velocity_offset);
         }
 
         if let Some(reel_cells) = &overlay.reel_cells {

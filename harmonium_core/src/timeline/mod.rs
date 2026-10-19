@@ -134,7 +134,7 @@ impl Default for Articulation {
 ///
 /// Unlike ephemeral NoteOn/NoteOff events, this captures full intent:
 /// pitch, start position, duration in ticks, velocity, and articulation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TimelineNote {
     /// Unique identifier (monotonically increasing)
     pub id: NoteId,
