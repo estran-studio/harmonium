@@ -137,7 +137,7 @@ impl TransportPosition {
 }
 
 /// MIDI channel reserved for monitoring the player's own input ("hear
-/// yourself"). Channels 0–3 are the sequenced tracks (lead/bass/kick/hat)
+/// yourself"). Channels 0–4 are the sequenced tracks (melody/chords/bass/heel/toe)
 /// and 9 is GM percussion, so 8 is free and tonal.
 pub const MONITOR_CHANNEL: u8 = 8;
 
@@ -192,6 +192,7 @@ pub enum PlaybackCommand {
     StopRecording(harmonium_core::events::RecordFormat),
     MixerGains {
         lead: f32,
+        chords: f32,
         bass: f32,
         snare: f32,
         hat: f32,
@@ -326,6 +327,7 @@ pub struct PlaybackEngine {
 
     // Mixer gains (cached for reporting)
     gain_lead: f32,
+    gain_chords: f32,
     gain_bass: f32,
     gain_snare: f32,
     gain_hat: f32,
@@ -417,6 +419,7 @@ impl PlaybackEngine {
             is_recording_midi: false,
             is_recording_musicxml: false,
             gain_lead: 1.0,
+            gain_chords: 0.6,
             gain_bass: 0.6,
             gain_snare: 0.5,
             gain_hat: 0.4,
@@ -534,7 +537,7 @@ impl PlaybackEngine {
         // Check loop region
         if let Some((start_bar, end_bar)) = self.loop_region {
             if self.playhead.current_bar() > end_bar {
-                for ch in 0..4u8 {
+                for ch in 0..5u8 {
                     self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                 }
                 {
@@ -947,14 +950,16 @@ impl PlaybackEngine {
                 PlaybackCommand::SetChannelGain { channel, gain } => {
                     let gain = gain.clamp(0.0, 1.0);
                     match channel {
-                        0 => self.gain_bass = gain,
-                        1 => self.gain_lead = gain,
-                        2 => self.gain_snare = gain,
-                        3 => self.gain_hat = gain,
+                        0 => self.gain_lead = gain,
+                        1 => self.gain_chords = gain,
+                        2 => self.gain_bass = gain,
+                        3 => self.gain_snare = gain,
+                        4 => self.gain_hat = gain,
                         _ => {}
                     }
                     self.renderer.handle_event(AudioEvent::SetMixerGains {
                         lead: self.gain_lead,
+                        chords: self.gain_chords,
                         bass: self.gain_bass,
                         snare: self.gain_snare,
                         hat: self.gain_hat,
@@ -980,7 +985,7 @@ impl PlaybackEngine {
                 PlaybackCommand::SetOutputMute(muted) => {
                     self.output_muted = muted;
                     if muted {
-                        for ch in 0..4u8 {
+                        for ch in 0..5u8 {
                             self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                         }
                     }
@@ -991,7 +996,7 @@ impl PlaybackEngine {
                 PlaybackCommand::Seek(bar) => {
                     let target_bar = bar.max(1);
                     log::info(&format!("Seeking to bar {target_bar}"));
-                    for ch in 0..4u8 {
+                    for ch in 0..5u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
                     {
@@ -1009,7 +1014,7 @@ impl PlaybackEngine {
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
                     log::info(&format!("SeekPlayhead to bar {target_bar}"));
-                    for ch in 0..4u8 {
+                    for ch in 0..5u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
                     {
@@ -1086,13 +1091,15 @@ impl PlaybackEngine {
                     }
                     self.renderer.handle_event(AudioEvent::StopRecording { format });
                 }
-                PlaybackCommand::MixerGains { lead, bass, snare, hat } => {
+                PlaybackCommand::MixerGains { lead, chords, bass, snare, hat } => {
                     self.gain_lead = lead;
+                    self.gain_chords = chords;
                     self.gain_bass = bass;
                     self.gain_snare = snare;
                     self.gain_hat = hat;
                     self.renderer.handle_event(AudioEvent::SetMixerGains {
                         lead,
+                        chords,
                         bass,
                         snare,
                         hat,

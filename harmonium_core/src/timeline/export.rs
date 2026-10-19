@@ -115,17 +115,21 @@ pub fn timeline_to_musicxml_with_instruments(
         .unwrap();
     writeln!(xml, "    <score-part id=\"P2\"><part-name>{lead_name}</part-name></score-part>")
         .unwrap();
-    writeln!(xml, "    <score-part id=\"P3\"><part-name>Drums</part-name></score-part>").unwrap();
+    let _ = writeln!(xml, "    <score-part id=\"P3\"><part-name>Chords</part-name></score-part>");
+    writeln!(xml, "    <score-part id=\"P4\"><part-name>Drums</part-name></score-part>").unwrap();
     writeln!(xml, "  </part-list>").unwrap();
 
     // Bass part
     write_part(&mut xml, "P1", measures, TrackId::Bass, instrument_bass);
 
-    // Lead part
-    write_part(&mut xml, "P2", measures, TrackId::Lead, instrument_lead);
+    // Lead / Melody part
+    write_part(&mut xml, "P2", measures, TrackId::Melody, instrument_lead);
 
-    // Drums part (combined snare + hat)
-    write_drum_part(&mut xml, "P3", measures);
+    // Chords part
+    write_part(&mut xml, "P3", measures, TrackId::Chords, &InstrumentConfig::default());
+
+    // Drums part (combined heel + toe)
+    write_drum_part(&mut xml, "P4", measures);
 
     writeln!(xml, "</score-partwise>").unwrap();
     xml
@@ -248,12 +252,11 @@ fn write_drum_part(xml: &mut String, part_id: &str, measures: &[Measure]) {
             writeln!(xml, "      </attributes>").unwrap();
         }
 
-        // Merge snare and hat notes by start_step
-        let snare_notes = measure.notes_for_track(TrackId::Snare);
-        let hat_notes = measure.notes_for_track(TrackId::Hat);
+        // Merge heel and toe notes by start_step
+        let heel_notes = measure.notes_for_track(TrackId::Heel);
+        let toe_notes = measure.notes_for_track(TrackId::Toe);
 
-        let mut all_notes: Vec<&TimelineNote> =
-            snare_notes.iter().chain(hat_notes.iter()).collect();
+        let mut all_notes: Vec<&TimelineNote> = heel_notes.iter().chain(toe_notes.iter()).collect();
         all_notes.sort_by_key(|n| n.start_step);
 
         if all_notes.is_empty() {
@@ -466,7 +469,7 @@ mod tests {
             },
         );
         measure.add_note(
-            TrackId::Lead,
+            TrackId::Melody,
             TimelineNote {
                 id: 2,
                 pitch: 60,
@@ -483,7 +486,8 @@ mod tests {
         assert!(xml.contains("<step>C</step>"));
         assert!(xml.contains("P1")); // Bass part
         assert!(xml.contains("P2")); // Lead part
-        assert!(xml.contains("P3")); // Drums part
+        assert!(xml.contains("P3")); // Chords part
+        assert!(xml.contains("P4")); // Drums part
     }
 
     #[test]
@@ -491,7 +495,7 @@ mod tests {
         let mut timeline = ScoreTimeline::new(10);
         let mut measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
         measure.add_note(
-            TrackId::Lead,
+            TrackId::Melody,
             TimelineNote {
                 id: 1,
                 pitch: 62, // D4 (written pitch for tenor sax playing concert C4)
@@ -531,7 +535,7 @@ mod tests {
         let mut timeline = ScoreTimeline::new(10);
         let mut measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
         measure.add_note(
-            TrackId::Lead,
+            TrackId::Melody,
             TimelineNote {
                 id: 1,
                 pitch: 57, // A3 (written pitch for alto sax)
@@ -564,7 +568,7 @@ mod tests {
         let mut timeline = ScoreTimeline::new(10);
         let mut measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
         measure.add_note(
-            TrackId::Lead,
+            TrackId::Melody,
             TimelineNote {
                 id: 1,
                 pitch: 60,

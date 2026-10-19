@@ -19,7 +19,7 @@ graph TD
 
 ### `backend`
 
-* **`SynthBackend`** — the synthesizer. `SynthBackend::new(sample_rate, sf2_bytes, &initial_routing)`; `sf2_bytes = None` renders silence until a `LoadFont` event arrives. Handles `LoadFont`, `SetChannelRoute` (bank per logical channel), `ProgramChange`, `SetMixerGains` (CC 7), `AllNotesOff`, `ControlChange` (CC 1 drives filter/resonance/pitch-bend tension on channels 0–3).
+* **`SynthBackend`** — the synthesizer. `SynthBackend::new(sample_rate, sf2_bytes, &initial_routing)`; `sf2_bytes = None` renders silence until a `LoadFont` event arrives. Handles `LoadFont`, `SetChannelRoute` (bank per logical channel), `ProgramChange`, `SetMixerGains` (CC 7), `AllNotesOff`, `ControlChange` (CC 1 drives filter/resonance/pitch-bend tension on channels 0–4).
 * **`RecorderBackend`** — wraps a renderer and captures WAV, MIDI and MusicXML on `StartRecording` / `StopRecording`.
 * **`MidiBackend`** / **`WavBackend`** — standalone file exporters.
 

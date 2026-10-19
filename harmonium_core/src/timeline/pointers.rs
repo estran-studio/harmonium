@@ -191,8 +191,7 @@ impl Playhead {
                     match track_id {
                         TrackId::Bass => {
                             if let Some(old_note) = self.active_bass_note.take() {
-                                self.events
-                                    .push(AudioEvent::NoteOff { note: old_note, channel: 0 });
+                                self.events.push(AudioEvent::NoteOff { note: old_note, channel });
                             }
                             self.events.push(AudioEvent::NoteOn {
                                 note: note.pitch,
@@ -201,9 +200,9 @@ impl Playhead {
                             });
                             self.active_bass_note = Some(note.pitch);
                         }
-                        TrackId::Lead => {
+                        TrackId::Melody => {
                             if !self.active_lead_notes.is_empty() {
-                                self.events.push(AudioEvent::AllNotesOff { channel: 1 });
+                                self.events.push(AudioEvent::AllNotesOff { channel });
                                 self.active_lead_notes.clear();
                             }
                             self.events.push(AudioEvent::NoteOn {
@@ -213,7 +212,7 @@ impl Playhead {
                             });
                             self.active_lead_notes.push(note.pitch);
                         }
-                        TrackId::Snare | TrackId::Hat => {
+                        TrackId::Chords | TrackId::Heel | TrackId::Toe => {
                             self.events.push(AudioEvent::NoteOn {
                                 note: note.pitch,
                                 velocity: note.velocity,
@@ -368,7 +367,7 @@ mod tests {
         // Should have a NoteOn for bass
         let has_note_on = events
             .iter()
-            .any(|e| matches!(e, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }));
+            .any(|e| matches!(e, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }));
         assert!(has_note_on, "Expected NoteOn for bass at step 0");
     }
 

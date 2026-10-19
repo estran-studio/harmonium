@@ -395,7 +395,12 @@ impl TimelineGenerator {
         let tpb = self.sequencer_primary.ticks_per_beat;
         let walking_bass = rhythm_enabled
             && !self.musical_params.fixed_kick
-            && !self.musical_params.muted_channels.first().copied().unwrap_or(false)
+            && !self
+                .musical_params
+                .muted_channels
+                .get(TrackId::Bass.channel() as usize)
+                .copied()
+                .unwrap_or(false)
             && self.current_state.density > 0.4
             && self.current_state.smoothness > 0.4
             && tpb >= 2;
@@ -558,7 +563,12 @@ impl TimelineGenerator {
             if rhythm_enabled
                 && !walking_bass
                 && trigger_primary.kick
-                && !self.musical_params.muted_channels.first().copied().unwrap_or(false)
+                && !self
+                    .musical_params
+                    .muted_channels
+                    .get(TrackId::Bass.channel() as usize)
+                    .copied()
+                    .unwrap_or(false)
             {
                 let density = self.current_state.density;
                 let smoothness = self.current_state.smoothness;
@@ -634,7 +644,12 @@ impl TimelineGenerator {
                 && trigger_primary.lead
                 && step >= skip_lead_until
                 && !(is_high_tension && is_in_fill_zone)
-                && !self.musical_params.muted_channels.get(1).copied().unwrap_or(false);
+                && !self
+                    .musical_params
+                    .muted_channels
+                    .get(TrackId::Melody.channel() as usize)
+                    .copied()
+                    .unwrap_or(false);
 
             if play_lead {
                 let is_strong = trigger_primary.kick || trigger_primary.snare;
@@ -727,7 +742,7 @@ impl TimelineGenerator {
                             let vel =
                                 self.shape_velocity(base_vel, vel_step, steps, bar_index, 4, rng);
                             measure.add_note(
-                                TrackId::Lead,
+                                TrackId::Melody,
                                 TimelineNote {
                                     id: self.next_id(),
                                     pitch,
@@ -744,7 +759,7 @@ impl TimelineGenerator {
                         let solo_vel =
                             self.shape_velocity(base_vel, step, steps, bar_index, 4, rng);
                         measure.add_note(
-                            TrackId::Lead,
+                            TrackId::Melody,
                             TimelineNote {
                                 id: self.next_id(),
                                 pitch: melody_midi,
@@ -766,7 +781,12 @@ impl TimelineGenerator {
             // === SNARE (with ghost notes and tom fills) ===
             if rhythm_enabled
                 && trigger_primary.snare
-                && !self.musical_params.muted_channels.get(2).copied().unwrap_or(false)
+                && !self
+                    .musical_params
+                    .muted_channels
+                    .get(TrackId::Heel.channel() as usize)
+                    .copied()
+                    .unwrap_or(false)
             {
                 let mut snare_note = 38u8;
                 let mut vel =
@@ -791,7 +811,7 @@ impl TimelineGenerator {
                 }
 
                 measure.add_note(
-                    TrackId::Snare,
+                    TrackId::Heel,
                     TimelineNote {
                         id: self.next_id(),
                         pitch: snare_note,
@@ -807,7 +827,12 @@ impl TimelineGenerator {
             let play_hat = trigger_primary.hat || trigger_secondary.hat;
             if rhythm_enabled
                 && play_hat
-                && !self.musical_params.muted_channels.get(3).copied().unwrap_or(false)
+                && !self
+                    .musical_params
+                    .muted_channels
+                    .get(TrackId::Toe.channel() as usize)
+                    .copied()
+                    .unwrap_or(false)
             {
                 let mut hat_note = 42u8; // Closed Hi-Hat
                 let mut vel = 70 + (self.current_state.arousal * 30.0) as u8;
@@ -831,7 +856,7 @@ impl TimelineGenerator {
                 }
 
                 measure.add_note(
-                    TrackId::Hat,
+                    TrackId::Toe,
                     TimelineNote {
                         id: self.next_id(),
                         pitch: hat_note,
@@ -1362,8 +1387,8 @@ mod tests {
 
         // No bass, snare, or hat notes when rhythm is disabled
         assert_eq!(measure.notes_for_track(TrackId::Bass).len(), 0);
-        assert_eq!(measure.notes_for_track(TrackId::Snare).len(), 0);
-        assert_eq!(measure.notes_for_track(TrackId::Hat).len(), 0);
+        assert_eq!(measure.notes_for_track(TrackId::Heel).len(), 0);
+        assert_eq!(measure.notes_for_track(TrackId::Toe).len(), 0);
     }
 
     #[test]
@@ -1374,7 +1399,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let measure = tgen.generate_measure(1, &mut rng);
 
-        assert_eq!(measure.notes_for_track(TrackId::Lead).len(), 0);
+        assert_eq!(measure.notes_for_track(TrackId::Melody).len(), 0);
     }
 
     #[test]
@@ -1424,7 +1449,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         for bar in 1..=8 {
             let measure = tgen.generate_measure(bar, &mut rng);
-            for note in measure.notes_for_track(TrackId::Lead) {
+            for note in measure.notes_for_track(TrackId::Melody) {
                 assert!(
                     note.pitch >= 60 && note.pitch <= 72,
                     "Lead note {} out of range [60, 72] at bar {bar}",
@@ -1444,7 +1469,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         for bar in 1..=16 {
             let measure = tgen.generate_measure(bar, &mut rng);
-            for note in measure.notes_for_track(TrackId::Lead) {
+            for note in measure.notes_for_track(TrackId::Melody) {
                 assert!(
                     note.pitch >= 56 && note.pitch <= 90,
                     "Tenor sax lead note {} out of range [56, 90] at bar {bar}",
@@ -1492,7 +1517,7 @@ mod tests {
             let measure = tgen.generate_measure(bar, &mut rng);
 
             // All lead notes must fall within tenor sax range
-            for note in measure.notes_for_track(TrackId::Lead) {
+            for note in measure.notes_for_track(TrackId::Melody) {
                 assert!(
                     note.pitch >= tenor.min_note && note.pitch <= tenor.max_note,
                     "Lead note MIDI {} out of tenor sax range [{}, {}] at bar {bar}",
@@ -1570,7 +1595,7 @@ mod tests {
 
                 for bar in 1..=8 {
                     let measure = tgen.generate_measure(bar, &mut rng);
-                    for note in measure.notes_for_track(TrackId::Lead) {
+                    for note in measure.notes_for_track(TrackId::Melody) {
                         assert!(
                             NOTATION_SAFE.contains(&note.duration_steps),
                             "density={density}, tension={tension}, bar={bar}: \
@@ -1642,7 +1667,7 @@ mod tests {
 
                 for bar in 0..num_bars {
                     let measure = tgen.generate_measure(bar, &mut rng);
-                    lead_counts.push(measure.notes_for_track(TrackId::Lead).len());
+                    lead_counts.push(measure.notes_for_track(TrackId::Melody).len());
                     total_counts.push(measure.total_notes());
                 }
 
@@ -1717,7 +1742,7 @@ mod tests {
         for bar in 0..8 {
             let measure = tgen.generate_measure(bar, &mut rng);
             total_counts.push(measure.total_notes());
-            lead_counts.push(measure.notes_for_track(TrackId::Lead).len());
+            lead_counts.push(measure.notes_for_track(TrackId::Melody).len());
         }
 
         // Bar 0 must NOT differ from subsequent bars
@@ -1949,7 +1974,7 @@ mod tests {
             );
 
             // 2. Verify the measure produces notes
-            let lead_notes = measure.notes_for_track(TrackId::Lead);
+            let lead_notes = measure.notes_for_track(TrackId::Melody);
             assert!(
                 !lead_notes.is_empty(),
                 "Bar {bar} ({expected_name}): expected lead notes but got none"
@@ -2087,7 +2112,7 @@ mod tests {
 
             for bar in 1..=16 {
                 let measure = tgen.generate_measure(bar, &mut rng);
-                for note in measure.notes_for_track(TrackId::Lead) {
+                for note in measure.notes_for_track(TrackId::Melody) {
                     assert!(
                         note.duration_steps >= 1 && note.duration_steps <= 16,
                         "density={density}, bar={bar}: lead duration {} out of range [1,16]",

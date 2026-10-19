@@ -100,18 +100,19 @@ impl VoiceManager {
     /// Configure GM-standard program assignments and drum channel mapping.
     ///
     /// When `gm_compatible` is true (full GM SoundFont like MuseScore General):
-    /// - Channel 0 → Bass (GM program 32)
-    /// - Channel 1 → Piano (GM program 0)
-    /// - Channels 2,3 → Drums on MIDI channel 9 (GM bank 128, program 0)
+    /// - Channel 0 → Melody / Lead (GM program 0, Piano)
+    /// - Channel 1 → Chords (GM program 24, Acoustic Guitar steel)
+    /// - Channel 2 → Bass (GM program 32, Acoustic Bass)
+    /// - Channels 3,4 → Drums / Feet on MIDI channel 9 (GM bank 128, program 0)
     ///
     /// When `gm_compatible` is false (small/test SoundFonts):
     /// - All channels use program 0 (first available patch)
     /// - No drum remapping (drums play as pitched notes)
     pub fn configure_gm_defaults(&mut self, gm_compatible: bool) {
         if gm_compatible {
-            // Remap drum logical channels to MIDI channel 9 (GM drums)
-            self.midi_channel_map[2] = 9;
+            // Remap drum logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums)
             self.midi_channel_map[3] = 9;
+            self.midi_channel_map[4] = 9;
 
             // Set up MIDI channel 9 as drum bank (GM standard)
             let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
@@ -123,13 +124,15 @@ impl VoiceManager {
                 .synth
                 .send_event(oxisynth::MidiEvent::ProgramChange { channel: 9, program_id: 0 });
 
+            // Melody / Lead: GM program 0 (Acoustic Grand Piano)
+            self.set_channel_program(0, 0);
+            // Chords: GM program 24 (Acoustic Guitar steel)
+            self.set_channel_program(1, 24);
             // Bass: GM program 32 (Acoustic Bass)
-            self.set_channel_program(0, 32);
-            // Lead: GM program 0 (Acoustic Grand Piano)
-            self.set_channel_program(1, 0);
+            self.set_channel_program(2, 32);
         } else {
             // Non-GM: all channels use program 0
-            for ch in 0..4 {
+            for ch in 0..5 {
                 self.set_channel_program(ch, 0);
             }
         }
@@ -168,11 +171,12 @@ impl VoiceManager {
         }
     }
 
-    /// Mixer gains for the four instrument channels (bass=0, lead=1, snare=2,
-    /// hat=3), applied as MIDI Channel Volume (CC 7). In GM mode snare and hat
-    /// share MIDI channel 9, so the hat gain is applied last and wins.
-    pub fn set_gains(&mut self, lead: f32, bass: f32, snare: f32, hat: f32) {
-        for (channel, gain) in [(0usize, bass), (1, lead), (2, snare), (3, hat)] {
+    /// Mixer gains for the five instrument channels (melody=0, chords=1,
+    /// bass=2, heel=3, toe=4), applied as MIDI Channel Volume (CC 7). In GM
+    /// mode heel and toe share MIDI channel 9, so the toe gain is applied last
+    /// and wins.
+    pub fn set_gains(&mut self, lead: f32, chords: f32, bass: f32, snare: f32, hat: f32) {
+        for (channel, gain) in [(0usize, lead), (1, chords), (2, bass), (3, snare), (4, hat)] {
             let midi_ch = self.midi_channel_map[channel];
             let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                 channel: midi_ch,
@@ -222,11 +226,11 @@ impl VoiceManager {
 
                 if ctrl == 1 {
                     // Modulation / Tension: filter, resonance and pitch
-                    // instability on the four instrument channels.
+                    // instability on the five instrument channels.
                     let val_norm = f32::from(value) / 127.0;
                     let cutoff_val = ((30.0 + val_norm * 97.0) as i32).clamp(0, 127) as u8;
                     let res_val = ((val_norm * 90.0) as i32).clamp(0, 127) as u8;
-                    for ch in 0..4 {
+                    for ch in 0..5 {
                         let mapped_ch = self.midi_channel_map[ch];
                         let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
                             channel: mapped_ch,

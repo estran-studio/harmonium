@@ -7,7 +7,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::harmony::steedman_grammar::GrammarStyle;
+use crate::{harmony::steedman_grammar::GrammarStyle, trad::cells::CellBank};
+
+/// Version du schéma et des constantes de `TuningParams` (constitution I).
+///
+/// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
+/// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
+/// cellules trad en phase 1).
+pub const TUNING_VERSION: u32 = 2;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -441,6 +448,9 @@ pub struct TuningParams {
     pub perfect_balance: PerfectBalanceParams,
     pub arrangement: ArrangementParams,
     pub emotional_quadrant: EmotionalQuadrantParams,
+    /// Banque de cellules mélodiques du reel traditionnel québécois (D5, constitution V).
+    #[serde(default)]
+    pub reel_cells: CellBank,
 }
 
 impl Default for TuningParams {
@@ -455,6 +465,7 @@ impl Default for TuningParams {
             perfect_balance: PerfectBalanceParams::default(),
             arrangement: ArrangementParams::default(),
             emotional_quadrant: EmotionalQuadrantParams::default(),
+            reel_cells: CellBank::default(),
         }
     }
 }
@@ -871,6 +882,11 @@ impl TuningParams {
             eq.energetic_tension_threshold,
         );
 
+        // --- Reel CellBank (D5) ---
+        if let Err(err) = self.reel_cells.validate() {
+            errors.push(ValidationError { field: "reel_cells", message: err.to_string() });
+        }
+
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 }
@@ -1119,6 +1135,8 @@ pub struct TuningOverlay {
     pub arrangement: Option<ArrangementOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub emotional_quadrant: Option<EmotionalQuadrantOverlay>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reel_cells: Option<CellBank>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1258,6 +1276,10 @@ impl TuningParams {
             apply!(b.happy_valence_threshold, o.happy_valence_threshold);
             apply!(b.sad_valence_threshold, o.sad_valence_threshold);
             apply!(b.energetic_tension_threshold, o.energetic_tension_threshold);
+        }
+
+        if let Some(reel_cells) = &overlay.reel_cells {
+            result.reel_cells = reel_cells.clone();
         }
 
         result

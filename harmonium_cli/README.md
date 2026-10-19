@@ -127,9 +127,9 @@ disable voicing                  # Disable voicing module
 ### Mixer
 
 ```bash
-set gain 0 0.8                   # Set channel 0 gain to 0.8
-set mute 2                       # Mute channel 2 (snare)
-set unmute 2                     # Unmute channel 2
+set gain 0 0.8                   # Set channel 0 (melody) gain to 0.8
+set mute 3                       # Mute channel 3 (heel/snare)
+set unmute 3                     # Unmute channel 3
 ```
 
 ### Recording

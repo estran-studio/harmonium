@@ -43,14 +43,16 @@ pub type NoteId = u64;
 /// Track identifier for per-instrument separation
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TrackId {
-    /// Bass / Kick (MIDI channel 0)
+    /// Melody / Lead (MIDI channel 0)
+    Melody,
+    /// Chords / Accompaniment (MIDI channel 1)
+    Chords,
+    /// Bass / Kick (MIDI channel 2)
     Bass,
-    /// Lead / Melody (MIDI channel 1)
-    Lead,
-    /// Snare / Percussion (MIDI channel 2)
-    Snare,
-    /// Hi-Hat / Cymbals (MIDI channel 3)
-    Hat,
+    /// Heel / Foot stomp (MIDI channel 3)
+    Heel,
+    /// Toe / Foot tap (MIDI channel 4)
+    Toe,
 }
 
 impl TrackId {
@@ -58,15 +60,16 @@ impl TrackId {
     #[must_use]
     pub const fn channel(&self) -> u8 {
         match self {
-            Self::Bass => 0,
-            Self::Lead => 1,
-            Self::Snare => 2,
-            Self::Hat => 3,
+            Self::Melody => 0,
+            Self::Chords => 1,
+            Self::Bass => 2,
+            Self::Heel => 3,
+            Self::Toe => 4,
         }
     }
 
     /// All track IDs in canonical order
-    pub const ALL: [TrackId; 4] = [Self::Bass, Self::Lead, Self::Snare, Self::Hat];
+    pub const ALL: [TrackId; 5] = [Self::Melody, Self::Chords, Self::Bass, Self::Heel, Self::Toe];
 }
 
 /// Musical position within the score (bar, beat, tick)
@@ -220,7 +223,7 @@ impl Measure {
     /// Create an empty measure with the given parameters
     #[must_use]
     pub fn new(index: usize, time_signature: TimeSignature, tempo: f32, steps: usize) -> Self {
-        let mut tracks = HashMap::with_capacity(4);
+        let mut tracks = HashMap::with_capacity(TrackId::ALL.len());
         for &track_id in &TrackId::ALL {
             tracks.insert(track_id, Vec::new());
         }
@@ -416,10 +419,11 @@ mod tests {
 
     #[test]
     fn test_track_id_channel() {
-        assert_eq!(TrackId::Bass.channel(), 0);
-        assert_eq!(TrackId::Lead.channel(), 1);
-        assert_eq!(TrackId::Snare.channel(), 2);
-        assert_eq!(TrackId::Hat.channel(), 3);
+        assert_eq!(TrackId::Melody.channel(), 0);
+        assert_eq!(TrackId::Chords.channel(), 1);
+        assert_eq!(TrackId::Bass.channel(), 2);
+        assert_eq!(TrackId::Heel.channel(), 3);
+        assert_eq!(TrackId::Toe.channel(), 4);
     }
 
     #[test]
@@ -428,7 +432,7 @@ mod tests {
         assert_eq!(measure.index, 1);
         assert_eq!(measure.steps, 16);
         assert_eq!(measure.total_notes(), 0);
-        assert_eq!(measure.tracks.len(), 4);
+        assert_eq!(measure.tracks.len(), 5);
     }
 
     #[test]
@@ -447,7 +451,7 @@ mod tests {
         );
         assert_eq!(measure.total_notes(), 1);
         assert_eq!(measure.notes_for_track(TrackId::Bass).len(), 1);
-        assert_eq!(measure.notes_for_track(TrackId::Lead).len(), 0);
+        assert_eq!(measure.notes_for_track(TrackId::Melody).len(), 0);
     }
 
     #[test]

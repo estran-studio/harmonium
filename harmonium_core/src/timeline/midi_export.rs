@@ -35,9 +35,10 @@ const GM_HIHAT: u8 = 42;
 ///
 /// Produces a Type 1 MIDI file with 5 tracks:
 /// - Track 0: Tempo/time signature meta events
-/// - Track 1: Bass (MIDI channel 0)
-/// - Track 2: Lead (MIDI channel 1)
-/// - Track 3: Drums (MIDI channel 9, snare + hat combined)
+/// - Track 1: Melody (MIDI channel 0)
+/// - Track 2: Chords (MIDI channel 1)
+/// - Track 3: Bass (MIDI channel 2)
+/// - Track 4: Drums (MIDI channel 9, heel + toe combined)
 pub fn timeline_to_midi(timeline: &ScoreTimeline) -> Vec<u8> {
     let measures = timeline.measures();
     if measures.is_empty() {
@@ -50,13 +51,31 @@ pub fn timeline_to_midi(timeline: &ScoreTimeline) -> Vec<u8> {
     // Track 0: tempo map + time signatures
     smf.tracks.push(build_tempo_track(measures));
 
-    // Track 1: Bass (channel 0)
-    smf.tracks.push(build_instrument_track(measures, TrackId::Bass, 0, "Bass"));
+    // Track 1: Melody (channel 0)
+    smf.tracks.push(build_instrument_track(
+        measures,
+        TrackId::Melody,
+        TrackId::Melody.channel(),
+        "Melody",
+    ));
 
-    // Track 2: Lead (channel 1)
-    smf.tracks.push(build_instrument_track(measures, TrackId::Lead, 1, "Lead"));
+    // Track 2: Chords (channel 1)
+    smf.tracks.push(build_instrument_track(
+        measures,
+        TrackId::Chords,
+        TrackId::Chords.channel(),
+        "Chords",
+    ));
 
-    // Track 3: Drums (channel 9, combining snare + hat)
+    // Track 3: Bass (channel 2)
+    smf.tracks.push(build_instrument_track(
+        measures,
+        TrackId::Bass,
+        TrackId::Bass.channel(),
+        "Bass",
+    ));
+
+    // Track 4: Drums (channel 9, combining heel + toe)
     smf.tracks.push(build_drum_track(measures));
 
     let mut buf = Vec::new();
@@ -233,8 +252,8 @@ fn build_drum_track(measures: &[Measure]) -> Vec<TrackEvent<'static>> {
     for measure in measures {
         let base_tick = measure_start(measure);
 
-        // Snare
-        for note in measure.notes_for_track(TrackId::Snare) {
+        // Heel / Snare
+        for note in measure.notes_for_track(TrackId::Heel) {
             let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             events.push((
@@ -253,8 +272,8 @@ fn build_drum_track(measures: &[Measure]) -> Vec<TrackEvent<'static>> {
             ));
         }
 
-        // Hi-hat
-        for note in measure.notes_for_track(TrackId::Hat) {
+        // Toe / Hi-hat
+        for note in measure.notes_for_track(TrackId::Toe) {
             let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             events.push((
@@ -398,7 +417,7 @@ mod tests {
         // Lead: quarter note melody
         for (i, pitch) in [60u8, 64, 67, 72].iter().enumerate() {
             measure.add_note(
-                TrackId::Lead,
+                TrackId::Melody,
                 TimelineNote {
                     id: 10 + i as u64,
                     pitch: *pitch,
@@ -412,7 +431,7 @@ mod tests {
 
         // Snare on beat 2 and 4
         measure.add_note(
-            TrackId::Snare,
+            TrackId::Heel,
             TimelineNote {
                 id: 20,
                 pitch: 38,
@@ -423,7 +442,7 @@ mod tests {
             },
         );
         measure.add_note(
-            TrackId::Snare,
+            TrackId::Heel,
             TimelineNote {
                 id: 21,
                 pitch: 38,
@@ -437,7 +456,7 @@ mod tests {
         // Hat on every beat
         for step in (0..16).step_by(4) {
             measure.add_note(
-                TrackId::Hat,
+                TrackId::Toe,
                 TimelineNote {
                     id: 30 + step as u64 / 4,
                     pitch: 42,
@@ -470,8 +489,8 @@ mod tests {
         // Parse it back
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
-        // Should have 4 tracks: tempo + bass + lead + drums
-        assert_eq!(smf.tracks.len(), 4);
+        // Should have 5 tracks: tempo + melody + chords + bass + drums
+        assert_eq!(smf.tracks.len(), 5);
 
         // Verify header
         assert_eq!(smf.header.format, Format::Parallel);
@@ -497,12 +516,14 @@ mod tests {
                 .count()
         };
 
-        // Track 1 = Bass: 2 notes
-        assert_eq!(count_note_ons(&smf.tracks[1]), 2);
-        // Track 2 = Lead: 4 notes
-        assert_eq!(count_note_ons(&smf.tracks[2]), 4);
-        // Track 3 = Drums: 2 snare + 4 hat = 6 notes
-        assert_eq!(count_note_ons(&smf.tracks[3]), 6);
+        // Track 1 = Melody: 4 notes
+        assert_eq!(count_note_ons(&smf.tracks[1]), 4);
+        // Track 2 = Chords: 0 notes
+        assert_eq!(count_note_ons(&smf.tracks[2]), 0);
+        // Track 3 = Bass: 2 notes
+        assert_eq!(count_note_ons(&smf.tracks[3]), 2);
+        // Track 4 = Drums: 2 heel + 4 toe = 6 notes
+        assert_eq!(count_note_ons(&smf.tracks[4]), 6);
     }
 
     #[test]
@@ -541,7 +562,7 @@ mod tests {
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // All MIDI events in drum track should be on channel 9
-        for event in &smf.tracks[3] {
+        for event in &smf.tracks[4] {
             if let TrackEventKind::Midi { channel, .. } = event.kind {
                 assert_eq!(channel.as_int(), GM_DRUM_CHANNEL, "Drum events should be on channel 9");
             }
@@ -555,7 +576,7 @@ mod tests {
         for i in 1..=4 {
             let mut measure = Measure::new(i, TimeSignature::new(4, 4), 120.0, 16);
             measure.add_note(
-                TrackId::Lead,
+                TrackId::Melody,
                 TimelineNote {
                     id: i as u64,
                     pitch: 60,
@@ -572,7 +593,7 @@ mod tests {
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // 4 notes across 4 measures
-        let note_ons: usize = smf.tracks[2]
+        let note_ons: usize = smf.tracks[1]
             .iter()
             .filter(|e| {
                 matches!(e.kind, TrackEventKind::Midi { message: MidiMessage::NoteOn { .. }, .. })
@@ -594,7 +615,7 @@ mod tests {
         // Read back and verify
         let bytes = std::fs::read(&path).unwrap();
         let smf = Smf::parse(&bytes).expect("written file should parse");
-        assert_eq!(smf.tracks.len(), 4);
+        assert_eq!(smf.tracks.len(), 5);
 
         // Cleanup
         std::fs::remove_dir_all(&dir).ok();

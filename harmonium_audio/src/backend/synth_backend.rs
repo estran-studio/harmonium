@@ -43,8 +43,8 @@ impl SynthBackend {
         self.voice_manager.set_channel_route(channel, route);
     }
 
-    pub fn set_gains(&mut self, lead: f32, bass: f32, snare: f32, hat: f32) {
-        self.voice_manager.set_gains(lead, bass, snare, hat);
+    pub fn set_gains(&mut self, lead: f32, chords: f32, bass: f32, snare: f32, hat: f32) {
+        self.voice_manager.set_gains(lead, chords, bass, snare, hat);
     }
 }
 
@@ -58,8 +58,8 @@ impl AudioRenderer for SynthBackend {
                 self.voice_manager
                     .set_channel_route(channel as usize, ChannelRoute::from_bank_id(bank));
             }
-            AudioEvent::SetMixerGains { lead, bass, snare, hat } => {
-                self.voice_manager.set_gains(lead, bass, snare, hat);
+            AudioEvent::SetMixerGains { lead, chords, bass, snare, hat } => {
+                self.voice_manager.set_gains(lead, chords, bass, snare, hat);
             }
             AudioEvent::TimingUpdate { .. } | AudioEvent::UpdateMusicalParams { .. } => {}
             _ => self.voice_manager.process_event(event),

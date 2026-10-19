@@ -366,11 +366,11 @@ impl GlobalMetrics {
 // DNA EXTRACTION
 // ============================================================================
 
-/// Channel assignments in Harmonium (from engine.rs)
-const CHANNEL_BASS: u8 = 0;
-const CHANNEL_LEAD: u8 = 1;
-const CHANNEL_SNARE: u8 = 2;
-const CHANNEL_HAT: u8 = 3;
+/// Channel assignments in Harmonium (`TrackId::channel`)
+const CHANNEL_LEAD: u8 = harmonium_core::timeline::TrackId::Melody.channel();
+const CHANNEL_BASS: u8 = harmonium_core::timeline::TrackId::Bass.channel();
+const CHANNEL_SNARE: u8 = harmonium_core::timeline::TrackId::Heel.channel();
+const CHANNEL_HAT: u8 = harmonium_core::timeline::TrackId::Toe.channel();
 
 /// Time window (in beats) for grouping simultaneous notes into chords
 const CHORD_GROUPING_WINDOW: f64 = 0.1;
@@ -828,27 +828,27 @@ mod tests {
     fn create_test_truth() -> RecordingTruth {
         let params = MusicalParams::default();
         let events = vec![
-            // Kick pattern (channel 0)
-            (0.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (0.5, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (1.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (1.5, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            // Lead melody (channel 1) - C major chord tones
-            (0.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 1 }), // C
-            (0.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 1 }), // E
-            (0.0, AudioEvent::NoteOn { note: 67, velocity: 90, channel: 1 }), // G
+            // Kick pattern (channel 2 = Bass)
+            (0.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (0.5, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (1.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (1.5, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            // Lead melody (channel 0 = Melody) - C major chord tones
+            (0.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 }), // C
+            (0.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0 }), // E
+            (0.0, AudioEvent::NoteOn { note: 67, velocity: 90, channel: 0 }), // G
             // Transition to Am
-            (1.0, AudioEvent::NoteOn { note: 69, velocity: 90, channel: 1 }), // A
-            (1.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 1 }), // C
-            (1.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 1 }), // E
-            // Snare (channel 2)
-            (0.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 2 }),
-            (1.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 2 }),
-            // Hat (channel 3)
-            (0.0, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (0.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (0.5, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (0.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
+            (1.0, AudioEvent::NoteOn { note: 69, velocity: 90, channel: 0 }), // A
+            (1.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 }), // C
+            (1.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0 }), // E
+            // Snare / Heel (channel 3)
+            (0.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 3 }),
+            (1.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 3 }),
+            // Hat / Toe (channel 4)
+            (0.0, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (0.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (0.5, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (0.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
         ];
         RecordingTruth::new(events, params, 44100)
     }
@@ -873,13 +873,13 @@ mod tests {
         let extractor = DNAExtractor::new(120.0, 4);
         let events = vec![
             // C major chord at time 0
-            (0.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 1 }),
-            (0.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 1 }),
-            (0.0, AudioEvent::NoteOn { note: 67, velocity: 90, channel: 1 }),
+            (0.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 }),
+            (0.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0 }),
+            (0.0, AudioEvent::NoteOn { note: 67, velocity: 90, channel: 0 }),
             // A minor chord at time 1.0
-            (1.0, AudioEvent::NoteOn { note: 69, velocity: 90, channel: 1 }),
-            (1.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 1 }),
-            (1.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 1 }),
+            (1.0, AudioEvent::NoteOn { note: 69, velocity: 90, channel: 0 }),
+            (1.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 }),
+            (1.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0 }),
         ];
 
         let groups = extractor.group_notes_into_chords(&events);
@@ -937,19 +937,19 @@ mod tests {
         let extractor = DNAExtractor::new(120.0, 4);
         let events = vec![
             // First measure: 4 hits
-            (0.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (0.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 2 }),
-            (1.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (1.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 2 }),
+            (0.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (0.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 3 }),
+            (1.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (1.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 3 }),
             // Second measure: 8 hits
-            (2.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (2.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (2.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 2 }),
-            (2.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (3.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }),
-            (3.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
-            (3.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 2 }),
-            (3.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 3 }),
+            (2.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (2.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (2.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 3 }),
+            (2.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (3.0, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 2 }),
+            (3.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
+            (3.5, AudioEvent::NoteOn { note: 38, velocity: 100, channel: 3 }),
+            (3.75, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4 }),
         ];
 
         let density = extractor.calculate_density_curve(&events);

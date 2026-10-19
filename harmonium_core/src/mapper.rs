@@ -165,6 +165,7 @@ impl EmotionMapper {
         // MIXER: Passthrough des gains
         // ═══════════════════════════════════════════════════════════════════
         params.gain_lead = emotions.gain_lead;
+        params.gain_chords = emotions.gain_chords;
         params.gain_bass = emotions.gain_bass;
         params.gain_snare = emotions.gain_snare;
         params.gain_hat = emotions.gain_hat;

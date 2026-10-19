@@ -1,0 +1,62 @@
+# Banque de cellules mélodiques d'une mesure (8 croches) pour le reel québécois (D5).
+#
+# Notation :
+# - 1..7 : degrés de la gamme du mode dans l'octave principale (1 = tonique, ex. D en ré majeur)
+# - 8..  : degrés dans l'octave supérieure (8 = tonique + 1 octave)
+# - k,   : degré k dans l'octave inférieure (5, = quinte grave, 7, = sensible/sous-tonique grave)
+# - -    : prolongation de la note précédente
+#
+# Invariants D5 vérifiés au chargement :
+# - exactement 8 croches par cellule ;
+# - la première croche n'est jamais "-" (Hold) ;
+# - ambitus total de la cellule <= 1 octave (7 pas diatoniques / 12 demi-tons) ;
+# - au plus 1 saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons) par cellule ;
+# - aucun chromatisme.
+
+cells = [
+  # --- Graines du plan (13 cellules) ---
+  { role = "arp", notes = "1 3 5 3 1 3 5 3" },       # D F# A F# — l'arpège de reel
+  { role = "arp", notes = "8 5 3 5 8 5 3 5" },
+  { role = "run", notes = "5 4 3 2 1 2 3 4" },
+  { role = "run", notes = "1 2 3 4 5 6 7 8" },
+  { role = "run", notes = "8 7 6 5 4 3 2 1" },
+  { role = "turn", notes = "5 6 5 4 3 4 3 2" },
+  { role = "turn", notes = "3 2 1 2 3 5 6 5" },
+  { role = "open", notes = "5 5 3 5 6 5 3 5" },      # répétition de note, typique au violon
+  { role = "open", notes = "1 1 5, 1 3 1 5, 1" },
+  { role = "cad_half", notes = "4 3 2 1 2 - - -" },
+  { role = "cad_half", notes = "3 4 5 4 5 - - -" },
+  { role = "cad_full", notes = "3 2 1 7, 1 - - -" },
+  { role = "cad_full", notes = "5 4 3 2 1 - 5, -" }, # tonique + pickup
+
+  # --- Extensions idiomatiques trad québécois (18 cellules) ---
+  # open (3 nouvelles -> 5 au total)
+  { role = "open", notes = "3 3 1 3 5 3 2 1" },      # attaque doublée sur la tierce (strain A)
+  { role = "open", notes = "8 8 6 8 7 6 5 6" },      # attaque doublée à l'octave haute (strain B)
+  { role = "open", notes = "5 6 8 8 7 6 5 3" },      # appel ascendant vers l'octave (strain B)
+
+  # arp (3 nouvelles -> 5 au total)
+  { role = "arp", notes = "2 4 6 4 2 4 6 5" },       # arpège de sus-tonique / dominante
+  { role = "arp", notes = "4 6 8 6 4 6 8 6" },       # arpège de sous-dominante IV dans l'aigu (strain B)
+  { role = "arp", notes = "5 3 1 3 5 8 5 3" },       # arpège de tonique déployé sur l'octave
+
+  # run (3 nouvelles -> 6 au total)
+  { role = "run", notes = "3 4 5 6 7 8 7 6" },       # montée conjointe vers le registre de strain B
+  { role = "run", notes = "6 5 4 3 2 3 4 5" },       # vague conjointe médiane (strain A)
+  { role = "run", notes = "8 7 6 7 8 6 5 4" },       # descente ornée depuis l'octave (strain B)
+
+  # turn (3 nouvelles -> 5 au total)
+  { role = "turn", notes = "1 2 1 7, 1 2 3 2" },     # broderie autour de la tonique grave
+  { role = "turn", notes = "8 7 8 6 5 6 5 3" },      # broderie d'octave haute (strain B)
+  { role = "turn", notes = "6 7 6 5 6 7 8 6" },      # broderie sur le 6e degré (typique dorien/majeur)
+
+  # cad_half (3 nouvelles -> 5 au total)
+  { role = "cad_half", notes = "6 5 4 3 2 - - -" },  # demi-cadence conjointe sur le 2e degré
+  { role = "cad_half", notes = "6 7 8 6 5 - - -" },  # demi-cadence haute sur la dominante (5)
+  { role = "cad_half", notes = "8 7 6 5 7 - - -" },  # demi-cadence haute sur le 7e degré
+
+  # cad_full (3 nouvelles -> 5 au total)
+  { role = "cad_full", notes = "2 3 2 7, 1 - - -" }, # cadence avec sensible/sous-tonique inférieure
+  { role = "cad_full", notes = "5 3 2 1 1 - - -" },  # cadence avec double coup d'archet sur la tonique
+  { role = "cad_full", notes = "6 5 4 3 2 1 1 -" },  # descente conjointe vers tonique doublée
+]

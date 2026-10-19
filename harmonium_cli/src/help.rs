@@ -80,8 +80,8 @@ pub fn print_help() {
     print_section(
         "MIXER",
         &[
-            ("set gain <ch> <0-1>", "Set channel gain (ch: 0-3)"),
-            ("set mute <ch>", "Mute channel (0=bass, 1=lead, 2=snare, 3=hat)"),
+            ("set gain <ch> <0-1>", "Set channel gain (ch: 0-4)"),
+            ("set mute <ch>", "Mute channel (0=melody, 1=chords, 2=bass, 3=heel, 4=toe)"),
             ("set unmute <ch>", "Unmute channel"),
         ],
     );
