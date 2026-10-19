@@ -9,7 +9,7 @@ use serde_big_array::BigArray;
 
 use crate::{
     harmony::HarmonyMode,
-    params::{MusicalParams, TimeSignature},
+    params::{MusicalParams, PulseSpec, TimeSignature},
     sequencer::RhythmMode,
 };
 
@@ -61,6 +61,13 @@ pub struct MeasureSnapshot {
     /// the chord/key context was unavailable at generation time.
     #[serde(default)]
     pub scale_guidance: Option<crate::harmony::ScaleGuidance>,
+    /// Swing ratio captured at generation time (0.5 = straight). Ignored in
+    /// compound meter.
+    #[serde(default = "crate::params::default_swing_ratio")]
+    pub swing_ratio: f32,
+    /// Dance pulse captured at generation time.
+    #[serde(default)]
+    pub pulse: PulseSpec,
 }
 
 impl MeasureSnapshot {
@@ -95,6 +102,8 @@ impl MeasureSnapshot {
             // Default to measure tempo; overridden by composer with emotion-mapped BPM
             composition_bpm: measure.tempo,
             scale_guidance: measure.chord_context.scale_guidance.clone(),
+            swing_ratio: measure.swing_ratio,
+            pulse: measure.pulse,
         }
     }
 }

@@ -352,6 +352,10 @@ impl TimelineGenerator {
         // Snapshot state at generation time
         measure.state_snapshot = StateSnapshot::from(&self.current_state);
 
+        // Swing and dance pulse captured from params at generation time.
+        measure.swing_ratio = self.musical_params.swing_ratio;
+        measure.pulse = self.musical_params.effective_pulse(self.sequencer_primary.ticks_per_beat);
+
         // Improv scale guidance (LCC): build the structured chord from the live
         // chord type + absolute root. `key_root + chord_root_offset` is the
         // absolute root of the sounding chord — the same space the bass and the

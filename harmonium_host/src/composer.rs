@@ -576,7 +576,7 @@ impl MusicComposer {
     // === Parameter setters (called directly, no command queue) ===
 
     pub fn set_bpm(&mut self, bpm: f32) {
-        let clamped = bpm.clamp(70.0, 180.0);
+        let clamped = bpm.clamp(40.0, 300.0);
         self.bpm_override = Some(clamped);
         self.musical_params.bpm = clamped;
     }
