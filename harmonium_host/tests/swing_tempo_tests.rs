@@ -183,7 +183,7 @@ struct FrameRecorder {
 
 impl AudioRenderer for FrameRecorder {
     fn handle_event(&mut self, event: AudioEvent) {
-        if let AudioEvent::NoteOn { note, channel: 1, .. } = event
+        if let AudioEvent::NoteOn { note, channel: 0, .. } = event
             && let Ok(mut notes) = self.notes.lock()
             && notes.len() < notes.capacity()
         {
@@ -231,7 +231,7 @@ fn make_note_harness() -> NoteHarness {
         measure.pulse = pulse;
         for s in 0..16usize {
             measure.add_note(
-                TrackId::Lead,
+                TrackId::Melody,
                 TimelineNote {
                     id: i as u64 * 100 + s as u64,
                     pitch: 60 + s as u8,

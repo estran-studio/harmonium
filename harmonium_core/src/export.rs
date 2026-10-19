@@ -205,7 +205,7 @@ pub struct ScoreNote {
     pub start_step: usize,
     /// Duration in steps (from `NoteOn` to `NoteOff`)
     pub duration_steps: usize,
-    /// Channel (0=Bass, 1=Lead, 2=Snare, 3=Hat)
+    /// Channel (0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe)
     pub channel: u8,
     /// Velocity (for dynamics notation)
     pub velocity: u8,
@@ -549,16 +549,18 @@ impl MusicXmlBuilder {
         let _ =
             writeln!(xml, r#"    <score-part id="P1"><part-name>Lead</part-name></score-part>"#);
         let _ =
-            writeln!(xml, r#"    <score-part id="P2"><part-name>Bass</part-name></score-part>"#);
+            writeln!(xml, r#"    <score-part id="P2"><part-name>Chords</part-name></score-part>"#);
         let _ =
-            writeln!(xml, r#"    <score-part id="P3"><part-name>Drums</part-name></score-part>"#);
+            writeln!(xml, r#"    <score-part id="P3"><part-name>Bass</part-name></score-part>"#);
+        let _ =
+            writeln!(xml, r#"    <score-part id="P4"><part-name>Drums</part-name></score-part>"#);
         let _ = writeln!(xml, "  </part-list>");
 
-        // Parts
-        self.write_part(&mut xml, "P1", 1, ClefType::Treble);
-        self.write_part(&mut xml, "P2", 0, ClefType::Bass);
-        self.write_drum_part(&mut xml, "P3");
-
+        // Parts (0=Melody/Lead, 1=Chords, 2=Bass, 3+4=Drums)
+        self.write_part(&mut xml, "P1", 0, ClefType::Treble);
+        self.write_part(&mut xml, "P2", 1, ClefType::Treble);
+        self.write_part(&mut xml, "P3", 2, ClefType::Bass);
+        self.write_drum_part(&mut xml, "P4");
         let _ = writeln!(xml, "</score-partwise>");
         xml
     }
@@ -581,7 +583,7 @@ impl MusicXmlBuilder {
                         // If this note is already pending (common for percussion), finalize it first
                         if let Some((old_start, old_vel)) = pending.get(&(*channel, *note)) {
                             // Give it a short default duration (percussion hits)
-                            let default_duration = if *channel == 2 || *channel == 3 {
+                            let default_duration = if *channel == 3 || *channel == 4 {
                                 2 // Short percussion hit
                             } else {
                                 4 // Quarter note for other instruments
@@ -627,9 +629,9 @@ impl MusicXmlBuilder {
         // Handle pending notes (no NoteOff received)
         let pending_count = pending.len();
         for ((channel, pitch), (start, vel)) in pending {
-            // Percussion channels (2=snare, 3=hat) get short default duration
+            // Percussion channels (3=heel/snare, 4=toe/hat) get short default duration
             // Other channels get full measure duration
-            let default_duration = if channel == 2 || channel == 3 {
+            let default_duration = if channel == 3 || channel == 4 {
                 2 // Short percussion hit (equivalent to 8th note at 16 steps/measure)
             } else {
                 self.params.rhythm_steps // Full measure for sustained notes
@@ -666,8 +668,8 @@ impl MusicXmlBuilder {
         self.notes = notes;
     }
 
-    /// Write a pitched part (Lead or Bass)
-    /// Lead part (channel 1) includes chord symbols
+    /// Write a pitched part (Melody, Chords, or Bass)
+    /// Melody/Lead part (channel 0) includes chord symbols
     fn write_part(&self, xml: &mut String, part_id: &str, channel: u8, clef: ClefType) {
         let _ = writeln!(xml, r#"  <part id="{part_id}">"#);
 
@@ -677,8 +679,8 @@ impl MusicXmlBuilder {
         let steps_per_measure = self.steps_per_measure();
         let total_measures = self.calculate_total_measures(&part_notes);
 
-        // Only show chord symbols on Lead part (channel 1)
-        let show_chords = channel == 1;
+        // Only show chord symbols on Melody/Lead part (channel 0)
+        let show_chords = channel == 0;
 
         for measure in 0..total_measures.max(1) {
             let _ = writeln!(xml, r#"    <measure number="{}">"#, measure + 1);
@@ -824,12 +826,12 @@ impl MusicXmlBuilder {
         let _ = writeln!(xml, "      </harmony>");
     }
 
-    /// Write the drum part (channels 2 and 3 combined)
+    /// Write the drum part (channels 3 and 4 combined)
     fn write_drum_part(&self, xml: &mut String, part_id: &str) {
         let _ = writeln!(xml, r#"  <part id="{part_id}">"#);
 
         let drum_notes: Vec<&ScoreNote> =
-            self.notes.iter().filter(|n| n.channel == 2 || n.channel == 3).collect();
+            self.notes.iter().filter(|n| n.channel == 3 || n.channel == 4).collect();
 
         let steps_per_measure = self.steps_per_measure();
         let total_measures = self.calculate_total_measures(&drum_notes);
@@ -1012,11 +1014,11 @@ impl MusicXmlBuilder {
         duration: usize,
     ) {
         // Map channel to display position
-        // Channel 2 = Snare (middle of staff, E4)
-        // Channel 3 = Hi-hat (above staff, G5)
+        // Channel 3 = Heel / Snare (middle of staff, E4)
+        // Channel 4 = Toe / Hi-hat (above staff, G5)
         let (display_step, display_octave) = match note.channel {
-            2 => ("E", 4), // Snare
-            3 => ("G", 5), // Hi-hat
+            3 => ("E", 4), // Heel / Snare
+            4 => ("G", 5), // Toe / Hi-hat
             _ => ("F", 4), // Default (kick would be here)
         };
 
@@ -1370,7 +1372,7 @@ mod tests {
     #[test]
     fn test_simple_note_produces_valid_xml() {
         let samples_per_step = 11025;
-        let events = vec![note_on(0.0, 60, 100, 1), note_off(samples_per_step as f64, 60, 1)];
+        let events = vec![note_on(0.0, 60, 100, 0), note_off(samples_per_step as f64, 60, 0)];
 
         let params = MusicalParams::default();
         let xml = to_musicxml(&events, &params, samples_per_step);
@@ -1386,15 +1388,15 @@ mod tests {
     #[test]
     fn test_bass_channel_uses_bass_clef() {
         let events = vec![
-            note_on(0.0, 36, 100, 0), // Channel 0 = Bass
-            note_off(11025.0, 36, 0),
+            note_on(0.0, 36, 100, 2), // Channel 2 = Bass
+            note_off(11025.0, 36, 2),
         ];
 
         let params = MusicalParams::default();
         let xml = to_musicxml(&events, &params, 11025);
 
         // Check Bass part has F clef
-        assert!(xml.contains(r#"<part id="P2">"#)); // Bass is P2
+        assert!(xml.contains(r#"<part id="P3">"#)); // Bass is P3
         assert!(xml.contains("<sign>F</sign>"));
         assert!(xml.contains("<line>4</line>"));
     }
@@ -1402,8 +1404,8 @@ mod tests {
     #[test]
     fn test_drums_use_percussion_clef() {
         let events = vec![
-            note_on(0.0, 38, 100, 2), // Channel 2 = Snare
-            note_off(11025.0, 38, 2),
+            note_on(0.0, 38, 100, 3), // Channel 3 = Heel / Snare
+            note_off(11025.0, 38, 3),
         ];
 
         let params = MusicalParams::default();
@@ -1416,7 +1418,7 @@ mod tests {
 
     #[test]
     fn test_key_signature_g_major() {
-        let events = vec![note_on(0.0, 67, 100, 1), note_off(11025.0, 67, 1)];
+        let events = vec![note_on(0.0, 67, 100, 0), note_off(11025.0, 67, 0)];
 
         let mut params = MusicalParams::default();
         params.key_root = 7; // G
@@ -1429,7 +1431,7 @@ mod tests {
 
     #[test]
     fn test_key_signature_d_minor() {
-        let events = vec![note_on(0.0, 62, 100, 1), note_off(11025.0, 62, 1)];
+        let events = vec![note_on(0.0, 62, 100, 0), note_off(11025.0, 62, 0)];
 
         let mut params = MusicalParams::default();
         params.key_root = 2; // D
@@ -1442,7 +1444,7 @@ mod tests {
 
     #[test]
     fn test_time_signature_3_4() {
-        let events = vec![note_on(0.0, 60, 100, 1), note_off(11025.0, 60, 1)];
+        let events = vec![note_on(0.0, 60, 100, 0), note_off(11025.0, 60, 0)];
 
         let mut params = MusicalParams::default();
         params.rhythm_steps = 12; // 3/4 time

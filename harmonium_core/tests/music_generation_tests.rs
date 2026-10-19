@@ -119,11 +119,11 @@ fn generate_and_export(name: &str, params: &MusicalParams, measures: usize, seed
         let tick_result = sequencer.tick();
         let trigger = tick_result.trigger;
 
-        // === BASS (Channel 0) ===
+        // === BASS (Channel 2) ===
         if trigger.kick {
             // Release previous bass note
             if let Some(prev_note) = active_bass.take() {
-                events.push((timestamp, AudioEvent::NoteOff { note: prev_note, channel: 0 }));
+                events.push((timestamp, AudioEvent::NoteOff { note: prev_note, channel: 2 }));
             }
 
             // Play new bass note (harmonized to current chord root)
@@ -134,34 +134,34 @@ fn generate_and_export(name: &str, params: &MusicalParams, measures: usize, seed
                 36 + current_chord.root
             };
             let velocity = (trigger.velocity * 100.0) as u8;
-            events.push((timestamp, AudioEvent::NoteOn { note: bass_note, velocity, channel: 0 }));
+            events.push((timestamp, AudioEvent::NoteOn { note: bass_note, velocity, channel: 2 }));
             active_bass = Some(bass_note);
         }
 
-        // === SNARE (Channel 2) ===
+        // === SNARE / HEEL (Channel 3) ===
         if trigger.snare {
             let velocity = (trigger.velocity * 90.0) as u8;
-            events.push((timestamp, AudioEvent::NoteOn { note: 38, velocity, channel: 2 }));
+            events.push((timestamp, AudioEvent::NoteOn { note: 38, velocity, channel: 3 }));
             // Short duration for drums (half step)
             let off_time = timestamp + 0.5;
-            events.push((off_time, AudioEvent::NoteOff { note: 38, channel: 2 }));
+            events.push((off_time, AudioEvent::NoteOff { note: 38, channel: 3 }));
         }
 
-        // === HI-HAT (Channel 3) ===
+        // === HI-HAT / TOE (Channel 4) ===
         if trigger.hat {
             let velocity = (trigger.velocity * 70.0) as u8;
-            events.push((timestamp, AudioEvent::NoteOn { note: 42, velocity, channel: 3 }));
+            events.push((timestamp, AudioEvent::NoteOn { note: 42, velocity, channel: 4 }));
             let off_time = timestamp + 0.25; // Quarter step
-            events.push((off_time, AudioEvent::NoteOff { note: 42, channel: 3 }));
+            events.push((off_time, AudioEvent::NoteOff { note: 42, channel: 4 }));
         }
 
-        // === LEAD/MELODY (Channel 1) ===
+        // === LEAD/MELODY (Channel 0) ===
         // Play melody on every other step for a simple pattern
         let is_melody_step = step % 2 == 0;
         if is_melody_step {
             // Release previous lead note
             if let Some(prev_note) = active_lead.take() {
-                events.push((timestamp, AudioEvent::NoteOff { note: prev_note, channel: 1 }));
+                events.push((timestamp, AudioEvent::NoteOff { note: prev_note, channel: 0 }));
             }
 
             // Generate melody note from chord tones
@@ -174,7 +174,7 @@ fn generate_and_export(name: &str, params: &MusicalParams, measures: usize, seed
 
             events.push((
                 timestamp,
-                AudioEvent::NoteOn { note: melody_note, velocity: 80, channel: 1 },
+                AudioEvent::NoteOn { note: melody_note, velocity: 80, channel: 0 },
             ));
             active_lead = Some(melody_note);
         }
@@ -183,10 +183,10 @@ fn generate_and_export(name: &str, params: &MusicalParams, measures: usize, seed
     // Final NoteOffs
     let end_time = total_steps as f64;
     if let Some(note) = active_bass {
-        events.push((end_time, AudioEvent::NoteOff { note, channel: 0 }));
+        events.push((end_time, AudioEvent::NoteOff { note, channel: 2 }));
     }
     if let Some(note) = active_lead {
-        events.push((end_time, AudioEvent::NoteOff { note, channel: 1 }));
+        events.push((end_time, AudioEvent::NoteOff { note, channel: 0 }));
     }
 
     // Sort events by timestamp
@@ -636,7 +636,7 @@ fn generate_timeline_export(
     // Validate lead notes are within instrument range
     let mut lead_count = 0;
     for measure in timeline.measures() {
-        for note in measure.notes_for_track(TrackId::Lead) {
+        for note in measure.notes_for_track(TrackId::Melody) {
             assert!(
                 note.pitch >= instrument_lead.min_note && note.pitch <= instrument_lead.max_note,
                 "Lead note {} out of instrument range [{}, {}]",

@@ -669,6 +669,10 @@ pub struct MusicalParams {
     #[serde(default = "default_gain_lead")]
     pub gain_lead: f32,
 
+    /// Gain de l'accompagnement accords/guitare (0.0-1.0)
+    #[serde(default = "default_gain_chords")]
+    pub gain_chords: f32,
+
     /// Gain de la basse/kick (0.0-1.0)
     #[serde(default = "default_gain_bass")]
     pub gain_bass: f32,
@@ -759,6 +763,9 @@ const fn default_octave() -> i32 {
 const fn default_gain_lead() -> f32 {
     1.0
 }
+const fn default_gain_chords() -> f32 {
+    0.6
+}
 const fn default_gain_bass() -> f32 {
     0.6
 }
@@ -830,6 +837,7 @@ impl Default for MusicalParams {
 
             // Mixer
             gain_lead: default_gain_lead(),
+            gain_chords: default_gain_chords(),
             gain_bass: default_gain_bass(),
             gain_snare: default_gain_snare(),
             gain_hat: default_gain_hat(),
@@ -1118,7 +1126,7 @@ mod tests {
 #[derive(Clone, Debug)]
 pub struct VisualizationEvent {
     pub note_midi: u8,
-    pub instrument: u8, // 0=Bass, 1=Lead, 2=Snare, 3=Hat
+    pub instrument: u8, // 0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe
     pub step: usize,
     pub bar: usize,
     pub duration_samples: usize,
@@ -1207,6 +1215,8 @@ pub struct EngineParams {
     // Mixer Gains (0.0 - 1.0)
     #[serde(default = "default_gain_lead")]
     pub gain_lead: f32,
+    #[serde(default = "default_gain_chords")]
+    pub gain_chords: f32,
     #[serde(default = "default_gain_bass")]
     pub gain_bass: f32,
     #[serde(default = "default_gain_snare")]
@@ -1246,6 +1256,7 @@ impl Default for EngineParams {
             record_musicxml: false,
             enable_synthesis_morphing: true,
             gain_lead: default_gain_lead(),
+            gain_chords: default_gain_chords(),
             gain_bass: default_gain_bass(),
             gain_snare: default_gain_snare(),
             gain_hat: default_gain_hat(),

@@ -788,6 +788,7 @@ impl MusicComposer {
         new_params.muted_channels = self.musical_params.muted_channels.clone();
         new_params.channel_routing = self.musical_params.channel_routing.clone();
         new_params.gain_lead = self.musical_params.gain_lead;
+        new_params.gain_chords = self.musical_params.gain_chords;
         new_params.gain_bass = self.musical_params.gain_bass;
         new_params.gain_snare = self.musical_params.gain_snare;
         new_params.gain_hat = self.musical_params.gain_hat;
