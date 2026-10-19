@@ -73,6 +73,8 @@ pub struct Playhead {
     sample_counter: usize,
     /// Samples per step at current tempo
     samples_per_step: usize,
+    /// Sample rate (samples per second), fixed at construction
+    sample_rate: f64,
     /// Time signature for current measure
     time_signature: TimeSignature,
     /// Ticks per beat (resolution)
@@ -84,7 +86,7 @@ pub struct Playhead {
     /// Active lead notes for NoteOff tracking
     active_lead_notes: Vec<u8>,
     /// Next note indices per track (to avoid re-scanning)
-    track_cursors: [usize; 4],
+    track_cursors: [usize; TrackId::ALL.len()],
 }
 
 impl Playhead {
@@ -98,12 +100,13 @@ impl Playhead {
             current_measure: None,
             sample_counter: 0,
             samples_per_step,
+            sample_rate,
             time_signature: TimeSignature::default(),
             ticks_per_beat,
             events: Vec::with_capacity(8),
             active_bass_note: None,
             active_lead_notes: Vec::with_capacity(8),
-            track_cursors: [0; 4],
+            track_cursors: [0; TrackId::ALL.len()],
         }
     }
 
@@ -114,14 +117,12 @@ impl Playhead {
     pub fn load_measure(&mut self, measure: Measure) {
         self.samples_per_step = {
             let steps_per_beat = self.ticks_per_beat as f64;
-            // Recalculate from stored tempo (approximation - real impl uses TempoMap)
             let bpm = measure.tempo as f64;
-            // This is a simplified calculation; real impl passes sample_rate
-            (44100.0 * 60.0 / bpm / steps_per_beat) as usize
+            (self.sample_rate * 60.0 / bpm / steps_per_beat) as usize
         };
         self.time_signature = measure.time_signature;
         self.current_measure = Some(measure);
-        self.track_cursors = [0; 4];
+        self.track_cursors = [0; TrackId::ALL.len()];
     }
 
     /// Process one step's worth of audio events from the current measure.
@@ -233,7 +234,7 @@ impl Playhead {
     pub fn seek_to_bar(&mut self, bar: usize) {
         self.position = MusicalPosition::new(bar, 1, 0);
         self.current_measure = None;
-        self.track_cursors = [0; 4];
+        self.track_cursors = [0; TrackId::ALL.len()];
         // Stop any active notes
         self.active_bass_note = None;
         self.active_lead_notes.clear();
@@ -318,6 +319,16 @@ mod tests {
             .iter()
             .any(|e| matches!(e, AudioEvent::NoteOn { note: 36, velocity: 100, channel: 0 }));
         assert!(has_note_on, "Expected NoteOn for bass at step 0");
+    }
+
+    #[test]
+    fn test_playhead_load_measure_uses_real_sample_rate() {
+        let mut ph = Playhead::new(48000.0, 4);
+        let measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
+        ph.load_measure(measure);
+
+        // 48000 samples/s * 60 s/min / 120 bpm / 4 steps-per-beat = 6000.
+        assert_eq!(ph.samples_per_step, 6000);
     }
 
     #[test]
