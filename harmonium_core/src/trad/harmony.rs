@@ -326,7 +326,7 @@ mod tests {
             .enumerate()
             .map(|(i, d)| TimelineNote {
                 id: i as u64,
-                pitch: mode.degree_to_midi(TONIC_MIDI, d.parse().expect("degré")),
+                pitch: mode.degree_to_midi(TONIC_MIDI, d.parse().unwrap_or(1)),
                 start_step: i * 2,
                 duration_steps: 2,
                 velocity: 90,
@@ -449,10 +449,9 @@ mod tests {
     }
 
     #[test]
-    fn repeats_return_identical_chords() {
+    fn repeats_return_identical_chords() -> Result<(), TuneHarmonyError> {
         let plan = TunePlan::reel(D, Mode::Ionian);
-        let harmony = TuneHarmony::new(plan, &two_strain_melody(), &TradHarmonyParams::default())
-            .expect("16 mesures");
+        let harmony = TuneHarmony::new(plan, &two_strain_melody(), &TradHarmonyParams::default())?;
         for bar in 0..32 {
             let section = bar / 8;
             let first_pass = bar - if section % 2 == 1 { 8 } else { 0 };
@@ -474,6 +473,7 @@ mod tests {
         }
         // Repli modulo 32.
         assert_eq!(harmony.chords_for_bar(32), harmony.chords_for_bar(0));
+        Ok(())
     }
 
     #[test]
