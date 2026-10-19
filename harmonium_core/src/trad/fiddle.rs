@@ -33,7 +33,7 @@ pub const BARS_PER_STRAIN: usize = 8;
 pub const CELLS_PER_TUNE: usize = 16;
 
 /// État d'une ligne de violon pour un tune en cours (D4, D6).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FiddleLine {
     plan: TunePlan,
     cells_a: [Cell; BARS_PER_STRAIN],
@@ -305,18 +305,26 @@ fn select_strain_cells(
                 let src_idx = (src_1based.saturating_sub(1) as usize) % BARS_PER_STRAIN;
                 chosen[src_idx].clone()
             }
-            imposed => pick_cell_for_bar(
-                strain,
-                bar_idx,
-                imposed,
-                plan,
-                tonic_midi,
-                bank,
-                params,
-                *prev_last_step,
-                bar1_first_step,
-                rng,
-            ),
+            imposed => {
+                let excluded_cell = if matches!(imposed, ImposedRole::Free) && bar_idx > 0 {
+                    Some(&chosen[bar_idx - 1])
+                } else {
+                    None
+                };
+                pick_cell_for_bar(
+                    strain,
+                    bar_idx,
+                    imposed,
+                    plan,
+                    tonic_midi,
+                    bank,
+                    params,
+                    *prev_last_step,
+                    bar1_first_step,
+                    excluded_cell,
+                    rng,
+                )
+            }
         };
 
         if bar_idx == 0 {
@@ -380,6 +388,7 @@ fn pick_cell_for_bar(
     params: &ReelFiddleParams,
     prev_last_step: Option<i8>,
     bar1_first_step: Option<i8>,
+    excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Cell {
     let target_step = strain_target_step(strain, params);
@@ -393,7 +402,7 @@ fn pick_cell_for_bar(
             Some(forced) => forced,
             None => draw_free_cell_role(params, rng),
         };
-        let Some(base_cell) = draw_cell_by_role(bank, role, rng) else {
+        let Some(base_cell) = draw_cell_by_role(bank, role, excluded_cell, rng) else {
             continue;
         };
 
@@ -436,6 +445,35 @@ fn pick_cell_for_bar(
         None => &[CellRole::Run, CellRole::Arp, CellRole::Turn],
     };
 
+    for base_cell in &bank.cells {
+        if !allowed_roles.contains(&base_cell.role) || is_excluded_cell(base_cell, excluded_cell) {
+            continue;
+        }
+        for shift in contour_shifts_for_cell(base_cell, target_step, params) {
+            let cand = evaluate_candidate(
+                base_cell,
+                shift,
+                strain,
+                bar_idx,
+                target_step,
+                split_step,
+                plan,
+                tonic_midi,
+                params,
+                prev_last_step,
+                bar1_first_step,
+            );
+            if best.as_ref().is_none_or(|b| cand.score_key() < b.score_key()) {
+                best = Some(cand);
+            }
+        }
+    }
+
+    if let Some(winner) = best {
+        return winner.cell;
+    }
+
+    // Repli ultime si toutes les cellules permises étaient exclues (ex. banque à 1 cellule).
     for base_cell in &bank.cells {
         if !allowed_roles.contains(&base_cell.role) {
             continue;
@@ -493,23 +531,58 @@ fn draw_free_cell_role(params: &ReelFiddleParams, rng: &mut dyn RngCore) -> Cell
     CellRole::Run
 }
 
-/// Tire uniformément une cellule ayant le rôle `role` dans `bank` (ou replie sur toute la banque).
+/// Indique si `candidate` correspond à la cellule exclue (à une transposition d'octave près).
+fn is_excluded_cell(candidate: &Cell, excluded_cell: Option<&Cell>) -> bool {
+    excluded_cell.is_some_and(|excluded| same_cell_up_to_octave(candidate, excluded))
+}
+
+/// Vérifie si deux cellules ont exactement les mêmes degrés (à un décalage d'octave constant près)
+/// et les mêmes tenues (`Hold`).
+#[must_use]
+pub const fn same_cell_up_to_octave(a: &Cell, b: &Cell) -> bool {
+    let mut step_diff: Option<i8> = None;
+    let mut i = 0;
+    while i < NOTES_PER_CELL {
+        match (a.notes[i], b.notes[i]) {
+            (CellNote::Hold, CellNote::Hold) => {}
+            (CellNote::Degree(da), CellNote::Degree(db)) => {
+                let diff = degree_to_diatonic_step(da) - degree_to_diatonic_step(db);
+                if diff % 7 != 0 {
+                    return false;
+                }
+                if let Some(expected) = step_diff {
+                    if diff != expected {
+                        return false;
+                    }
+                } else {
+                    step_diff = Some(diff);
+                }
+            }
+            _ => return false,
+        }
+        i += 1;
+    }
+    true
+}
+
+/// Tire uniformément une cellule ayant le rôle `role` dans `bank` en excluant `excluded_cell`.
 fn draw_cell_by_role<'a>(
     bank: &'a CellBank,
     role: CellRole,
+    excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Option<&'a Cell> {
-    let count = bank.count_by_role(role);
+    let count = bank.by_role(role).filter(|c| !is_excluded_cell(c, excluded_cell)).count();
     if count > 0 {
         let idx = rng.next_range_usize(0..count);
-        return bank.by_role(role).nth(idx);
+        return bank.by_role(role).filter(|c| !is_excluded_cell(c, excluded_cell)).nth(idx);
     }
-    if bank.cells.is_empty() {
-        None
-    } else {
-        let idx = rng.next_range_usize(0..bank.cells.len());
-        bank.cells.get(idx)
+    let fallback_count = bank.cells.iter().filter(|c| !is_excluded_cell(c, excluded_cell)).count();
+    if fallback_count > 0 && bank.count_by_role(role) == 0 {
+        let idx = rng.next_range_usize(0..fallback_count);
+        return bank.cells.iter().filter(|c| !is_excluded_cell(c, excluded_cell)).nth(idx);
     }
+    None
 }
 
 /// Centre cible en pas diatoniques pour une strain (`3.0` pour A = degrés 3–5, `6.0` pour B = degrés 6–8).
@@ -708,5 +781,16 @@ mod tests {
         let tune = line.render_tune();
         assert_eq!(tune.len(), 32);
         assert!(tune.iter().all(|bar| !bar.is_empty()));
+    }
+
+    #[test]
+    fn single_cell_bank_falls_back_when_excluded() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let single_cell = Cell::from_notation(CellRole::Run, "5 4 3 2 1 2 3 4")
+            .unwrap_or(Cell { role: CellRole::Run, notes: [CellNote::Degree(1); NOTES_PER_CELL] });
+        let single_bank = CellBank { cells: vec![single_cell] };
+        let plan = TunePlan::draw(&mut rng, None);
+        let line = FiddleLine::new(plan, &single_bank, &mut rng);
+        assert_eq!(line.render_tune().len(), 32);
     }
 }

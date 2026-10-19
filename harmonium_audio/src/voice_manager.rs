@@ -21,23 +21,62 @@ impl ChannelRoute {
     }
 }
 
+/// Programme GM pour le piano acoustique (mélodie `Style::Legacy`).
+pub const GM_PROGRAM_PIANO: u8 = 0;
+/// Programme GM pour le violon (mélodie `Style::Reel`, D10 : 41 1-based = 40 0-based).
+pub const GM_PROGRAM_VIOLIN: u8 = 40;
+/// Programme GM pour la guitare acoustique cordes acier (`Chords`, D10 : 25 1-based = 24 0-based).
+pub const GM_PROGRAM_STEEL_GUITAR: u8 = 24;
+/// Programme GM pour la basse acoustique (`Bass`, D10 : 33 1-based = 32 0-based).
+pub const GM_PROGRAM_ACOUSTIC_BASS: u8 = 32;
+/// Canal MIDI GM dédié aux percussions / podorythmie (`Heel` et `Toe`, D10).
+pub const GM_DRUM_CHANNEL: u8 = 9;
+
+/// Retourne les couples `(logical_channel, gm_program)` pour les pistes mélodiques/harmoniques
+/// selon le [`harmonium_core::params::Style`] actif (D10) :
+/// - `Style::Reel` : Melody (0) → 40 (violon), Chords (1) → 24 (guitare acier), Bass (2) → 32 (basse acoustique)
+/// - `Style::Legacy` : Melody (0) → 0 (piano), Chords (1) → 24, Bass (2) → 32
+#[must_use]
+pub const fn gm_programs_for_style(style: harmonium_core::params::Style) -> [(u8, u8); 3] {
+    match style {
+        harmonium_core::params::Style::Legacy => {
+            [(0, GM_PROGRAM_PIANO), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
+        }
+        harmonium_core::params::Style::Reel => {
+            [(0, GM_PROGRAM_VIOLIN), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
+        }
+    }
+}
+
 pub struct VoiceManager {
     pub synth: oxisynth::Synth,
     pub channel_routing: [ChannelRoute; 16],
     /// Bank currently selected on each logical channel; `None` until the first
     /// `set_channel_route` so the initial Bank Select / Program Change is sent.
     pub current_banks: [Option<u32>; 16],
-    /// Maps logical channels to MIDI channels (e.g. drums ch2/ch3 → MIDI ch9)
+    /// Program currently selected on each logical channel.
+    pub current_programs: [u8; 16],
+    /// Maps logical channels to MIDI channels (e.g. drums/feet ch3/ch4 → MIDI ch9)
     pub midi_channel_map: [u8; 16],
 }
 
-/// Default identity map: logical channel N → MIDI channel N
+/// Default map: logical channel N → MIDI channel N, except Heel (3) and Toe (4) → MIDI channel 9 (D10).
 fn default_midi_channel_map() -> [u8; 16] {
     let mut map = [0u8; 16];
     for (i, slot) in map.iter_mut().enumerate() {
         *slot = i as u8;
     }
+    map[3] = GM_DRUM_CHANNEL;
+    map[4] = GM_DRUM_CHANNEL;
     map
+}
+
+fn default_channel_programs() -> [u8; 16] {
+    let mut progs = [0u8; 16];
+    progs[0] = GM_PROGRAM_PIANO;
+    progs[1] = GM_PROGRAM_STEEL_GUITAR;
+    progs[2] = GM_PROGRAM_ACOUSTIC_BASS;
+    progs
 }
 
 impl VoiceManager {
@@ -50,9 +89,9 @@ impl VoiceManager {
             synth,
             channel_routing: [ChannelRoute { bank: 0 }; 16],
             current_banks: [None; 16],
+            current_programs: default_channel_programs(),
             midi_channel_map: default_midi_channel_map(),
         };
-
         if let Some(bytes) = sf2_bytes {
             vm.add_font(0, bytes);
         }
@@ -109,38 +148,45 @@ impl VoiceManager {
     /// - All channels use program 0 (first available patch)
     /// - No drum remapping (drums play as pitched notes)
     pub fn configure_gm_defaults(&mut self, gm_compatible: bool) {
-        if gm_compatible {
-            // Remap drum logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums)
-            self.midi_channel_map[3] = 9;
-            self.midi_channel_map[4] = 9;
+        // Remap drum/feet logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums, D10)
+        self.midi_channel_map[3] = GM_DRUM_CHANNEL;
+        self.midi_channel_map[4] = GM_DRUM_CHANNEL;
 
-            // Set up MIDI channel 9 as drum bank (GM standard)
+        if gm_compatible {
+            // Set up MIDI channel 9 as drum bank (GM standard bank 128)
             let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                channel: 9,
+                channel: GM_DRUM_CHANNEL,
                 ctrl: 0,
                 value: 128,
             });
-            let _ = self
-                .synth
-                .send_event(oxisynth::MidiEvent::ProgramChange { channel: 9, program_id: 0 });
-
-            // Melody / Lead: GM program 0 (Acoustic Grand Piano)
-            self.set_channel_program(0, 0);
-            // Chords: GM program 24 (Acoustic Guitar steel)
-            self.set_channel_program(1, 24);
-            // Bass: GM program 32 (Acoustic Bass)
-            self.set_channel_program(2, 32);
         } else {
-            // Non-GM: all channels use program 0
-            for ch in 0..5 {
-                self.set_channel_program(ch, 0);
-            }
+            // Non-GM SoundFont without bank 128: keep channel 9 on bank 0 so oxisynth
+            // substitutes preset (0, 0) instead of leaving channel 9 silent.
+            let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
+                channel: GM_DRUM_CHANNEL,
+                ctrl: 0,
+                value: 0,
+            });
+        }
+        let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
+            channel: GM_DRUM_CHANNEL,
+            program_id: 0,
+        });
+
+        self.apply_style_programs(harmonium_core::params::Style::Legacy);
+    }
+
+    /// Applique les programmes GM d'un [`harmonium_core::params::Style`] (D10).
+    pub fn apply_style_programs(&mut self, style: harmonium_core::params::Style) {
+        for (ch, prog) in gm_programs_for_style(style) {
+            self.set_channel_program(ch as usize, prog);
         }
     }
 
     /// Send a GM Program Change to the MIDI channel mapped from a logical channel.
     pub fn set_channel_program(&mut self, logical_channel: usize, program: u8) {
         if logical_channel < 16 {
+            self.current_programs[logical_channel] = program;
             let midi_ch = self.midi_channel_map[logical_channel];
             let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
                 channel: midi_ch,
@@ -149,8 +195,14 @@ impl VoiceManager {
         }
     }
 
+    /// Retourne le programme GM courant d'un canal logique (`0..16`).
+    #[must_use]
+    pub const fn channel_program(&self, logical_channel: usize) -> Option<u8> {
+        if logical_channel < 16 { Some(self.current_programs[logical_channel]) } else { None }
+    }
+
     /// Route a logical channel to a SoundFont bank. Sends Bank Select (CC 0)
-    /// and Program Change 0 only when the bank actually changes.
+    /// and the channel's active Program Change only when the bank actually changes.
     pub fn set_channel_route(&mut self, channel: usize, route: ChannelRoute) {
         if channel < 16 {
             self.channel_routing[channel] = route;
@@ -164,7 +216,7 @@ impl VoiceManager {
                 });
                 let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
                     channel: midi_ch,
-                    program_id: 0,
+                    program_id: self.current_programs[channel],
                 });
                 self.current_banks[channel] = Some(route.bank);
             }
@@ -281,5 +333,32 @@ impl VoiceManager {
         if result.is_err() {
             output.fill(0.0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use harmonium_core::params::Style;
+
+    use super::*;
+
+    #[test]
+    fn gm_programs_match_d10_and_restore_on_legacy() {
+        let mut vm = VoiceManager::new(None, 44100.0);
+        assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL);
+        assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL);
+        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_PIANO));
+        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
+        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
+
+        vm.apply_style_programs(Style::Reel);
+        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_VIOLIN));
+        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
+        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
+
+        vm.apply_style_programs(Style::Legacy);
+        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_PIANO));
+        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
+        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
     }
 }

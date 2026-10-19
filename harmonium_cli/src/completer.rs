@@ -24,8 +24,8 @@ impl HarmoniumCompleter {
         Self {
             commands: vec![
                 "set", "emotion", "direct", "enable", "disable", "record", "stop", "state", "show",
-                "status", "seek", "loop", "reset", "swing", "tempo", "beat", "help", "quit",
-                "exit",
+                "status", "seek", "loop", "reset", "swing", "tempo", "beat", "style", "feet",
+                "seed", "help", "quit", "exit",
             ],
             set_params: vec![
                 "bpm",
@@ -180,12 +180,42 @@ impl HarmoniumCompleter {
                 }
             }
 
+            "style" => {
+                if tokens.len() <= 2 {
+                    let partial =
+                        if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
+                    ["reel", "legacy"]
+                        .iter()
+                        .filter(|s| s.starts_with(&partial))
+                        .map(|&s| Pair { display: s.to_string(), replacement: s.to_string() })
+                        .collect()
+                } else {
+                    vec![]
+                }
+            }
+
+            "feet" => {
+                if tokens.len() <= 2 {
+                    let partial =
+                        if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
+                    ["0", "1", "2"]
+                        .iter()
+                        .filter(|s| s.starts_with(&partial))
+                        .map(|&s| Pair { display: s.to_string(), replacement: s.to_string() })
+                        .collect()
+                } else {
+                    vec![]
+                }
+            }
             "help" => {
                 if tokens.len() <= 2 {
-                    vec!["set", "emotion", "enable", "disable", "record"]
-                        .iter()
-                        .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })
-                        .collect()
+                    [
+                        "set", "emotion", "enable", "disable", "record", "swing", "tempo", "beat",
+                        "style", "feet",
+                    ]
+                    .iter()
+                    .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })
+                    .collect()
                 } else {
                     vec![]
                 }

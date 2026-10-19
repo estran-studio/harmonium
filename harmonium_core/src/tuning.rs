@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     harmony::steedman_grammar::GrammarStyle,
+    params::TimeSignature,
     trad::{cells::CellBank, feet::FeetTable, harmony::ChordDegree},
 };
 
@@ -434,9 +435,18 @@ impl Default for EmotionalQuadrantParams {
     }
 }
 
-/// Paramètres de planification et de ligne de violon du reel traditionnel (D4, D6, constitution V).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Paramètres de planification, de style et de ligne de violon du reel traditionnel (D3, D4, D6, constitution V).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ReelFiddleParams {
+    /// Tempo nominal par défaut du style Reel à la noire (`230.0`, D3).
+    #[serde(default = "default_reel_bpm")]
+    pub default_bpm: f32,
+    /// Ratio de swing par défaut du style Reel (`0.56`, D3).
+    #[serde(default = "default_reel_swing_ratio")]
+    pub default_swing_ratio: f32,
+    /// Signature rythmique par défaut du style Reel (`2/2`, D3).
+    #[serde(default = "default_reel_time_signature")]
+    pub default_time_signature: TimeSignature,
     /// Poids de tirage pour Ré majeur (`D Ionian`, D4).
     pub weight_d_ionian: u32,
     /// Poids de tirage pour Sol majeur (`G Ionian`, D4).
@@ -479,9 +489,24 @@ pub struct ReelFiddleParams {
     pub even_eighth_velocity_offset: i8,
 }
 
+const fn default_reel_bpm() -> f32 {
+    230.0
+}
+
+const fn default_reel_swing_ratio() -> f32 {
+    0.56
+}
+
+const fn default_reel_time_signature() -> TimeSignature {
+    TimeSignature::new(2, 2)
+}
+
 impl Default for ReelFiddleParams {
     fn default() -> Self {
         Self {
+            default_bpm: default_reel_bpm(),
+            default_swing_ratio: default_reel_swing_ratio(),
+            default_time_signature: default_reel_time_signature(),
             weight_d_ionian: 3,
             weight_g_ionian: 3,
             weight_a_ionian: 2,
@@ -1028,6 +1053,23 @@ impl TuningParams {
 
         // --- ReelFiddleParams (D4, D6) ---
         let rf = &self.reel_fiddle;
+        check_range(&mut errors, "reel_fiddle.default_bpm", rf.default_bpm, 40.0, 300.0);
+        check_range(
+            &mut errors,
+            "reel_fiddle.default_swing_ratio",
+            rf.default_swing_ratio,
+            0.5,
+            0.75,
+        );
+        if rf.default_time_signature.numerator == 0 || rf.default_time_signature.denominator == 0 {
+            errors.push(ValidationError {
+                field: "reel_fiddle.default_time_signature",
+                message: format!(
+                    "numerator ({}) and denominator ({}) must be > 0",
+                    rf.default_time_signature.numerator, rf.default_time_signature.denominator
+                ),
+            });
+        }
         let key_weight_sum = rf
             .weight_d_ionian
             .saturating_add(rf.weight_g_ionian)
@@ -1367,8 +1409,14 @@ pub struct EmotionalQuadrantOverlay {
 }
 
 /// Partial overlay for `ReelFiddleParams`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ReelFiddleOverlay {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_bpm: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_swing_ratio: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_time_signature: Option<TimeSignature>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight_d_ionian: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1586,6 +1634,9 @@ impl TuningParams {
 
         if let Some(o) = &overlay.reel_fiddle {
             let b = &mut result.reel_fiddle;
+            apply!(b.default_bpm, o.default_bpm);
+            apply!(b.default_swing_ratio, o.default_swing_ratio);
+            apply!(b.default_time_signature, o.default_time_signature);
             apply!(b.weight_d_ionian, o.weight_d_ionian);
             apply!(b.weight_g_ionian, o.weight_g_ionian);
             apply!(b.weight_a_ionian, o.weight_a_ionian);

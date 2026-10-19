@@ -27,14 +27,29 @@ struct Args {
     #[arg(short, long)]
     soundfont: Option<String>,
 
-    /// Export mode: skip REPL, run engine offline for --duration seconds and save recordings
+    /// Export mode: skip REPL, run engine offline and save recordings
     #[arg(long)]
     export: bool,
 
-    /// Duration in seconds for export mode (required with --export)
+    /// Duration in seconds for export mode (required with --export unless --bars is set)
     #[arg(short, long)]
     duration: Option<u64>,
 
+    /// Number of measures to render in export mode (starting from measure 1)
+    #[arg(long)]
+    bars: Option<usize>,
+
+    /// Musical style to use (`legacy` or `reel`)
+    #[arg(long)]
+    style: Option<String>,
+
+    /// Deterministic session seed
+    #[arg(long)]
+    seed: Option<u64>,
+
+    /// Podorythmie density (`0`, `1` or `2`)
+    #[arg(long)]
+    feet: Option<u8>,
     /// Record WAV output to file
     #[arg(long, value_name = "PATH")]
     record_wav: Option<String>,
@@ -58,9 +73,17 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    let parsed_style = match args.style.as_deref() {
+        Some(s) => Some(parser::parse_style_value(s)?),
+        None => None,
+    };
+    if args.feet.is_some_and(|f| f > 2) {
+        anyhow::bail!("--feet must be 0, 1 or 2");
+    }
+
     // Validate export mode arguments
-    if args.export && args.duration.is_none() {
-        eprintln!("Error: --export requires --duration <seconds>");
+    if args.export && args.duration.is_none() && args.bars.is_none() {
+        eprintln!("Error: --export requires --duration <seconds> or --bars <count>");
         std::process::exit(1);
     }
 
@@ -71,7 +94,11 @@ fn main() -> Result<()> {
         println!("Initializing offline engine...");
         export::run(
             sf2_bytes.as_deref(),
-            args.duration.unwrap(),
+            args.duration,
+            args.bars,
+            parsed_style,
+            args.seed,
+            args.feet,
             args.record_wav,
             args.record_midi,
             args.record_musicxml,

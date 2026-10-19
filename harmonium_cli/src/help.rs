@@ -39,6 +39,18 @@ pub fn print_help() {
     );
 
     print_section(
+        "TRAD / REEL (phase 1)",
+        &[
+            (
+                "style <reel|legacy>",
+                "Change le style (en reel : 230 BPM, swing 0.56, 2/2, programmes GM D10)",
+            ),
+            ("feet <0|1|2>", "Densité de podorythmie (0 = talon 0,8 ; 1 = standard ; 2 = ornée)"),
+            ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
+        ],
+    );
+
+    print_section(
         "RHYTHM PARAMETERS",
         &[
             ("set rhythm_mode <mode>", "euclidean | perfect | classic"),
@@ -256,6 +268,32 @@ pub fn print_command_help(command: &str) {
             println!("  beat");
             println!();
             println!("Sortie : Entrée, Échap, q ou Ctrl+C (retour au REPL).");
+        }
+        "style" => {
+            println!("{}", "STYLE".bold().cyan());
+            println!("{}", "=".repeat(60).dimmed());
+            println!();
+            println!("Choisit le générateur actif (`reel` trad québécois ou `legacy`).");
+            println!("En `reel`, applique les défauts de `TuningParams` : 230 BPM, swing 0.56,");
+            println!(
+                "signature 2/2 et programmes GM D10 (violon 40, guitare 24, basse 32, pieds ch 9)."
+            );
+            println!();
+            println!("{}", "SYNTAX:".bold());
+            println!("  style <reel|legacy>");
+        }
+
+        "feet" => {
+            println!("{}", "FEET".bold().cyan());
+            println!("{}", "=".repeat(60).dimmed());
+            println!();
+            println!("Règle la densité de podorythmie en style Reel (D9) :");
+            println!("  0 = talon sur 0 et 8");
+            println!("  1 = talon 0, 4, 8, 12 + pointe 2, 6, 10, 14 (défaut)");
+            println!("  2 = talon 0, 4, 8, 12 + pointe doublée (2, 3, 6, 7, 10, 11, 14, 15)");
+            println!();
+            println!("{}", "SYNTAX:".bold());
+            println!("  feet <0|1|2>");
         }
         _ => {
             println!("{}", format!("No detailed help available for '{}'", command).yellow());

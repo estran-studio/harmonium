@@ -62,6 +62,10 @@ impl ReplState {
             if let Some((bar, _)) = c.take_pending_drop() {
                 let _ = self.playback_cmd_tx.push(PlaybackCommand::DropFrom { bar });
             }
+            for (channel, program) in c.take_pending_program_changes() {
+                let _ =
+                    self.playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
+            }
             c.generate_bars(1);
             let _ = self
                 .playback_cmd_tx
@@ -308,12 +312,11 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
             return handle_profile_command(state, &tokens[1..]);
         }
 
-        // Phase-0 clock commands: swing, tempo, beat (parsed locally, they
-        // need the playback ring / clock reader, not `EngineCommand`).
-        "swing" | "tempo" | "beat" => {
+        // Phase-0/1 CLI commands: swing, tempo, beat, style, feet (parsed locally,
+        // they need the playback ring / clock reader, not `EngineCommand`).
+        "swing" | "tempo" | "beat" | "style" | "feet" => {
             return handle_clock_command(state, &tokens);
         }
-
         _ => {}
     }
 
@@ -375,6 +378,31 @@ fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> 
         }
         Ok(CliCommand::Beat) => {
             return run_beat(state);
+        }
+        Ok(CliCommand::Style(style)) => {
+            let (bpm, swing, ts) = if let Ok(mut c) = state.composer.lock() {
+                c.set_style(style);
+                c.invalidate_future();
+                let mp = c.musical_params();
+                (mp.bpm, mp.swing_ratio, mp.time_signature)
+            } else {
+                (120.0, 0.5, harmonium_core::params::TimeSignature::default())
+            };
+            state.send_invalidate();
+            print_success_msg(&format!(
+                "Style réglé à {:?} (BPM {:.0}, swing {:.2}, signature {}/{})",
+                style, bpm, swing, ts.numerator, ts.denominator
+            ));
+        }
+        Ok(CliCommand::Feet(density)) => {
+            if let Ok(mut c) = state.composer.lock() {
+                c.set_feet_density(density);
+                c.invalidate_future();
+            }
+            state.send_invalidate();
+            print_success_msg(&format!(
+                "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
+            ));
         }
         Err(e) => {
             println!("{} {}", "[ERROR]".red().bold(), e);
@@ -760,6 +788,15 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
             print_success_msg("Engine reset to defaults");
         }
 
+        EngineCommand::SetSeed(seed) => {
+            if let Ok(mut c) = state.composer.lock() {
+                c.set_seed(seed);
+            }
+            let _ = state.playback_cmd_tx.push(PlaybackCommand::Seek(1));
+            state.send_invalidate();
+            print_success_msg(&format!("Seed réglé à {seed}"));
+        }
+
         // === Playback commands → audio thread ===
         EngineCommand::SetChannelGain { channel, gain } => {
             let _ = state.playback_cmd_tx.push(PlaybackCommand::SetChannelGain { channel, gain });
@@ -920,15 +957,56 @@ fn create_prompt(state: &ReplState) -> String {
     }
 }
 
+/// Formate la position dans la forme AABB d'un reel (ex. `"A2 m.5/8"`).
+#[must_use]
+pub fn format_reel_form_position(role: harmonium_core::trad::BarRole) -> String {
+    format!("{:?}{} m.{}/8", role.strain, role.pass, role.bar_in_strain)
+}
+
+/// Formate la tonalité et le mode d'un [`harmonium_core::trad::TunePlan`] (ex. `"D Ionian"`).
+#[must_use]
+pub fn format_reel_tune_key_mode(plan: harmonium_core::trad::TunePlan) -> String {
+    format!("{} {:?}", harmonium_core::trad::pitch_class_name(plan.key), plan.mode)
+}
+
 /// Print current engine state
 fn print_state(state: &mut ReplState) {
     state.poll_reports();
 
+    let composer_snapshot = state.composer.lock().ok().map(|c| {
+        let bar = state.get_state().map_or_else(|| c.playhead_bar(), |r| r.current_bar.max(1));
+        (
+            c.musical_params().style,
+            c.musical_params().feet_density,
+            c.reel_bar_info(bar),
+            c.config.key.clone(),
+            c.config.scale.clone(),
+        )
+    });
+
     if let Some(report) = state.get_state() {
+        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot.unwrap_or((
+            report.musical_params.style,
+            report.musical_params.feet_density,
+            None,
+            report.session_key.to_string(),
+            report.session_scale.to_string(),
+        ));
+
         println!();
         println!("{}", "╔══════════════════════════════════════════════════╗".cyan());
         println!("{}", "║              ENGINE STATE                        ║".cyan().bold());
         println!("{}", "╚══════════════════════════════════════════════════╝".cyan());
+        println!();
+
+        // Style & Trad info
+        println!("{}", "STYLE:".yellow().bold());
+        println!("  Style: {}", format!("{style:?}").green());
+        println!("  Feet Density: {}", format!("{feet_density}").green());
+        if let Some((plan, role)) = reel_info {
+            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan).green());
+            println!("  Form Position: {}", format_reel_form_position(role).magenta().bold());
+        }
         println!();
 
         // Timing
@@ -948,8 +1026,8 @@ fn print_state(state: &mut ReplState) {
             format!("{}/{}", report.time_signature.numerator, report.time_signature.denominator)
                 .green()
         );
-        println!("  Bar: {}", format!("{}", report.current_bar + 1).green());
-        println!("  Beat: {}", format!("{}", report.current_beat + 1).green());
+        println!("  Bar: {}", format!("{}", report.current_bar.max(1)).green());
+        println!("  Beat: {}", format!("{}", report.current_beat.max(1)).green());
         println!("  Step: {}", format!("{}", report.current_step + 1).green());
         println!();
 
@@ -961,7 +1039,14 @@ fn print_state(state: &mut ReplState) {
             "  Progression: {}",
             format!("{} ({} chords)", report.progression_name, report.progression_length).green()
         );
-        println!("  Key: {}", format!("{} {}", report.session_key, report.session_scale).green());
+        let key_str = if let Some((plan, _)) = reel_info {
+            format_reel_tune_key_mode(plan)
+        } else if !report.session_key.is_empty() {
+            format!("{} {}", report.session_key, report.session_scale)
+        } else {
+            format!("{comp_key} {comp_scale}")
+        };
+        println!("  Key: {}", key_str.green());
         println!();
 
         // Rhythm
@@ -1013,6 +1098,18 @@ fn print_state(state: &mut ReplState) {
             "  Voicing: {}",
             if report.musical_params.enable_voicing { "ON".green() } else { "OFF".red() }
         );
+        println!();
+    } else if let Some((style, feet_density, reel_info, comp_key, comp_scale)) = composer_snapshot {
+        println!();
+        println!("{}", "STYLE:".yellow().bold());
+        println!("  Style: {}", format!("{style:?}").green());
+        println!("  Feet Density: {}", format!("{feet_density}").green());
+        if let Some((plan, role)) = reel_info {
+            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan).green());
+            println!("  Form Position: {}", format_reel_form_position(role).magenta().bold());
+        } else {
+            println!("  Key: {}", format!("{comp_key} {comp_scale}").green());
+        }
         println!();
     } else {
         println!("{}", "No state available yet. Engine may still be initializing.".yellow());
@@ -1183,4 +1280,21 @@ fn load_and_apply_profile(state: &mut ReplState, path: &std::path::Path) -> Resu
     state.emotion_state.tension = tension;
 
     Ok(ProfileInfo { bpm, density, tension, valence, arousal })
+}
+
+#[cfg(test)]
+mod tests {
+    use harmonium_core::trad::{Mode, TunePlan};
+
+    use super::*;
+
+    #[test]
+    fn formats_reel_form_position_and_tune_key_mode() {
+        let plan = TunePlan::reel(2, Mode::Ionian);
+        assert_eq!(format_reel_tune_key_mode(plan), "D Ionian");
+        assert_eq!(format_reel_form_position(plan.bar_role_1based(1)), "A1 m.1/8");
+        assert_eq!(format_reel_form_position(plan.bar_role_1based(13)), "A2 m.5/8");
+        assert_eq!(format_reel_form_position(plan.bar_role_1based(17)), "B1 m.1/8");
+        assert_eq!(format_reel_form_position(plan.bar_role_1based(32)), "B2 m.8/8");
+    }
 }

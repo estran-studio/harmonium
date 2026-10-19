@@ -158,6 +158,24 @@ tempo off                        # Back to the measures' tempo
 ahead of the measures (`set bpm` stays the nominal generated tempo); the
 engine clamps it to 40–300 BPM and `state` shows the audible BPM.
 
+
+### Trad / Reel (phase 1)
+
+```bash
+style reel                       # Switch to traditional Québécois Reel (230 BPM, swing 0.56, 2/2, GM programs D10)
+style legacy                     # Restore Legacy generator and GM programs
+feet 1                           # Podorythmie density: 0 (heel 0,8), 1 (standard), 2 (ornamented)
+seed 1                           # Set deterministic session seed and restart from bar 1
+```
+
+In `style reel`, `state` displays the active style, feet density, current tune key/mode (e.g. `D Ionian`), and position within the AABB form (e.g. `A2 m.5/8`).
+
+### Offline Batch Export (`--export`)
+
+```bash
+cargo run -p harmonium-cli --release -- --export --bars 64 --style reel --seed 1 --feet 1 \
+  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid
+```
 ### Utility
 
 ```bash

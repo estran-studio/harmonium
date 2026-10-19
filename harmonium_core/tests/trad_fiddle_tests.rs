@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use harmonium_core::{
     timeline::{Measure, ScoreTimeline, TimelineNote, TrackId, write_midi},
-    trad::{CellBank, FIFTH_SEMITONES, FiddleLine, TunePlan},
+    trad::{CellBank, FIFTH_SEMITONES, FiddleLine, ImposedRole, TunePlan, same_cell_up_to_octave},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -227,6 +227,36 @@ fn acceptance_6_determinism_and_seed_diversity() {
             "seeds {seed} et {} ont produit exactement les mêmes 32 mesures",
             seed + 1
         );
+    }
+}
+
+/// Anti-répétition sur les mesures libres (`ImposedRole::Free`) :
+/// sur 20 seeds (et sur la seed 42 signalée à l'écoute), aucune mesure `Free`
+/// (mesures 2, 3 et 7 de chaque strain) ne réutilise la cellule de la mesure précédente.
+#[test]
+fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
+    for seed in (0..NUM_SEEDS).chain(std::iter::once(42)) {
+        let (plan, line, tune) = generate_fiddle_tune(seed);
+        for bar in 0..plan.total_bars() {
+            let role = plan.bar_role(bar);
+            if matches!(role.role, ImposedRole::Free) && bar > 0 {
+                let prev_cell = line.cell_for_bar(bar - 1);
+                let curr_cell = line.cell_for_bar(bar);
+                assert!(
+                    !same_cell_up_to_octave(curr_cell, prev_cell),
+                    "seed {seed} bar {} (strain {:?} m.{}): la mesure Free a réutilisé la cellule de la mesure précédente",
+                    bar + 1,
+                    role.strain,
+                    role.bar_in_strain
+                );
+                assert_ne!(
+                    tune[bar],
+                    tune[bar - 1],
+                    "seed {seed} bar {}: notes identiques à la mesure précédente sur une mesure Free",
+                    bar + 1
+                );
+            }
+        }
     }
 }
 

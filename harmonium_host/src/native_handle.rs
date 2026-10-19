@@ -180,6 +180,9 @@ impl NativeHandle {
         if let Some((bar, _)) = composer.take_pending_drop() {
             let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
         }
+        for (channel, program) in composer.take_pending_program_changes() {
+            let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
+        }
     }
 
     /// Reset composer and clear timeline + shared pages.
@@ -418,6 +421,41 @@ impl NativeHandle {
         if let Ok(mut c) = self.composer.lock() {
             c.set_swing_ratio(ratio);
         }
+    }
+
+    /// Change le style de génération (`Legacy` ou `Reel`), applique les défauts
+    /// du style depuis [`harmonium_core::tuning::TuningParams`], envoie les
+    /// changements de programmes GM (D10) et invalide les mesures futures.
+    pub fn set_style(&mut self, style: harmonium_core::params::Style) {
+        if let Ok(mut c) = self.composer.lock() {
+            c.set_style(style);
+            c.invalidate_future();
+            Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
+            let _ = self
+                .playback_cmd_tx
+                .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())));
+        }
+    }
+
+    /// Règle la densité de podorythmie (`0..=2`, D9) et invalide les mesures futures.
+    pub fn set_feet_density(&mut self, density: u8) {
+        if let Ok(mut c) = self.composer.lock() {
+            c.set_feet_density(density);
+            c.invalidate_future();
+            Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
+            let _ = self
+                .playback_cmd_tx
+                .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())));
+        }
+    }
+
+    /// En `Style::Reel`, retourne le `(TunePlan, BarRole)` de la mesure courante sous le playhead.
+    #[must_use]
+    pub fn reel_bar_info(
+        &self,
+    ) -> Option<(harmonium_core::trad::TunePlan, harmonium_core::trad::BarRole)> {
+        let c = self.composer.lock().ok()?;
+        c.reel_bar_info(c.playhead_bar())
     }
 
     pub fn set_density(&self, density: f32) {
