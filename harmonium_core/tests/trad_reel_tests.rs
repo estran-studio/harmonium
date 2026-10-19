@@ -26,10 +26,7 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     params
 }
 
-fn generate_64_snapshots(
-    seed: u64,
-    feet_density: u8,
-) -> (TradGenerator, Vec<MeasureSnapshot>) {
+fn generate_64_snapshots(seed: u64, feet_density: u8) -> (TradGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let mut trad_gen = TradGenerator::new(reel_params(feet_density), TuningParams::default());
     let mut snapshots = Vec::with_capacity(BARS_64);
@@ -86,10 +83,9 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
 
         // Vérifie chacun des deux tunes de 32 mesures (0..32 et 32..64)
         for tune_offset in [0usize, 32] {
-            let (plan, _) = trad_gen
-                .bar_info(tune_offset + 1)
-                .unwrap_or_else(|| panic!("seed {seed}: tune absent à {}", tune_offset + 1));
-
+            let info = trad_gen.bar_info(tune_offset + 1);
+            assert!(info.is_some(), "seed {seed}: tune absent à {}", tune_offset + 1);
+            let Some((plan, _)) = info else { continue };
             // Reprises identiques (A1 == A2 et B1 == B2) sur toutes les pistes et accords
             for b in 0..8 {
                 let a1 = &snapshots[tune_offset + b];
@@ -110,24 +106,30 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
                 let m5 = notes_on_track(&snapshots[strain_start + 4], TrackId::Melody);
                 let m6 = notes_on_track(&snapshots[strain_start + 5], TrackId::Melody);
                 assert_eq!(
-                    m5.iter().map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity)).collect::<Vec<_>>(),
-                    m1.iter().map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity)).collect::<Vec<_>>(),
+                    m5.iter()
+                        .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
+                        .collect::<Vec<_>>(),
+                    m1.iter()
+                        .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
+                        .collect::<Vec<_>>(),
                     "seed {seed}: m.5 != m.1"
                 );
                 assert_eq!(
-                    m6.iter().map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity)).collect::<Vec<_>>(),
-                    m2.iter().map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity)).collect::<Vec<_>>(),
+                    m6.iter()
+                        .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
+                        .collect::<Vec<_>>(),
+                    m2.iter()
+                        .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
+                        .collect::<Vec<_>>(),
                     "seed {seed}: m.6 != m.2"
                 );
 
                 // Mesure 4 : demi-cadence sur degré 2, 5 ou 7
                 let m4 = notes_on_track(&snapshots[strain_start + 3], TrackId::Melody);
-                let last4 = m4.last().unwrap_or_else(|| panic!("seed {seed}: m.4 vide"));
+                assert!(!m4.is_empty(), "seed {seed}: m.4 vide");
+                let Some(last4) = m4.last() else { continue };
                 let deg4 = plan.mode.scale_degree_of_midi(plan.key, last4.pitch);
-                assert!(
-                    matches!(deg4, Some(2 | 5 | 7)),
-                    "seed {seed}: m.4 finit sur {deg4:?}"
-                );
+                assert!(matches!(deg4, Some(2 | 5 | 7)), "seed {seed}: m.4 finit sur {deg4:?}");
 
                 // Mesure 8 : cadence parfaite sur la tonique (degré 1) et accord d'attaque V (seconde moitié I)
                 let m8 = notes_on_track(&snapshots[strain_start + 7], TrackId::Melody);
@@ -168,8 +170,14 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
             // Guitare (Chords) : 3 sons sur le pas 4, 3 sons sur le pas 12, durée 1
             let chords = notes_on_track(snap, TrackId::Chords);
             assert_eq!(chords.len(), 6);
-            assert_eq!(chords.iter().filter(|n| n.start_step == 4 && n.duration_steps == 1).count(), 3);
-            assert_eq!(chords.iter().filter(|n| n.start_step == 12 && n.duration_steps == 1).count(), 3);
+            assert_eq!(
+                chords.iter().filter(|n| n.start_step == 4 && n.duration_steps == 1).count(),
+                3
+            );
+            assert_eq!(
+                chords.iter().filter(|n| n.start_step == 12 && n.duration_steps == 1).count(),
+                3
+            );
 
             // Podorythmie D9
             let heel = notes_on_track(snap, TrackId::Heel);

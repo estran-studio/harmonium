@@ -39,16 +39,12 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 #[must_use]
 pub const fn gm_programs_for_style(style: harmonium_core::params::Style) -> [(u8, u8); 3] {
     match style {
-        harmonium_core::params::Style::Legacy => [
-            (0, GM_PROGRAM_PIANO),
-            (1, GM_PROGRAM_STEEL_GUITAR),
-            (2, GM_PROGRAM_ACOUSTIC_BASS),
-        ],
-        harmonium_core::params::Style::Reel => [
-            (0, GM_PROGRAM_VIOLIN),
-            (1, GM_PROGRAM_STEEL_GUITAR),
-            (2, GM_PROGRAM_ACOUSTIC_BASS),
-        ],
+        harmonium_core::params::Style::Legacy => {
+            [(0, GM_PROGRAM_PIANO), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
+        }
+        harmonium_core::params::Style::Reel => {
+            [(0, GM_PROGRAM_VIOLIN), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
+        }
     }
 }
 
@@ -202,11 +198,7 @@ impl VoiceManager {
     /// Retourne le programme GM courant d'un canal logique (`0..16`).
     #[must_use]
     pub const fn channel_program(&self, logical_channel: usize) -> Option<u8> {
-        if logical_channel < 16 {
-            Some(self.current_programs[logical_channel])
-        } else {
-            None
-        }
+        if logical_channel < 16 { Some(self.current_programs[logical_channel]) } else { None }
     }
 
     /// Route a logical channel to a SoundFont bank. Sends Bank Select (CC 0)

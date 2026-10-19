@@ -215,7 +215,8 @@ fn parse_set_command(tokens: &[&str]) -> Result<EngineCommand> {
         }
 
         "seed" => {
-            let seed = value.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {}", value))?;
+            let seed =
+                value.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {}", value))?;
             Ok(EngineCommand::SetSeed(seed))
         }
 
@@ -368,8 +369,9 @@ fn parse_feet_command(tokens: &[&str]) -> Result<CliCommand> {
     if tokens.len() != 1 {
         return Err(anyhow!("Usage: feet <0|1|2>"));
     }
-    let density: u8 =
-        tokens[0].parse().map_err(|_| anyhow!("Densité invalide: {}. Utiliser: feet 0|1|2", tokens[0]))?;
+    let density: u8 = tokens[0]
+        .parse()
+        .map_err(|_| anyhow!("Densité invalide: {}. Utiliser: feet 0|1|2", tokens[0]))?;
     if density > 2 {
         return Err(anyhow!("Densité hors plage ({density}). Utiliser: feet 0|1|2"));
     }
@@ -533,18 +535,24 @@ mod tests {
 
     #[test]
     fn test_parse_style_and_feet() {
-        assert_eq!(parse_cli_command(&["style", "reel"]).unwrap(), CliCommand::Style(Style::Reel));
-        assert_eq!(parse_cli_command(&["style", "REEL"]).unwrap(), CliCommand::Style(Style::Reel));
         assert_eq!(
-            parse_cli_command(&["style", "legacy"]).unwrap(),
-            CliCommand::Style(Style::Legacy)
+            parse_cli_command(&["style", "reel"]).ok(),
+            Some(CliCommand::Style(Style::Reel))
+        );
+        assert_eq!(
+            parse_cli_command(&["style", "REEL"]).ok(),
+            Some(CliCommand::Style(Style::Reel))
+        );
+        assert_eq!(
+            parse_cli_command(&["style", "legacy"]).ok(),
+            Some(CliCommand::Style(Style::Legacy))
         );
         assert!(parse_cli_command(&["style"]).is_err());
         assert!(parse_cli_command(&["style", "valse"]).is_err());
 
         for d in 0..=2u8 {
             let s = d.to_string();
-            assert_eq!(parse_cli_command(&["feet", &s]).unwrap(), CliCommand::Feet(d));
+            assert_eq!(parse_cli_command(&["feet", &s]).ok(), Some(CliCommand::Feet(d)));
         }
         assert!(parse_cli_command(&["feet"]).is_err());
         assert!(parse_cli_command(&["feet", "3"]).is_err());

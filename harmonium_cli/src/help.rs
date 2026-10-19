@@ -275,7 +275,9 @@ pub fn print_command_help(command: &str) {
             println!();
             println!("Choisit le générateur actif (`reel` trad québécois ou `legacy`).");
             println!("En `reel`, applique les défauts de `TuningParams` : 230 BPM, swing 0.56,");
-            println!("signature 2/2 et programmes GM D10 (violon 40, guitare 24, basse 32, pieds ch 9).");
+            println!(
+                "signature 2/2 et programmes GM D10 (violon 40, guitare 24, basse 32, pieds ch 9)."
+            );
             println!();
             println!("{}", "SYNTAX:".bold());
             println!("  style <reel|legacy>");

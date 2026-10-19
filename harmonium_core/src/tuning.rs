@@ -1054,7 +1054,13 @@ impl TuningParams {
         // --- ReelFiddleParams (D4, D6) ---
         let rf = &self.reel_fiddle;
         check_range(&mut errors, "reel_fiddle.default_bpm", rf.default_bpm, 40.0, 300.0);
-        check_range(&mut errors, "reel_fiddle.default_swing_ratio", rf.default_swing_ratio, 0.5, 0.75);
+        check_range(
+            &mut errors,
+            "reel_fiddle.default_swing_ratio",
+            rf.default_swing_ratio,
+            0.5,
+            0.75,
+        );
         if rf.default_time_signature.numerator == 0 || rf.default_time_signature.denominator == 0 {
             errors.push(ValidationError {
                 field: "reel_fiddle.default_time_signature",

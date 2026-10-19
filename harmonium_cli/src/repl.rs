@@ -63,7 +63,8 @@ impl ReplState {
                 let _ = self.playback_cmd_tx.push(PlaybackCommand::DropFrom { bar });
             }
             for (channel, program) in c.take_pending_program_changes() {
-                let _ = self.playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
+                let _ =
+                    self.playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
             }
             c.generate_bars(1);
             let _ = self

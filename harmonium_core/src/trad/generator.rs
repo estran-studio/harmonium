@@ -23,7 +23,9 @@ use super::{
 use crate::{
     harmony::RngCore,
     params::MusicalParams,
-    timeline::{ChordContext, GenerationContext, Measure, NoteId, StateSnapshot, TimelineNote, TrackId},
+    timeline::{
+        ChordContext, GenerationContext, Measure, NoteId, StateSnapshot, TimelineNote, TrackId,
+    },
     tuning::{ReelFiddleParams, TuningParams},
 };
 
@@ -62,13 +64,7 @@ impl TradGenerator {
     /// Construit un nouveau [`TradGenerator`] avec les paramètres et le tuning donnés.
     #[must_use]
     pub fn new(musical_params: MusicalParams, tuning: TuningParams) -> Self {
-        Self {
-            musical_params,
-            tuning,
-            tunes: BTreeMap::new(),
-            next_note_id: 1,
-            current_bar: 0,
-        }
+        Self { musical_params, tuning, tunes: BTreeMap::new(), next_note_id: 1, current_bar: 0 }
     }
 
     /// Met à jour les paramètres musicaux (`bpm`, `swing_ratio`, `feet_density`, etc.).
@@ -182,13 +178,8 @@ impl TradGenerator {
             *next_note_id += 1;
             id
         };
-        let bass_notes = bass_bar(
-            chords,
-            plan.key,
-            plan.mode,
-            &self.tuning.trad_harmony,
-            &mut next_id,
-        );
+        let bass_notes =
+            bass_bar(chords, plan.key, plan.mode, &self.tuning.trad_harmony, &mut next_id);
         if self.musical_params.enable_harmony {
             for note in chop_notes {
                 measure.add_note(TrackId::Chords, note);
@@ -199,11 +190,8 @@ impl TradGenerator {
         }
 
         // 3. Podorythmie (talon + pointe, D9)
-        let (heel_notes, toe_notes) = feet_notes(
-            &self.tuning.reel_feet,
-            self.musical_params.feet_density,
-            steps,
-        );
+        let (heel_notes, toe_notes) =
+            feet_notes(&self.tuning.reel_feet, self.musical_params.feet_density, steps);
         if self.musical_params.enable_rhythm {
             for mut note in heel_notes {
                 note.id = self.alloc_note_id();
@@ -261,9 +249,8 @@ impl TradGenerator {
             if self.tunes.contains_key(&idx) {
                 continue;
             }
-            let prev_plan = idx
-                .checked_sub(1)
-                .and_then(|prev_idx| self.tunes.get(&prev_idx).map(|t| t.plan));
+            let prev_plan =
+                idx.checked_sub(1).and_then(|prev_idx| self.tunes.get(&prev_idx).map(|t| t.plan));
             let tune = self.build_tune(idx, prev_plan, rng);
             self.tunes.insert(idx, tune);
         }
@@ -283,11 +270,8 @@ impl TradGenerator {
         let fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
 
         let distinct_melody: [Vec<TimelineNote>; TUNE_HARMONY_BARS] = std::array::from_fn(|i| {
-            let bar_in_tune = if i < BARS_PER_STRAIN {
-                i
-            } else {
-                2 * BARS_PER_STRAIN + (i - BARS_PER_STRAIN)
-            };
+            let bar_in_tune =
+                if i < BARS_PER_STRAIN { i } else { 2 * BARS_PER_STRAIN + (i - BARS_PER_STRAIN) };
             fiddle.notes_for_bar(bar_in_tune)
         });
 
@@ -312,11 +296,7 @@ pub fn draw_next_tune_plan(
     _params: &ReelFiddleParams,
     rng: &mut dyn RngCore,
 ) -> TunePlan {
-    if rng.next_range_usize(0..2) == 0 {
-        prev_plan
-    } else {
-        relative_tune_plan(prev_plan)
-    }
+    if rng.next_range_usize(0..2) == 0 { prev_plan } else { relative_tune_plan(prev_plan) }
 }
 
 /// Calcule le [`TunePlan`] relatif (majeur ↔ mineur relatif à ±3 demi-tons) d'un plan donné.

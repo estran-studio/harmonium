@@ -17,9 +17,9 @@ const BARS_64: usize = 64;
 fn generate_offline_reel_stream(
     seed: u64,
     feet_density: u8,
-) -> (harmonium::composer::MusicComposer, Vec<MeasureSnapshot>) {
+) -> Result<(harmonium::composer::MusicComposer, Vec<MeasureSnapshot>), String> {
     let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, SAMPLE_RATE)?;
 
     composer.set_style(Style::Reel);
     composer.set_feet_density(feet_density);
@@ -28,7 +28,7 @@ fn generate_offline_reel_stream(
     composer.generate_bars(BARS_64);
 
     let snapshots = composer.take_snapshots();
-    (composer, snapshots)
+    Ok((composer, snapshots))
 }
 
 fn notes_on_track(snapshot: &MeasureSnapshot, track: TrackId) -> Vec<&NoteSnapshot> {
@@ -68,19 +68,19 @@ fn cadence_degree_bar8(plan: &TunePlan, melody: &[&NoteSnapshot]) -> Option<u8> 
 fn assert_snapshots_equal(a: &[MeasureSnapshot], b: &[MeasureSnapshot], context: &str) {
     assert_eq!(a.len(), b.len(), "{context}: nombre de snapshots différent");
     for (i, (ma, mb)) in a.iter().zip(b.iter()).enumerate() {
-        let ja = serde_json::to_string(ma).expect("serialize a");
-        let jb = serde_json::to_string(mb).expect("serialize b");
+        let ja = serde_json::to_string(ma).unwrap_or_default();
+        let jb = serde_json::to_string(mb).unwrap_or_default();
+        assert!(!ja.is_empty() && !jb.is_empty());
         assert_eq!(ja, jb, "{context}: différence à la mesure {}", i + 1);
     }
 }
 
 /// Critères 1, 2, 3 du plan sur le flux de snapshots via `create_offline_engine` (20 seeds, 64 mesures).
 #[test]
-fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() {
+fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), String> {
     for seed in 0..NUM_SEEDS {
-        let (composer, snapshots) = generate_offline_reel_stream(seed, 1);
+        let (composer, snapshots) = generate_offline_reel_stream(seed, 1)?;
         assert_eq!(snapshots.len(), BARS_64, "seed {seed}: 64 snapshots attendus");
-
         for (idx, snap) in snapshots.iter().enumerate() {
             assert_eq!(snap.index, idx + 1);
             assert_eq!(snap.time_sig_numerator, 2);
@@ -115,7 +115,12 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() {
             let toe = notes_on_track(snap, TrackId::Toe);
             assert_eq!(
                 heel.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
-                vec![(0, PITCH_HEEL, 0), (4, PITCH_HEEL, 0), (8, PITCH_HEEL, 0), (12, PITCH_HEEL, 0)]
+                vec![
+                    (0, PITCH_HEEL, 0),
+                    (4, PITCH_HEEL, 0),
+                    (8, PITCH_HEEL, 0),
+                    (12, PITCH_HEEL, 0)
+                ]
             );
             assert_eq!(
                 toe.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
@@ -127,8 +132,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() {
         for tune_offset in [0usize, 32] {
             let (plan, _) = composer
                 .reel_bar_info(tune_offset + 1)
-                .expect("plan du tune présent dans le composer");
-
+                .ok_or_else(|| "plan du tune absent dans le composer".to_string())?;
             // Reprises A1 == A2 et B1 == B2 (notes et harmonie identiques)
             for b in 0..8 {
                 let a1 = &snapshots[tune_offset + b];
@@ -158,7 +162,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() {
                 );
 
                 let m4 = notes_on_track(&snapshots[strain_start + 3], TrackId::Melody);
-                let last4 = m4.last().expect("m.4 non vide");
+                let last4 = m4.last().ok_or_else(|| "m.4 vide".to_string())?;
                 let deg4 = plan.mode.scale_degree_of_midi(plan.key, last4.pitch);
                 assert!(
                     matches!(deg4, Some(2 | 5 | 7)),
@@ -179,28 +183,29 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() {
             }
         }
 
-        let (plan1, _) = composer.reel_bar_info(1).expect("tune 1");
-        let (plan2, _) = composer.reel_bar_info(33).expect("tune 2");
+        let (plan1, _) = composer.reel_bar_info(1).ok_or_else(|| "tune 1 absent".to_string())?;
+        let (plan2, _) = composer.reel_bar_info(33).ok_or_else(|| "tune 2 absent".to_string())?;
         assert!(is_same_or_relative_plan(plan1, plan2));
     }
+    Ok(())
 }
 
 /// Critère 4 : Déterminisme, diversité des seeds, `set_seed` et seek déterministe en `Style::Reel`.
 #[test]
-fn reel_determinism_set_seed_and_deterministic_seek() {
+fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
     for seed in 0..NUM_SEEDS {
-        let (_, run_a) = generate_offline_reel_stream(seed, 1);
-        let (_, run_b) = generate_offline_reel_stream(seed, 1);
+        let (_, run_a) = generate_offline_reel_stream(seed, 1)?;
+        let (_, run_b) = generate_offline_reel_stream(seed, 1)?;
         assert_snapshots_equal(&run_a, &run_b, &format!("même seed {seed}"));
     }
 
     // Deux seeds différents produisent des flux différents
     for seed in 0..(NUM_SEEDS - 1) {
-        let (_, a) = generate_offline_reel_stream(seed, 1);
-        let (_, b) = generate_offline_reel_stream(seed + 1, 1);
+        let (_, a) = generate_offline_reel_stream(seed, 1)?;
+        let (_, b) = generate_offline_reel_stream(seed + 1, 1)?;
         assert_ne!(
-            serde_json::to_string(&a).expect("json a"),
-            serde_json::to_string(&b).expect("json b"),
+            serde_json::to_string(&a).unwrap_or_default(),
+            serde_json::to_string(&b).unwrap_or_default(),
             "seeds {seed} et {} ont produit le même flux",
             seed + 1
         );
@@ -209,10 +214,10 @@ fn reel_determinism_set_seed_and_deterministic_seek() {
     // Seek déterministe en Reel : sauter à la mesure 19 (strain B du tune 1) puis à la mesure 41 (strain A2 du tune 2)
     for &target_bar in &[1usize, 12, 19, 33, 41] {
         let seed = 7u64;
-        let (_, linear) = generate_offline_reel_stream(seed, 1);
+        let (_, linear) = generate_offline_reel_stream(seed, 1)?;
 
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+            create_offline_engine(None, SAMPLE_RATE)?;
         composer.set_style(Style::Reel);
         composer.set_seed(seed);
         composer.set_writehead_lookahead(BARS_64 + 4);
@@ -231,13 +236,14 @@ fn reel_determinism_set_seed_and_deterministic_seek() {
             &format!("seek déterministe en Reel vers la mesure {target_bar}"),
         );
     }
+    Ok(())
 }
 
 /// Changement de style : défauts issus de `TuningParams` et émission des programmes GM D10.
 #[test]
-fn set_style_applies_tuning_defaults_and_queues_gm_programs() {
+fn set_style_applies_tuning_defaults_and_queues_gm_programs() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, SAMPLE_RATE)?;
 
     composer.set_style(Style::Reel);
     assert_eq!(composer.musical_params().style, Style::Reel);
@@ -266,4 +272,5 @@ fn set_style_applies_tuning_defaults_and_queues_gm_programs() {
     // Le PlaybackEngine traite les ProgramChange sans allocation ni erreur
     let mut buf = [0.0f32; 512];
     playback.process_buffer(&mut buf, 2, std::time::Instant::now());
+    Ok(())
 }

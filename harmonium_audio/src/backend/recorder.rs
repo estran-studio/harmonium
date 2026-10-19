@@ -89,9 +89,9 @@ impl RecorderBackend {
             current_samples_per_step: 11025,
             channel_programs: {
                 let mut progs = [0u8; 16];
-                for (ch, prog) in
-                    crate::voice_manager::gm_programs_for_style(harmonium_core::params::Style::Legacy)
-                {
+                for (ch, prog) in crate::voice_manager::gm_programs_for_style(
+                    harmonium_core::params::Style::Legacy,
+                ) {
                     progs[ch as usize] = prog;
                 }
                 progs

@@ -180,12 +180,11 @@ impl HarmoniumCompleter {
                 }
             }
 
-
             "style" => {
                 if tokens.len() <= 2 {
                     let partial =
                         if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
-                    vec!["reel", "legacy"]
+                    ["reel", "legacy"]
                         .iter()
                         .filter(|s| s.starts_with(&partial))
                         .map(|&s| Pair { display: s.to_string(), replacement: s.to_string() })
@@ -199,7 +198,7 @@ impl HarmoniumCompleter {
                 if tokens.len() <= 2 {
                     let partial =
                         if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
-                    vec!["0", "1", "2"]
+                    ["0", "1", "2"]
                         .iter()
                         .filter(|s| s.starts_with(&partial))
                         .map(|&s| Pair { display: s.to_string(), replacement: s.to_string() })
@@ -210,10 +209,13 @@ impl HarmoniumCompleter {
             }
             "help" => {
                 if tokens.len() <= 2 {
-                    vec!["set", "emotion", "enable", "disable", "record", "swing", "tempo", "beat", "style", "feet"]
-                        .iter()
-                        .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })
-                        .collect()
+                    [
+                        "set", "emotion", "enable", "disable", "record", "swing", "tempo", "beat",
+                        "style", "feet",
+                    ]
+                    .iter()
+                    .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })
+                    .collect()
                 } else {
                     vec![]
                 }

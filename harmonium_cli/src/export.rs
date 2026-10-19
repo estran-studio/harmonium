@@ -87,6 +87,18 @@ pub fn run(
                 );
             }
         }
+    } else {
+        let mp = composer.musical_params();
+        println!(
+            "Legacy export: seed={}, key={} {}, bpm={:.1}, swing={:.2}, sig={}/{}",
+            composer.session_seed(),
+            composer.config.key,
+            composer.config.scale,
+            mp.bpm,
+            mp.swing_ratio,
+            mp.time_signature.numerator,
+            mp.time_signature.denominator
+        );
     }
     let has_recordings = record_wav.is_some() || record_midi.is_some() || record_musicxml.is_some();
 
@@ -135,8 +147,8 @@ pub fn run(
         // Keep the ring buffer fed
         composer.generate_ahead();
 
-        let chunk_samples = total_samples
-            .map_or(BUFFER_SIZE, |max_s| (max_s - rendered_samples).min(BUFFER_SIZE));
+        let chunk_samples =
+            total_samples.map_or(BUFFER_SIZE, |max_s| (max_s - rendered_samples).min(BUFFER_SIZE));
         let chunk_len = chunk_samples * CHANNELS;
 
         // Zero the buffer slice we'll use
