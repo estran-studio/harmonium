@@ -21,18 +21,6 @@ pub const REEL_FEET_TOML: &str = include_str!("reel_feet.toml");
 /// Nombre de pas par mesure dans un reel québécois en 2/2 (D9).
 pub const REEL_STEPS: usize = 16;
 
-/// Note MIDI provisoire attribuée au talon (`Heel`) en phase 1 (D10, canal 9 percussion).
-pub const PITCH_HEEL: u8 = 36;
-
-/// Note MIDI provisoire attribuée à la pointe (`Toe`) en phase 1 (D10, canal 9 percussion).
-pub const PITCH_TOE: u8 = 37;
-
-/// Vélocité MIDI par défaut pour les frappes de talon.
-pub const DEFAULT_HEEL_VELOCITY: u8 = 100;
-
-/// Vélocité MIDI par défaut pour les frappes de pointe.
-pub const DEFAULT_TOE_VELOCITY: u8 = 80;
-
 /// Un coup de pied individuel dans une mesure de podorythmie (D9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FootHit {
@@ -177,20 +165,38 @@ impl FeetPattern {
     }
 }
 
+const fn default_heel_note() -> u8 {
+    35
+}
+
+const fn default_toe_note() -> u8 {
+    37
+}
+
 const fn default_heel_velocity() -> u8 {
-    DEFAULT_HEEL_VELOCITY
+    55
 }
 
 const fn default_toe_velocity() -> u8 {
-    DEFAULT_TOE_VELOCITY
+    45
+}
+
+const fn default_feet_gain() -> f32 {
+    1.0
 }
 
 #[derive(Deserialize)]
 struct RawFeetTable {
+    #[serde(default = "default_heel_note")]
+    heel_note: u8,
+    #[serde(default = "default_toe_note")]
+    toe_note: u8,
     #[serde(default = "default_heel_velocity")]
-    heel_base_velocity: u8,
+    heel_velocity: u8,
     #[serde(default = "default_toe_velocity")]
-    toe_base_velocity: u8,
+    toe_velocity: u8,
+    #[serde(default = "default_feet_gain")]
+    feet_gain: f32,
     #[serde(default)]
     patterns: Vec<FeetPattern>,
     #[serde(default)]
@@ -199,16 +205,26 @@ struct RawFeetTable {
 
 /// Table de podorythmie portée en données (D9, constitution V).
 ///
-/// Contient les vélocités de base pour le talon et la pointe, ainsi que les
-/// patterns associés à chaque densité (`0..=2`).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// Contient les notes GM et les vélocités de base du talon et de la pointe,
+/// le gain global (`feet_gain`, `0..=1`) ainsi que les patterns associés à
+/// chaque densité (`0..=2`).
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct FeetTable {
+    /// Note GM du talon (canal 9 percussion, D10).
+    #[serde(default = "default_heel_note")]
+    pub heel_note: u8,
+    /// Note GM de la pointe (canal 9 percussion, D10).
+    #[serde(default = "default_toe_note")]
+    pub toe_note: u8,
     /// Vélocité de base du talon (MIDI `0..=127`).
     #[serde(default = "default_heel_velocity")]
-    pub heel_base_velocity: u8,
+    pub heel_velocity: u8,
     /// Vélocité de base de la pointe (MIDI `0..=127`).
     #[serde(default = "default_toe_velocity")]
-    pub toe_base_velocity: u8,
+    pub toe_velocity: u8,
+    /// Gain global appliqué aux vélocités effectives (`0..=1`).
+    #[serde(default = "default_feet_gain")]
+    pub feet_gain: f32,
     /// Patterns de coups par niveau de densité.
     #[serde(default)]
     pub patterns: Vec<FeetPattern>,
@@ -219,15 +235,18 @@ impl<'de> Deserialize<'de> for FeetTable {
         let raw = RawFeetTable::deserialize(deserializer)?;
         let patterns = if !raw.patterns.is_empty() { raw.patterns } else { raw.densities };
         Ok(Self {
-            heel_base_velocity: raw.heel_base_velocity,
-            toe_base_velocity: raw.toe_base_velocity,
+            heel_note: raw.heel_note,
+            toe_note: raw.toe_note,
+            heel_velocity: raw.heel_velocity,
+            toe_velocity: raw.toe_velocity,
+            feet_gain: raw.feet_gain,
             patterns,
         })
     }
 }
 
 /// Erreur survenue lors du chargement ou de la validation d'une [`FeetTable`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FeetTableError {
     /// Erreur de syntaxe TOML.
     TomlParse(String),
@@ -245,6 +264,8 @@ pub enum FeetTableError {
     VelocityOutOfRange { density: u8, step: usize, velocity: i16 },
     /// Une vélocité de base est hors de la plage MIDI `0..=127`.
     BaseVelocityOutOfRange { heel: u8, toe: u8 },
+    /// Le gain global `feet_gain` est hors de la plage `0..=1`.
+    GainOutOfRange { gain: f32 },
 }
 
 impl fmt::Display for FeetTableError {
@@ -281,6 +302,9 @@ impl fmt::Display for FeetTableError {
                     "vélocité de base hors limites MIDI (0..=127) : talon={heel}, pointe={toe}"
                 )
             }
+            Self::GainOutOfRange { gain } => {
+                write!(f, "gain global hors limites (0..=1) : feet_gain={gain}")
+            }
         }
     }
 }
@@ -294,8 +318,11 @@ impl Default for FeetTable {
     /// et [`crate::tuning::TuningParams::validate`]).
     fn default() -> Self {
         Self::from_toml(REEL_FEET_TOML).unwrap_or_else(|_| Self {
-            heel_base_velocity: DEFAULT_HEEL_VELOCITY,
-            toe_base_velocity: DEFAULT_TOE_VELOCITY,
+            heel_note: default_heel_note(),
+            toe_note: default_toe_note(),
+            heel_velocity: default_heel_velocity(),
+            toe_velocity: default_toe_velocity(),
+            feet_gain: default_feet_gain(),
             patterns: Vec::new(),
         })
     }
@@ -312,16 +339,20 @@ impl FeetTable {
 
     /// Valide les contraintes d'intégrité de la table :
     /// - vélocités de base dans `0..=127` ;
+    /// - gain global dans `0..=1` ;
     /// - densités `0`, `1` et `2` présentes sans doublon ;
     /// - chaque coup a un pas dans `0..16` (`0..=15`) ;
     /// - chaque piste est `Heel` ou `Toe` ;
     /// - chaque vélocité calculée (`base + delta`) est dans `0..=127`.
     pub fn validate(&self) -> Result<(), FeetTableError> {
-        if self.heel_base_velocity > 127 || self.toe_base_velocity > 127 {
+        if self.heel_velocity > 127 || self.toe_velocity > 127 {
             return Err(FeetTableError::BaseVelocityOutOfRange {
-                heel: self.heel_base_velocity,
-                toe: self.toe_base_velocity,
+                heel: self.heel_velocity,
+                toe: self.toe_velocity,
             });
+        }
+        if !(0.0..=1.0).contains(&self.feet_gain) {
+            return Err(FeetTableError::GainOutOfRange { gain: self.feet_gain });
         }
 
         if self.patterns.is_empty() {
@@ -344,8 +375,8 @@ impl FeetTable {
                 }
 
                 let base_velocity = match hit.track {
-                    TrackId::Heel => self.heel_base_velocity,
-                    TrackId::Toe => self.toe_base_velocity,
+                    TrackId::Heel => self.heel_velocity,
+                    TrackId::Toe => self.toe_velocity,
                     other => {
                         return Err(FeetTableError::InvalidTrack {
                             density: pattern.density,
@@ -407,11 +438,11 @@ impl FeetTable {
 ///
 /// # Retour
 /// Tuple `(talon_notes, pointe_notes)` :
-/// - premier élément : notes du talon ([`TrackId::Heel`]), `pitch = 36` ;
-/// - second élément : notes de la pointe ([`TrackId::Toe`]), `pitch = 37`.
+/// - premier élément : notes du talon ([`TrackId::Heel`]), `pitch = table.heel_note` ;
+/// - second élément : notes de la pointe ([`TrackId::Toe`]), `pitch = table.toe_note`.
 ///
 /// Toutes les notes produites ont `duration_steps = 0` et `articulation = Articulation::Trigger`.
-/// La vélocité est calculée comme `(base_velocity + delta_velocity).clamp(0, 127) as u8`.
+/// La vélocité est `((base_velocity + delta_velocity) * feet_gain).round().clamp(0, 127) as u8`.
 #[must_use]
 pub fn feet_notes(
     table: &FeetTable,
@@ -429,14 +460,14 @@ pub fn feet_notes(
     let mut toe_notes = Vec::new();
 
     for hit in hits {
-        let (pitch, base_velocity, target_vec) = match hit.track {
-            TrackId::Heel => (PITCH_HEEL, table.heel_base_velocity, &mut heel_notes),
-            TrackId::Toe => (PITCH_TOE, table.toe_base_velocity, &mut toe_notes),
+        let (pitch, base_velocity, target_vec): (u8, u8, &mut Vec<TimelineNote>) = match hit.track {
+            TrackId::Heel => (table.heel_note, table.heel_velocity, &mut heel_notes),
+            TrackId::Toe => (table.toe_note, table.toe_velocity, &mut toe_notes),
             _ => continue,
         };
 
-        let effective = i16::from(base_velocity) + i16::from(hit.delta_velocity);
-        let velocity = effective.clamp(0, 127) as u8;
+        let effective = f32::from(base_velocity) + f32::from(hit.delta_velocity);
+        let velocity = (effective * table.feet_gain).round().clamp(0.0, 127.0) as u8;
 
         target_vec.push(TimelineNote {
             id: 0,
@@ -462,8 +493,11 @@ mod tests {
     fn test_embedded_table_validates() {
         let table = FeetTable::default();
         table.validate().expect("REEL_FEET_TOML doit être valide");
-        assert_eq!(table.heel_base_velocity, 100);
-        assert_eq!(table.toe_base_velocity, 80);
+        assert_eq!(table.heel_note, 35);
+        assert_eq!(table.toe_note, 37);
+        assert_eq!(table.heel_velocity, 55);
+        assert_eq!(table.toe_velocity, 45);
+        assert_eq!(table.feet_gain, 1.0);
     }
 
     #[test]
@@ -476,8 +510,8 @@ mod tests {
         assert!(toe.is_empty());
 
         for note in &heel {
-            assert_eq!(note.pitch, PITCH_HEEL);
-            assert_eq!(note.velocity, 100);
+            assert_eq!(note.pitch, 35);
+            assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
@@ -495,15 +529,15 @@ mod tests {
         assert_eq!(toe_steps, vec![2, 6, 10, 14]);
 
         for note in &heel {
-            assert_eq!(note.pitch, PITCH_HEEL);
-            assert_eq!(note.velocity, 100);
+            assert_eq!(note.pitch, 35);
+            assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
 
         for note in &toe {
-            assert_eq!(note.pitch, PITCH_TOE);
-            assert_eq!(note.velocity, 80);
+            assert_eq!(note.pitch, 37);
+            assert_eq!(note.velocity, 45);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
@@ -521,22 +555,22 @@ mod tests {
         assert_eq!(toe_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
 
         for note in &heel {
-            assert_eq!(note.pitch, PITCH_HEEL);
-            assert_eq!(note.velocity, 100);
+            assert_eq!(note.pitch, 35);
+            assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
 
         for note in &toe {
-            assert_eq!(note.pitch, PITCH_TOE);
+            assert_eq!(note.pitch, 37);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
             if note.start_step % 2 == 1 {
-                // Pas impairs : vélocité de base (80) - 20 = 60
-                assert_eq!(note.velocity, 60, "pas impair {} attendu vel 60", note.start_step);
+                // Pas impairs : vélocité de base (45) - 20 = 25
+                assert_eq!(note.velocity, 25, "pas impair {} attendu vel 25", note.start_step);
             } else {
-                // Pas pairs : vélocité de base (80)
-                assert_eq!(note.velocity, 80, "pas pair {} attendu vel 80", note.start_step);
+                // Pas pairs : vélocité de base (45)
+                assert_eq!(note.velocity, 45, "pas pair {} attendu vel 45", note.start_step);
             }
         }
     }
@@ -582,8 +616,8 @@ mod tests {
     #[test]
     fn test_validation_step_out_of_range() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
 
 [[patterns]]
 density = 0
@@ -604,8 +638,8 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_validation_missing_density() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
 
 [[patterns]]
 density = 0
@@ -622,8 +656,8 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_validation_duplicate_density() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
 
 [[patterns]]
 density = 0
@@ -648,8 +682,8 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_validation_empty_table() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
 "#;
         let err = FeetTable::from_toml(toml_str).unwrap_err();
         assert_eq!(err, FeetTableError::EmptyTable);
@@ -658,18 +692,20 @@ toe_base_velocity = 80
     #[test]
     fn test_validation_base_velocity_out_of_range() {
         let mut table = FeetTable::default();
-        table.heel_base_velocity = 128;
+        table.heel_velocity = 128;
         assert_eq!(
             table.validate().unwrap_err(),
-            FeetTableError::BaseVelocityOutOfRange { heel: 128, toe: 80 }
+            FeetTableError::BaseVelocityOutOfRange { heel: 128, toe: 45 }
         );
     }
 
     #[test]
     fn test_validation_effective_velocity_out_of_range() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
+heel_velocity = 100
+toe_velocity = 80
 
 [[patterns]]
 density = 0
@@ -690,13 +726,40 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_custom_base_velocities() {
         let mut table = FeetTable::default();
-        table.heel_base_velocity = 110;
-        table.toe_base_velocity = 90;
+        table.heel_velocity = 110;
+        table.toe_velocity = 90;
 
         let (heel, toe) = table.feet_notes(2, 16);
         assert_eq!(heel[0].velocity, 110);
         assert_eq!(toe[0].velocity, 90); // step 2
         assert_eq!(toe[1].velocity, 70); // step 3 (90 - 20)
+    }
+
+    #[test]
+    fn test_feet_gain_scales_velocities() {
+        let table = FeetTable {
+            heel_velocity: 100,
+            toe_velocity: 80,
+            feet_gain: 0.5,
+            ..FeetTable::default()
+        };
+        assert!(table.validate().is_ok(), "gain 0.5 valide");
+
+        let (heel, toe) = table.feet_notes(2, 16);
+        assert!(heel.iter().all(|n| n.velocity == 50));
+        assert_eq!(toe[0].velocity, 40); // step 2 : 80 * 0.5
+        assert_eq!(toe[1].velocity, 30); // step 3 : (80 - 20) * 0.5
+    }
+
+    #[test]
+    fn test_feet_gain_out_of_range_rejected() {
+        for gain in [1.5, -0.5, f32::NAN] {
+            let table = FeetTable { feet_gain: gain, ..FeetTable::default() };
+            assert!(
+                matches!(table.validate(), Err(FeetTableError::GainOutOfRange { .. })),
+                "gain {gain} rejeté"
+            );
+        }
     }
 
     #[test]
@@ -714,8 +777,8 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_tuple_syntax_in_toml() {
         let toml_str = r#"
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
 
 [[patterns]]
 density = 0

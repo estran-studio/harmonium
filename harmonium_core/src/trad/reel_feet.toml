@@ -1,14 +1,19 @@
-# Table de podorythmie pour le reel québécois en 2/2 (16 pas) (D9).
+# Table de podorythmie pour le reel québécois en 2/2 (16 pas) (D9, constitution V).
 #
 # Densité 0 : talon uniquement (pas 0, 8).
 # Densité 1 : talon (0, 4, 8, 12) + pointe (2, 6, 10, 14).
 # Densité 2 : talon (0, 4, 8, 12) + pointe doublée (2, 3, 6, 7, 10, 11, 14, 15),
 #             les pas impairs de pointe ayant un delta de vélocité de -20.
 #
-# Vélocités de base : talon = 100, pointe = 80.
+# Sons provisoires (D10, canal 9 percussion) et vélocités : réglables à
+# l'oreille sans toucher au code (talon 35 = grosse caisse acoustique,
+# pointe 37 = frappe latérale). `feet_gain` (0..1) règle le niveau global.
 
-heel_base_velocity = 100
-toe_base_velocity = 80
+heel_note = 35
+toe_note = 37
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 1.0
 
 [[patterns]]
 density = 0

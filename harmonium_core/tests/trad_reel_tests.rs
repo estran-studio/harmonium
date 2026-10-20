@@ -4,7 +4,7 @@ use harmonium_core::{
     params::{MusicalParams, PulseSpec, Style},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{GenerationContext, TrackId},
-    trad::{PITCH_HEEL, PITCH_TOE, TradGenerator, TunePlan, is_same_or_relative_plan},
+    trad::{TradGenerator, TunePlan, is_same_or_relative_plan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -182,8 +182,8 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
             // Podorythmie D9
             let heel = notes_on_track(snap, TrackId::Heel);
             let toe = notes_on_track(snap, TrackId::Toe);
-            assert!(heel.iter().all(|n| n.pitch == PITCH_HEEL && n.duration_steps == 0));
-            assert!(toe.iter().all(|n| n.pitch == PITCH_TOE && n.duration_steps == 0));
+            assert!(heel.iter().all(|n| n.pitch == 35 && n.duration_steps == 0));
+            assert!(toe.iter().all(|n| n.pitch == 37 && n.duration_steps == 0));
 
             let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
             let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();

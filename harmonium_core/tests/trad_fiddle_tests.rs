@@ -118,7 +118,7 @@ fn acceptance_2_half_and_full_cadences_20_seeds() {
     }
 }
 
-/// Critère 3 : Toutes les hauteurs dans 55..=83 (G3–B5) ; aucune note hors du mode (sur 20 seeds).
+/// Critère 3 : Toutes les hauteurs dans 55..=88 (G3–E6, P1-T7) ; aucune note hors du mode (sur 20 seeds).
 #[test]
 fn acceptance_3_tessitura_and_diatonic_mode_20_seeds() {
     for seed in 0..NUM_SEEDS {
@@ -128,8 +128,8 @@ fn acceptance_3_tessitura_and_diatonic_mode_20_seeds() {
             assert!(!bar_notes.is_empty(), "seed {seed} bar {bar_idx}: mesure vide");
             for note in bar_notes {
                 assert!(
-                    (55..=83).contains(&note.pitch),
-                    "seed {seed} bar {bar_idx}: hauteur MIDI {} hors tessiture 55..=83",
+                    (55..=88).contains(&note.pitch),
+                    "seed {seed} bar {bar_idx}: hauteur MIDI {} hors tessiture 55..=88",
                     note.pitch
                 );
                 assert!(
@@ -187,9 +187,12 @@ fn acceptance_4_inter_bar_continuity_at_least_95_percent_20_seeds() {
     );
 }
 
-/// Critère 5 : Hauteur moyenne de B > hauteur moyenne de A pour chaque seed (sur 20 seeds).
+/// Critère 5 (P1-T7) : contraste partie B − partie A en moyenne sur 20 seeds
+/// dans 0..=4 demi-tons (l'ancienne règle « B sur 6–8 » produisait +6 ;
+/// cible `strain_b_lift_semitones` = +2 autour de `melody_center_midi`).
 #[test]
-fn acceptance_5_strain_b_higher_mean_pitch_than_strain_a_20_seeds() {
+fn acceptance_5_strain_b_lift_contrast_0_to_4_semitones_20_seeds() {
+    let mut total_b_minus_a = 0.0;
     for seed in 0..NUM_SEEDS {
         let (_, _, tune) = generate_fiddle_tune(seed);
 
@@ -200,12 +203,14 @@ fn acceptance_5_strain_b_higher_mean_pitch_than_strain_a_20_seeds() {
 
         let mean_a = a_pitches.iter().sum::<f64>() / (a_pitches.len() as f64);
         let mean_b = b_pitches.iter().sum::<f64>() / (b_pitches.len() as f64);
-
-        assert!(
-            mean_b > mean_a,
-            "seed {seed}: hauteur moyenne de B ({mean_b:.2}) <= hauteur moyenne de A ({mean_a:.2})"
-        );
+        total_b_minus_a += mean_b - mean_a;
     }
+
+    let contrast = total_b_minus_a / (NUM_SEEDS as f64);
+    assert!(
+        (0.0..=4.0).contains(&contrast),
+        "contraste B − A moyen {contrast:.2} hors 0..=4 demi-tons"
+    );
 }
 
 /// Critère 6 : Même seed ⇒ mêmes notes ; deux seeds ⇒ tunes différents.

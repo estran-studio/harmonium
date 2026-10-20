@@ -8,10 +8,11 @@
 //! - continuité mélodique entre la dernière note d'une mesure et la première de
 //!   la suivante (écart ≤ une tierce avec transposition d'octave autorisée,
 //!   jusqu'à `N` essais puis repli sur la candidate la plus proche) ;
-//! - contour de strain (strain A centrée sur les degrés 3–5, strain B sur les
-//!   degrés 6–8, avec transposition d'octave si le centre s'écarte de plus
-//!   d'une quinte de la cible) ;
-//! - rendu en [`TimelineNote`] dans la tessiture du violon (`G3` = 55 à `B5` = 83)
+//! - contour de strain en hauteurs absolues (strain A centrée sur
+//!   `melody_center_midi`, strain B sur `melody_center_midi +
+//!   strain_b_lift_semitones`, avec transposition d'octave par cellule pour
+//!   viser ces cibles, P1-T7) ;
+//! - rendu en [`TimelineNote`] dans la tessiture du violon (`G3` = 55 à `E6` = 88)
 //!   avec accentuation des temps forts (croches 1 et 5 : `+12`) et atténuation
 //!   des croches paires (`-10`).
 
@@ -104,7 +105,7 @@ impl FiddleLine {
         self.plan
     }
 
-    /// Note MIDI de la tonique dans l'octave de référence (`G3` = 55 à `F#4` = 66).
+    /// Note MIDI de la tonique dans l'octave de référence (`G4` = 67 à `D5` = 74 avec les défauts P1-T7).
     #[must_use]
     pub const fn tonic_midi(&self) -> u8 {
         self.tonic_midi
@@ -138,7 +139,7 @@ impl FiddleLine {
     /// - 8 croches : `start_step = 2 * i`, `duration_steps = 2` ;
     /// - un [`CellNote::Hold`] prolonge la note précédente de 2 pas ;
     /// - hauteur : `tonic_midi + mode.degree_to_semitones(degree)`, repliée par
-    ///   octave dans la tessiture `tessitura_min..=tessitura_max` (55..=83) ;
+    ///   octave dans la tessiture `tessitura_min..=tessitura_max` (55..=88) ;
     /// - vélocités : `base_velocity` (84), croches 1 et 5 `+12`, croches paires `-10`.
     #[must_use]
     pub fn notes_for_bar(&self, bar_in_tune: usize) -> Vec<TimelineNote> {
@@ -159,7 +160,7 @@ impl FiddleLine {
 }
 
 /// Choisit la note MIDI de la tonique dans la plage `[min_midi, max_midi]`
-/// (par défaut `G3` = 55 à `F#4` = 66, soit `D4` = 62 pour ré).
+/// (par défaut `F#4` = 66 à `F5` = 77, soit `D5` = 74 pour ré, P1-T7).
 #[must_use]
 pub const fn tonic_midi_for_key(key: PitchClass, min_midi: u8, max_midi: u8) -> u8 {
     let key_pc = key % 12;
@@ -170,7 +171,7 @@ pub const fn tonic_midi_for_key(key: PitchClass, min_midi: u8, max_midi: u8) -> 
 }
 
 /// Replie une hauteur MIDI brute par octaves (`±12` demi-tons) pour la maintenir
-/// dans la tessiture `[min_midi, max_midi]` (par défaut `G3` = 55 à `B5` = 83).
+/// dans la tessiture `[min_midi, max_midi]` (par défaut `G3` = 55 à `E6` = 88).
 #[must_use]
 pub const fn fold_midi_to_tessitura(mut raw_midi: i16, min_midi: u8, max_midi: u8) -> u8 {
     let lo = min_midi as i16;
@@ -353,11 +354,17 @@ struct EvaluatedCandidate {
     continuity_excess: i16,
     /// Distance en pas diatoniques entre le premier degré et le dernier degré précédent.
     continuity_distance: i16,
-    /// Distance absolue (en dixièmes de pas) entre le centre de la cellule et la cible de la strain.
+    /// Distance absolue (en dixièmes de demi-ton) entre le centre rendu de la
+    /// cellule et la cible de la strain (`melody_center_midi`, + lift en B).
     contour_distance_tenths: i32,
 }
 
 impl EvaluatedCandidate {
+    /// Fenêtre stricte du contour en dixièmes de demi-ton (`±4` demi-tons) :
+    /// sans elle, une chaîne verrouillée bas par la continuité ne remonte
+    /// jamais vers la cible de strain (P1-T7).
+    const STRICT_CONTOUR_WINDOW_TENTHS: i32 = 40;
+
     const fn score_key(&self) -> (u8, i16, u8, i16, i16, i32) {
         (
             self.tessitura_penalty,
@@ -374,6 +381,7 @@ impl EvaluatedCandidate {
             && self.fifth_excess == 0
             && self.register_penalty == 0
             && self.continuity_excess == 0
+            && self.contour_distance_tenths <= Self::STRICT_CONTOUR_WINDOW_TENTHS
     }
 }
 
@@ -391,8 +399,8 @@ fn pick_cell_for_bar(
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Cell {
-    let target_step = strain_target_step(strain, params);
-    let split_step = register_split_step(params);
+    let target_midi = strain_target_midi(strain, params);
+    let split_midi = register_split_midi(params);
     let max_retries = params.continuity_max_retries.max(1);
 
     let mut best: Option<EvaluatedCandidate> = None;
@@ -406,14 +414,14 @@ fn pick_cell_for_bar(
             continue;
         };
 
-        for shift in contour_shifts_for_cell(base_cell, target_step, params) {
+        for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
                 strain,
                 bar_idx,
-                target_step,
-                split_step,
+                target_midi,
+                split_midi,
                 plan,
                 tonic_midi,
                 params,
@@ -449,14 +457,14 @@ fn pick_cell_for_bar(
         if !allowed_roles.contains(&base_cell.role) || is_excluded_cell(base_cell, excluded_cell) {
             continue;
         }
-        for shift in contour_shifts_for_cell(base_cell, target_step, params) {
+        for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
                 strain,
                 bar_idx,
-                target_step,
-                split_step,
+                target_midi,
+                split_midi,
                 plan,
                 tonic_midi,
                 params,
@@ -478,14 +486,14 @@ fn pick_cell_for_bar(
         if !allowed_roles.contains(&base_cell.role) {
             continue;
         }
-        for shift in contour_shifts_for_cell(base_cell, target_step, params) {
+        for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
                 strain,
                 bar_idx,
-                target_step,
-                split_step,
+                target_midi,
+                split_midi,
                 plan,
                 tonic_midi,
                 params,
@@ -585,60 +593,52 @@ fn draw_cell_by_role<'a>(
     None
 }
 
-/// Centre cible en pas diatoniques pour une strain (`3.0` pour A = degrés 3–5, `6.0` pour B = degrés 6–8).
-fn strain_target_step(strain: Strain, params: &ReelFiddleParams) -> f32 {
-    let range = match strain {
-        Strain::A => params.strain_a_center_range,
-        Strain::B => params.strain_b_center_range,
-    };
-    let lo = f32::from(degree_to_diatonic_step(range[0]));
-    let hi = f32::from(degree_to_diatonic_step(range[1]));
-    0.5 * (lo + hi)
+/// Centre cible en hauteurs MIDI pour une strain (A : `melody_center_midi`,
+/// B : `melody_center_midi + strain_b_lift_semitones`, P1-T7).
+fn strain_target_midi(strain: Strain, params: &ReelFiddleParams) -> f32 {
+    let center = f32::from(params.melody_center_midi);
+    match strain {
+        Strain::A => center,
+        Strain::B => center + f32::from(params.strain_b_lift_semitones),
+    }
 }
 
-/// Frontière médiane en pas diatoniques séparant le registre de la strain A et celui de la strain B.
-fn register_split_step(params: &ReelFiddleParams) -> f32 {
-    let a = strain_target_step(Strain::A, params);
-    let b = strain_target_step(Strain::B, params);
+/// Frontière médiane en hauteurs MIDI séparant le registre de la strain A et
+/// celui de la strain B (`melody_center_midi + lift / 2`, P1-T7).
+fn register_split_midi(params: &ReelFiddleParams) -> f32 {
+    let a = strain_target_midi(Strain::A, params);
+    let b = strain_target_midi(Strain::B, params);
     0.5 * (a + b)
 }
 
-/// Calcule le centre moyen d'une cellule en pas diatoniques.
-fn cell_mean_step(cell: &Cell) -> f32 {
+/// Décalages d'octave candidats pour viser la cible de strain en hauteurs
+/// absolues, triés par proximité du centre rendu à `target_midi` : le premier
+/// tirage strict trouvé est donc le plus proche de la cible (P1-T7).
+fn contour_shifts_for_cell(
+    cell: &Cell,
+    plan: &TunePlan,
+    tonic_midi: u8,
+    target_midi: f32,
+) -> [i8; 5] {
+    let base = cell_mean_midi(cell, plan, tonic_midi);
+    let mut shifts: [i8; 5] = [-2, -1, 0, 1, 2];
+    shifts
+        .sort_by_key(|&s| ((base + 12.0 * f32::from(s) - target_midi).abs() * 10.0).round() as i32);
+    shifts
+}
+
+/// Calcule le centre moyen d'une cellule rendue en hauteurs MIDI
+/// (`tonic_midi + mode.degree_to_semitones`, tenues exclues).
+fn cell_mean_midi(cell: &Cell, plan: &TunePlan, tonic_midi: u8) -> f32 {
     let mut sum = 0i32;
     let mut count = 0i32;
     for &note in &cell.notes {
         if let CellNote::Degree(deg) = note {
-            sum += i32::from(degree_to_diatonic_step(deg));
+            sum += i32::from(tonic_midi) + i32::from(plan.mode.degree_to_semitones(deg));
             count += 1;
         }
     }
-    if count == 0 { 0.0 } else { (sum as f32) / (count as f32) }
-}
-
-/// Détermine les décalages d'octave candidats (`[-1, 0, 1]` ramenés à ≤ une quinte de `target_step`, D6).
-fn contour_shifts_for_cell(cell: &Cell, target_step: f32, params: &ReelFiddleParams) -> Vec<i8> {
-    let base_mean = cell_mean_step(cell);
-    let max_dist = f32::from(params.contour_max_step_distance.max(1));
-    let mut shifts = Vec::with_capacity(3);
-
-    for initial in [-1i8, 0, 1] {
-        let mut s = initial;
-        let mut mean = base_mean + 7.0 * f32::from(s);
-        while mean < target_step - max_dist && s < 3 {
-            s += 1;
-            mean = base_mean + 7.0 * f32::from(s);
-        }
-        while mean > target_step + max_dist && s > -3 {
-            s -= 1;
-            mean = base_mean + 7.0 * f32::from(s);
-        }
-        if !shifts.contains(&s) {
-            shifts.push(s);
-        }
-    }
-
-    shifts
+    if count == 0 { f32::from(tonic_midi) } else { (sum as f32) / (count as f32) }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -647,8 +647,8 @@ fn evaluate_candidate(
     octave_shift: i8,
     strain: Strain,
     bar_idx: usize,
-    target_step: f32,
-    split_step: f32,
+    target_midi: f32,
+    split_midi: f32,
     plan: &TunePlan,
     tonic_midi: u8,
     params: &ReelFiddleParams,
@@ -656,7 +656,7 @@ fn evaluate_candidate(
     bar1_first_step: Option<i8>,
 ) -> EvaluatedCandidate {
     let cell = transpose_cell_octaves(base_cell, octave_shift);
-    let mean_step = cell_mean_step(&cell);
+    let mean_midi = cell_mean_midi(&cell, plan, tonic_midi);
 
     let mut all_in_tessitura = true;
     for &note in &cell.notes {
@@ -670,9 +670,12 @@ fn evaluate_candidate(
     }
     let tessitura_penalty = u8::from(!all_in_tessitura);
 
+    // Tolérance autour de la frontière de registre : rejette les erreurs
+    // d'octave sans forcer de transposition (le contour vise la cible, P1-T7).
+    const REGISTER_TOLERANCE_MIDI: f32 = 6.0;
     let in_register = match strain {
-        Strain::A => mean_step <= split_step,
-        Strain::B => mean_step >= split_step - 0.25,
+        Strain::A => mean_midi <= split_midi + REGISTER_TOLERANCE_MIDI,
+        Strain::B => mean_midi >= split_midi - REGISTER_TOLERANCE_MIDI,
     };
     let register_penalty = u8::from(!in_register);
 
@@ -698,7 +701,7 @@ fn evaluate_candidate(
     };
     let fifth_excess = entry_fifth_excess + loop_fifth_excess;
 
-    let contour_distance_tenths = ((mean_step - target_step).abs() * 10.0).round() as i32;
+    let contour_distance_tenths = ((mean_midi - target_midi).abs() * 10.0).round() as i32;
 
     EvaluatedCandidate {
         cell,
@@ -733,6 +736,15 @@ mod tests {
             assert!((55..=66).contains(&midi));
             assert_eq!(midi % 12, pc);
         }
+    }
+
+    #[test]
+    fn default_tonic_octaves_sit_in_upper_register() {
+        let params = ReelFiddleParams::default();
+        // D -> D5 = 74, G -> G4 = 67, A -> A4 = 69 (P1-T7 : toniques à hauteur de chant).
+        assert_eq!(tonic_midi_for_key(2, params.tonic_midi_min, params.tonic_midi_max), 74);
+        assert_eq!(tonic_midi_for_key(7, params.tonic_midi_min, params.tonic_midi_max), 67);
+        assert_eq!(tonic_midi_for_key(9, params.tonic_midi_min, params.tonic_midi_max), 69);
     }
 
     #[test]

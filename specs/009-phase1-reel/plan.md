@@ -208,6 +208,36 @@ entre `feet 1` et `feet 2`. 434 tests verts.
 Direction validée, identifiabilité pas encore atteinte → le critère 6 n'est
 pas rempli ; P1-T6 reste en attente.
 
+## P1-T7 — Corrections d'écoute : pieds, registre, débuts identiques
+
+Retour d'écoute (10 reels, seeds 1–10) : talon assommant (GM 36 à 90 sur
+chaque noire), 6 seeds sur 10 ouvrant sur `5 5 3 5 6 5 3 5`, mélodie centrée
+sur ré4 contre si4 dans le corpus (`harmonium_lab trad-compare`, 555 reels).
+
+### Décisions
+
+- **Pieds en données (V)** : `reel_feet.toml` porte `heel_note` (35),
+  `toe_note` (37), `heel_velocity` (55), `toe_velocity` (45) et `feet_gain`
+  global (1.0, `0..=1`) ; constantes Rust supprimées. Le propriétaire règle
+  à l'oreille en TOML.
+- **Registre** : `melody_center_midi` (71 = si4), `strain_b_lift_semitones`
+  (+2) ; le contour vise ces cibles en hauteurs absolues (transposition
+  d'octave par cellule, essais les plus proches d'abord, match strict dans
+  ±4 demi-tons), avec garde-fou de registre lâche (±6, anti-erreurs
+  d'octave). Toniques G4/D5/A4 (66–77), tessiture G3–E6 (55–88).
+  `TUNING_VERSION` 2 → 3 (rupture snapshot assumée, chemin Legacy inchangé).
+- **Débuts** : cause — la grille diatonique A (≤ 4,5 pas) disqualifiait les 2
+  `open` aiguës et le plancher de tessiture disqualifiait la grave en
+  sol/la, ne laissant que 2–3 cellules éligibles à la mesure 1 ; le premier
+  tirage strict gagnait. Correctif : contour absolu (toutes les cellules
+  éligibles par transposition) + 12 `open` (17 au total, attaques sur tous
+  les degrés) + 2 cadences de pont par le grave (`5, 1 2 3 4 3 2 5`,
+  `4, 1 2 3 4 3 2 1`) + règle « deux tunes consécutifs, deux ouvertures ».
+- **Tests** (`trad_p1t7_listening_tests`, flux snapshots 20×32) : ≥ 16
+  mesures 1 distinctes ; moyenne 68–75 par seed ; B−A moyen 0–4 ; pieds
+  ≤ 60 par défaut. Critères 1–4 du plan et continuité ≥ 95 % toujours verts ;
+  critère 5 réécrit en contraste moyen (l'ancien « B > A par seed »
+  figeait l'écart +6 remplacé).
 Reproduire les démos :
 
 ```bash

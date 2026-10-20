@@ -6,7 +6,7 @@ use harmonium_core::{
     params::{PulseSpec, Style, TimeSignature},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{PITCH_HEEL, PITCH_TOE, TunePlan, is_same_or_relative_plan},
+    trad::{TunePlan, is_same_or_relative_plan},
 };
 
 const SAMPLE_RATE: f64 = 44100.0;
@@ -115,16 +115,11 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             let toe = notes_on_track(snap, TrackId::Toe);
             assert_eq!(
                 heel.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
-                vec![
-                    (0, PITCH_HEEL, 0),
-                    (4, PITCH_HEEL, 0),
-                    (8, PITCH_HEEL, 0),
-                    (12, PITCH_HEEL, 0)
-                ]
+                vec![(0, 35, 0), (4, 35, 0), (8, 35, 0), (12, 35, 0)]
             );
             assert_eq!(
                 toe.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
-                vec![(2, PITCH_TOE, 0), (6, PITCH_TOE, 0), (10, PITCH_TOE, 0), (14, PITCH_TOE, 0)]
+                vec![(2, 37, 0), (6, 37, 0), (10, 37, 0), (14, 37, 0)]
             );
         }
 

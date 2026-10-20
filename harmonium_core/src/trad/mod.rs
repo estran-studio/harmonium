@@ -32,8 +32,7 @@ pub use cells::{
     FIFTH_SEMITONES, NOTES_PER_CELL, REEL_CELLS_TOML,
 };
 pub use feet::{
-    DEFAULT_HEEL_VELOCITY, DEFAULT_TOE_VELOCITY, FeetPattern, FeetTable, FeetTableError, FootHit,
-    PITCH_HEEL, PITCH_TOE, REEL_FEET_TOML, REEL_STEPS, feet_notes,
+    FeetPattern, FeetTable, FeetTableError, FootHit, REEL_FEET_TOML, REEL_STEPS, feet_notes,
 };
 pub use fiddle::{
     BARS_PER_STRAIN, CELLS_PER_TUNE, FiddleLine, eighth_velocity, fold_midi_to_tessitura,

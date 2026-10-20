@@ -18,7 +18,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 2;
+pub const TUNING_VERSION: u32 = 3;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -467,19 +467,17 @@ pub struct ReelFiddleParams {
     pub max_continuity_step_distance: i8,
     /// Nombre maximal d'essais `N` de tirage pour satisfaire la continuité avant repli (D6).
     pub continuity_max_retries: usize,
-    /// Plage de degrés cibles du centre mélodique de la strain A (`[3, 5]`, D6).
-    pub strain_a_center_range: [i8; 2],
-    /// Plage de degrés cibles du centre mélodique de la strain B (`[6, 8]`, D6).
-    pub strain_b_center_range: [i8; 2],
-    /// Distance maximale en pas diatoniques entre le centre d'une cellule et la cible avant transposition d'octave (4 = quinte, D6).
-    pub contour_max_step_distance: i8,
-    /// Borne inférieure MIDI pour le choix de l'octave de la tonique (`55` = G3, D6).
+    /// Hauteur moyenne visée de la mélodie en MIDI (`71` = si4, P1-T7).
+    pub melody_center_midi: u8,
+    /// Surélévation de la strain B par rapport à la strain A, en demi-tons (`2`, P1-T7).
+    pub strain_b_lift_semitones: i8,
+    /// Borne inférieure MIDI pour le choix de l'octave de la tonique (`66` = F#4, P1-T7).
     pub tonic_midi_min: u8,
-    /// Borne supérieure MIDI pour le choix de l'octave de la tonique (`66` = F#4, D6).
+    /// Borne supérieure MIDI pour le choix de l'octave de la tonique (`77` = F5, P1-T7).
     pub tonic_midi_max: u8,
     /// Borne inférieure de la tessiture du violon (`55` = G3, D6).
     pub tessitura_min: u8,
-    /// Borne supérieure de la tessiture du violon (`83` = B5, D6).
+    /// Borne supérieure de la tessiture du violon (`88` = E6, P1-T7).
     pub tessitura_max: u8,
     /// Vélocité MIDI de base d'une croche de violon (`84`, D6).
     pub base_velocity: u8,
@@ -517,13 +515,12 @@ impl Default for ReelFiddleParams {
             weight_role_turn: 3,
             max_continuity_step_distance: 2,
             continuity_max_retries: 16,
-            strain_a_center_range: [3, 5],
-            strain_b_center_range: [6, 8],
-            contour_max_step_distance: 4,
-            tonic_midi_min: 55,
-            tonic_midi_max: 66,
+            melody_center_midi: 71,
+            strain_b_lift_semitones: 2,
+            tonic_midi_min: 66,
+            tonic_midi_max: 77,
             tessitura_min: 55,
-            tessitura_max: 83,
+            tessitura_max: 88,
             base_velocity: 84,
             strong_eighth_velocity_offset: 12,
             even_eighth_velocity_offset: -10,
@@ -1104,28 +1101,19 @@ impl TuningParams {
                 message: format!("expected >= 0, got {}", rf.max_continuity_step_distance),
             });
         }
-        if rf.contour_max_step_distance <= 0 {
+        if rf.melody_center_midi < rf.tessitura_min || rf.melody_center_midi > rf.tessitura_max {
             errors.push(ValidationError {
-                field: "reel_fiddle.contour_max_step_distance",
-                message: format!("expected >= 1, got {}", rf.contour_max_step_distance),
-            });
-        }
-        if rf.strain_a_center_range[0] > rf.strain_a_center_range[1] {
-            errors.push(ValidationError {
-                field: "reel_fiddle.strain_a_center_range",
+                field: "reel_fiddle.melody_center_midi",
                 message: format!(
-                    "min ({}) must be <= max ({})",
-                    rf.strain_a_center_range[0], rf.strain_a_center_range[1]
+                    "expected within tessitura {}..={}, got {}",
+                    rf.tessitura_min, rf.tessitura_max, rf.melody_center_midi
                 ),
             });
         }
-        if rf.strain_b_center_range[0] > rf.strain_b_center_range[1] {
+        if !(-12..=12).contains(&rf.strain_b_lift_semitones) {
             errors.push(ValidationError {
-                field: "reel_fiddle.strain_b_center_range",
-                message: format!(
-                    "min ({}) must be <= max ({})",
-                    rf.strain_b_center_range[0], rf.strain_b_center_range[1]
-                ),
+                field: "reel_fiddle.strain_b_lift_semitones",
+                message: format!("expected -12..=12, got {}", rf.strain_b_lift_semitones),
             });
         }
         if rf.tonic_midi_min > rf.tonic_midi_max || rf.tonic_midi_max > 127 {
@@ -1438,11 +1426,9 @@ pub struct ReelFiddleOverlay {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub continuity_max_retries: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub strain_a_center_range: Option<[i8; 2]>,
+    pub melody_center_midi: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub strain_b_center_range: Option<[i8; 2]>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub contour_max_step_distance: Option<i8>,
+    pub strain_b_lift_semitones: Option<i8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tonic_midi_min: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1647,9 +1633,8 @@ impl TuningParams {
             apply!(b.weight_role_turn, o.weight_role_turn);
             apply!(b.max_continuity_step_distance, o.max_continuity_step_distance);
             apply!(b.continuity_max_retries, o.continuity_max_retries);
-            apply!(b.strain_a_center_range, o.strain_a_center_range);
-            apply!(b.strain_b_center_range, o.strain_b_center_range);
-            apply!(b.contour_max_step_distance, o.contour_max_step_distance);
+            apply!(b.melody_center_midi, o.melody_center_midi);
+            apply!(b.strain_b_lift_semitones, o.strain_b_lift_semitones);
             apply!(b.tonic_midi_min, o.tonic_midi_min);
             apply!(b.tonic_midi_max, o.tonic_midi_max);
             apply!(b.tessitura_min, o.tessitura_min);
@@ -1810,10 +1795,10 @@ mod tests {
     fn overlay_applies_reel_feet() {
         let base = TuningParams::default();
         let mut custom_feet = FeetTable::default();
-        custom_feet.heel_base_velocity = 115;
+        custom_feet.heel_velocity = 115;
 
         let overlay = TuningOverlay { reel_feet: Some(custom_feet.clone()), ..Default::default() };
         let result = base.with_overlay(&overlay);
-        assert_eq!(result.reel_feet.heel_base_velocity, 115);
+        assert_eq!(result.reel_feet.heel_velocity, 115);
     }
 }
