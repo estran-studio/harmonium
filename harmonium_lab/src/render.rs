@@ -65,7 +65,7 @@ pub fn render_to_wav(
     sf2_bytes: Option<&[u8]>,
 ) -> Result<RenderOutput> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock_reader, finished_recordings) =
-        audio::create_offline_engine(sf2_bytes, SAMPLE_RATE)
+        audio::create_offline_engine(sf2_bytes, None, SAMPLE_RATE)
             .map_err(|e| anyhow::anyhow!("Failed to create offline engine: {}", e))?;
 
     // Apply tuning parameters (style personality)

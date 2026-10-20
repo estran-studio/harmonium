@@ -57,7 +57,7 @@ fn swing_unit_has_exact_durations() {
 #[test]
 fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
     let (mut composer, mut playback, _cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_time_signature(4, 4);
     composer.set_swing_ratio(0.6);
@@ -111,7 +111,7 @@ fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
 #[test]
 fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_time_signature(4, 4);
     composer.set_bpm(120.0);

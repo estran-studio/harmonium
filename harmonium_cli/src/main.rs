@@ -27,6 +27,11 @@ struct Args {
     #[arg(short, long)]
     soundfont: Option<String>,
 
+    /// Path to the feet SoundFont (.sf2). Defaults to `assets/harmonium_trad.sf2`
+    /// when present (else the feet fall back to the GM kit on channel 9).
+    #[arg(long)]
+    feet_soundfont: Option<String>,
+
     /// Export mode: skip REPL, run engine offline and save recordings
     #[arg(long)]
     export: bool,
@@ -88,6 +93,7 @@ fn main() -> Result<()> {
     }
 
     let sf2_bytes = harmonium::load_soundfont(args.soundfont.as_deref())?;
+    let feet_sf2_bytes = harmonium::load_feet_soundfont(args.feet_soundfont.as_deref())?;
 
     if args.export {
         // Export mode: offline rendering, no audio device
@@ -103,6 +109,7 @@ fn main() -> Result<()> {
         };
         export::run(
             sf2_bytes.as_deref(),
+            feet_sf2_bytes.as_deref(),
             args.duration,
             args.bars,
             parsed_style,
@@ -128,7 +135,8 @@ fn main() -> Result<()> {
             _transport_position,
             clock_reader,
             finished_recordings,
-        ) = audio::create_timeline_stream(sf2_bytes.as_deref()).map_err(|e| anyhow::anyhow!(e))?;
+        ) = audio::create_timeline_stream(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref())
+            .map_err(|e| anyhow::anyhow!(e))?;
 
         // Wrap composer in Arc for sharing with the generation thread
         let composer = Arc::new(composer_mutex);

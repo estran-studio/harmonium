@@ -2,7 +2,7 @@ use harmonium_core::events::AudioEvent;
 
 use crate::{
     backend::AudioRenderer,
-    voice_manager::{ChannelRoute, VoiceManager},
+    voice_manager::{ChannelRoute, FEET_BANK_OFFSET, VoiceManager},
 };
 
 /// SoundFont renderer backed by oxisynth.
@@ -13,10 +13,18 @@ pub struct SynthBackend {
 impl SynthBackend {
     /// Build the backend. `sf2_bytes = None` starts without any bank loaded:
     /// the engine renders silence until a `LoadFont` event arrives.
+    /// `feet_sf2_bytes` charge la banque de pieds dédiée (décalage
+    /// [`FEET_BANK_OFFSET`]) et route Heel/Toe dessus ; `None` conserve le
+    /// comportement GM (canal 9) ou non-GM.
     /// `initial_routing` holds signed bank ids per logical channel
     /// (negative ⇒ bank 0); entries beyond channel 15 are ignored.
     #[must_use]
-    pub fn new(sample_rate: f64, sf2_bytes: Option<&[u8]>, initial_routing: &[i32]) -> Self {
+    pub fn new(
+        sample_rate: f64,
+        sf2_bytes: Option<&[u8]>,
+        feet_sf2_bytes: Option<&[u8]>,
+        initial_routing: &[i32],
+    ) -> Self {
         let mut voice_manager = VoiceManager::new(sf2_bytes, sample_rate as f32);
 
         for (i, &bank_id) in initial_routing.iter().enumerate().take(16) {
@@ -28,9 +36,9 @@ impl SynthBackend {
         // which would overwrite the correct GM programs.
         // Détection réelle de la conformité GM : présence d'un preset en banque 128 (kit de batterie).
         // Calculé à l'initialisation, strictement hors du callback temps réel.
-        if sf2_bytes.is_some() {
-            let gm_compatible = voice_manager.has_bank_128_preset();
-            if !gm_compatible {
+        let gm_compatible = if sf2_bytes.is_some() {
+            let gm = voice_manager.has_bank_128_preset();
+            if !gm {
                 let missing = voice_manager.missing_gm_programs();
                 let missing_list =
                     if missing.is_empty() { "aucun".to_string() } else { missing.join(", ") };
@@ -43,8 +51,17 @@ impl SynthBackend {
                 eprintln!("{warning_msg}");
                 harmonium_core::log::warn(&warning_msg);
             }
-            voice_manager.configure_gm_defaults(gm_compatible);
+            gm
+        } else {
+            false
+        };
+
+        // Banque de pieds dédiée (SK2) : chargée une seule fois, hors callback audio.
+        if let Some(bytes) = feet_sf2_bytes {
+            voice_manager.add_font(FEET_BANK_OFFSET, bytes);
         }
+
+        voice_manager.configure_gm_defaults(gm_compatible, feet_sf2_bytes.is_some());
 
         Self { voice_manager }
     }

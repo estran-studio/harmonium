@@ -32,6 +32,11 @@ pub const GM_PROGRAM_ACOUSTIC_BASS: u8 = 32;
 /// Canal MIDI GM dédié aux percussions / podorythmie (`Heel` et `Toe`, D10).
 pub const GM_DRUM_CHANNEL: u8 = 9;
 
+/// Décalage de banque dédié à la SoundFont des pieds (`harmonium_trad.sf2`, SK2).
+/// Quand cette banque est chargée, Heel/Toe sélectionnent la banque
+/// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
+pub const FEET_BANK_OFFSET: u32 = 1;
+
 /// Retourne les couples `(logical_channel, gm_program)` pour les pistes mélodiques/harmoniques
 /// selon le [`harmonium_core::params::Style`] actif (D10) :
 /// - `Style::Reel` : Melody (0) → 40 (violon), Chords (1) → 24 (guitare acier), Bass (2) → 32 (basse acoustique)
@@ -141,19 +146,27 @@ impl VoiceManager {
         }
     }
 
-    /// Configure GM-standard program assignments and drum channel mapping.
+    /// Configure GM-standard program assignments and drum/feet channel mapping.
     ///
-    /// When `gm_compatible` is true (full GM SoundFont like MuseScore General):
-    /// - Channel 0 → Melody / Lead (GM program 0, Piano)
-    /// - Channel 1 → Chords (GM program 24, Acoustic Guitar steel)
-    /// - Channel 2 → Bass (GM program 32, Acoustic Bass)
-    /// - Channels 3,4 → Drums / Feet on MIDI channel 9 (GM bank 128, program 0)
+    /// Une seule fonction décide du routage des pieds (pas de chemin parallèle) :
+    /// - `feet_loaded` : Heel (3) et Toe (4) sur leurs canaux MIDI propres (3 et 4),
+    ///   banque `FEET_BANK_OFFSET`, programme 0 (banque de pieds `harmonium_trad.sf2`, SK2).
+    /// - sinon `gm_compatible` : Heel/Toe sur le canal MIDI 9 (kit GM banque 128, programme 0).
+    /// - sinon (banque non-GM) : Heel/Toe sur leurs canaux logiques (3 et 4) sans remap.
     ///
-    /// When `gm_compatible` is false (small/test SoundFonts):
-    /// - All channels use program 0 (first available patch)
-    /// - No drum remapping (drums play as pitched notes)
-    pub fn configure_gm_defaults(&mut self, gm_compatible: bool) {
-        if gm_compatible {
+    /// Les programmes mélodiques/harmoniques sont inchangés : Melody (0), Chords (1),
+    /// Bass (2) selon le style GM (`apply_style_programs`).
+    pub fn configure_gm_defaults(&mut self, gm_compatible: bool, feet_loaded: bool) {
+        if feet_loaded {
+            // Banque de pieds dédiée (SK2) : Heel (3) et Toe (4) sur leurs canaux
+            // MIDI propres, banque décalée FEET_BANK_OFFSET, programme 0.
+            self.midi_channel_map[3] = 3;
+            self.midi_channel_map[4] = 4;
+            self.set_channel_route(3, ChannelRoute { bank: FEET_BANK_OFFSET });
+            self.set_channel_route(4, ChannelRoute { bank: FEET_BANK_OFFSET });
+            self.set_channel_program(3, 0);
+            self.set_channel_program(4, 0);
+        } else if gm_compatible {
             // Remap drum/feet logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums, D10)
             self.midi_channel_map[3] = GM_DRUM_CHANNEL;
             self.midi_channel_map[4] = GM_DRUM_CHANNEL;
@@ -519,12 +532,24 @@ mod tests {
     #[test]
     fn test_configure_gm_defaults_remapping() {
         let mut vm = VoiceManager::new(None, 44100.0);
-        vm.configure_gm_defaults(true);
+        vm.configure_gm_defaults(true, false);
         assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL);
         assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL);
 
-        vm.configure_gm_defaults(false);
+        vm.configure_gm_defaults(false, false);
         assert_eq!(vm.midi_channel_map[3], 3, "Pas de remap sur canal 9 quand non-GM");
         assert_eq!(vm.midi_channel_map[4], 4, "Pas de remap sur canal 9 quand non-GM");
+    }
+
+    #[test]
+    fn test_configure_feet_routing() {
+        let mut vm = VoiceManager::new(None, 44100.0);
+        vm.configure_gm_defaults(true, true);
+        assert_eq!(vm.midi_channel_map[3], 3, "Heel → canal MIDI 3");
+        assert_eq!(vm.midi_channel_map[4], 4, "Toe → canal MIDI 4");
+        assert_eq!(vm.channel_routing[3].bank, FEET_BANK_OFFSET, "Heel → banque décalée");
+        assert_eq!(vm.channel_routing[4].bank, FEET_BANK_OFFSET, "Toe → banque décalée");
+        assert_eq!(vm.channel_program(3), Some(0), "Heel programme 0");
+        assert_eq!(vm.channel_program(4), Some(0), "Toe programme 0");
     }
 }

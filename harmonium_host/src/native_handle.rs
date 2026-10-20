@@ -93,7 +93,7 @@ impl NativeHandle {
             transport_position,
             clock_reader,
             finished_recordings,
-        ) = crate::audio::create_timeline_stream(sf2_bytes)?;
+        ) = crate::audio::create_timeline_stream(sf2_bytes, None)?;
 
         Ok(Self {
             stream: SendStream(stream),

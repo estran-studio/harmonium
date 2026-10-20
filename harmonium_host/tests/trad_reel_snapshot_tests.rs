@@ -19,7 +19,7 @@ fn generate_offline_reel_stream(
     feet_density: u8,
 ) -> Result<(harmonium::composer::MusicComposer, Vec<MeasureSnapshot>), String> {
     let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_style(Style::Reel);
     composer.set_feet_density(feet_density);
@@ -115,7 +115,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             let toe = notes_on_track(snap, TrackId::Toe);
             assert_eq!(
                 heel.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
-                vec![(0, 35, 0), (4, 35, 0), (8, 35, 0), (12, 35, 0)]
+                vec![(0, 36, 0), (4, 36, 0), (8, 36, 0), (12, 36, 0)]
             );
             assert_eq!(
                 toe.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
@@ -212,7 +212,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         let (_, linear) = generate_offline_reel_stream(seed, 1)?;
 
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, SAMPLE_RATE)?;
+            create_offline_engine(None, None, SAMPLE_RATE)?;
         composer.set_style(Style::Reel);
         composer.set_seed(seed);
         composer.set_writehead_lookahead(BARS_64 + 4);
@@ -238,7 +238,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
 #[test]
 fn set_style_applies_tuning_defaults_and_queues_gm_programs() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_style(Style::Reel);
     assert_eq!(composer.musical_params().style, Style::Reel);

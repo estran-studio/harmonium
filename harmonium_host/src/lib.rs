@@ -6,7 +6,7 @@ pub mod playback;
 
 // SoundFont resolution and fallback
 pub mod soundfont;
-pub use soundfont::load_soundfont;
+pub use soundfont::{load_feet_soundfont, load_soundfont};
 
 // Predictive transport clock (D1/D2): TransportClock, BeatInfo, ClockReader.
 pub mod clock;
