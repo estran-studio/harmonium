@@ -16,7 +16,7 @@ use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{
     events::AudioEvent,
     log,
-    params::{MusicalParams, PulseSpec},
+    params::{MusicalParams, PulseSpec, TimeSignature},
     timeline::{Measure, Playhead},
 };
 
@@ -334,6 +334,13 @@ pub struct PlaybackEngine {
 
     // Musical params snapshot for reports
     musical_params: MusicalParams,
+    // Signature of the measure under the playhead, captured at load.
+    measure_sig: TimeSignature,
+    // Tempo and signature last relayed to the renderer (MIDI file metas).
+    // Compared at each measure load; the relay fires only on change, so
+    // steady-state playback stays allocation-free.
+    reported_bpm: f32,
+    reported_signature: TimeSignature,
 
     // Report cache
     last_chord_name: ArrayString<64>,
@@ -424,6 +431,10 @@ impl PlaybackEngine {
             gain_snare: 0.5,
             gain_hat: 0.4,
             musical_params: MusicalParams::default(),
+            measure_sig: TimeSignature::default(),
+            // 0.0 BPM never matches a real measure: the first load relays once.
+            reported_bpm: 0.0,
+            reported_signature: TimeSignature::default(),
             last_chord_name: ArrayString::from("I").unwrap_or_default(),
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
@@ -463,6 +474,7 @@ impl PlaybackEngine {
                 self.drain_staged();
                 self.try_load()
             };
+            self.relay_measure_params();
         }
 
         let total_samples = output.len() / channels;
@@ -613,6 +625,8 @@ impl PlaybackEngine {
                 return Some(duration);
             }
         }
+        // Unguarded again: relay a newly loaded measure's tempo/signature.
+        self.relay_measure_params();
 
         // Cursor for the next entry: the advanced step's slot in the current
         // table (a newly opened pulse is frozen at its own entry above).
@@ -633,6 +647,26 @@ impl PlaybackEngine {
         };
 
         Some(duration)
+    }
+
+    /// Relay the sounding measure's tempo/signature to the renderer (the
+    /// MIDI recorder turns them into file metas). Fires only on change, so
+    /// steady-state playback stays allocation-free. Must run outside
+    /// `RtGuard`: building the params event allocates.
+    fn relay_measure_params(&mut self) {
+        if (self.measure_bpm - self.reported_bpm).abs() > 0.01
+            || self.measure_sig != self.reported_signature
+        {
+            self.reported_bpm = self.measure_bpm;
+            self.reported_signature = self.measure_sig;
+            let mut params = self.musical_params.clone();
+            params.bpm = self.measure_bpm;
+            params.time_signature = self.measure_sig;
+            params.set_swing_ratio(self.swing_ratio);
+            self.renderer.handle_event(AudioEvent::UpdateMusicalParams {
+                params: Box::new(params),
+            });
+        }
     }
 
     /// Step completion: publish the entered step, exactly one step duration
@@ -840,14 +874,19 @@ impl PlaybackEngine {
             let slot = self.window.remove(pos);
             debug_assert!(slot.epoch == self.epoch);
 
-            // Capture the measure's nominal tempo, swing ratio and dance-pulse
-            // spec before the box moves into the playhead (Copy fields).
+            // Capture the measure's nominal tempo, swing ratio, signature and
+            // dance-pulse spec before the box moves into the playhead (Copy
+            // fields). Sounding tempo/signature reach the renderer through
+            // `relay_measure_params` at the next unguarded point: this
+            // function runs under `RtGuard`, where allocating (Box, clone)
+            // would panic in debug builds.
             self.measure_bpm = slot.measure.tempo;
             self.swing_ratio = slot.measure.swing_ratio;
             if self.tempo_override.is_none() {
                 self.audible_bpm = self.measure_bpm;
             }
             self.current_pulse = slot.measure.pulse;
+            self.measure_sig = slot.measure.time_signature;
 
             // Update chord info for reports
             self.last_chord_name =
@@ -1123,6 +1162,14 @@ impl PlaybackEngine {
                     }
                 }
                 PlaybackCommand::UpdateMusicalParams(params) => {
+                    // Forwarded so recorders (MIDI tempo/signature metas,
+                    // MusicXML) track the commanded params; the measure load
+                    // path refines them to the sounding values on change.
+                    self.renderer.handle_event(AudioEvent::UpdateMusicalParams {
+                        params: params.clone(),
+                    });
+                    self.reported_bpm = params.bpm;
+                    self.reported_signature = params.time_signature;
                     self.musical_params = *params;
                 }
                 PlaybackCommand::SetTempo { bpm, ramp_pulses } => {
