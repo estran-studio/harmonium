@@ -47,7 +47,7 @@ immédiats.
 
 ## Intégration dans un jeu
 
-`harmonium::audio::create_offline_engine(sf2, sample_rate)` rend un
+`harmonium::audio::create_offline_engine(sf2, feet_sf2, sample_rate)` rend un
 `MusicComposer` et un `PlaybackEngine` sans ouvrir de périphérique : le jeu
 appelle `playback.process_buffer()` depuis son propre callback audio et
 `composer.generate_ahead()` depuis sa boucle principale.
