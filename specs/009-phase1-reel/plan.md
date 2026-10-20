@@ -153,6 +153,15 @@ P1-T8, à lancer après P1-T7.
 *Reel Béatrice* est la cible d'oreille du propriétaire. Traits à viser en
 phase 2 : mode mineur (la mineur), triolets de notes répétées (`(3eee`),
 trois parties (AABBCC), ambitus large (la2 à do6).
+### D12 — Cellules minées du corpus (P1-T9)
+
+- Banque `reel_cells.toml` : 180 cellules minées du corpus harmonium_lab (507 airs de reels québécois, extraction 2026-10-19), top 30 par rôle (`open`, `run`, `arp`, `turn`, `cad_half`, `cad_full`), `weight` = fréquence au corpus. Fichier unique de vérité : le `.weights.json` compagnon n'est pas versionné dans le moteur.
+- Les 13 cellules inventées du plan D5 et les 11 `open` de P1-T7 sont retirées ; les cellules d'origine présentes au corpus restent.
+- Degrés au-delà de 8 (`10`, `12`, `13`) et graves (`5,`, `7,`) : la validation `CellNote` (degrés 1..=14, −7..=−1, ambitus ≤ octave) les accepte déjà — cohérent avec l'ambitus du violon (tessitura G3–E6, `melody_center_midi` 71).
+- Tirage pondéré par rôle (même RNG, un seul tirage) ; `Cell::weight` > 0.
+- Cadences D4 : les cellules minées `cad_half`/`cad_full` ne finissent pas toutes comme le plan l'impose ; la sélection filtre via `Cell::respects_cadence` (m.4 sur 2/5/7 ; m.8 sur tonique, ou tonique tenue + croche de reprise). Corrigé dans la sélection, pas en réinventant des cellules.
+- Point d'entrée de validation Rust : `harmonium-cli --check-cells <fichier.toml>` (charge via `CellBank::from_toml`, sort 0/1 avec erreurs lisibles). `harmonium_lab` remplace son script Python par cet appel.
+- Contrat : banque embarquée 180 cellules (30 par rôle), poids > 0 ; tirage pondéré sur 10 000 tirages dans ±30 % du rapport des poids ; P1-T7 : ≥ 16/20 premières mesures distinctes (seeds 1..20 : 16), moyenne mélodique dans 68..75, B−A dans 0..4, deux tunes consécutifs ne commencent pas par la même cellule.
 
 ## Découpage
 

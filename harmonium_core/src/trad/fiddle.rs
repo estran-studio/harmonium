@@ -454,7 +454,7 @@ fn pick_cell_for_bar(
     };
 
     for base_cell in &bank.cells {
-        if !allowed_roles.contains(&base_cell.role) || is_excluded_cell(base_cell, excluded_cell) {
+        if !allowed_roles.contains(&base_cell.role) || !is_eligible_cell(base_cell, excluded_cell) {
             continue;
         }
         for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
@@ -483,7 +483,7 @@ fn pick_cell_for_bar(
 
     // Repli ultime si toutes les cellules permises étaient exclues (ex. banque à 1 cellule).
     for base_cell in &bank.cells {
-        if !allowed_roles.contains(&base_cell.role) {
+        if !allowed_roles.contains(&base_cell.role) || !base_cell.respects_cadence() {
             continue;
         }
         for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
@@ -540,6 +540,12 @@ fn draw_free_cell_role(params: &ReelFiddleParams, rng: &mut dyn RngCore) -> Cell
     CellRole::Run
 }
 
+/// Une cellule est tirable si elle respecte la cadence de son rôle (D4,
+/// [`Cell::respects_cadence`]) et n'est pas la cellule exclue.
+fn is_eligible_cell(candidate: &Cell, excluded_cell: Option<&Cell>) -> bool {
+    candidate.respects_cadence() && !is_excluded_cell(candidate, excluded_cell)
+}
+
 /// Indique si `candidate` correspond à la cellule exclue (à une transposition d'octave près).
 fn is_excluded_cell(candidate: &Cell, excluded_cell: Option<&Cell>) -> bool {
     excluded_cell.is_some_and(|excluded| same_cell_up_to_octave(candidate, excluded))
@@ -583,7 +589,7 @@ fn draw_cell_by_role<'a>(
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Option<&'a Cell> {
-    let eligible = |c: &Cell| !is_excluded_cell(c, excluded_cell);
+    let eligible = |c: &Cell| is_eligible_cell(c, excluded_cell);
     if let Some(cell) = draw_weighted(&bank.cells, |c| c.role == role && eligible(c), rng) {
         return Some(cell);
     }
@@ -743,6 +749,40 @@ mod tests {
 
     use super::*;
     use crate::trad::mode::Mode;
+
+    #[test]
+    fn weighted_draw_favors_heavier_cells_in_proportion() {
+        let bank = CellBank::default();
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        for role in CellRole::ALL {
+            let cells: Vec<&Cell> = bank.by_role(role).filter(|c| c.respects_cadence()).collect();
+            let (Some(heavy), Some(light)) = (
+                cells.iter().copied().max_by_key(|c| c.weight),
+                cells.iter().copied().min_by_key(|c| c.weight),
+            ) else {
+                panic!("rôle {role:?} sans cellule");
+            };
+            assert!(heavy.weight > light.weight, "poids uniformes pour {role:?}");
+
+            let (mut heavy_count, mut light_count) = (0u32, 0u32);
+            for _ in 0..10_000 {
+                let Some(drawn) = draw_cell_by_role(&bank, role, None, &mut rng) else {
+                    panic!("aucun tirage pour {role:?}");
+                };
+                if drawn == heavy {
+                    heavy_count += 1;
+                } else if drawn == light {
+                    light_count += 1;
+                }
+            }
+            let expected = f64::from(heavy.weight) / f64::from(light.weight);
+            let observed = f64::from(heavy_count) / f64::from(light_count);
+            assert!(
+                (observed / expected - 1.0).abs() <= 0.30,
+                "{role:?} : rapport observé {observed:.2} vs poids {expected:.2}"
+            );
+        }
+    }
 
     #[test]
     fn tonic_midi_falls_in_g3_to_fsharp4() {
