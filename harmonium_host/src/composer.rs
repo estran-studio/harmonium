@@ -807,6 +807,11 @@ impl MusicComposer {
         self.musical_params.enable_voicing = e;
     }
 
+    /// Arrête la génération après le dernier tour de l'air courant (outro, P1-T11).
+    pub fn set_end_after_tour(&mut self, e: bool) {
+        self.musical_params.end_after_tour = e;
+    }
+
     pub fn set_rhythm_mode(&mut self, m: harmonium_core::sequencer::RhythmMode) {
         self.musical_params.rhythm_mode = m;
     }
