@@ -31,8 +31,8 @@ pub mod mode;
 pub mod plan;
 pub use accomp::{Guitarist, bass_bar};
 pub use arrangement::{
-    ArrangementError, BARS_PER_TOUR, EntryPoint, MAX_TOURS, Part, REEL_ARRANGEMENT_TOML,
-    ReelArrangement, TrackEntries, TunePosition,
+    ArrangementError, BARS_PER_TOUR, EntryPoint, IntroConfig, IntroForm, IntroInfo, IntroRole,
+    MAX_TOURS, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, Section, TrackEntries, TunePosition,
 };
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, FIFTH_DIATONIC_STEPS,

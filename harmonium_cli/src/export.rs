@@ -69,6 +69,10 @@ pub fn run(
     if let Some(n) = tours {
         composer.set_tours_per_tune(n).map_err(|e| anyhow::anyhow!("--tours : {e}"))?;
     }
+    // --bars implique une fin après le dernier tour complet (outro, P1-T11)
+    if target_bars.is_some() {
+        composer.set_end_after_tour(true);
+    }
     composer.invalidate_future();
 
     if let Some((bar, _)) = composer.take_pending_drop() {

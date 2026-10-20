@@ -6,7 +6,8 @@ use harmonium_core::{
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{GenerationContext, TrackId},
     trad::{
-        ArrangementError, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator, TunePosition,
+        ArrangementError, IntroConfig, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator,
+        TunePosition,
     },
     tuning::TuningParams,
 };
@@ -40,7 +41,15 @@ fn stream_with(
 }
 
 fn stream(seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
-    stream_with(seed, bars, reel_params(), TuningParams::default())
+    stream_with(seed, bars, reel_params(), flat_tuning())
+}
+
+/// Tuning avec les entrées D11 par défaut mais sans intro (P1-T11) :
+/// garde les tests D11 indépendants de l'intro.
+fn flat_tuning() -> TuningParams {
+    let mut tuning = TuningParams::default();
+    tuning.reel_arrangement.intro = IntroConfig::none();
+    tuning
 }
 
 fn track(snap: &MeasureSnapshot, track: TrackId) -> Vec<&NoteSnapshot> {
@@ -131,7 +140,7 @@ fn later_tours_do_not_consume_the_rng() {
     for seed in SEEDS {
         let linear = stream(seed, 100);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut sought = TradGenerator::new(reel_params(), TuningParams::default());
+        let mut sought = TradGenerator::new(reel_params(), flat_tuning());
         sought.reset_to_initial(&GenerationContext {
             session_seed: seed,
             key: PitchSymbol::D,
@@ -184,7 +193,7 @@ fn game_flags_cap_the_arrangement() {
     let ceiling = |edit: fn(&mut MusicalParams)| {
         let mut params = reel_params();
         edit(&mut params);
-        stream_with(1, 97, params, TuningParams::default())
+        stream_with(1, 97, params, flat_tuning())
     };
     let no_rhythm = ceiling(|p| p.enable_rhythm = false);
     let no_harmony = ceiling(|p| p.enable_harmony = false);
@@ -203,7 +212,7 @@ fn game_flags_cap_the_arrangement() {
     // feet_density 0 : plus de pointe, le talon reste.
     let mut params = reel_params();
     params.set_feet_density(0);
-    let snaps = stream_with(1, 40, params, TuningParams::default());
+    let snaps = stream_with(1, 40, params, flat_tuning());
     assert!(has(bar(&snaps, 40), TrackId::Heel) && !has(bar(&snaps, 40), TrackId::Toe));
 }
 
@@ -233,7 +242,7 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
 
 #[test]
 fn intro_each_tune_replays_the_progressive_entries() {
-    let mut tuning = TuningParams::default();
+    let mut tuning = flat_tuning();
     tuning.reel_arrangement.intro_each_tune = true;
     let snaps = stream_with(1, 106, reel_params(), tuning);
     for t in [TrackId::Chords, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
@@ -245,7 +254,7 @@ fn intro_each_tune_replays_the_progressive_entries() {
 
 #[test]
 fn tours_per_tune_controls_the_tune_length() -> Result<(), String> {
-    let mut tuning = TuningParams::default();
+    let mut tuning = flat_tuning();
     tuning.reel_arrangement.tours_per_tune = 1;
     let snaps = stream_with(1, 33, reel_params(), tuning);
     let pos = position(&snaps, 33)?;
