@@ -1028,6 +1028,21 @@ impl MusicComposer {
         self.generator.update_tuning(tuning);
     }
 
+    /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
+    #[must_use]
+    pub fn tours_per_tune(&self) -> usize {
+        self.generator.tuning().reel_arrangement.tours_per_tune
+    }
+
+    /// Force le nombre de tours par air (D11) ; refuse une valeur hors `1..=MAX_TOURS`.
+    pub fn set_tours_per_tune(&mut self, tours: usize) -> Result<(), String> {
+        let mut tuning = self.generator.tuning().clone();
+        tuning.reel_arrangement.tours_per_tune = tours;
+        tuning.reel_arrangement.validate().map_err(|e| e.to_string())?;
+        self.generator.update_tuning(tuning);
+        Ok(())
+    }
+
     /// Reset the RNG to a deterministic seed (for reproducible rendering).
     pub fn set_rng_seed(&mut self, seed: u64) {
         self.rng = ChaCha8Rng::seed_from_u64(seed);

@@ -8,7 +8,7 @@ use harmonium_core::{
     params::{MusicalParams, Style},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{TradGenerator, same_cell_up_to_octave},
+    trad::{ReelArrangement, TradGenerator, same_cell_up_to_octave},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -16,6 +16,13 @@ use rand_chacha::ChaCha8Rng;
 
 const NUM_SEEDS: u32 = 20;
 const BARS_32: usize = 32;
+
+/// Tuning « un seul tour, tout le monde dès la mesure 1 » : isole la forme, l'harmonie
+/// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
+/// `trad_arrangement_tests`.
+fn flat_tuning() -> TuningParams {
+    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+}
 
 fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
@@ -31,7 +38,7 @@ fn reel_params(feet_density: u8) -> MusicalParams {
 
 fn generate_32_snapshots(seed: u64, feet_density: u8) -> (TradGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(reel_params(feet_density), TuningParams::default());
+    let mut trad_gen = TradGenerator::new(reel_params(feet_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_32);
     for bar in 1..=BARS_32 {
         let m = trad_gen.generate_measure(bar, &mut rng);
@@ -108,7 +115,7 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
     for seed_u32 in 1..=NUM_SEEDS {
         let seed = u64::from(seed_u32);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut trad_gen = TradGenerator::new(reel_params(1), TuningParams::default());
+        let mut trad_gen = TradGenerator::new(reel_params(1), flat_tuning());
         for bar in 1..=64 {
             let _ = trad_gen.generate_measure(bar, &mut rng);
         }

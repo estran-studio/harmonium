@@ -26,6 +26,7 @@ pub fn run(
     style: Option<Style>,
     seed: Option<u64>,
     feet_density: Option<u8>,
+    tours: Option<usize>,
     record_wav: Option<String>,
     record_midi: Option<String>,
     record_musicxml: Option<String>,
@@ -49,6 +50,9 @@ pub fn run(
     if let Some(fd) = feet_density {
         composer.set_feet_density(fd);
     }
+    if let Some(n) = tours {
+        composer.set_tours_per_tune(n).map_err(|e| anyhow::anyhow!("--tours : {e}"))?;
+    }
     composer.invalidate_future();
 
     if let Some((bar, _)) = composer.take_pending_drop() {
@@ -67,21 +71,23 @@ pub fn run(
     if composer.musical_params().style == Style::Reel {
         let mp = composer.musical_params();
         println!(
-            "Reel export: seed={}, feet={}, bpm={:.1}, swing={:.2}, sig={}/{}",
+            "Reel export: seed={}, feet={}, tours/air={}, bpm={:.1}, swing={:.2}, sig={}/{}",
             composer.session_seed(),
             mp.feet_density,
+            composer.tours_per_tune(),
             mp.bpm,
             mp.swing_ratio,
             mp.time_signature.numerator,
             mp.time_signature.denominator
         );
-        for tune_start_bar in [1usize, 33] {
+        let bars_per_tune = harmonium_core::trad::BARS_PER_TOUR * composer.tours_per_tune();
+        for tune_start_bar in (1..=initial_bars).step_by(bars_per_tune) {
             if let Some((plan, _)) = composer.reel_bar_info(tune_start_bar) {
                 println!(
                     "  Tune {} (bars {}..={}): {} {:?}",
-                    (tune_start_bar - 1) / 32 + 1,
+                    (tune_start_bar - 1) / bars_per_tune + 1,
                     tune_start_bar,
-                    tune_start_bar + 31,
+                    tune_start_bar + bars_per_tune - 1,
                     harmonium_core::trad::pitch_class_name(plan.key),
                     plan.mode
                 );

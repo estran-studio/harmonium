@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     harmony::steedman_grammar::GrammarStyle,
     params::TimeSignature,
-    trad::{cells::CellBank, feet::FeetTable, harmony::ChordDegree},
+    trad::{arrangement::ReelArrangement, cells::CellBank, feet::FeetTable, harmony::ChordDegree},
 };
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
@@ -18,7 +18,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 3;
+pub const TUNING_VERSION: u32 = 4;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -614,6 +614,9 @@ pub struct TuningParams {
     /// Table de podorythmie du reel traditionnel québécois (D9, constitution V).
     #[serde(default)]
     pub reel_feet: FeetTable,
+    /// Tours d'un air et entrées progressives des pistes du reel (D11, constitution V).
+    #[serde(default)]
+    pub reel_arrangement: ReelArrangement,
 }
 
 impl Default for TuningParams {
@@ -632,6 +635,7 @@ impl Default for TuningParams {
             reel_cells: CellBank::default(),
             trad_harmony: TradHarmonyParams::default(),
             reel_feet: FeetTable::default(),
+            reel_arrangement: ReelArrangement::default(),
         }
     }
 }
@@ -1152,6 +1156,10 @@ impl TuningParams {
         if let Err(err) = self.reel_feet.validate() {
             errors.push(ValidationError { field: "reel_feet", message: err.to_string() });
         }
+        // --- ReelArrangement (D11) ---
+        if let Err(err) = self.reel_arrangement.validate() {
+            errors.push(ValidationError { field: "reel_arrangement", message: err.to_string() });
+        }
 
         // --- TradHarmonyParams (D7, D8) ---
         let th = &self.trad_harmony;
@@ -1477,6 +1485,8 @@ pub struct TuningOverlay {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trad_harmony: Option<TradHarmonyParams>,
     pub reel_feet: Option<FeetTable>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reel_arrangement: Option<ReelArrangement>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1650,6 +1660,9 @@ impl TuningParams {
         if let Some(reel_feet) = &overlay.reel_feet {
             result.reel_feet = reel_feet.clone();
         }
+        if let Some(reel_arrangement) = &overlay.reel_arrangement {
+            result.reel_arrangement = *reel_arrangement;
+        }
 
         if let Some(trad_harmony) = &overlay.trad_harmony {
             result.trad_harmony = trad_harmony.clone();
@@ -1789,6 +1802,22 @@ mod tests {
         tp.reel_feet.patterns.clear();
         let errs = tp.validate().unwrap_err();
         assert!(errs.iter().any(|e| e.field == "reel_feet"));
+    }
+
+    #[test]
+    fn validation_catches_invalid_reel_arrangement() {
+        let mut tp = TuningParams::default();
+        tp.reel_arrangement.entries.heel.tour = 0;
+        let errs = tp.validate().err().unwrap_or_default();
+        assert!(errs.iter().any(|e| e.field == "reel_arrangement"));
+    }
+
+    #[test]
+    fn overlay_applies_reel_arrangement() {
+        let custom = ReelArrangement { tours_per_tune: 5, ..ReelArrangement::default() };
+        let overlay = TuningOverlay { reel_arrangement: Some(custom), ..Default::default() };
+        let result = TuningParams::default().with_overlay(&overlay);
+        assert_eq!(result.reel_arrangement.tours_per_tune, 5);
     }
 
     #[test]

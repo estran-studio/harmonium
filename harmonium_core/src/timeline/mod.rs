@@ -211,6 +211,8 @@ pub struct Measure {
     pub swing_ratio: f32,
     /// Dance pulse captured at generation time (see `MusicalParams::pulse`)
     pub pulse: PulseSpec,
+    /// Position de la mesure dans l'air (tour, partie, passe) ; `None` hors style trad.
+    pub position: Option<crate::trad::TunePosition>,
     /// Chord context for this measure
     pub chord_context: ChordContext,
     /// State snapshot at generation time
@@ -235,6 +237,7 @@ impl Measure {
             steps,
             swing_ratio: 0.5,
             pulse: PulseSpec::default(),
+            position: None,
             chord_context: ChordContext::default(),
             state_snapshot: StateSnapshot::default(),
             tracks,

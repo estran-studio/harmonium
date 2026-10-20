@@ -4,7 +4,7 @@ use harmonium_core::{
     params::{MusicalParams, PulseSpec, Style},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{GenerationContext, TrackId},
-    trad::{TradGenerator, TunePlan, is_same_or_relative_plan},
+    trad::{ReelArrangement, TradGenerator, TunePlan, is_same_or_relative_plan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -13,6 +13,13 @@ use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
 const NUM_SEEDS: u64 = 20;
 const BARS_64: usize = 64;
+
+/// Tuning « un seul tour, tout le monde dès la mesure 1 » : isole la forme, l'harmonie
+/// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
+/// `trad_arrangement_tests`.
+fn flat_tuning() -> TuningParams {
+    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+}
 
 fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
@@ -28,7 +35,7 @@ fn reel_params(feet_density: u8) -> MusicalParams {
 
 fn generate_64_snapshots(seed: u64, feet_density: u8) -> (TradGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(reel_params(feet_density), TuningParams::default());
+    let mut trad_gen = TradGenerator::new(reel_params(feet_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_64);
     for bar in 1..=BARS_64 {
         let m = trad_gen.generate_measure(bar, &mut rng);
@@ -212,7 +219,7 @@ fn trad_generator_silent_advance_matches_linear() {
     let (_, linear) = generate_64_snapshots(seed, 1);
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut sought = TradGenerator::new(reel_params(1), TuningParams::default());
+    let mut sought = TradGenerator::new(reel_params(1), flat_tuning());
     let ctx = GenerationContext {
         session_seed: seed,
         key: PitchSymbol::D,

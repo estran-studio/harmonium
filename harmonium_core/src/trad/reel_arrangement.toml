@@ -1,0 +1,30 @@
+# Arrangement du reel : tours d'un air et entrées progressives (D11, constitution V).
+#
+# Un air est joué `tours_per_tune` tours AABB de 32 mesures avant d'en tirer un
+# nouveau ; chaque tour rejoue la même ligne et la même harmonie.
+#
+# Chaque piste entre à une position `{ tour, part, pass }` :
+#   tour : 1..=16 (borné au dernier tour de l'air s'il le dépasse) ;
+#   part : "A" ou "B" ;
+#   pass : 1 ou 2 (première ou seconde passe de la partie, 8 mesures chacune).
+# Une piste joue de cette position jusqu'à la fin de l'air.
+#
+# Les drapeaux de jeu (`enable_melody`, `enable_harmony`, `enable_rhythm`,
+# `feet_density`) restent des plafonds : une piste joue si ce tableau
+# l'autorise ET si le drapeau le permet.
+
+tours_per_tune = 3
+
+# `false` : à partir du 2e air, tout le monde joue dès A1 du tour 1.
+# `true`  : chaque air rejoue l'entrée progressive.
+intro_each_tune = false
+
+[entries]
+# Le violon part seul et fait la première phrase.
+Melody = { tour = 1, part = "A", pass = 1 }
+# Guitare et basse entrent à la reprise de A.
+Chords = { tour = 1, part = "A", pass = 2 }
+Bass = { tour = 1, part = "A", pass = 2 }
+# Les pieds entrent au deuxième tour.
+Heel = { tour = 2, part = "A", pass = 1 }
+Toe = { tour = 2, part = "A", pass = 1 }

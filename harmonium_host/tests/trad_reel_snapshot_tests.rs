@@ -6,12 +6,18 @@ use harmonium_core::{
     params::{PulseSpec, Style, TimeSignature},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{TunePlan, is_same_or_relative_plan},
+    trad::{ReelArrangement, TunePlan, is_same_or_relative_plan},
+    tuning::TuningParams,
 };
 
 const SAMPLE_RATE: f64 = 44100.0;
 const NUM_SEEDS: u64 = 20;
 const BARS_64: usize = 64;
+
+/// Un seul tour, tout le monde dès la mesure 1 : isole forme et accompagnement de D11.
+fn flat_tuning() -> TuningParams {
+    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+}
 
 /// Génère 64 mesures de `Style::Reel` via `create_offline_engine` pour un seed et une densité donnés.
 fn generate_offline_reel_stream(
@@ -21,6 +27,7 @@ fn generate_offline_reel_stream(
     let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
         create_offline_engine(None, SAMPLE_RATE)?;
 
+    composer.set_tuning(flat_tuning());
     composer.set_style(Style::Reel);
     composer.set_feet_density(feet_density);
     composer.set_seed(seed);
@@ -213,6 +220,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
 
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, SAMPLE_RATE)?;
+        composer.set_tuning(flat_tuning());
         composer.set_style(Style::Reel);
         composer.set_seed(seed);
         composer.set_writehead_lookahead(BARS_64 + 4);

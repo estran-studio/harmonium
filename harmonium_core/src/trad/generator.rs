@@ -1,12 +1,15 @@
 //! Générateur de mesures [`TradGenerator`] pour le style [`crate::params::Style::Reel`] (D1, D3, D4, D6–D9).
 //!
 //! Produit des [`Measure`] complètes en 2/2 (16 pas, pulse blanche de 8 pas) :
-//! - au début de chaque tune de 32 mesures (forme AABB), tire un [`TunePlan`],
-//!   construit la [`FiddleLine`] et la [`TuneHarmony`] ;
+//! - au début de chaque air, tire un [`TunePlan`], construit la [`FiddleLine`] et
+//!   la [`TuneHarmony`] ; l'air est ensuite joué `tours_per_tune` tours AABB de
+//!   32 mesures, chaque tour rejouant exactement la même ligne et la même harmonie ;
 //! - pour les tunes suivants, tire au seed soit la même tonalité, soit sa relative ;
 //! - pour chaque mesure : peuple `Melody` (violon), `Chords` (guitare chop) et
 //!   `Bass` (basse fondamentale/quinte), ainsi que `Heel` et `Toe` selon
-//!   `MusicalParams::feet_density` ;
+//!   `MusicalParams::feet_density`, pour les seules pistes actives (l'arrangement
+//!   [`ReelArrangement`] les autorise ET le drapeau `enable_*` le permet) ;
+//! - expose la [`TunePosition`] de la mesure (`Measure::position`) ;
 //! - remplit `Measure::chord_context` depuis l'accord de la première demi-mesure
 //!   avec un nom lisible (ex. `"D"`, `"G"`, `"A"`, `"Bm"`, `"Em"`).
 
@@ -14,6 +17,7 @@ use std::collections::BTreeMap;
 
 use super::{
     accomp::{Guitarist, bass_bar},
+    arrangement::TunePosition,
     cells::Cell,
     feet::feet_notes,
     fiddle::{BARS_PER_STRAIN, FiddleLine, same_cell_up_to_octave},
@@ -30,19 +34,16 @@ use crate::{
     tuning::{ReelFiddleParams, TuningParams},
 };
 
-/// Nombre de mesures par tune AABB complet (32 mesures : A1 + A2 + B1 + B2).
-pub const BARS_PER_TUNE: usize = 32;
-
-/// État d'un tune de 32 mesures généré par [`TradGenerator`].
+/// État d'un air généré par [`TradGenerator`] (rejoué `tours_per_tune` tours).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActiveTune {
-    /// Indice 0-based du tune (`(bar_1based - 1) / 32`).
+    /// Indice 0-based de l'air dans la session.
     pub tune_index: usize,
     /// Plan structurel du tune (tonalité, mode, type, schéma AABB).
     pub plan: TunePlan,
-    /// Ligne de violon des 32 mesures du tune.
+    /// Ligne de violon des 32 mesures d'un tour.
     pub fiddle: FiddleLine,
-    /// Harmonie par demi-mesure des 32 mesures du tune.
+    /// Harmonie par demi-mesure des 32 mesures d'un tour.
     pub harmony: TuneHarmony,
 }
 
@@ -53,7 +54,7 @@ pub struct TradGenerator {
     pub musical_params: MusicalParams,
     /// Paramètres de style et banques de données (cellules, podorythmie, harmonie).
     pub tuning: TuningParams,
-    /// Tunes générés indexés par `tune_index` (`0` = mesures 1..=32, `1` = mesures 33..=64, etc.).
+    /// Airs générés indexés par `tune_index` (`0` = mesures 1..=32×tours, etc.).
     tunes: BTreeMap<usize, ActiveTune>,
     /// Compteur monotone d'identifiants de notes.
     next_note_id: NoteId,
@@ -115,7 +116,7 @@ impl TradGenerator {
     /// Retourne le tune actif correspondant à la mesure 1-based `bar_number`, s'il a été généré.
     #[must_use]
     pub fn tune_for_bar(&self, bar_number: usize) -> Option<&ActiveTune> {
-        let tune_idx = bar_number.saturating_sub(1) / BARS_PER_TUNE;
+        let tune_idx = self.position_of(bar_number).tune_index;
         self.tunes.get(&tune_idx).or_else(|| self.tunes.values().last())
     }
 
@@ -127,13 +128,30 @@ impl TradGenerator {
         Some((tune.plan, role))
     }
 
+    /// Position structurée de la mesure 1-based `bar_number` (unique conversion
+    /// mesure → `(tune_index, tour, part, pass, bar_in_strain)`).
+    #[must_use]
+    pub fn position_of(&self, bar_number: usize) -> TunePosition {
+        TunePosition::at_bar(bar_number, self.tuning.reel_arrangement.tours_per_tune)
+    }
+
+    /// Vrai si `track` joue à `position` : l'arrangement l'autorise ET le drapeau
+    /// `enable_*` du jeu le permet. Seul calcul de « piste active ».
+    fn track_active(&self, track: TrackId, position: &TunePosition) -> bool {
+        let flag = match track {
+            TrackId::Melody => self.musical_params.enable_melody,
+            TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
+            TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
+        };
+        flag && self.tuning.reel_arrangement.allows(track, position)
+    }
+
     /// Génère une [`Measure`] complète pour `bar_index` (1-based dans le flux du moteur).
     pub fn generate_measure(&mut self, bar_index: usize, rng: &mut dyn RngCore) -> Measure {
         self.current_bar = bar_index;
-        let bar_1based = bar_index.max(1);
-        let zero_based = bar_1based - 1;
-        let tune_index = zero_based / BARS_PER_TUNE;
-        let bar_in_tune = zero_based % BARS_PER_TUNE;
+        let position = self.position_of(bar_index);
+        let tune_index = position.tune_index;
+        let bar_in_tour = position.bar_in_tour();
 
         self.ensure_tune_generated(tune_index, rng);
 
@@ -144,6 +162,7 @@ impl TradGenerator {
 
         let mut measure = Measure::new(bar_index, time_sig, tempo, steps);
         measure.pulse = kind.pulse_spec();
+        measure.position = Some(position);
         measure.swing_ratio = self.musical_params.swing_ratio;
         measure.state_snapshot = StateSnapshot {
             bpm: tempo,
@@ -159,66 +178,73 @@ impl TradGenerator {
         };
 
         let plan = tune.plan;
-        let chords = tune.harmony.chords_for_bar(bar_in_tune);
+        let chords = tune.harmony.chords_for_bar(bar_in_tour);
         measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
 
         // 1. Mélodie (violon, D6)
-        let melody_notes = tune.fiddle.notes_for_bar(bar_in_tune);
-        if self.musical_params.enable_melody {
-            for mut note in melody_notes {
+        if self.track_active(TrackId::Melody, &position) {
+            for mut note in tune.fiddle.notes_for_bar(bar_in_tour) {
                 note.id = self.alloc_note_id();
                 measure.add_note(TrackId::Melody, note);
             }
         }
 
         // 2. Accompagnement (guitare chop + basse, D8)
-        let chop_notes = self.chop_notes_for_bar(&tune, bar_in_tune);
-        let next_note_id = &mut self.next_note_id;
-        let mut next_id = || {
-            let id = *next_note_id;
-            *next_note_id += 1;
-            id
-        };
-        let bass_notes =
-            bass_bar(chords, plan.key, plan.mode, &self.tuning.trad_harmony, &mut next_id);
-        if self.musical_params.enable_harmony {
-            for note in chop_notes {
+        if self.track_active(TrackId::Chords, &position) {
+            for note in self.chop_notes_for_bar(&tune, bar_in_tour) {
                 measure.add_note(TrackId::Chords, note);
             }
-            for note in bass_notes {
+        }
+        if self.track_active(TrackId::Bass, &position) {
+            let next_note_id = &mut self.next_note_id;
+            let mut next_id = || {
+                let id = *next_note_id;
+                *next_note_id += 1;
+                id
+            };
+            for note in
+                bass_bar(chords, plan.key, plan.mode, &self.tuning.trad_harmony, &mut next_id)
+            {
                 measure.add_note(TrackId::Bass, note);
             }
         }
 
         // 3. Podorythmie (talon + pointe, D9)
-        let (heel_notes, toe_notes) =
-            feet_notes(&self.tuning.reel_feet, self.musical_params.feet_density, steps);
-        if self.musical_params.enable_rhythm {
-            for mut note in heel_notes {
-                note.id = self.alloc_note_id();
-                measure.add_note(TrackId::Heel, note);
+        let heel_active = self.track_active(TrackId::Heel, &position);
+        let toe_active = self.track_active(TrackId::Toe, &position);
+        if heel_active || toe_active {
+            let (heel_notes, toe_notes) =
+                feet_notes(&self.tuning.reel_feet, self.musical_params.feet_density, steps);
+            if heel_active {
+                for mut note in heel_notes {
+                    note.id = self.alloc_note_id();
+                    measure.add_note(TrackId::Heel, note);
+                }
             }
-            for mut note in toe_notes {
-                note.id = self.alloc_note_id();
-                measure.add_note(TrackId::Toe, note);
+            if toe_active {
+                for mut note in toe_notes {
+                    note.id = self.alloc_note_id();
+                    measure.add_note(TrackId::Toe, note);
+                }
             }
         }
 
         measure
     }
 
-    /// Calcule les chops de guitare de `bar_in_tune` en rejouant le [`Guitarist`]
-    /// depuis le début de la passe de strain courante (`(bar_in_tune / 8) * 8`),
-    /// garantissant des reprises A1=A2 et B1=B2 identiques même après invalidation.
-    fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tune: usize) -> Vec<TimelineNote> {
-        let strain_pass_start = (bar_in_tune / BARS_PER_STRAIN) * BARS_PER_STRAIN;
+    /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`Guitarist`]
+    /// depuis le début de la passe de strain courante (`(bar_in_tour / 8) * 8`),
+    /// garantissant des reprises A1=A2, B1=B2 et des tours identiques même après
+    /// invalidation.
+    fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
+        let strain_pass_start = (bar_in_tour / BARS_PER_STRAIN) * BARS_PER_STRAIN;
         let mut guitarist = Guitarist::new();
         let mut dummy_id = 0u64;
         let mut dummy_next = || {
             dummy_id += 1;
             dummy_id
         };
-        for b in strain_pass_start..bar_in_tune {
+        for b in strain_pass_start..bar_in_tour {
             let c = tune.harmony.chords_for_bar(b);
             let _ = guitarist.chop_bar(
                 c,
@@ -228,7 +254,7 @@ impl TradGenerator {
                 &mut dummy_next,
             );
         }
-        let chords = tune.harmony.chords_for_bar(bar_in_tune);
+        let chords = tune.harmony.chords_for_bar(bar_in_tour);
         let next_note_id = &mut self.next_note_id;
         let mut next_id = || {
             let id = *next_note_id;
@@ -394,7 +420,10 @@ mod tests {
     use rand_chacha::ChaCha8Rng;
 
     use super::*;
-    use crate::params::{PulseSpec, Style, TimeSignature};
+    use crate::{
+        params::{PulseSpec, Style, TimeSignature},
+        trad::ReelArrangement,
+    };
 
     fn make_reel_params() -> MusicalParams {
         let rf = ReelFiddleParams::default();
@@ -410,7 +439,11 @@ mod tests {
     fn measure_metadata_matches_d3_and_params() {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         let params = make_reel_params();
-        let mut trad_gen = TradGenerator::new(params, TuningParams::default());
+        let tuning = TuningParams {
+            reel_arrangement: ReelArrangement::from_start(3),
+            ..TuningParams::default()
+        };
+        let mut trad_gen = TradGenerator::new(params, tuning);
 
         let m1 = trad_gen.generate_measure(1, &mut rng);
         assert_eq!(m1.index, 1);
@@ -421,7 +454,7 @@ mod tests {
         assert!((m1.tempo - 230.0).abs() < f32::EPSILON);
         assert!(!m1.chord_context.chord_name.is_empty());
 
-        // Les 5 pistes doivent être peuplées en densité de pieds 1
+        // Arrangement plat : les 5 pistes sont peuplées dès la mesure 1 en densité de pieds 1
         assert!(!m1.notes_for_track(TrackId::Melody).is_empty());
         assert_eq!(m1.notes_for_track(TrackId::Chords).len(), 6);
         assert_eq!(m1.notes_for_track(TrackId::Bass).len(), 2);
@@ -434,11 +467,11 @@ mod tests {
         for seed in 0..20 {
             let mut rng = ChaCha8Rng::seed_from_u64(seed);
             let mut trad_gen = TradGenerator::new(make_reel_params(), TuningParams::default());
-            for bar in 1..=64 {
+            for bar in 1..=97 {
                 let _ = trad_gen.generate_measure(bar, &mut rng);
             }
             let tune1 = trad_gen.tune_for_bar(1).map(|t| t.plan);
-            let tune2 = trad_gen.tune_for_bar(33).map(|t| t.plan);
+            let tune2 = trad_gen.tune_for_bar(97).map(|t| t.plan);
             assert!(tune1.is_some() && tune2.is_some());
             if let (Some(p1), Some(p2)) = (tune1, tune2) {
                 assert!(
