@@ -436,10 +436,11 @@ mod tests {
     }
 
     fn params_at(bpm: f32, numerator: usize, denominator: usize) -> MusicalParams {
-        let mut params = MusicalParams::default();
-        params.bpm = bpm;
-        params.time_signature = TimeSignature { numerator, denominator };
-        params
+        MusicalParams {
+            bpm,
+            time_signature: TimeSignature { numerator, denominator },
+            ..MusicalParams::default()
+        }
     }
 
     fn advance(rec: &mut RecorderBackend, steps: f64) {
@@ -453,7 +454,7 @@ mod tests {
     /// signature metas, one `NoteOff` per `NoteOn` (same channel and pitch),
     /// `AllNotesOff` translated, truncated rings closed at stop.
     #[test]
-    fn midi_mirrors_tempo_signature_and_note_lifetimes() {
+    fn midi_mirrors_tempo_signature_and_note_lifetimes() -> Result<(), String> {
         let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
         let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
 
@@ -470,10 +471,10 @@ mod tests {
         rec.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3 });
         rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
 
-        let queue = finished.lock().expect("recordings lock");
+        let queue = finished.lock().map_err(|e| e.to_string())?;
         assert_eq!(queue.len(), 1);
         assert_eq!(queue[0].0, RecordFormat::Midi);
-        let smf = midly::Smf::parse(&queue[0].1).expect("valid MIDI");
+        let smf = midly::Smf::parse(&queue[0].1).map_err(|e| e.to_string())?;
         assert_eq!(smf.tracks.len(), 1);
         let track = &smf.tracks[0];
 
@@ -514,11 +515,12 @@ mod tests {
         // Ch 3 (heel) is mapped to GM drums (9); the truncated 40 still closes.
         assert_eq!(ons, vec![(0, 60), (0, 62), (9, 40)], "ons: {ons:?}");
         assert_eq!(offs, vec![(0, 60), (0, 62), (9, 40)], "offs: {offs:?}");
+        Ok(())
     }
 
     /// A tempo or signature change mid-recording lands in the file.
     #[test]
-    fn midi_follows_mid_recording_tempo_change() {
+    fn midi_follows_mid_recording_tempo_change() -> Result<(), String> {
         let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
         let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
 
@@ -528,8 +530,8 @@ mod tests {
         rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(240.0, 2, 2)) });
         rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
 
-        let queue = finished.lock().expect("recordings lock");
-        let smf = midly::Smf::parse(&queue[0].1).expect("valid MIDI");
+        let queue = finished.lock().map_err(|e| e.to_string())?;
+        let smf = midly::Smf::parse(&queue[0].1).map_err(|e| e.to_string())?;
         let tempos: Vec<u32> = smf.tracks[0]
             .iter()
             .filter_map(|e| match e.kind {
@@ -542,5 +544,6 @@ mod tests {
             vec![(60_000_000.0 / 200.0) as u32, (60_000_000.0 / 240.0) as u32],
             "tempos: {tempos:?}"
         );
+        Ok(())
     }
 }

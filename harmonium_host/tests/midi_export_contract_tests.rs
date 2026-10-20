@@ -31,9 +31,9 @@ struct Export {
 /// Render `bars` reel bars offline (silent synth) with the given export
 /// settings, mirroring `harmonium_cli::export::run`, and return the recorded
 /// MIDI bytes plus the rendered audio duration.
-fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Export {
+fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
-        create_offline_engine(None, SAMPLE_RATE).expect("offline engine");
+        create_offline_engine(None, SAMPLE_RATE)?;
 
     composer.set_seed(seed);
     composer.set_style(Style::Reel);
@@ -67,9 +67,7 @@ fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Ex
             break;
         }
         composer.generate_ahead();
-        for s in &mut buffer {
-            *s = 0.0;
-        }
+        buffer.fill(0.0);
         playback.process_buffer(&mut buffer, CHANNELS, Instant::now());
         rendered_samples += BUFFER_SIZE;
         while report_rx.pop().is_ok() {}
@@ -79,18 +77,20 @@ fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Ex
     buffer.fill(0.0);
     playback.process_buffer(&mut buffer, CHANNELS, Instant::now());
 
-    let queue = finished.lock().expect("recordings lock");
+    let queue = finished.lock().map_err(|e| e.to_string())?;
     let midi = queue
         .iter()
         .find(|(fmt, _)| *fmt == RecordFormat::Midi)
         .map(|(_, data)| data.clone())
-        .expect("one MIDI recording");
-    Export { midi, rendered_secs: rendered_samples as f64 / SAMPLE_RATE }
+        .ok_or("one MIDI recording")?;
+    Ok(Export { midi, rendered_secs: rendered_samples as f64 / SAMPLE_RATE })
 }
 
 /// Absolute-tick note events of a single-track recording: `(tick, on, channel, pitch)`.
-fn note_events(smf: &Smf) -> Vec<(u32, bool, u8, u8)> {
-    assert_eq!(smf.tracks.len(), 1, "single-track recording");
+fn note_events(smf: &Smf) -> Result<Vec<(u32, bool, u8, u8)>, String> {
+    if smf.tracks.len() != 1 {
+        return Err("single-track recording".to_string());
+    }
     let mut out = Vec::new();
     let mut tick = 0u32;
     for e in &smf.tracks[0] {
@@ -107,7 +107,7 @@ fn note_events(smf: &Smf) -> Vec<(u32, bool, u8, u8)> {
             _ => {}
         }
     }
-    out
+    Ok(out)
 }
 
 fn tempos(smf: &Smf) -> Vec<u32> {
@@ -123,10 +123,10 @@ fn tempos(smf: &Smf) -> Vec<u32> {
 /// Every NoteOn closes with a NoteOff on the same channel and pitch, in
 /// order: simulate the sounding set, which must drain exactly.
 #[test]
-fn midi_noteons_all_have_noteoffs() {
-    let export = render_reel(1, 8, None, false);
-    let smf = Smf::parse(&export.midi).expect("valid MIDI");
-    let events = note_events(&smf);
+fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
+    let export = render_reel(1, 8, None, false)?;
+    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
+    let events = note_events(&smf)?;
     assert!(!events.is_empty(), "reel records notes");
 
     let mut sounding: Vec<(u8, u8)> = Vec::new();
@@ -137,10 +137,10 @@ fn midi_noteons_all_have_noteoffs() {
                 "double NoteOn ch {ch} pitch {pitch} at {tick}"
             );
             sounding.push((*ch, *pitch));
+        } else if let Some(pos) = sounding.iter().position(|&(c, p)| c == *ch && p == *pitch) {
+            sounding.swap_remove(pos);
         } else {
-            let pos = sounding.iter().position(|&(c, p)| c == *ch && p == *pitch);
-            assert!(pos.is_some(), "orphan NoteOff ch {ch} pitch {pitch} at {tick}");
-            sounding.swap_remove(pos.expect("checked"));
+            return Err(format!("orphan NoteOff ch {ch} pitch {pitch} at {tick}"));
         }
     }
     assert!(sounding.is_empty(), "dangling NoteOns: {sounding:?}");
@@ -148,14 +148,15 @@ fn midi_noteons_all_have_noteoffs() {
     let (ons, offs) =
         events.iter().fold((0, 0), |(ons, offs), e| if e.1 { (ons + 1, offs) } else { (ons, offs + 1) });
     assert_eq!(ons, offs, "on/off counts differ");
+    Ok(())
 }
 
 /// Tempo meta is the real tempo, the signature is 2/2, and the MIDI
 /// duration matches the rendered WAV within one beat.
 #[test]
-fn midi_tempo_signature_and_duration_match_audio() {
-    let export = render_reel(1, 8, None, false);
-    let smf = Smf::parse(&export.midi).expect("valid MIDI");
+fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
+    let export = render_reel(1, 8, None, false)?;
+    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
 
     let expected_uspq = (60_000_000.0 / REEL_BPM) as u32;
     assert_eq!(tempos(&smf), vec![expected_uspq], "single real tempo meta");
@@ -169,8 +170,8 @@ fn midi_tempo_signature_and_duration_match_audio() {
         .collect();
     assert_eq!(sigs, vec![(2, 1)], "2/2 signature: {sigs:?}");
 
-    let events = note_events(&smf);
-    let last_tick = events.iter().map(|e| e.0).max().expect("notes");
+    let events = note_events(&smf)?;
+    let last_tick = events.iter().map(|e| e.0).max().ok_or("notes")?;
     let midi_secs = last_tick as f64 / TICKS_PER_QUARTER as f64 * (60.0 / REEL_BPM as f64);
     let beat = 60.0 / REEL_BPM as f64;
     assert!(
@@ -178,36 +179,40 @@ fn midi_tempo_signature_and_duration_match_audio() {
         "MIDI {midi_secs:.3}s vs audio {:.3}s (±1 beat {beat:.3}s)",
         export.rendered_secs
     );
+    Ok(())
 }
 
 /// Feet off: no notes on the GM drum channel (9).
 #[test]
-fn midi_feet_off_records_no_drums() {
-    let export = render_reel(1, 8, None, true);
-    let smf = Smf::parse(&export.midi).expect("valid MIDI");
-    let drum: Vec<_> = note_events(&smf).into_iter().filter(|e| e.2 == 9).collect();
+fn midi_feet_off_records_no_drums() -> Result<(), String> {
+    let export = render_reel(1, 8, None, true)?;
+    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
+    let events = note_events(&smf)?;
+    let drum: Vec<_> = events.iter().filter(|e| e.2 == 9).collect();
     assert!(drum.is_empty(), "drum notes with feet off: {drum:?}");
     // The other tracks still play.
-    assert!(!note_events(&smf).is_empty(), "melody/harmony must remain");
+    assert!(!events.is_empty(), "melody/harmony must remain");
+    Ok(())
 }
 
 /// Straight swing: consecutive melody NoteOn gaps are whole eighth-note
 /// multiples; the default reel swing bends eighths off that grid.
 #[test]
-fn midi_straight_swing_gives_equal_eighths() {
-    let export = render_reel(1, 8, Some(0.5), false);
-    let smf = Smf::parse(&export.midi).expect("valid MIDI");
+fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
+    let export = render_reel(1, 8, Some(0.5), false)?;
+    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let melody: Vec<u32> =
-        note_events(&smf).into_iter().filter(|e| e.1 && e.2 == 0).map(|e| e.0).collect();
+        note_events(&smf)?.into_iter().filter(|e| e.1 && e.2 == 0).map(|e| e.0).collect();
     assert!(melody.len() > 8, "enough melody notes");
     for pair in melody.windows(2) {
         let gap = pair[1] - pair[0];
         assert!(gap > 0 && gap % 240 == 0, "unequal eighth interval: {gap} in {melody:?}");
     }
 
-    let export = render_reel(1, 8, None, false);
-    let smf = Smf::parse(&export.midi).expect("valid MIDI");
-    let all: Vec<u32> = note_events(&smf).into_iter().filter(|e| e.1).map(|e| e.0).collect();
+    let export = render_reel(1, 8, None, false)?;
+    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
+    let all: Vec<u32> = note_events(&smf)?.into_iter().filter(|e| e.1).map(|e| e.0).collect();
     let bent = all.windows(2).any(|pair| (pair[1] - pair[0]) % 240 != 0);
     assert!(bent, "default reel swing should bend eighth intervals");
+    Ok(())
 }
