@@ -235,7 +235,7 @@ pub fn transpose_cell_octaves(cell: &Cell, octave_shift: i8) -> Cell {
             *note = CellNote::Degree(diatonic_step_to_degree(shifted_step));
         }
     }
-    Cell { role: cell.role, notes }
+    Cell { role: cell.role, notes, weight: cell.weight }
 }
 
 /// Convertit une [`Cell`] en vecteur de [`TimelineNote`] pour une mesure.
@@ -286,11 +286,11 @@ fn select_strain_cells(
     prev_last_step: &mut Option<i8>,
     rng: &mut dyn RngCore,
 ) -> [Cell; BARS_PER_STRAIN] {
-    let default_cell = bank
-        .cells
-        .first()
-        .cloned()
-        .unwrap_or(Cell { role: CellRole::Open, notes: [CellNote::Degree(1); NOTES_PER_CELL] });
+    let default_cell = bank.cells.first().cloned().unwrap_or(Cell {
+        role: CellRole::Open,
+        notes: [CellNote::Degree(1); NOTES_PER_CELL],
+        weight: 1,
+    });
     let mut chosen: [Cell; BARS_PER_STRAIN] = std::array::from_fn(|_| default_cell.clone());
     let mut bar1_first_step: Option<i8> = None;
 
@@ -510,10 +510,11 @@ fn pick_cell_for_bar(
         return winner.cell;
     }
 
-    bank.cells
-        .first()
-        .cloned()
-        .unwrap_or(Cell { role: CellRole::Open, notes: [CellNote::Degree(1); NOTES_PER_CELL] })
+    bank.cells.first().cloned().unwrap_or(Cell {
+        role: CellRole::Open,
+        notes: [CellNote::Degree(1); NOTES_PER_CELL],
+        weight: 1,
+    })
 }
 
 /// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`ReelFiddleParams`].
@@ -573,22 +574,43 @@ pub const fn same_cell_up_to_octave(a: &Cell, b: &Cell) -> bool {
     true
 }
 
-/// Tire uniformément une cellule ayant le rôle `role` dans `bank` en excluant `excluded_cell`.
+/// Tire une cellule ayant le rôle `role` dans `bank` en excluant `excluded_cell`,
+/// pondérée par [`Cell::weight`] (un seul tirage RNG). Repli sur toutes les
+/// cellules si la banque n'a aucune cellule de ce rôle.
 fn draw_cell_by_role<'a>(
     bank: &'a CellBank,
     role: CellRole,
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Option<&'a Cell> {
-    let count = bank.by_role(role).filter(|c| !is_excluded_cell(c, excluded_cell)).count();
-    if count > 0 {
-        let idx = rng.next_range_usize(0..count);
-        return bank.by_role(role).filter(|c| !is_excluded_cell(c, excluded_cell)).nth(idx);
+    let eligible = |c: &Cell| !is_excluded_cell(c, excluded_cell);
+    if let Some(cell) = draw_weighted(&bank.cells, |c| c.role == role && eligible(c), rng) {
+        return Some(cell);
     }
-    let fallback_count = bank.cells.iter().filter(|c| !is_excluded_cell(c, excluded_cell)).count();
-    if fallback_count > 0 && bank.count_by_role(role) == 0 {
-        let idx = rng.next_range_usize(0..fallback_count);
-        return bank.cells.iter().filter(|c| !is_excluded_cell(c, excluded_cell)).nth(idx);
+    if bank.count_by_role(role) == 0 {
+        return draw_weighted(&bank.cells, eligible, rng);
+    }
+    None
+}
+
+/// Tirage pondéré par [`Cell::weight`] parmi les cellules de `cells` retenues par
+/// `keep` (deux passes, sans allocation, un seul tirage RNG).
+fn draw_weighted<'a>(
+    cells: &'a [Cell],
+    keep: impl Fn(&Cell) -> bool,
+    rng: &mut dyn RngCore,
+) -> Option<&'a Cell> {
+    let total: usize = cells.iter().filter(|c| keep(c)).map(|c| c.weight as usize).sum();
+    if total == 0 {
+        return None;
+    }
+    let mut pick = rng.next_range_usize(0..total);
+    for cell in cells.iter().filter(|c| keep(c)) {
+        let weight = cell.weight as usize;
+        if pick < weight {
+            return Some(cell);
+        }
+        pick -= weight;
     }
     None
 }
@@ -798,8 +820,11 @@ mod tests {
     #[test]
     fn single_cell_bank_falls_back_when_excluded() {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
-        let single_cell = Cell::from_notation(CellRole::Run, "5 4 3 2 1 2 3 4")
-            .unwrap_or(Cell { role: CellRole::Run, notes: [CellNote::Degree(1); NOTES_PER_CELL] });
+        let single_cell = Cell::from_notation(CellRole::Run, "5 4 3 2 1 2 3 4").unwrap_or(Cell {
+            role: CellRole::Run,
+            notes: [CellNote::Degree(1); NOTES_PER_CELL],
+            weight: 1,
+        });
         let single_bank = CellBank { cells: vec![single_cell] };
         let plan = TunePlan::draw(&mut rng, None);
         let line = FiddleLine::new(plan, &single_bank, &mut rng);

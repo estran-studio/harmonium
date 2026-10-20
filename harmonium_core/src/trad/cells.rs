@@ -30,6 +30,9 @@ pub const FIFTH_SEMITONES: i8 = 7;
 /// Nombre maximal de sauts > quinte autorisés dans une même cellule (D5).
 pub const MAX_LARGE_LEAPS_PER_CELL: usize = 1;
 
+/// Poids par défaut d'une cellule dont le TOML ne porte pas de champ `weight`.
+pub const DEFAULT_CELL_WEIGHT: u32 = 1;
+
 /// Contenu brut de la banque TOML embarquée du reel.
 pub const REEL_CELLS_TOML: &str = include_str!("reel_cells.toml");
 
@@ -125,6 +128,8 @@ pub enum CellError {
     AmbitusExceedsOctave { min_degree: i8, max_degree: i8, semitones: i8 },
     /// La cellule comporte plus d'un saut mélodique strictement supérieur à la quinte.
     TooManyLargeLeaps { count: usize },
+    /// Le poids de tirage de la cellule est nul (il doit être > 0).
+    ZeroWeight,
 }
 
 impl fmt::Display for CellError {
@@ -151,6 +156,7 @@ impl fmt::Display for CellError {
             Self::TooManyLargeLeaps { count } => {
                 write!(f, "{count} sauts > quinte dans la cellule (maximum autorisé : 1)")
             }
+            Self::ZeroWeight => write!(f, "le poids (`weight`) de la cellule doit être > 0"),
         }
     }
 }
@@ -189,6 +195,8 @@ pub struct Cell {
     pub role: CellRole,
     /// Les 8 croches de la mesure.
     pub notes: [CellNote; NOTES_PER_CELL],
+    /// Poids de tirage dans le rôle (fréquence au corpus pour les cellules minées, > 0).
+    pub weight: u32,
 }
 
 impl Cell {
@@ -212,8 +220,17 @@ impl Cell {
 
     /// Construit et valide une [`Cell`] à partir de son rôle et de la notation textuelle D5.
     pub fn from_notation(role: CellRole, notes_str: &str) -> Result<Self, CellError> {
+        Self::from_notation_weighted(role, notes_str, DEFAULT_CELL_WEIGHT)
+    }
+
+    /// Comme [`Cell::from_notation`] avec un poids de tirage explicite (> 0).
+    pub fn from_notation_weighted(
+        role: CellRole,
+        notes_str: &str,
+        weight: u32,
+    ) -> Result<Self, CellError> {
         let notes = Self::parse_notes(notes_str)?;
-        let cell = Self { role, notes };
+        let cell = Self { role, notes, weight };
         cell.validate()?;
         Ok(cell)
     }
@@ -255,8 +272,12 @@ impl Cell {
     /// 1. la première croche n'est pas `Hold` ;
     /// 2. tous les degrés sont dans `-7..=-1` ou `1..=14` ;
     /// 3. ambitus ≤ une octave (7 pas diatoniques / 12 demi-tons) ;
-    /// 4. au plus un saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons).
+    /// 4. au plus un saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons) ;
+    /// 5. poids de tirage > 0.
     pub fn validate(&self) -> Result<(), CellError> {
+        if self.weight == 0 {
+            return Err(CellError::ZeroWeight);
+        }
         if self.notes[0] == CellNote::Hold {
             return Err(CellError::StartsWithHold);
         }
@@ -321,16 +342,23 @@ impl Cell {
     }
 }
 
-/// Représentation sérialisée compacte d'une [`Cell`] (`{ role = "arp", notes = "1 3 5 3 1 3 5 3" }`).
+/// Représentation sérialisée compacte d'une [`Cell`]
+/// (`{ role = "arp", notes = "1 3 5 3 1 3 5 3", weight = 12 }`, `weight` optionnel).
 #[derive(Serialize, Deserialize)]
 struct RawCell {
     role: CellRole,
     notes: String,
+    #[serde(default = "default_cell_weight")]
+    weight: u32,
+}
+
+const fn default_cell_weight() -> u32 {
+    DEFAULT_CELL_WEIGHT
 }
 
 impl Serialize for Cell {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let raw = RawCell { role: self.role, notes: self.notes_to_notation() };
+        let raw = RawCell { role: self.role, notes: self.notes_to_notation(), weight: self.weight };
         raw.serialize(serializer)
     }
 }
@@ -338,7 +366,8 @@ impl Serialize for Cell {
 impl<'de> Deserialize<'de> for Cell {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawCell::deserialize(deserializer)?;
-        Self::from_notation(raw.role, &raw.notes).map_err(serde::de::Error::custom)
+        Self::from_notation_weighted(raw.role, &raw.notes, raw.weight)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -377,7 +406,7 @@ impl CellBank {
 
         let mut cells = Vec::with_capacity(raw.cells.len());
         for (index, item) in raw.cells.into_iter().enumerate() {
-            let cell = Cell::from_notation(item.role, &item.notes)
+            let cell = Cell::from_notation_weighted(item.role, &item.notes, item.weight)
                 .map_err(|error| CellBankError::InvalidCell { index, error })?;
             cells.push(cell);
         }
