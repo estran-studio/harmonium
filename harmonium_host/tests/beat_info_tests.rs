@@ -44,7 +44,7 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize, swing_ratio: f32)
     assert_eq!(steps_per_pulse * pulses_per_bar, steps_per_bar, "pulse must tile the bar");
 
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Bars 1..=32 at BPM1, then set_bpm + invalidation for bars 2..=64 at BPM2.
     composer.set_time_signature(time_sig.numerator, time_sig.denominator);
@@ -238,7 +238,7 @@ fn beat_info_from_clock_phase_and_timing() {
 #[test]
 fn time_signature_transition_preserves_pulses_per_bar_consistency() {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     composer.set_time_signature(4, 4);
     composer.set_bpm(120.0);

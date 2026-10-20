@@ -5,15 +5,17 @@
 # Densité 2 : talon (0, 4, 8, 12) + pointe doublée (2, 3, 6, 7, 10, 11, 14, 15),
 #             les pas impairs de pointe ayant un delta de vélocité de -20.
 #
-# Sons provisoires (D10, canal 9 percussion) et vélocités : réglables à
-# l'oreille sans toucher au code (talon 35 = grosse caisse acoustique,
-# pointe 37 = frappe latérale). `feet_gain` (0..1) règle le niveau global.
+# Sons provisoires et vélocités : réglables à l'oreille sans toucher au code.
+# Avec `harmonium_trad.sf2` (banque de pieds, SK2) : talon = touche 36,
+# pointe = touche 37, banque 0 programme 0. `feet_gain` (0..1) règle le niveau
+# global ; `velocity_humanize` (0..40) l'amplitude d'humanisation des vélocités.
 
-heel_note = 35
+heel_note = 36
 toe_note = 37
 heel_velocity = 55
 toe_velocity = 45
-feet_gain = 1.0
+feet_gain = 0.9
+velocity_humanize = 12
 
 [[patterns]]
 density = 0

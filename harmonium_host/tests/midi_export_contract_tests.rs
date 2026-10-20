@@ -37,7 +37,7 @@ fn render_reel(
     feet_off: bool,
 ) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
-        create_offline_engine(None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_seed(seed);
     composer.set_style(Style::Reel);

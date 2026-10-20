@@ -19,7 +19,7 @@ use super::{
     accomp::{Guitarist, bass_bar},
     arrangement::TunePosition,
     cells::Cell,
-    feet::feet_notes,
+    feet::{FEET_HUMANIZE_SLOTS, REEL_STEPS, draw_feet_humanize, feet_notes},
     fiddle::{BARS_PER_STRAIN, FiddleLine, same_cell_up_to_octave},
     harmony::{ChordDegree, ChordQuality, TUNE_HARMONY_BARS, TradChord, TuneHarmony},
     mode::{Mode, PitchClass},
@@ -45,6 +45,10 @@ pub struct ActiveTune {
     pub fiddle: FiddleLine,
     /// Harmonie par demi-mesure des 32 mesures d'un tour.
     pub harmony: TuneHarmony,
+    /// Décalages d'humanisation des vélocités des pieds, par position de mesure
+    /// (2 strains × 8 mesures) et par pas. Tirés une fois à la génération du
+    /// tune pour garantir des reprises identiques (A1=A2, B1=B2, D4).
+    pub feet_humanize: [[i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS],
 }
 
 /// Générateur de musique traditionnelle québécoise (`Style::Reel`, D1).
@@ -213,8 +217,14 @@ impl TradGenerator {
         let heel_active = self.track_active(TrackId::Heel, &position);
         let toe_active = self.track_active(TrackId::Toe, &position);
         if heel_active || toe_active {
-            let (heel_notes, toe_notes) =
-                feet_notes(&self.tuning.reel_feet, self.musical_params.feet_density, steps);
+            let strain_slot = if bar_in_tour < 2 * BARS_PER_STRAIN { 0 } else { BARS_PER_STRAIN };
+            let humanize = &tune.feet_humanize[strain_slot + bar_in_tour % BARS_PER_STRAIN];
+            let (heel_notes, toe_notes) = feet_notes(
+                &self.tuning.reel_feet,
+                self.musical_params.feet_density,
+                steps,
+                humanize,
+            );
             if heel_active {
                 for mut note in heel_notes {
                     note.id = self.alloc_note_id();
@@ -319,7 +329,9 @@ impl TradGenerator {
         let harmony = TuneHarmony::new(plan, &distinct_melody, &self.tuning.trad_harmony)
             .unwrap_or_else(|_| fallback_tune_harmony(plan));
 
-        ActiveTune { tune_index, plan, fiddle, harmony }
+        let feet_humanize = draw_feet_humanize(self.tuning.reel_feet.velocity_humanize, rng);
+
+        ActiveTune { tune_index, plan, fiddle, harmony, feet_humanize }
     }
 
     fn alloc_note_id(&mut self) -> NoteId {

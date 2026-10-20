@@ -97,14 +97,30 @@ fn p1t7_distinct_openings_and_register_20_seeds() -> Result<(), String> {
 
 #[test]
 fn p1t7_feet_quiet_by_default() {
+    // Avec l'humanisation (±velocity_humanize), le pied doit rester discret
+    // face au violon (vélocité de base ~84) : plafond = base + humanisation.
+    let table = TuningParams::default().reel_feet;
+    let heel_ceiling = table.heel_velocity.saturating_add(table.velocity_humanize);
+    let toe_ceiling = table.toe_velocity.saturating_add(table.velocity_humanize);
+    assert!(heel_ceiling <= 84, "talon trop fort par défaut : plafond {heel_ceiling}");
+    assert!(toe_ceiling <= 84, "pointe trop forte par défaut : plafond {toe_ceiling}");
+
     for density in 0..=2u8 {
         let (_, snapshots) = generate_32_snapshots(1, density);
         for snap in &snapshots {
             for n in notes_on_track(snap, TrackId::Heel) {
-                assert!(n.velocity <= 60, "talon vélocité {} > 60", n.velocity);
+                assert!(
+                    n.velocity <= heel_ceiling,
+                    "talon vélocité {} > {heel_ceiling}",
+                    n.velocity
+                );
             }
             for n in notes_on_track(snap, TrackId::Toe) {
-                assert!(n.velocity <= 60, "pointe vélocité {} > 60", n.velocity);
+                assert!(
+                    n.velocity <= toe_ceiling,
+                    "pointe vélocité {} > {toe_ceiling}",
+                    n.velocity
+                );
             }
         }
     }

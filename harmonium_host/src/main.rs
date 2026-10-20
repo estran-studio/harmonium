@@ -289,7 +289,7 @@ fn main() {
         _transport_position,
         _clock_reader,
         finished_recordings,
-    ) = audio::create_timeline_stream(sf2_data.as_deref()).unwrap_or_else(|e| {
+    ) = audio::create_timeline_stream(sf2_data.as_deref(), None).unwrap_or_else(|e| {
         #[allow(clippy::panic)]
         {
             panic!("Failed to create audio stream: {}", e);

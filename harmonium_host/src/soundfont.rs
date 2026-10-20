@@ -6,6 +6,9 @@ pub const GENERALUSER_SOUNDFONT: &str = "assets/GeneralUser-GS.sf2";
 /// Chemin vers la banque minimale de test.
 pub const TEST_SOUNDFONT: &str = "assets/test.sf2";
 
+/// Chemin vers la banque de pieds par défaut (harmonium_lab `make trad-sf2`).
+pub const FEET_SOUNDFONT: &str = "assets/harmonium_trad.sf2";
+
 /// Résout et charge la SoundFont selon la hiérarchie de repli :
 /// 1. `--soundfont <PATH>` explicite si fourni (erreur si le fichier est illisible).
 /// 2. `assets/GeneralUser-GS.sf2` s'il existe (recommandé pour le développement).
@@ -71,6 +74,39 @@ pub fn load_soundfont(explicit: Option<&str>) -> std::io::Result<Option<Vec<u8>>
     Ok(Some(bytes))
 }
 
+/// Charge la banque de pieds (`harmonium_trad.sf2`, SK2) :
+/// 1. `--feet-soundfont <PATH>` explicite si fourni (erreur si le fichier est illisible).
+/// 2. `assets/harmonium_trad.sf2` à côté de la SoundFont principale s'il existe.
+/// 3. Aucune banque : message clair indiquant de la reconstruire
+///    (`make trad-sf2` dans `harmonium_lab`) ; le moteur conserve alors le kit GM
+///    (canal 9) pour les pieds.
+///
+/// # Errors
+/// Retourne une `std::io::Error` si un chemin explicite ou un fichier détecté
+/// ne peut pas être lu depuis le disque.
+pub fn load_feet_soundfont(explicit: Option<&str>) -> std::io::Result<Option<Vec<u8>>> {
+    match explicit {
+        Some(p) => {
+            let resolved = resolve_soundfont_path(p).unwrap_or_else(|| Path::new(p).to_path_buf());
+            let bytes = std::fs::read(&resolved)?;
+            println!("Loading feet SoundFont: {}", resolved.display());
+            Ok(Some(bytes))
+        }
+        None => {
+            if let Some(p) = resolve_soundfont_path(FEET_SOUNDFONT) {
+                let bytes = std::fs::read(&p)?;
+                println!("Loading feet SoundFont: {}", p.display());
+                Ok(Some(bytes))
+            } else {
+                let msg = "banque des pieds absente : `make trad-sf2` dans harmonium_lab";
+                eprintln!("Avertissement : {msg}");
+                harmonium_core::log::warn(msg);
+                Ok(None)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,5 +135,19 @@ mod tests {
         if let Ok(bytes) = res {
             assert!(bytes.is_some());
         }
+    }
+
+    #[test]
+    fn test_load_feet_soundfont_explicit_missing_returns_err() {
+        let res = load_feet_soundfont(Some("assets/does_not_exist_feet.sf2"));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_load_feet_soundfont_default_never_errors() {
+        // La banque de pieds est ignorée par git : selon sa présence, `Ok(None)`
+        // (message d'absence) ou `Ok(Some(bytes))` — mais jamais une erreur.
+        let res = load_feet_soundfont(None);
+        assert!(res.is_ok());
     }
 }

@@ -23,6 +23,7 @@ const BUFFER_SIZE: usize = 256;
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     sf2_bytes: Option<&[u8]>,
+    feet_sf2_bytes: Option<&[u8]>,
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
     style: Option<Style>,
@@ -42,7 +43,8 @@ pub fn run(
         mut report_rx,
         _clock_reader,
         finished_recordings,
-    ) = audio::create_offline_engine(sf2_bytes, SAMPLE_RATE).map_err(|e| anyhow::anyhow!(e))?;
+    ) = audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, SAMPLE_RATE)
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     if let Some(s) = seed {
         composer.set_seed(s);

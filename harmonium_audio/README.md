@@ -19,7 +19,7 @@ graph TD
 
 ### `backend`
 
-* **`SynthBackend`** — the synthesizer. `SynthBackend::new(sample_rate, sf2_bytes, &initial_routing)`; `sf2_bytes = None` renders silence until a `LoadFont` event arrives. Handles `LoadFont`, `SetChannelRoute` (bank per logical channel), `ProgramChange`, `SetMixerGains` (CC 7), `AllNotesOff`, `ControlChange` (CC 1 drives filter/resonance/pitch-bend tension on channels 0–4).
+* **`SynthBackend`** — the synthesizer. `SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &initial_routing)`; `sf2_bytes = None` renders silence until a `LoadFont` event arrives. `feet_sf2_bytes` charge la banque de pieds dédiée (décalage `FEET_BANK_OFFSET`) et routent Heel/Toe dessus. Handles `LoadFont`, `SetChannelRoute` (bank per logical channel), `ProgramChange`, `SetMixerGains` (CC 7), `AllNotesOff`, `ControlChange` (CC 1 drives filter/resonance/pitch-bend tension on channels 0–4).
 * **`RecorderBackend`** — wraps a renderer and captures WAV, MIDI and MusicXML on `StartRecording` / `StopRecording`.
 * **`MidiBackend`** / **`WavBackend`** — standalone file exporters.
 
@@ -48,7 +48,7 @@ Jazz voicing algorithms: `BlockChordVoicer` (locked-hands block chords), `ShellV
 use harmonium_audio::{AudioProcessor, backend::synth_backend::SynthBackend};
 
 let sf2 = std::fs::read("assets/test.sf2").ok();
-let backend = Box::new(SynthBackend::new(44100.0, sf2.as_deref(), &[0, 0, 0, 0]));
+let backend = Box::new(SynthBackend::new(44100.0, sf2.as_deref(), None, &[0, 0, 0, 0]));
 let mut processor = AudioProcessor::new(backend);
 
 // In the audio callback:
