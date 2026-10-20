@@ -18,7 +18,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 3;
+pub const TUNING_VERSION: u32 = 4;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)

@@ -13,13 +13,22 @@ use std::{collections::HashSet, fmt};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::timeline::{Articulation, TimelineNote, TrackId};
+use crate::{
+    harmony::RngCore,
+    timeline::{Articulation, TimelineNote, TrackId},
+};
 
 /// Contenu brut de la table TOML embarquée de podorythmie pour le reel (D9).
 pub const REEL_FEET_TOML: &str = include_str!("reel_feet.toml");
 
 /// Nombre de pas par mesure dans un reel québécois en 2/2 (D9).
 pub const REEL_STEPS: usize = 16;
+
+/// Nombre de positions de mesure distinctes pour l'humanisation des pieds :
+/// 2 strains (A/B) × 8 mesures par strain (D4). Les reprises (A2, B2)
+/// réutilisent les décalages de leur première passe, garantissant des reprises
+/// identiques tout en variant les vélocités entre coups d'une même mesure.
+pub const FEET_HUMANIZE_SLOTS: usize = 16;
 
 /// Un coup de pied individuel dans une mesure de podorythmie (D9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,11 +175,15 @@ impl FeetPattern {
 }
 
 const fn default_heel_note() -> u8 {
-    35
+    36
 }
 
 const fn default_toe_note() -> u8 {
     37
+}
+
+const fn default_velocity_humanize() -> u8 {
+    12
 }
 
 const fn default_heel_velocity() -> u8 {
@@ -197,6 +210,8 @@ struct RawFeetTable {
     toe_velocity: u8,
     #[serde(default = "default_feet_gain")]
     feet_gain: f32,
+    #[serde(default = "default_velocity_humanize")]
+    velocity_humanize: u8,
     #[serde(default)]
     patterns: Vec<FeetPattern>,
     #[serde(default)]
@@ -225,6 +240,10 @@ pub struct FeetTable {
     /// Gain global appliqué aux vélocités effectives (`0..=1`).
     #[serde(default = "default_feet_gain")]
     pub feet_gain: f32,
+    /// Amplitude d'humanisation des vélocités (`0..=40`, défaut 12) : chaque
+    /// coup reçoit un décalage déterministe uniforme dans `±velocity_humanize`.
+    #[serde(default = "default_velocity_humanize")]
+    pub velocity_humanize: u8,
     /// Patterns de coups par niveau de densité.
     #[serde(default)]
     pub patterns: Vec<FeetPattern>,
@@ -240,6 +259,7 @@ impl<'de> Deserialize<'de> for FeetTable {
             heel_velocity: raw.heel_velocity,
             toe_velocity: raw.toe_velocity,
             feet_gain: raw.feet_gain,
+            velocity_humanize: raw.velocity_humanize,
             patterns,
         })
     }
@@ -266,6 +286,8 @@ pub enum FeetTableError {
     BaseVelocityOutOfRange { heel: u8, toe: u8 },
     /// Le gain global `feet_gain` est hors de la plage `0..=1`.
     GainOutOfRange { gain: f32 },
+    /// L'humanisation `velocity_humanize` est hors de la plage `0..=40`.
+    VelocityHumanizeOutOfRange { humanize: u8 },
 }
 
 impl fmt::Display for FeetTableError {
@@ -305,6 +327,9 @@ impl fmt::Display for FeetTableError {
             Self::GainOutOfRange { gain } => {
                 write!(f, "gain global hors limites (0..=1) : feet_gain={gain}")
             }
+            Self::VelocityHumanizeOutOfRange { humanize } => {
+                write!(f, "humanisation hors limites (0..=40) : velocity_humanize={humanize}")
+            }
         }
     }
 }
@@ -323,6 +348,7 @@ impl Default for FeetTable {
             heel_velocity: default_heel_velocity(),
             toe_velocity: default_toe_velocity(),
             feet_gain: default_feet_gain(),
+            velocity_humanize: default_velocity_humanize(),
             patterns: Vec::new(),
         })
     }
@@ -353,6 +379,11 @@ impl FeetTable {
         }
         if !(0.0..=1.0).contains(&self.feet_gain) {
             return Err(FeetTableError::GainOutOfRange { gain: self.feet_gain });
+        }
+        if self.velocity_humanize > 40 {
+            return Err(FeetTableError::VelocityHumanizeOutOfRange {
+                humanize: self.velocity_humanize,
+            });
         }
 
         if self.patterns.is_empty() {
@@ -421,9 +452,38 @@ impl FeetTable {
 
     /// Raccourci vers [`feet_notes`].
     #[must_use]
-    pub fn feet_notes(&self, density: u8, steps: usize) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
-        feet_notes(self, density, steps)
+    pub fn feet_notes(
+        &self,
+        density: u8,
+        steps: usize,
+        humanize: &[i8; REEL_STEPS],
+    ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
+        feet_notes(self, density, steps, humanize)
     }
+}
+
+/// Tire les décalages d'humanisation d'un tune : `FEET_HUMANIZE_SLOTS` positions
+/// de mesure (2 strains × 8 mesures) de `REEL_STEPS` pas chacune. Chaque
+/// décalage est tiré uniformément dans `±humanize` via le RNG injecté
+/// (déterministe : même graine ⇒ mêmes décalages). `humanize == 0` ne
+/// consomme aucun tirage et produit des décalages tous nuls.
+#[must_use]
+pub fn draw_feet_humanize(
+    humanize: u8,
+    rng: &mut dyn RngCore,
+) -> [[i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS] {
+    let mut offsets = [[0i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS];
+    let h = i32::from(humanize);
+    if h == 0 {
+        return offsets;
+    }
+    for slot in &mut offsets {
+        for step in slot.iter_mut() {
+            let offset = rng.next_range_usize(0..(2 * h + 1) as usize) as i32 - h;
+            *step = offset as i8;
+        }
+    }
+    offsets
 }
 
 /// Génère les notes de podorythmie (talon, pointe) pour une mesure de reel (D9).
@@ -442,12 +502,15 @@ impl FeetTable {
 /// - second élément : notes de la pointe ([`TrackId::Toe`]), `pitch = table.toe_note`.
 ///
 /// Toutes les notes produites ont `duration_steps = 0` et `articulation = Articulation::Trigger`.
-/// La vélocité est `((base_velocity + delta_velocity) * feet_gain).round().clamp(0, 127) as u8`.
+/// La vélocité est
+/// `((base_velocity + delta_velocity) * feet_gain).round() + humanize[step]`,
+/// bornée à `1..=127`.
 #[must_use]
 pub fn feet_notes(
     table: &FeetTable,
     density: u8,
     steps: usize,
+    humanize: &[i8; REEL_STEPS],
 ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
     if steps != REEL_STEPS {
         return (Vec::new(), Vec::new());
@@ -467,7 +530,8 @@ pub fn feet_notes(
         };
 
         let effective = f32::from(base_velocity) + f32::from(hit.delta_velocity);
-        let velocity = (effective * table.feet_gain).round().clamp(0.0, 127.0) as u8;
+        let base = (effective * table.feet_gain).round() as i32;
+        let velocity = (base + i32::from(humanize[hit.step])).clamp(1, 127) as u8;
 
         target_vec.push(TimelineNote {
             id: 0,
@@ -493,24 +557,25 @@ mod tests {
     fn test_embedded_table_validates() {
         let table = FeetTable::default();
         table.validate().expect("REEL_FEET_TOML doit être valide");
-        assert_eq!(table.heel_note, 35);
+        assert_eq!(table.heel_note, 36);
         assert_eq!(table.toe_note, 37);
         assert_eq!(table.heel_velocity, 55);
         assert_eq!(table.toe_velocity, 45);
-        assert_eq!(table.feet_gain, 1.0);
+        assert_eq!(table.feet_gain, 0.9);
+        assert_eq!(table.velocity_humanize, 12);
     }
 
     #[test]
     fn test_exact_d9_positions_density_0() {
-        let table = FeetTable::default();
-        let (heel, toe) = feet_notes(&table, 0, 16);
+        let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
+        let (heel, toe) = feet_notes(&table, 0, 16, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         assert_eq!(heel_steps, vec![0, 8]);
         assert!(toe.is_empty());
 
         for note in &heel {
-            assert_eq!(note.pitch, 35);
+            assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
@@ -519,8 +584,8 @@ mod tests {
 
     #[test]
     fn test_exact_d9_positions_density_1() {
-        let table = FeetTable::default();
-        let (heel, toe) = feet_notes(&table, 1, 16);
+        let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
+        let (heel, toe) = feet_notes(&table, 1, 16, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
@@ -529,7 +594,7 @@ mod tests {
         assert_eq!(toe_steps, vec![2, 6, 10, 14]);
 
         for note in &heel {
-            assert_eq!(note.pitch, 35);
+            assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
@@ -545,8 +610,8 @@ mod tests {
 
     #[test]
     fn test_exact_d9_positions_density_2() {
-        let table = FeetTable::default();
-        let (heel, toe) = feet_notes(&table, 2, 16);
+        let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
+        let (heel, toe) = feet_notes(&table, 2, 16, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
@@ -555,7 +620,7 @@ mod tests {
         assert_eq!(toe_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
 
         for note in &heel {
-            assert_eq!(note.pitch, 35);
+            assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
@@ -578,10 +643,10 @@ mod tests {
     #[test]
     fn test_density_clamping() {
         let table = FeetTable::default();
-        let expected_2 = feet_notes(&table, 2, 16);
+        let expected_2 = feet_notes(&table, 2, 16, &[0; 16]);
 
         for d in [3, 4, 10, 99, 255] {
-            let notes = feet_notes(&table, d, 16);
+            let notes = feet_notes(&table, d, 16, &[0; 16]);
             assert_eq!(notes.0.len(), expected_2.0.len(), "densité {d} talon");
             assert_eq!(notes.1.len(), expected_2.1.len(), "densité {d} pointe");
             assert_eq!(
@@ -600,7 +665,7 @@ mod tests {
         let table = FeetTable::default();
         for invalid_steps in [0, 1, 8, 12, 15, 17, 32] {
             for density in [0, 1, 2, 5] {
-                let (heel, toe) = feet_notes(&table, density, invalid_steps);
+                let (heel, toe) = feet_notes(&table, density, invalid_steps, &[0; 16]);
                 assert!(
                     heel.is_empty(),
                     "talon non vide pour steps={invalid_steps}, density={density}"
@@ -725,11 +790,14 @@ hits = [{ step = 0, track = "Heel" }]
 
     #[test]
     fn test_custom_base_velocities() {
-        let mut table = FeetTable::default();
-        table.heel_velocity = 110;
-        table.toe_velocity = 90;
+        let table = FeetTable {
+            heel_velocity: 110,
+            toe_velocity: 90,
+            feet_gain: 1.0,
+            ..FeetTable::default()
+        };
 
-        let (heel, toe) = table.feet_notes(2, 16);
+        let (heel, toe) = table.feet_notes(2, 16, &[0; 16]);
         assert_eq!(heel[0].velocity, 110);
         assert_eq!(toe[0].velocity, 90); // step 2
         assert_eq!(toe[1].velocity, 70); // step 3 (90 - 20)
@@ -745,7 +813,7 @@ hits = [{ step = 0, track = "Heel" }]
         };
         assert!(table.validate().is_ok(), "gain 0.5 valide");
 
-        let (heel, toe) = table.feet_notes(2, 16);
+        let (heel, toe) = table.feet_notes(2, 16, &[0; 16]);
         assert!(heel.iter().all(|n| n.velocity == 50));
         assert_eq!(toe[0].velocity, 40); // step 2 : 80 * 0.5
         assert_eq!(toe[1].velocity, 30); // step 3 : (80 - 20) * 0.5
@@ -760,6 +828,62 @@ hits = [{ step = 0, track = "Heel" }]
                 "gain {gain} rejeté"
             );
         }
+    }
+
+    #[test]
+    fn test_validation_velocity_humanize_bounds() {
+        for humanize in [0, 1, 12, 40] {
+            let table = FeetTable { velocity_humanize: humanize, ..FeetTable::default() };
+            assert!(table.validate().is_ok(), "humanize {humanize} doit être valide");
+        }
+        for humanize in [41, 99, 255] {
+            let table = FeetTable { velocity_humanize: humanize, ..FeetTable::default() };
+            assert_eq!(
+                table.validate(),
+                Err(FeetTableError::VelocityHumanizeOutOfRange { humanize }),
+                "humanize {humanize} doit être rejeté"
+            );
+        }
+    }
+
+    #[test]
+    fn test_velocity_humanize_zero_is_constant() {
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
+        let mut rng = ChaCha8Rng::seed_from_u64(1);
+        let table = FeetTable { velocity_humanize: 0, feet_gain: 1.0, ..FeetTable::default() };
+        let offsets = draw_feet_humanize(0, &mut rng);
+        assert!(offsets.iter().flatten().all(|&o| o == 0));
+
+        let (heel, toe) = feet_notes(&table, 1, 16, &offsets[0]);
+        assert!(heel.iter().all(|n| n.velocity == 55));
+        assert!(toe.iter().all(|n| n.velocity == 45));
+    }
+
+    #[test]
+    fn test_velocity_humanize_deterministic_and_bounded() {
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
+        let table = FeetTable { velocity_humanize: 12, feet_gain: 1.0, ..FeetTable::default() };
+
+        let mut rng_a = ChaCha8Rng::seed_from_u64(42);
+        let mut rng_b = ChaCha8Rng::seed_from_u64(42);
+        let offs_a = draw_feet_humanize(table.velocity_humanize, &mut rng_a);
+        let offs_b = draw_feet_humanize(table.velocity_humanize, &mut rng_b);
+        assert_eq!(offs_a, offs_b, "même graine ⇒ mêmes décalages");
+
+        for slot in &offs_a {
+            for &off in slot.iter() {
+                assert!((-12..=12).contains(&off), "décalage {off} hors ±12");
+            }
+        }
+
+        let (heel, toe) = feet_notes(&table, 1, 16, &offs_a[0]);
+        for n in heel.iter().chain(toe.iter()) {
+            assert!((1..=127).contains(&n.velocity), "vélocité {} hors 1..=127", n.velocity);
+        }
+        assert!(heel.iter().all(|n| (43..=67).contains(&n.velocity)));
+        assert!(toe.iter().all(|n| (33..=57).contains(&n.velocity)));
     }
 
     #[test]

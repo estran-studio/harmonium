@@ -182,7 +182,7 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
             // Podorythmie D9
             let heel = notes_on_track(snap, TrackId::Heel);
             let toe = notes_on_track(snap, TrackId::Toe);
-            assert!(heel.iter().all(|n| n.pitch == 35 && n.duration_steps == 0));
+            assert!(heel.iter().all(|n| n.pitch == 36 && n.duration_steps == 0));
             assert!(toe.iter().all(|n| n.pitch == 37 && n.duration_steps == 0));
 
             let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
