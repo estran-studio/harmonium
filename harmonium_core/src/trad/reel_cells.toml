@@ -1,75 +1,87 @@
-# Banque de cellules mélodiques d'une mesure (8 croches) pour le reel québécois (D5).
+# Banque de cellules mélodiques d'une mesure (8 croches) pour le reel québécois (D5, D7).
+#
+# Source : cellules minées du corpus harmonium_lab (507 airs de reels québécois),
+# extraction du 2026-10-19 (corpus 2026-10-19+764). 60 cellules, 10 par rôle.
+# `weight` = fréquence de la cellule au corpus ; le tirage d'un rôle est pondéré par ce poids.
+# Fichier unique de vérité : pas de fichier de poids compagnon.
 #
 # Notation :
 # - 1..7 : degrés de la gamme du mode dans l'octave principale (1 = tonique, ex. D en ré majeur)
-# - 8..  : degrés dans l'octave supérieure (8 = tonique + 1 octave)
+# - 8..14 : degrés dans l'octave supérieure (8 = tonique + 1 octave, 10 = tierce supérieure, etc.)
 # - k,   : degré k dans l'octave inférieure (5, = quinte grave, 7, = sensible/sous-tonique grave)
 # - -    : prolongation de la note précédente
 #
-# Invariants D5 vérifiés au chargement :
+# Invariants D5 vérifiés au chargement (CellBank::from_toml) :
 # - exactement 8 croches par cellule ;
 # - la première croche n'est jamais "-" (Hold) ;
 # - ambitus total de la cellule <= 1 octave (7 pas diatoniques / 12 demi-tons) ;
 # - au plus 1 saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons) par cellule ;
-# - aucun chromatisme.
-
+# - aucun chromatisme ;
+# - `weight` entier > 0 (défaut 1 si absent).
 cells = [
-  # --- Graines du plan (13 cellules) ---
-  { role = "arp", notes = "1 3 5 3 1 3 5 3" },       # D F# A F# — l'arpège de reel
-  { role = "arp", notes = "8 5 3 5 8 5 3 5" },
-  { role = "run", notes = "5 4 3 2 1 2 3 4" },
-  { role = "run", notes = "1 2 3 4 5 6 7 8" },
-  { role = "run", notes = "8 7 6 5 4 3 2 1" },
-  { role = "turn", notes = "5 6 5 4 3 4 3 2" },
-  { role = "turn", notes = "3 2 1 2 3 5 6 5" },
-  { role = "open", notes = "5 5 3 5 6 5 3 5" },      # répétition de note, typique au violon
-  { role = "open", notes = "1 1 5, 1 3 1 5, 1" },
-  { role = "cad_half", notes = "4 3 2 1 2 - - -" },
-  { role = "cad_half", notes = "3 4 5 4 5 - - -" },
-  { role = "cad_full", notes = "3 2 1 7, 1 - - -" },
-  { role = "cad_full", notes = "5 4 3 2 1 - 5, -" }, # tonique + pickup
+  { role = "open", notes = "1 - 3 5 8 5 3 1", weight = 10 },
+  { role = "open", notes = "10 - 10 10 10 - 11 10", weight = 10 },
+  { role = "open", notes = "12 10 13 10 12 10 8 9", weight = 10 },
+  { role = "open", notes = "3 1 5, 1 3 1 5 1", weight = 8 },
+  { role = "open", notes = "5 6 5 4 3 - 5 -", weight = 8 },
+  { role = "open", notes = "8 - - 8 8 5 3 5", weight = 8 },
+  { role = "open", notes = "1 - 3 1 2 1 3 1", weight = 7 },
+  { role = "open", notes = "1 - 3 5 8 5 3 5", weight = 6 },
+  { role = "open", notes = "10 - 10 11 10 9 8 7", weight = 6 },
+  { role = "open", notes = "10 - 10 8 9 - 9 7", weight = 6 },
 
-  # --- Extensions P1-T7 (8 cellules `open` : attaques sur tous les degrés) + idiomatiques (18 cellules) ---
-  # open (11 nouvelles -> 13 au total)
-  { role = "open", notes = "3 3 1 3 5 3 2 1" },      # attaque doublée sur la tierce (strain A)
-  { role = "open", notes = "8 8 6 8 7 6 5 6" },      # attaque doublée à l'octave haute (strain B)
-  { role = "open", notes = "5 6 8 8 7 6 5 3" },      # appel ascendant vers l'octave (strain B)
-  { role = "open", notes = "2 2 4 2 5 4 2 1" },      # attaque doublée sur la sus-tonique
-  { role = "open", notes = "4 4 2 4 6 4 5 4" },      # attaque doublée sur la sous-dominante
-  { role = "open", notes = "6 6 5 6 8 6 5 4" },      # attaque doublée sur le 6e degré
-  { role = "open", notes = "7 7 5 7 8 7 6 5" },      # attaque doublée sur le 7e degré
-  { role = "open", notes = "1 3 1 2 3 5 3 2" },      # montée conjointe depuis la tonique
-  { role = "open", notes = "3 5 3 1 2 3 5 3" },      # arpège de tonique resserré
-  { role = "open", notes = "6 5 3 5 6 8 6 5" },      # descente puis appel vers l'octave
-  { role = "open", notes = "4 5 4 3 2 3 4 5" },      # vague conjointe haute (strain A/B)
-  { role = "open", notes = "7 8 7 6 5 6 7 6" },      # descente depuis l'octave sur le 7e degré
-  { role = "open", notes = "2 3 2 1 2 4 5 4" },      # broderie grave puis montée (strain A)
-  { role = "open", notes = "5 4 5 6 5 3 4 5" },      # vague médiane autour de la quinte
-  { role = "open", notes = "8 7 8 6 7 8 7 6" },      # broderie d'octave descendante (strain B)
-  # arp (3 nouvelles -> 5 au total)
-  { role = "arp", notes = "2 4 6 4 2 4 6 5" },       # arpège de sus-tonique / dominante
-  { role = "arp", notes = "4 6 8 6 4 6 8 6" },       # arpège de sous-dominante IV dans l'aigu (strain B)
-  { role = "arp", notes = "5 3 1 3 5 8 5 3" },       # arpège de tonique déployé sur l'octave
+  { role = "run", notes = "8 7 6 5 6 5 4 3", weight = 50 },
+  { role = "run", notes = "6 5 6 7 8 - 6 -", weight = 34 },
+  { role = "run", notes = "8 7 6 5 4 3 2 1", weight = 26 },
+  { role = "run", notes = "5 4 5 6 5 4 3 2", weight = 25 },
+  { role = "run", notes = "12 - 11 - 10 - 9 -", weight = 24 },
+  { role = "run", notes = "2 3 4 5 6 - 6 7", weight = 23 },
+  { role = "run", notes = "7, 1 2 3 4 5 6 7", weight = 23 },
+  { role = "run", notes = "5 - 4 - 3 - 2 -", weight = 21 },
+  { role = "run", notes = "4 3 2 1 7, 1 2 3", weight = 18 },
+  { role = "run", notes = "2 3 4 5 6 5 6 7", weight = 16 },
 
-  # run (3 nouvelles -> 6 au total)
-  { role = "run", notes = "3 4 5 6 7 8 7 6" },       # montée conjointe vers le registre de strain B
-  { role = "run", notes = "6 5 4 3 2 3 4 5" },       # vague conjointe médiane (strain A)
-  { role = "run", notes = "8 7 6 7 8 6 5 4" },       # descente ornée depuis l'octave (strain B)
+  { role = "arp", notes = "7 8 9 10 11 9 7 9", weight = 32 },
+  { role = "arp", notes = "4 - 6 4 3 - 5 3", weight = 24 },
+  { role = "arp", notes = "1 - 3 1 2 1 3 1", weight = 23 },
+  { role = "arp", notes = "2 - 7, 2 5, 2 7, 2", weight = 22 },
+  { role = "arp", notes = "5 - 3 - 2 - 1 -", weight = 16 },
+  { role = "arp", notes = "5 - 7 5 8 5 7 5", weight = 16 },
+  { role = "arp", notes = "5, 1 3 1 4 1 3 1", weight = 16 },
+  { role = "arp", notes = "5 7 9 10 11 9 7 9", weight = 15 },
+  { role = "arp", notes = "1 - 3 1 4 1 3 1", weight = 14 },
+  { role = "arp", notes = "9 - - - - - 2 3", weight = 14 },
 
-  # turn (3 nouvelles -> 5 au total)
-  { role = "turn", notes = "1 2 1 7, 1 2 3 2" },     # broderie autour de la tonique grave
-  { role = "turn", notes = "8 7 8 6 5 6 5 3" },      # broderie d'octave haute (strain B)
-  { role = "turn", notes = "6 7 6 5 6 7 8 6" },      # broderie sur le 6e degré (typique dorien/majeur)
+  { role = "turn", notes = "3 1 5, 1 3 1 5 1", weight = 27 },
+  { role = "turn", notes = "8 1 1 - 3 1 5 1", weight = 20 },
+  { role = "turn", notes = "4 3 2 4 3 2 1 3", weight = 15 },
+  { role = "turn", notes = "7, 2 5, 2 7, 2 5, 2", weight = 14 },
+  { role = "turn", notes = "5 6 8 9 10 8 9 8", weight = 11 },
+  { role = "turn", notes = "1 - 5 1 2 1 7, 2", weight = 10 },
+  { role = "turn", notes = "1 3 2 1 3 1 5, 1", weight = 10 },
+  { role = "turn", notes = "10 8 9 7 8 6 5 4", weight = 10 },
+  { role = "turn", notes = "11 9 10 8 8 9 8 6", weight = 10 },
+  { role = "turn", notes = "3 - 1 3 2 1 7, 1", weight = 10 },
 
-  # cad_half (3 nouvelles -> 5 au total)
-  { role = "cad_half", notes = "6 5 4 3 2 - - -" },  # demi-cadence conjointe sur le 2e degré
-  { role = "cad_half", notes = "6 7 8 6 5 - - -" },  # demi-cadence haute sur la dominante (5)
-  { role = "cad_half", notes = "8 7 6 5 7 - - -" },  # demi-cadence haute sur le 7e degré
-  { role = "cad_half", notes = "5, 1 2 3 4 3 2 5" }, # demi-cadence par le grave sur la dominante (P1-T7)
+  { role = "cad_half", notes = "7, 1 2 3 4 5 6 7", weight = 14 },
+  { role = "cad_half", notes = "6 4 7 5 8 - 5 4", weight = 10 },
+  { role = "cad_half", notes = "8 - 9 - 10 - 8 -", weight = 10 },
+  { role = "cad_half", notes = "5 4 3 2 1 7, 1 2", weight = 8 },
+  { role = "cad_half", notes = "8 10 9 8 7 6 5 4", weight = 8 },
+  { role = "cad_half", notes = "10 - - - - - 3 4", weight = 6 },
+  { role = "cad_half", notes = "10 - - - 8 - - -", weight = 6 },
+  { role = "cad_half", notes = "10 9 8 7 8 7 6 5", weight = 6 },
+  { role = "cad_half", notes = "13 12 12 11 12 - - 11", weight = 6 },
+  { role = "cad_half", notes = "4 2 5 4 3 1 1 -", weight = 6 },
 
-  # cad_full (3 nouvelles -> 5 au total)
-  { role = "cad_full", notes = "2 3 2 7, 1 - - -" }, # cadence avec sensible/sous-tonique inférieure
-  { role = "cad_full", notes = "5 3 2 1 1 - - -" },  # cadence avec double coup d'archet sur la tonique
-  { role = "cad_full", notes = "6 5 4 3 2 1 1 -" },  # descente conjointe vers tonique doublée
-  { role = "cad_full", notes = "4, 1 2 3 4 3 2 1" }, # cadence par le grave sur la tonique (P1-T7)
+  { role = "cad_full", notes = "3 1 2 7, 1 - - -", weight = 15 },
+  { role = "cad_full", notes = "8 10 9 7 8 - 5 4", weight = 15 },
+  { role = "cad_full", notes = "6 - 7 - 8 - - -", weight = 12 },
+  { role = "cad_full", notes = "2 1 7, 2 1 - - -", weight = 11 },
+  { role = "cad_full", notes = "2 3 4 5 6 7 8 9", weight = 11 },
+  { role = "cad_full", notes = "4 6 5 3 1 - 5 4", weight = 10 },
+  { role = "cad_full", notes = "5 4 3 2 1 - - -", weight = 10 },
+  { role = "cad_full", notes = "8 10 9 7 8 - - -", weight = 10 },
+  { role = "cad_full", notes = "2 3 4 5 6 7 8 6", weight = 8 },
+  { role = "cad_full", notes = "3 4 2 3 1 - - -", weight = 8 },
 ]
