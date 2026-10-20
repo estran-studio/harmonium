@@ -47,9 +47,13 @@ struct Args {
     #[arg(long)]
     seed: Option<u64>,
 
-    /// Podorythmie density (`0`, `1` or `2`)
+    /// Podorythmie (`0`, `1`, `2` ou `off` pour exporter sans pieds)
     #[arg(long)]
-    feet: Option<u8>,
+    feet: Option<String>,
+
+    /// Swing des croches à l'export (0,5 = droit ; remplace le swing du style)
+    #[arg(long)]
+    swing: Option<f32>,
     /// Record WAV output to file
     #[arg(long, value_name = "PATH")]
     record_wav: Option<String>,
@@ -77,8 +81,17 @@ fn main() -> Result<()> {
         Some(s) => Some(parser::parse_style_value(s)?),
         None => None,
     };
-    if args.feet.is_some_and(|f| f > 2) {
-        anyhow::bail!("--feet must be 0, 1 or 2");
+    let parsed_feet = match args.feet.as_deref() {
+        Some(s) => Some(parser::parse_feet_value(s).map_err(|e| anyhow::anyhow!(e))?),
+        None => None,
+    };
+    if let Some(swing) = args.swing {
+        if !swing.is_finite() || swing <= 0.0 {
+            anyhow::bail!("--swing invalide: {swing} (attendu 0.5-0.75, 0.5 = droit)");
+        }
+        if !args.export {
+            anyhow::bail!("--swing requiert --export");
+        }
     }
 
     // Validate export mode arguments
@@ -107,7 +120,8 @@ fn main() -> Result<()> {
             args.bars,
             parsed_style,
             args.seed,
-            args.feet,
+            parsed_feet,
+            args.swing,
             record_wav,
             args.record_midi,
             args.record_musicxml,

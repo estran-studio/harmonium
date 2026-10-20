@@ -13,6 +13,8 @@ use anyhow::Result;
 use harmonium::{audio, playback::PlaybackCommand};
 use harmonium_core::{events::RecordFormat, params::Style};
 
+use crate::parser::{FeetOpt, SWING_MAX, SWING_MIN};
+
 const SAMPLE_RATE: f64 = 44100.0;
 const CHANNELS: usize = 2;
 const BUFFER_SIZE: usize = 256;
@@ -25,7 +27,8 @@ pub fn run(
     target_bars: Option<usize>,
     style: Option<Style>,
     seed: Option<u64>,
-    feet_density: Option<u8>,
+    feet: Option<FeetOpt>,
+    swing: Option<f32>,
     record_wav: Option<String>,
     record_midi: Option<String>,
     record_musicxml: Option<String>,
@@ -46,8 +49,19 @@ pub fn run(
     if let Some(st) = style {
         composer.set_style(st);
     }
-    if let Some(fd) = feet_density {
-        composer.set_feet_density(fd);
+    // Le style réapplique ses défauts (dont le swing) : les réglages
+    // d'export passent après, via les paramètres existants.
+    if let Some(ratio) = swing {
+        let clamped = ratio.clamp(SWING_MIN, SWING_MAX);
+        if clamped != ratio {
+            println!("[WARN] Swing hors plage (0.5–0.75), borné à {clamped:.2}");
+        }
+        composer.set_swing_ratio(clamped);
+    }
+    match feet {
+        Some(FeetOpt::Density(fd)) => composer.set_feet_density(fd),
+        Some(FeetOpt::Off) => composer.enable_rhythm(false),
+        None => {}
     }
     composer.invalidate_future();
 
@@ -66,10 +80,11 @@ pub fn run(
 
     if composer.musical_params().style == Style::Reel {
         let mp = composer.musical_params();
+        let feet = if mp.enable_rhythm { mp.feet_density.to_string() } else { "off".to_string() };
         println!(
             "Reel export: seed={}, feet={}, bpm={:.1}, swing={:.2}, sig={}/{}",
             composer.session_seed(),
-            mp.feet_density,
+            feet,
             mp.bpm,
             mp.swing_ratio,
             mp.time_signature.numerator,
