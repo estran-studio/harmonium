@@ -141,6 +141,13 @@ garde. Défaut connu, commun aux quatre : attaque de 250 à 360 ms pour une
 croche de 130 ms à 230 la noire. Le coup d'archet se travaille en phase 2
 dans le moteur (durée de note, accents), pas en changeant de banque.
 
+Pieds validés à l'oreille (2026-10-20, « ça fait l'affaire pour le moment ») :
+`harmonium_trad.sf2`, construit par `harmonium_lab` (`make trad-sf2`) à partir
+de 8 frappes CC0 Freesound (talon touche 36, pointe 37, banque 0 programme 0),
+pieds 9 à 12 dB sous le violon, vélocités humanisées ±12. Elle sera remplacée
+par les enregistrements du propriétaire (`samples/feet/own/`). Branchement
+moteur : tâche SK2.
+
 ### D11 — Arrangement : tours et entrées progressives
 
 Demande du propriétaire, à l'écoute de *Reel Béatrice* : le violon part seul,
