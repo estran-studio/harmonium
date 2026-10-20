@@ -30,6 +30,12 @@ pub const FIFTH_SEMITONES: i8 = 7;
 /// Nombre maximal de sauts > quinte autorisés dans une même cellule (D5).
 pub const MAX_LARGE_LEAPS_PER_CELL: usize = 1;
 
+/// Poids par défaut d'une cellule dont le TOML ne porte pas de champ `weight`.
+pub const DEFAULT_CELL_WEIGHT: u32 = 1;
+
+/// Classes de degré (pas diatonique modulo 7) d'une demi-cadence : degrés 2, 5 et 7.
+const CADENCE_HALF_CLASSES: [i8; 3] = [1, 4, 6];
+
 /// Contenu brut de la banque TOML embarquée du reel.
 pub const REEL_CELLS_TOML: &str = include_str!("reel_cells.toml");
 
@@ -125,6 +131,8 @@ pub enum CellError {
     AmbitusExceedsOctave { min_degree: i8, max_degree: i8, semitones: i8 },
     /// La cellule comporte plus d'un saut mélodique strictement supérieur à la quinte.
     TooManyLargeLeaps { count: usize },
+    /// Le poids de tirage de la cellule est nul (il doit être > 0).
+    ZeroWeight,
 }
 
 impl fmt::Display for CellError {
@@ -151,6 +159,7 @@ impl fmt::Display for CellError {
             Self::TooManyLargeLeaps { count } => {
                 write!(f, "{count} sauts > quinte dans la cellule (maximum autorisé : 1)")
             }
+            Self::ZeroWeight => write!(f, "le poids (`weight`) de la cellule doit être > 0"),
         }
     }
 }
@@ -189,6 +198,8 @@ pub struct Cell {
     pub role: CellRole,
     /// Les 8 croches de la mesure.
     pub notes: [CellNote; NOTES_PER_CELL],
+    /// Poids de tirage dans le rôle (fréquence au corpus pour les cellules minées, > 0).
+    pub weight: u32,
 }
 
 impl Cell {
@@ -212,8 +223,17 @@ impl Cell {
 
     /// Construit et valide une [`Cell`] à partir de son rôle et de la notation textuelle D5.
     pub fn from_notation(role: CellRole, notes_str: &str) -> Result<Self, CellError> {
+        Self::from_notation_weighted(role, notes_str, DEFAULT_CELL_WEIGHT)
+    }
+
+    /// Comme [`Cell::from_notation`] avec un poids de tirage explicite (> 0).
+    pub fn from_notation_weighted(
+        role: CellRole,
+        notes_str: &str,
+        weight: u32,
+    ) -> Result<Self, CellError> {
         let notes = Self::parse_notes(notes_str)?;
-        let cell = Self { role, notes };
+        let cell = Self { role, notes, weight };
         cell.validate()?;
         Ok(cell)
     }
@@ -251,12 +271,51 @@ impl Cell {
         None
     }
 
+    /// Indique si la cellule respecte la règle de cadence D4 de son rôle :
+    /// - `CadHalf` : dernière note attaquée sur un degré de dominante (2, 5 ou 7) ;
+    /// - `CadFull` : finit sur la tonique, ou tonique tenue (≥ 1 noire) suivie d'une
+    ///   croche de reprise (pickup) dans les deux dernières croches ;
+    /// - autres rôles : toujours vrai.
+    ///
+    /// Les cellules minées du corpus ne finissent pas toutes ainsi : la sélection
+    /// (`fiddle`) n'utilise que celles qui respectent la cadence imposée par le plan.
+    #[must_use]
+    pub fn respects_cadence(&self) -> bool {
+        let class = |d: i8| degree_to_diatonic_step(d).rem_euclid(7);
+        match self.role {
+            CellRole::CadHalf => {
+                self.last_degree().is_some_and(|d| CADENCE_HALF_CLASSES.contains(&class(d)))
+            }
+            CellRole::CadFull => {
+                let mut attacks = self.notes.iter().enumerate().filter_map(|(i, n)| match *n {
+                    CellNote::Degree(d) => Some((i, d)),
+                    CellNote::Hold => None,
+                });
+                let Some((last_idx, last_deg)) = attacks.next_back() else {
+                    return false;
+                };
+                if class(last_deg) == 0 {
+                    return true;
+                }
+                last_idx >= NOTES_PER_CELL - 2
+                    && attacks.next_back().is_some_and(|(prev_idx, prev_deg)| {
+                        last_idx - prev_idx >= 2 && class(prev_deg) == 0
+                    })
+            }
+            _ => true,
+        }
+    }
+
     /// Valide les règles D5 sur la cellule :
     /// 1. la première croche n'est pas `Hold` ;
     /// 2. tous les degrés sont dans `-7..=-1` ou `1..=14` ;
     /// 3. ambitus ≤ une octave (7 pas diatoniques / 12 demi-tons) ;
-    /// 4. au plus un saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons).
+    /// 4. au plus un saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons) ;
+    /// 5. poids de tirage > 0.
     pub fn validate(&self) -> Result<(), CellError> {
+        if self.weight == 0 {
+            return Err(CellError::ZeroWeight);
+        }
         if self.notes[0] == CellNote::Hold {
             return Err(CellError::StartsWithHold);
         }
@@ -321,16 +380,23 @@ impl Cell {
     }
 }
 
-/// Représentation sérialisée compacte d'une [`Cell`] (`{ role = "arp", notes = "1 3 5 3 1 3 5 3" }`).
+/// Représentation sérialisée compacte d'une [`Cell`]
+/// (`{ role = "arp", notes = "1 3 5 3 1 3 5 3", weight = 12 }`, `weight` optionnel).
 #[derive(Serialize, Deserialize)]
 struct RawCell {
     role: CellRole,
     notes: String,
+    #[serde(default = "default_cell_weight")]
+    weight: u32,
+}
+
+const fn default_cell_weight() -> u32 {
+    DEFAULT_CELL_WEIGHT
 }
 
 impl Serialize for Cell {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let raw = RawCell { role: self.role, notes: self.notes_to_notation() };
+        let raw = RawCell { role: self.role, notes: self.notes_to_notation(), weight: self.weight };
         raw.serialize(serializer)
     }
 }
@@ -338,7 +404,8 @@ impl Serialize for Cell {
 impl<'de> Deserialize<'de> for Cell {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawCell::deserialize(deserializer)?;
-        Self::from_notation(raw.role, &raw.notes).map_err(serde::de::Error::custom)
+        Self::from_notation_weighted(raw.role, &raw.notes, raw.weight)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -377,7 +444,7 @@ impl CellBank {
 
         let mut cells = Vec::with_capacity(raw.cells.len());
         for (index, item) in raw.cells.into_iter().enumerate() {
-            let cell = Cell::from_notation(item.role, &item.notes)
+            let cell = Cell::from_notation_weighted(item.role, &item.notes, item.weight)
                 .map_err(|error| CellBankError::InvalidCell { index, error })?;
             cells.push(cell);
         }
@@ -504,16 +571,54 @@ mod tests {
         let bank = CellBank::from_toml(REEL_CELLS_TOML)?;
         bank.validate()?;
 
-        assert!(
-            bank.cells.len() >= 30,
-            "attendu ~30 cellules dans reel_cells.toml, trouvé {}",
-            bank.cells.len()
-        );
-
+        assert_eq!(bank.cells.len(), 180);
         for role in CellRole::ALL {
-            let count = bank.count_by_role(role);
-            assert!(count >= 3, "le rôle {role:?} doit avoir au moins 3 cellules, trouvé {count}");
+            assert_eq!(bank.count_by_role(role), 30, "le rôle {role:?} doit avoir 30 cellules");
         }
+        assert!(bank.cells.iter().all(|c| c.weight > 0));
         Ok(())
+    }
+
+    #[test]
+    fn weight_defaults_to_one_and_must_be_positive() -> Result<(), CellBankError> {
+        let bank = CellBank::from_toml(
+            r#"cells = [
+                { role = "run", notes = "1 2 3 4 5 4 3 2" },
+                { role = "run", notes = "5 4 3 2 1 2 3 4", weight = 12 },
+            ]"#,
+        )?;
+        assert_eq!(bank.cells[0].weight, DEFAULT_CELL_WEIGHT);
+        assert_eq!(bank.cells[1].weight, 12);
+
+        let zero = CellBank::from_toml(
+            r#"cells = [{ role = "run", notes = "1 2 3 4 5 4 3 2", weight = 0 }]"#,
+        );
+        assert_eq!(
+            zero,
+            Err(CellBankError::InvalidCell { index: 0, error: CellError::ZeroWeight })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cadence_rule_follows_role() -> Result<(), CellError> {
+        // Demi-cadence : 2, 5 ou 7 (toutes octaves) en dernière attaque.
+        assert!(Cell::from_notation(CellRole::CadHalf, "10 9 8 7 8 7 6 5")?.respects_cadence());
+        assert!(Cell::from_notation(CellRole::CadHalf, "7, 1 2 3 4 5 6 7")?.respects_cadence());
+        assert!(!Cell::from_notation(CellRole::CadHalf, "8 10 9 8 7 6 5 4")?.respects_cadence());
+        // Cadence finale : tonique, ou tonique tenue + croche de reprise.
+        assert!(Cell::from_notation(CellRole::CadFull, "6 - 7 - 8 - - -")?.respects_cadence());
+        assert!(Cell::from_notation(CellRole::CadFull, "5 4 3 2 1 - 5, -")?.respects_cadence());
+        assert!(!Cell::from_notation(CellRole::CadFull, "8 10 9 7 8 - 5 4")?.respects_cadence());
+        assert!(!Cell::from_notation(CellRole::CadFull, "2 3 4 5 6 7 8 9")?.respects_cadence());
+        // Les rôles libres ne sont pas contraints.
+        assert!(Cell::from_notation(CellRole::Run, "8 7 6 5 4 3 2 1")?.respects_cadence());
+        Ok(())
+    }
+
+    #[test]
+    fn mined_degrees_beyond_eight_and_low_octave_are_accepted() {
+        assert!(Cell::from_notation(CellRole::Open, "12 10 13 10 12 10 8 9").is_ok());
+        assert!(Cell::from_notation(CellRole::Run, "7, 1 2 3 4 5 6 7").is_ok());
     }
 }

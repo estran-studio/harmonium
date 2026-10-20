@@ -3,6 +3,7 @@
 //! Uses the decoupled MusicComposer + PlaybackEngine architecture.
 //! Use `--export` mode for headless batch export (no REPL, runs as fast as possible).
 
+mod check_cells;
 mod completer;
 mod export;
 mod help;
@@ -26,6 +27,11 @@ struct Args {
     /// when present, else `assets/test.sf2` (with warning), else runs silent.
     #[arg(short, long)]
     soundfont: Option<String>,
+
+    /// Validate a cell bank TOML file (`CellBank::from_toml`), print readable
+    /// errors and exit 0 (valid) or 1 (invalid). Runs without starting the engine.
+    #[arg(long, value_name = "FILE")]
+    check_cells: Option<String>,
 
     /// Export mode: skip REPL, run engine offline and save recordings
     #[arg(long)]
@@ -77,6 +83,10 @@ fn main() -> Result<()> {
     std::env::set_var("HARMONIUM_CLI", "1");
 
     let args = Args::parse();
+
+    if let Some(path) = args.check_cells.as_deref() {
+        std::process::exit(check_cells::run(path));
+    }
 
     let parsed_style = match args.style.as_deref() {
         Some(s) => Some(parser::parse_style_value(s)?),
