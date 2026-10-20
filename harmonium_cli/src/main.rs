@@ -50,6 +50,11 @@ struct Args {
     /// Podorythmie density (`0`, `1` or `2`)
     #[arg(long)]
     feet: Option<u8>,
+
+    /// Tours AABB joués par air avant d'en tirer un nouveau (défaut : `reel_arrangement.toml`)
+    #[arg(long, value_name = "N")]
+    tours: Option<usize>,
+
     /// Record WAV output to file
     #[arg(long, value_name = "PATH")]
     record_wav: Option<String>,
@@ -108,6 +113,7 @@ fn main() -> Result<()> {
             parsed_style,
             args.seed,
             args.feet,
+            args.tours,
             record_wav,
             args.record_midi,
             args.record_musicxml,
