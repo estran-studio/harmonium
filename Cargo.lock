@@ -901,6 +901,7 @@ dependencies = [
  "ctrlc",
  "harmonium_audio",
  "harmonium_core",
+ "midly",
  "rand",
  "rand_chacha",
  "rosc",

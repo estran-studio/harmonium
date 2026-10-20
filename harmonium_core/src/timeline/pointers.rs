@@ -58,6 +58,19 @@ impl Writehead {
     }
 }
 
+/// A sounding note awaiting its `NoteOff` at an absolute `(bar, step)` position.
+///
+/// Bars are 1-based, steps 0-based within the bar. Ends spilling past the
+/// barline are stored against the future bar and fired there, so a note's
+/// MIDI `NoteOff` lands exactly at its written duration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PendingOff {
+    channel: u8,
+    pitch: u8,
+    end_bar: usize,
+    end_step: usize,
+}
+
 /// Playhead state - reads measures and emits audio events.
 ///
 /// Lives on the audio thread. Reads pre-generated `Measure` structs and
@@ -90,10 +103,11 @@ pub struct Playhead {
     ticks_per_beat: usize,
     /// Pre-allocated event buffer (reused each tick)
     events: Vec<AudioEvent>,
-    /// Active bass note for NoteOff tracking
-    active_bass_note: Option<u8>,
-    /// Active lead notes for NoteOff tracking
-    active_lead_notes: Vec<u8>,
+    /// Sounding notes awaiting their `NoteOff`, scheduled at an absolute
+    /// `(bar, step)`. Fired by [`Playhead::tick`] at the note's real end
+    /// (`start_step + duration_steps`, triggers ring one step), including
+    /// across barlines. Reused across ticks: no steady-state allocation.
+    pending_offs: Vec<PendingOff>,
     /// Next note indices per track (to avoid re-scanning)
     track_cursors: [usize; TrackId::ALL.len()],
 }
@@ -113,8 +127,9 @@ impl Playhead {
             time_signature: TimeSignature::default(),
             ticks_per_beat,
             events: Vec::with_capacity(8),
-            active_bass_note: None,
-            active_lead_notes: Vec::with_capacity(8),
+            // Pré-alloué hors callback : 5 pistes × notes tenues simultanées
+            // (accords, croisements de barre) restent bien sous 64.
+            pending_offs: Vec::with_capacity(64),
             track_cursors: [0; TrackId::ALL.len()],
         }
     }
@@ -166,11 +181,28 @@ impl Playhead {
     pub fn tick(&mut self) -> &[AudioEvent] {
         self.events.clear();
 
+        let bar = self.position.bar;
         let current_step = self.position.step_in_bar(self.ticks_per_beat);
 
-        if let Some(ref measure) = self.current_measure {
-            // Collect notes to emit (avoid borrow conflict with self.emit_note_on)
-            // We process each track inline to avoid the double-borrow
+        // NoteOffs before NoteOns: a note ending where another starts
+        // releases first (same convention as the offline MIDI export).
+        // Overdue ends (`end_bar < bar`, shorter follow-up measure) also
+        // fire here, even with no measure loaded.
+        let mut i = 0;
+        while i < self.pending_offs.len() {
+            let p = self.pending_offs[i];
+            if p.end_bar < bar || (p.end_bar == bar && p.end_step == current_step) {
+                self.events.push(AudioEvent::NoteOff { note: p.pitch, channel: p.channel });
+                self.pending_offs.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+
+        if let Some(measure) = &self.current_measure {
+            let steps = measure.steps.max(1);
+            // Collect notes to emit (avoid borrow conflict with self.events /
+            // self.pending_offs): each track is processed inline.
             for (track_idx, &track_id) in TrackId::ALL.iter().enumerate() {
                 let notes = measure.notes_for_track(track_id);
                 let cursor = self.track_cursors[track_idx];
@@ -188,38 +220,31 @@ impl Playhead {
                     let note = &notes[new_cursor];
                     let channel = track_id.channel();
 
-                    match track_id {
-                        TrackId::Bass => {
-                            if let Some(old_note) = self.active_bass_note.take() {
-                                self.events.push(AudioEvent::NoteOff { note: old_note, channel });
-                            }
-                            self.events.push(AudioEvent::NoteOn {
-                                note: note.pitch,
-                                velocity: note.velocity,
-                                channel,
-                            });
-                            self.active_bass_note = Some(note.pitch);
-                        }
-                        TrackId::Melody => {
-                            if !self.active_lead_notes.is_empty() {
-                                self.events.push(AudioEvent::AllNotesOff { channel });
-                                self.active_lead_notes.clear();
-                            }
-                            self.events.push(AudioEvent::NoteOn {
-                                note: note.pitch,
-                                velocity: note.velocity,
-                                channel,
-                            });
-                            self.active_lead_notes.push(note.pitch);
-                        }
-                        TrackId::Chords | TrackId::Heel | TrackId::Toe => {
-                            self.events.push(AudioEvent::NoteOn {
-                                note: note.pitch,
-                                velocity: note.velocity,
-                                channel,
-                            });
-                        }
+                    // Retrigger: same pitch still sounding (legato overlap)
+                    // closes now, so every NoteOn pairs with exactly one NoteOff.
+                    if let Some(pos) = self
+                        .pending_offs
+                        .iter()
+                        .position(|p| p.channel == channel && p.pitch == note.pitch)
+                    {
+                        let p = self.pending_offs.swap_remove(pos);
+                        self.events.push(AudioEvent::NoteOff { note: p.pitch, channel: p.channel });
                     }
+                    self.events.push(AudioEvent::NoteOn {
+                        note: note.pitch,
+                        velocity: note.velocity,
+                        channel,
+                    });
+                    // Triggers (percussion, duration 0) ring one step so the
+                    // MIDI stream still closes them; pitched notes ring their
+                    // written duration, spilling past the barline if needed.
+                    let end = current_step + note.duration_steps.max(1);
+                    self.pending_offs.push(PendingOff {
+                        channel,
+                        pitch: note.pitch,
+                        end_bar: bar + end / steps,
+                        end_step: end % steps,
+                    });
 
                     new_cursor += 1;
                 }
@@ -285,9 +310,8 @@ impl Playhead {
     pub fn seek_to_bar(&mut self, bar: usize) {
         self.position = MusicalPosition::new(bar, 1, 0);
         self.track_cursors = [0; TrackId::ALL.len()];
-        // Stop any active notes
-        self.active_bass_note = None;
-        self.active_lead_notes.clear();
+        // Drop scheduled NoteOffs (the engine voices AllNotesOff on seeks).
+        self.pending_offs.clear();
     }
 
     /// Reset the playhead to bar 1
@@ -407,5 +431,75 @@ mod tests {
         let finished = ph.take_finished();
         assert!(finished.is_some_and(|m| m.index == 1));
         assert!(ph.take_finished().is_none());
+    }
+    fn note(kind: &AudioEvent) -> Option<(bool, u8, u8)> {
+        match *kind {
+            AudioEvent::NoteOn { note, channel, .. } => Some((true, channel, note)),
+            AudioEvent::NoteOff { note, channel } => Some((false, channel, note)),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn test_playhead_emits_noteoff_at_written_duration() {
+        let mut ph = Playhead::new(44100.0, 4);
+        let mut measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
+        let add =
+            |m: &mut Measure, track: TrackId, id: u64, pitch: u8, start: usize, dur: usize| {
+                m.add_note(
+                    track,
+                    TimelineNote {
+                        id,
+                        pitch,
+                        start_step: start,
+                        duration_steps: dur,
+                        velocity: 90,
+                        articulation: Articulation::Normal,
+                    },
+                );
+            };
+        add(&mut measure, TrackId::Melody, 1, 60, 0, 2);
+        add(&mut measure, TrackId::Chords, 2, 64, 4, 1);
+        add(&mut measure, TrackId::Bass, 3, 36, 0, 4);
+        add(&mut measure, TrackId::Heel, 4, 38, 6, 0);
+        // Spills past the barline (14 + 4 = step 2 of bar 2).
+        add(&mut measure, TrackId::Melody, 5, 62, 14, 4);
+        ph.load_measure(Box::new(measure));
+
+        let mut log: Vec<(usize, bool, u8, u8)> = Vec::new();
+        for step in 0..16 {
+            for e in ph.tick() {
+                if let Some((on, ch, pitch)) = note(e) {
+                    log.push((step, on, ch, pitch));
+                }
+            }
+        }
+        assert!(log.contains(&(0, true, 0, 60)), "melody on: {log:?}");
+        assert!(log.contains(&(2, false, 0, 60)), "melody off at start+dur: {log:?}");
+        assert!(log.contains(&(4, true, 1, 64)), "chords on: {log:?}");
+        assert!(log.contains(&(5, false, 1, 64)), "chords off: {log:?}");
+        assert!(log.contains(&(0, true, 2, 36)), "bass on: {log:?}");
+        assert!(log.contains(&(4, false, 2, 36)), "bass off: {log:?}");
+        assert!(log.contains(&(6, true, 3, 38)), "heel on: {log:?}");
+        assert!(log.contains(&(7, false, 3, 38)), "trigger off one step later: {log:?}");
+
+        // Cross-barline end fires in the next measure.
+        let measure2 = Measure::new(2, TimeSignature::default(), 120.0, 16);
+        ph.take_finished();
+        ph.load_measure(Box::new(measure2));
+        let mut log2: Vec<(usize, bool, u8, u8)> = Vec::new();
+        for step in 0..4 {
+            for e in ph.tick() {
+                if let Some((on, ch, pitch)) = note(e) {
+                    log2.push((step, on, ch, pitch));
+                }
+            }
+        }
+        assert!(log2.contains(&(2, false, 0, 62)), "spilled off in bar 2: {log2:?}");
+        // Every NoteOn pairs with exactly one NoteOff.
+        let ons = log.iter().filter(|e| e.1).count() + log2.iter().filter(|e| e.1).count();
+        let offs = log.iter().filter(|e| !e.1).count() + log2.iter().filter(|e| !e.1).count();
+        assert_eq!(ons, 5, "ons: {log:?} {log2:?}");
+        assert_eq!(offs, 5, "offs: {log:?} {log2:?}");
     }
 }

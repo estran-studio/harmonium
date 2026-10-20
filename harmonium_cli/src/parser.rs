@@ -378,6 +378,27 @@ fn parse_feet_command(tokens: &[&str]) -> Result<CliCommand> {
     Ok(CliCommand::Feet(density))
 }
 
+/// Export `--feet` value: a podorythmie density (`0|1|2`) or `off`, which
+/// drops the feet track (same as disabling the rhythm module for the export).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeetOpt {
+    Density(u8),
+    Off,
+}
+
+/// Parse an export `--feet` value (`0|1|2|off`, case-insensitive).
+pub fn parse_feet_value(raw: &str) -> Result<FeetOpt> {
+    if raw.eq_ignore_ascii_case("off") {
+        return Ok(FeetOpt::Off);
+    }
+    let density: u8 =
+        raw.parse().map_err(|_| anyhow!("Densité invalide: {raw}. Utiliser: --feet 0|1|2|off"))?;
+    if density > 2 {
+        return Err(anyhow!("Densité hors plage ({density}). Utiliser: --feet 0|1|2|off"));
+    }
+    Ok(FeetOpt::Density(density))
+}
+
 /// Parse `swing <ratio>`: a finite positive number, clamped to
 /// 0.5..=0.75 (out-of-range values are clamped, not rejected).
 fn parse_swing_command(tokens: &[&str]) -> Result<CliCommand> {
@@ -557,5 +578,16 @@ mod tests {
         assert!(parse_cli_command(&["feet"]).is_err());
         assert!(parse_cli_command(&["feet", "3"]).is_err());
         assert!(parse_cli_command(&["feet", "dense"]).is_err());
+    }
+    #[test]
+    fn test_parse_feet_value() {
+        assert_eq!(parse_feet_value("0").ok(), Some(FeetOpt::Density(0)));
+        assert_eq!(parse_feet_value("1").ok(), Some(FeetOpt::Density(1)));
+        assert_eq!(parse_feet_value("2").ok(), Some(FeetOpt::Density(2)));
+        assert_eq!(parse_feet_value("off").ok(), Some(FeetOpt::Off));
+        assert_eq!(parse_feet_value("OFF").ok(), Some(FeetOpt::Off));
+        assert!(parse_feet_value("3").is_err());
+        assert!(parse_feet_value("dense").is_err());
+        assert!(parse_feet_value("").is_err());
     }
 }

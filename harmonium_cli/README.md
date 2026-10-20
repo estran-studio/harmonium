@@ -176,6 +176,14 @@ In `style reel`, `state` displays the active style, feet density, current tune k
 cargo run -p harmonium-cli --release -- --export --bars 64 --style reel --seed 1 --feet 1 \
   --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid
 ```
+
+Réglages d'export (mode `--export` seulement) :
+
+- `--swing <ratio>` (0,5 = droit) remplace le swing du style pour l'écoute à
+  armes égales. Hors plage 0,5–0,75 : borné et signalé.
+- `--feet off` exporte sans pieds (piste rythme désactivée) ; `0|1|2` règle
+  la densité de podorythmie. Les deux passent par `MusicalParams`, comme le
+  REPL (`swing`, `feet`).
 ### Utility
 
 ```bash
