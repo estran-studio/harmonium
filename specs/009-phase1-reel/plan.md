@@ -154,6 +154,53 @@ P1-T8, à lancer après P1-T7.
 phase 2 : mode mineur (la mineur), triolets de notes répétées (`(3eee`),
 trois parties (AABBCC), ambitus large (la2 à do6).
 
+## P1-T8 — Tours d'un air et entrées progressives
+
+Implémenté sur `main` après P1-T7 (branche `wquintal/phase1-t8-arrangement`).
+
+### Décisions
+
+- **Position structurée** : `TunePosition { tune_index, tour, tours, part, pass,
+  bar_in_strain }` (`trad::arrangement`), calculée par `TunePosition::at_bar` —
+  unique conversion mesure → position. `BARS_PER_TUNE` est supprimé au profit de
+  `BARS_PER_TOUR` (32) × `tours_per_tune`.
+- **Tours** : un air dure `tours_per_tune` tours AABB (défaut 3) ; chaque tour
+  rejoue la même `FiddleLine` et la même `TuneHarmony` (indexation par
+  `bar_in_tour`), les tours 2..N ne consomment aucun tirage RNG.
+- **Entrées en données** : `harmonium_core/src/trad/reel_arrangement.toml`,
+  chargé dans `TuningParams::reel_arrangement` et validé (`check_range` pour les
+  tours, part `A`/`B`, passe 1/2, piste connue) — erreurs explicites nommant la
+  piste fautive. Défauts : Melody tour 1 / A1, Chords et Bass tour 1 / A2,
+  Heel et Toe tour 2 / A1 ; `intro_each_tune = false` (dès le 2ᵉ air, tous en
+  A1). Une entrée de tour dépassant le dernier tour est ramenée à celui-ci.
+- **Un seul calcul « piste active »** : `TradGenerator::track_active` =
+  arrangement (`allows`) ET drapeau `enable_*`/`feet_density` (plafond du jeu).
+- **Contrat** : `Measure::position` et `MeasureSnapshot::position`
+  (`Option<TunePosition>`, `serde(default)`, `None` hors trad). Rupture de
+  snapshot : `TUNING_VERSION` 3 → 4, golden Legacy régénéré dans le même commit
+  (seul ajout `"position": null`).
+- **CLI** : `--tours N` (`MusicComposer::set_tours_per_tune`, validé) ;
+  l'export imprime les bornes des airs selon la table.
+
+### Mesure sur `demos/reel_arrangement_seed1.wav` (96 mesures, seed 1, GeneralUser GS)
+
+Première note de chaque piste (MIDI) : Melody mesure 1 pas 0 ; Bass mesure 9
+pas 0 ; Chords mesure 9 pas 4 ; Heel et Toe mesure 33 pas 0.
+
+RMS par tranche de 8 mesures (dBFS, mix stéréo moyenné) : −42.1 (1–8),
+−32.4 (9–16), −32.9 (17–24), −32.9 (25–32), −32.2 (33–40), puis −32.2 à −32.7
+jusqu'à 96. L'entrée de l'accompagnement monte de ~9,7 dB ; l'entrée des pieds
+de ~0,7 dB (table P1-T7 volontairement discrète, crête inchangée).
+
+### Tests
+
+`harmonium_core/tests/trad_arrangement_tests.rs` (8 tests, flux de snapshots,
+5 seeds) : violon seul 1–8, accompagnement 9–32, pieds 33–96, tout le monde dès
+97 ; tours identiques ; tours 2..N sans tirage RNG (seek `silent_advance(97)`) ;
+tables invalides ; plafonds `enable_*` et `feet_density` ; position exposée.
+Les tests de forme/accompagnement (P1-T1..T7) sont isolés de D11 par un
+arrangement plat `ReelArrangement::from_start(1)`.
+
 ## Découpage
 
 | Tâche | Contenu | Dépend de | Modèle |
@@ -199,6 +246,7 @@ trois parties (AABBCC), ambitus large (la2 à do6).
 | P1-T5 `TradGenerator` câblé, CLI `style`/`feet`, programmes GM | mergée |
 | SF1 GeneralUser GS par défaut (`make soundfont`), détection GM réelle | mergée |
 | P1-T6 Suppression du chemin Legacy | **en attente** |
+| P1-T8 Tours d'un air et entrées progressives (D11) | mergée à valider |
 
 Vérifié par le coordinateur, sur le flux MIDI des démos (seeds 1 et 2) :
 A1 = A2, B1 = B2, mesures 5-6 = 1-2, B ≠ A ; pieds audibles et différents
