@@ -15,10 +15,13 @@
 //! - [`accomp`] : basse et guitare d'accompagnement du reel (D8) ;
 //! - [`feet`] : podorythmie du reel (D9), validation de table TOML et
 //!   génération de notes de talon et pointe via [`feet_notes`] ;
+//! - [`arrangement`] : position `(tour, partie, passe)` d'une mesure et table
+//!   d'entrées progressives des pistes (D11) ;
 //! - [`generator`] : [`TradGenerator`] assemblant plan, violon, harmonie,
 //!   accompagnement et podorythmie en [`crate::timeline::Measure`] (D1).
 
 pub mod accomp;
+pub mod arrangement;
 pub mod cells;
 pub mod feet;
 pub mod fiddle;
@@ -27,6 +30,10 @@ pub mod harmony;
 pub mod mode;
 pub mod plan;
 pub use accomp::{Guitarist, bass_bar};
+pub use arrangement::{
+    ArrangementError, BARS_PER_TOUR, EntryPoint, MAX_TOURS, Part, REEL_ARRANGEMENT_TOML,
+    ReelArrangement, TrackEntries, TunePosition,
+};
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, FIFTH_DIATONIC_STEPS,
     FIFTH_SEMITONES, NOTES_PER_CELL, REEL_CELLS_TOML,
@@ -39,8 +46,8 @@ pub use fiddle::{
     same_cell_up_to_octave, tonic_midi_for_key, transpose_cell_octaves,
 };
 pub use generator::{
-    ActiveTune, BARS_PER_TUNE, TradGenerator, build_chord_context, draw_next_tune_plan,
-    is_same_or_relative_plan, pitch_class_name, relative_tune_plan, trad_chord_name,
+    ActiveTune, TradGenerator, build_chord_context, draw_next_tune_plan, is_same_or_relative_plan,
+    pitch_class_name, relative_tune_plan, trad_chord_name,
 };
 pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,

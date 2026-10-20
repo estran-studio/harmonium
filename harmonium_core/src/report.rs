@@ -68,6 +68,11 @@ pub struct MeasureSnapshot {
     /// Dance pulse captured at generation time.
     #[serde(default)]
     pub pulse: PulseSpec,
+    /// Position dans l'air (tour, partie A/B, passe 1/2, mesure de la passe) pour
+    /// caler le gameplay sur « les pieds entrent » ou « dernier tour ».
+    /// `None` hors style trad.
+    #[serde(default)]
+    pub position: Option<crate::trad::TunePosition>,
 }
 
 impl MeasureSnapshot {
@@ -104,6 +109,7 @@ impl MeasureSnapshot {
             scale_guidance: measure.chord_context.scale_guidance.clone(),
             swing_ratio: measure.swing_ratio,
             pulse: measure.pulse,
+            position: measure.position,
         }
     }
 }
