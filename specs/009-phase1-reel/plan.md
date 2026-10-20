@@ -133,7 +133,13 @@ corrigés dans la table, pas dans le code.
 
 Melody → 41 (violon, programme GM 40), Chords → 25 (guitare acier, 24),
 Bass → 33 (basse acoustique, 32), Heel → percussion 36, Toe → percussion 37
-(canal 9). Remplacés en phase 2 par une SF2 dédiée avec de vrais pieds.
+(canal 9). Les pieds seront remplacés par une SF2 dédiée avec de vrais pieds.
+
+Violon retenu à l'oreille (comparatif SK3, 2026-10-20, contre FluidR3,
+MuseScore General et Sonatina) : **GeneralUser GS, programme 40**. On le
+garde. Défaut connu, commun aux quatre : attaque de 250 à 360 ms pour une
+croche de 130 ms à 230 la noire. Le coup d'archet se travaille en phase 2
+dans le moteur (durée de note, accents), pas en changeant de banque.
 
 ## Découpage
 
