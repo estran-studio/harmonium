@@ -141,6 +141,19 @@ garde. Défaut connu, commun aux quatre : attaque de 250 à 360 ms pour une
 croche de 130 ms à 230 la noire. Le coup d'archet se travaille en phase 2
 dans le moteur (durée de note, accents), pas en changeant de banque.
 
+### D11 — Arrangement : tours et entrées progressives
+
+Demande du propriétaire, à l'écoute de *Reel Béatrice* : le violon part seul,
+puis les autres instruments entrent. Un air est joué plusieurs tours AABB
+(3 par défaut). Le point d'entrée de chaque piste (tour, partie, passe) est
+dans `reel_arrangement.toml`. Les drapeaux `enable_*` du jeu restent un
+plafond. La position dans l'air est exposée dans `MeasureSnapshot`. Tâche
+P1-T8, à lancer après P1-T7.
+
+*Reel Béatrice* est la cible d'oreille du propriétaire. Traits à viser en
+phase 2 : mode mineur (la mineur), triolets de notes répétées (`(3eee`),
+trois parties (AABBCC), ambitus large (la2 à do6).
+
 ## Découpage
 
 | Tâche | Contenu | Dépend de | Modèle |
