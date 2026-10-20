@@ -18,7 +18,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 4;
+pub const TUNING_VERSION: u32 = 5;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -1661,7 +1661,7 @@ impl TuningParams {
             result.reel_feet = reel_feet.clone();
         }
         if let Some(reel_arrangement) = &overlay.reel_arrangement {
-            result.reel_arrangement = *reel_arrangement;
+            result.reel_arrangement = reel_arrangement.clone();
         }
 
         if let Some(trad_harmony) = &overlay.trad_harmony {
