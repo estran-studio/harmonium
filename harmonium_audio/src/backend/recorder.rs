@@ -5,7 +5,7 @@ use std::{
 
 use harmonium_core::{
     events::{AudioEvent, RecordFormat},
-    params::MusicalParams,
+    params::{MusicalParams, TimeSignature},
 };
 use hound::{WavSpec, WavWriter};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
@@ -13,6 +13,29 @@ use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, T
 use crate::backend::AudioRenderer;
 
 type FinishedRecordings = Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>;
+
+/// Map a logical channel to its MIDI channel: Heel (3) and Toe (4) share
+/// the GM percussion channel 9.
+fn map_midi_channel(channel: u8) -> u8 {
+    if channel == 3 || channel == 4 {
+        crate::voice_manager::GM_DRUM_CHANNEL
+    } else {
+        channel
+    }
+}
+
+/// Build a MIDI time-signature meta event with the given delta.
+fn time_signature_event(delta: u32, signature: &TimeSignature) -> TrackEvent<'static> {
+    TrackEvent {
+        delta: delta.into(),
+        kind: TrackEventKind::Meta(MetaMessage::TimeSignature(
+            signature.numerator as u8,
+            signature.denominator.trailing_zeros() as u8,
+            24,
+            8,
+        )),
+    }
+}
 
 #[derive(Clone)]
 struct SharedWriter {
@@ -64,7 +87,12 @@ pub struct RecorderBackend {
 
     // MIDI State
     midi_track: Option<Vec<TrackEvent<'static>>>,
-    midi_steps_since_last: f64, // Changed from midi_samples_since_last: u64
+    midi_steps_since_last: f64,
+    /// Notes currently sounding in the MIDI stream (`(channel, pitch)` after
+    /// drum mapping). Closed with real `NoteOff`s on `AllNotesOff` and
+    /// flushed at `stop_midi`, so every recorded `NoteOn` pairs with one
+    /// `NoteOff` even when the export truncates a ringing note.
+    midi_active: Vec<(u8, u8)>,
     current_samples_per_step: usize,
     channel_programs: [u8; 16],
     musicxml_events: Option<Vec<(f64, AudioEvent)>>, // Changed from Vec<(u64, AudioEvent)>
@@ -85,7 +113,8 @@ impl RecorderBackend {
             wav_output: None,
             sample_rate,
             midi_track: None,
-            midi_steps_since_last: 0.0, // Changed to f64
+            midi_steps_since_last: 0.0,
+            midi_active: Vec::new(),
             current_samples_per_step: 11025,
             channel_programs: {
                 let mut progs = [0u8; 16];
@@ -137,13 +166,15 @@ impl RecorderBackend {
     }
 
     fn start_midi(&mut self) {
-        // Use actual BPM from musical params, falling back to 120 if unset
+        // Real tempo from the musical params (convoyed by `UpdateMusicalParams`
+        // before recording starts), falling back to 120 if unset.
         let bpm = if self.musicxml_params.bpm > 0.0 { self.musicxml_params.bpm } else { 120.0 };
         let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
         let mut track = vec![TrackEvent {
             delta: 0.into(),
             kind: TrackEventKind::Meta(MetaMessage::Tempo(microseconds_per_beat.into())),
         }];
+        track.push(time_signature_event(0, &self.musicxml_params.time_signature));
 
         // Émet les programmes GM initiaux pour Melody (0), Chords (1) et Bass (2)
         for ch in 0..3u8 {
@@ -160,9 +191,16 @@ impl RecorderBackend {
 
         self.midi_track = Some(track);
         self.midi_steps_since_last = 0.0;
+        self.midi_active.clear();
     }
 
     fn stop_midi(&mut self) {
+        // Close every note still sounding (export truncated its ring): the
+        // stream guarantees one NoteOff per NoteOn.
+        let still_sounding = std::mem::take(&mut self.midi_active);
+        for (channel, pitch) in still_sounding {
+            self.push_midi_event(channel, MidiMessage::NoteOff { key: pitch.into(), vel: 0.into() });
+        }
         if let Some(mut track_events) = self.midi_track.take() {
             // Add End of Track meta event (required by MIDI spec)
             track_events.push(TrackEvent {
@@ -179,6 +217,36 @@ impl RecorderBackend {
                 && let Ok(mut queue) = self.finished_recordings.lock()
             {
                 queue.push((RecordFormat::Midi, buffer));
+            }
+        }
+    }
+
+    /// Append a MIDI channel event to the recorded track, consuming the
+    /// steps elapsed since the previous event as its delta.
+    fn push_midi_event(&mut self, channel: u8, message: MidiMessage) {
+        let delta = self.steps_to_ticks(self.midi_steps_since_last);
+        if let Some(track) = &mut self.midi_track {
+            self.midi_steps_since_last = 0.0;
+            track.push(TrackEvent {
+                delta: delta.into(),
+                kind: TrackEventKind::Midi { channel: channel.into(), message },
+            });
+        }
+    }
+
+    /// Close every MIDI-tracked note sounding on `channel` (answers an
+    /// `AllNotesOff` so the file mirrors what the synth cut).
+    fn midi_all_notes_off(&mut self, channel: u8) {
+        let mut i = 0;
+        while i < self.midi_active.len() {
+            if self.midi_active[i].0 == channel {
+                let (_, pitch) = self.midi_active.swap_remove(i);
+                self.push_midi_event(
+                    channel,
+                    MidiMessage::NoteOff { key: pitch.into(), vel: 0.into() },
+                );
+            } else {
+                i += 1;
             }
         }
     }
@@ -239,20 +307,29 @@ impl AudioRenderer for RecorderBackend {
                 self.current_samples_per_step = *samples_per_step;
             }
             AudioEvent::UpdateMusicalParams { params } => {
-                // Insert MIDI tempo change if BPM changed mid-recording
-                if self.midi_track.is_some() && (params.bpm - self.musicxml_params.bpm).abs() > 0.01
-                {
-                    let bpm = if params.bpm > 0.0 { params.bpm } else { 120.0 };
-                    let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
-                    let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                    if let Some(track) = &mut self.midi_track {
-                        self.midi_steps_since_last = 0.0;
-                        track.push(TrackEvent {
-                            delta: delta.into(),
-                            kind: TrackEventKind::Meta(MetaMessage::Tempo(
-                                microseconds_per_beat.into(),
-                            )),
-                        });
+                // MIDI tempo / time-signature changes mid-recording: the file
+                // follows the real tempo, changes included.
+                if self.midi_track.is_some() {
+                    if (params.bpm - self.musicxml_params.bpm).abs() > 0.01 {
+                        let bpm = if params.bpm > 0.0 { params.bpm } else { 120.0 };
+                        let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
+                        let delta = self.steps_to_ticks(self.midi_steps_since_last);
+                        if let Some(track) = &mut self.midi_track {
+                            self.midi_steps_since_last = 0.0;
+                            track.push(TrackEvent {
+                                delta: delta.into(),
+                                kind: TrackEventKind::Meta(MetaMessage::Tempo(
+                                    microseconds_per_beat.into(),
+                                )),
+                            });
+                        }
+                    }
+                    if params.time_signature != self.musicxml_params.time_signature {
+                        let delta = self.steps_to_ticks(self.midi_steps_since_last);
+                        if let Some(track) = &mut self.midi_track {
+                            self.midi_steps_since_last = 0.0;
+                            track.push(time_signature_event(delta, &params.time_signature));
+                        }
                     }
                 }
                 for (ch, prog) in crate::voice_manager::gm_programs_for_style(params.style) {
@@ -269,60 +346,41 @@ impl AudioRenderer for RecorderBackend {
             _ => {}
         }
 
-        // MIDI recording logic - convert step delta to ticks (Heel=3, Toe=4 mapped to GM ch 9)
-        let map_midi_ch = |ch: u8| -> u8 {
-            if ch == 3 || ch == 4 { crate::voice_manager::GM_DRUM_CHANNEL } else { ch }
-        };
+        // MIDI recording: step deltas become ticks (Heel=3, Toe=4 on GM ch 9).
         match &event {
             AudioEvent::ProgramChange { channel, program } => {
                 if (*channel as usize) < 16 {
                     self.channel_programs[*channel as usize] = *program;
                 }
-                let midi_ch = map_midi_ch(*channel);
-                let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                if let Some(track) = &mut self.midi_track {
-                    self.midi_steps_since_last = 0.0;
-                    track.push(TrackEvent {
-                        delta: delta.into(),
-                        kind: TrackEventKind::Midi {
-                            channel: midi_ch.into(),
-                            message: MidiMessage::ProgramChange { program: (*program).into() },
-                        },
-                    });
-                }
+                self.push_midi_event(
+                    map_midi_channel(*channel),
+                    MidiMessage::ProgramChange { program: (*program).into() },
+                );
             }
             AudioEvent::NoteOn { note, velocity, channel } => {
-                let midi_ch = map_midi_ch(*channel);
-                // Compute delta before mutable borrow
-                let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                if let Some(track) = &mut self.midi_track {
-                    self.midi_steps_since_last = 0.0; // Reset to 0.0
-                    track.push(TrackEvent {
-                        delta: delta.into(),
-                        kind: TrackEventKind::Midi {
-                            channel: midi_ch.into(),
-                            message: MidiMessage::NoteOn {
-                                key: (*note).into(),
-                                vel: (*velocity).into(),
-                            },
-                        },
-                    });
+                let midi_ch = map_midi_channel(*channel);
+                self.push_midi_event(
+                    midi_ch,
+                    MidiMessage::NoteOn { key: (*note).into(), vel: (*velocity).into() },
+                );
+                if self.midi_track.is_some() && !self.midi_active.contains(&(midi_ch, *note)) {
+                    self.midi_active.push((midi_ch, *note));
                 }
             }
             AudioEvent::NoteOff { note, channel } => {
-                let midi_ch = map_midi_ch(*channel);
-                // Compute delta before mutable borrow
-                let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                if let Some(track) = &mut self.midi_track {
-                    self.midi_steps_since_last = 0.0; // Reset to 0.0
-                    track.push(TrackEvent {
-                        delta: delta.into(),
-                        kind: TrackEventKind::Midi {
-                            channel: midi_ch.into(),
-                            message: MidiMessage::NoteOff { key: (*note).into(), vel: 0.into() },
-                        },
-                    });
+                let midi_ch = map_midi_channel(*channel);
+                self.push_midi_event(
+                    midi_ch,
+                    MidiMessage::NoteOff { key: (*note).into(), vel: 0.into() },
+                );
+                if let Some(pos) =
+                    self.midi_active.iter().position(|&(ch, p)| ch == midi_ch && p == *note)
+                {
+                    self.midi_active.swap_remove(pos);
                 }
+            }
+            AudioEvent::AllNotesOff { channel } => {
+                self.midi_all_notes_off(map_midi_channel(*channel));
             }
             _ => {}
         }
@@ -359,5 +417,130 @@ impl AudioRenderer for RecorderBackend {
     }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use harmonium_core::params::TimeSignature;
+
+    struct NullRenderer;
+
+    impl AudioRenderer for NullRenderer {
+        fn handle_event(&mut self, _event: AudioEvent) {}
+        fn process_buffer(&mut self, _output: &mut [f32], _channels: usize) {}
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+    }
+
+    fn params_at(bpm: f32, numerator: usize, denominator: usize) -> MusicalParams {
+        let mut params = MusicalParams::default();
+        params.bpm = bpm;
+        params.time_signature = TimeSignature { numerator, denominator };
+        params
+    }
+
+    fn advance(rec: &mut RecorderBackend, steps: f64) {
+        // `TimingUpdate` then a silent buffer: `steps` sixteenth-steps elapse.
+        rec.handle_event(AudioEvent::TimingUpdate { samples_per_step: 1000 });
+        let frames = (steps * 1000.0) as usize;
+        rec.process_buffer(&mut vec![0.0f32; frames * 2], 2);
+    }
+
+    /// The recorded MIDI mirrors the played stream: real tempo and time
+    /// signature metas, one `NoteOff` per `NoteOn` (same channel and pitch),
+    /// `AllNotesOff` translated, truncated rings closed at stop.
+    #[test]
+    fn midi_mirrors_tempo_signature_and_note_lifetimes() {
+        let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
+        let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
+
+        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(230.0, 2, 2)) });
+        rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
+        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
+        advance(&mut rec, 2.0);
+        rec.handle_event(AudioEvent::NoteOff { note: 60, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 62, velocity: 90, channel: 0 });
+        advance(&mut rec, 1.0);
+        // Legato cut: the synth drops 62 here, so the file must too.
+        rec.handle_event(AudioEvent::AllNotesOff { channel: 0 });
+        // Truncated ring: no NoteOff before stop.
+        rec.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3 });
+        rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
+
+        let queue = finished.lock().expect("recordings lock");
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue[0].0, RecordFormat::Midi);
+        let smf = midly::Smf::parse(&queue[0].1).expect("valid MIDI");
+        assert_eq!(smf.tracks.len(), 1);
+        let track = &smf.tracks[0];
+
+        let tempos: Vec<u32> = track
+            .iter()
+            .filter_map(|e| match e.kind {
+                TrackEventKind::Meta(MetaMessage::Tempo(t)) => Some(t.as_int()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(tempos, vec![(60_000_000.0 / 230.0) as u32], "tempo meta: {tempos:?}");
+        let sigs: Vec<(u8, u8)> = track
+            .iter()
+            .filter_map(|e| match e.kind {
+                TrackEventKind::Meta(MetaMessage::TimeSignature(n, d, _, _)) => Some((n, d)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(sigs, vec![(2, 1)], "time signature 2/2: {sigs:?}");
+
+        let mut ons: Vec<(u8, u8)> = Vec::new();
+        let mut offs: Vec<(u8, u8)> = Vec::new();
+        for e in track {
+            match e.kind {
+                TrackEventKind::Midi {
+                    channel,
+                    message: MidiMessage::NoteOn { key, vel },
+                } if vel.as_int() > 0 => ons.push((channel.as_int(), key.as_int())),
+                TrackEventKind::Midi {
+                    channel,
+                    message: MidiMessage::NoteOff { key, .. },
+                } => offs.push((channel.as_int(), key.as_int())),
+                _ => {}
+            }
+        }
+        ons.sort_unstable();
+        offs.sort_unstable();
+        // Ch 3 (heel) is mapped to GM drums (9); the truncated 40 still closes.
+        assert_eq!(ons, vec![(0, 60), (0, 62), (9, 40)], "ons: {ons:?}");
+        assert_eq!(offs, vec![(0, 60), (0, 62), (9, 40)], "offs: {offs:?}");
+    }
+
+    /// A tempo or signature change mid-recording lands in the file.
+    #[test]
+    fn midi_follows_mid_recording_tempo_change() {
+        let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
+        let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
+
+        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(200.0, 2, 2)) });
+        rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
+        advance(&mut rec, 4.0);
+        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(240.0, 2, 2)) });
+        rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
+
+        let queue = finished.lock().expect("recordings lock");
+        let smf = midly::Smf::parse(&queue[0].1).expect("valid MIDI");
+        let tempos: Vec<u32> = smf.tracks[0]
+            .iter()
+            .filter_map(|e| match e.kind {
+                TrackEventKind::Meta(MetaMessage::Tempo(t)) => Some(t.as_int()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            tempos,
+            vec![(60_000_000.0 / 200.0) as u32, (60_000_000.0 / 240.0) as u32],
+            "tempos: {tempos:?}"
+        );
     }
 }
