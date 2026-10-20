@@ -226,10 +226,7 @@ impl Playhead {
                         .position(|p| p.channel == channel && p.pitch == note.pitch)
                     {
                         let p = self.pending_offs.swap_remove(pos);
-                        self.events.push(AudioEvent::NoteOff {
-                            note: p.pitch,
-                            channel: p.channel,
-                        });
+                        self.events.push(AudioEvent::NoteOff { note: p.pitch, channel: p.channel });
                     }
                     self.events.push(AudioEvent::NoteOn {
                         note: note.pitch,
@@ -445,24 +442,20 @@ mod tests {
     fn test_playhead_emits_noteoff_at_written_duration() {
         let mut ph = Playhead::new(44100.0, 4);
         let mut measure = Measure::new(1, TimeSignature::default(), 120.0, 16);
-        let add = |m: &mut Measure,
-                   track: TrackId,
-                   id: u64,
-                   pitch: u8,
-                   start: usize,
-                   dur: usize| {
-            m.add_note(
-                track,
-                TimelineNote {
-                    id,
-                    pitch,
-                    start_step: start,
-                    duration_steps: dur,
-                    velocity: 90,
-                    articulation: Articulation::Normal,
-                },
-            );
-        };
+        let add =
+            |m: &mut Measure, track: TrackId, id: u64, pitch: u8, start: usize, dur: usize| {
+                m.add_note(
+                    track,
+                    TimelineNote {
+                        id,
+                        pitch,
+                        start_step: start,
+                        duration_steps: dur,
+                        velocity: 90,
+                        articulation: Articulation::Normal,
+                    },
+                );
+            };
         add(&mut measure, TrackId::Melody, 1, 60, 0, 2);
         add(&mut measure, TrackId::Chords, 2, 64, 4, 1);
         add(&mut measure, TrackId::Bass, 3, 36, 0, 4);
@@ -507,5 +500,4 @@ mod tests {
         assert_eq!(ons, 5, "ons: {log:?} {log2:?}");
         assert_eq!(offs, 5, "offs: {log:?} {log2:?}");
     }
-
 }

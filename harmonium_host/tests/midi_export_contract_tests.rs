@@ -12,8 +12,7 @@
 
 use std::time::Instant;
 
-use harmonium::audio::create_offline_engine;
-use harmonium::playback::PlaybackCommand;
+use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{events::RecordFormat, params::Style};
 use midly::{MetaMessage, MidiMessage, Smf, TrackEventKind};
 
@@ -31,7 +30,12 @@ struct Export {
 /// Render `bars` reel bars offline (silent synth) with the given export
 /// settings, mirroring `harmonium_cli::export::run`, and return the recorded
 /// MIDI bytes plus the rendered audio duration.
-fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Result<Export, String> {
+fn render_reel(
+    seed: u64,
+    bars: usize,
+    swing: Option<f32>,
+    feet_off: bool,
+) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
         create_offline_engine(None, SAMPLE_RATE)?;
 
@@ -51,9 +55,8 @@ fn render_reel(seed: u64, bars: usize, swing: Option<f32>, feet_off: bool) -> Re
     for (channel, program) in composer.take_pending_program_changes() {
         let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
     }
-    let _ = cmd_tx.push(PlaybackCommand::UpdateMusicalParams(Box::new(
-        composer.musical_params().clone(),
-    )));
+    let _ = cmd_tx
+        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())));
 
     composer.set_writehead_lookahead(bars + 16);
     composer.generate_bars(bars);
@@ -96,14 +99,14 @@ fn note_events(smf: &Smf) -> Result<Vec<(u32, bool, u8, u8)>, String> {
     for e in &smf.tracks[0] {
         tick += e.delta.as_int();
         match e.kind {
-            TrackEventKind::Midi {
-                channel,
-                message: MidiMessage::NoteOn { key, vel },
-            } if vel.as_int() > 0 => out.push((tick, true, channel.as_int(), key.as_int())),
-            TrackEventKind::Midi {
-                channel,
-                message: MidiMessage::NoteOff { key, .. },
-            } => out.push((tick, false, channel.as_int(), key.as_int())),
+            TrackEventKind::Midi { channel, message: MidiMessage::NoteOn { key, vel } }
+                if vel.as_int() > 0 =>
+            {
+                out.push((tick, true, channel.as_int(), key.as_int()))
+            }
+            TrackEventKind::Midi { channel, message: MidiMessage::NoteOff { key, .. } } => {
+                out.push((tick, false, channel.as_int(), key.as_int()))
+            }
             _ => {}
         }
     }
@@ -145,8 +148,9 @@ fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
     }
     assert!(sounding.is_empty(), "dangling NoteOns: {sounding:?}");
 
-    let (ons, offs) =
-        events.iter().fold((0, 0), |(ons, offs), e| if e.1 { (ons + 1, offs) } else { (ons, offs + 1) });
+    let (ons, offs) = events
+        .iter()
+        .fold((0, 0), |(ons, offs), e| if e.1 { (ons + 1, offs) } else { (ons, offs + 1) });
     assert_eq!(ons, offs, "on/off counts differ");
     Ok(())
 }

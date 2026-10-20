@@ -17,11 +17,7 @@ type FinishedRecordings = Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>;
 /// Map a logical channel to its MIDI channel: Heel (3) and Toe (4) share
 /// the GM percussion channel 9.
 fn map_midi_channel(channel: u8) -> u8 {
-    if channel == 3 || channel == 4 {
-        crate::voice_manager::GM_DRUM_CHANNEL
-    } else {
-        channel
-    }
+    if channel == 3 || channel == 4 { crate::voice_manager::GM_DRUM_CHANNEL } else { channel }
 }
 
 /// Build a MIDI time-signature meta event with the given delta.
@@ -199,7 +195,10 @@ impl RecorderBackend {
         // stream guarantees one NoteOff per NoteOn.
         let still_sounding = std::mem::take(&mut self.midi_active);
         for (channel, pitch) in still_sounding {
-            self.push_midi_event(channel, MidiMessage::NoteOff { key: pitch.into(), vel: 0.into() });
+            self.push_midi_event(
+                channel,
+                MidiMessage::NoteOff { key: pitch.into(), vel: 0.into() },
+            );
         }
         if let Some(mut track_events) = self.midi_track.take() {
             // Add End of Track meta event (required by MIDI spec)
@@ -422,8 +421,9 @@ impl AudioRenderer for RecorderBackend {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use harmonium_core::params::TimeSignature;
+
+    use super::*;
 
     struct NullRenderer;
 
@@ -458,7 +458,9 @@ mod tests {
         let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
         let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
 
-        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(230.0, 2, 2)) });
+        rec.handle_event(AudioEvent::UpdateMusicalParams {
+            params: Box::new(params_at(230.0, 2, 2)),
+        });
         rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
         rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
         advance(&mut rec, 2.0);
@@ -499,14 +501,14 @@ mod tests {
         let mut offs: Vec<(u8, u8)> = Vec::new();
         for e in track {
             match e.kind {
-                TrackEventKind::Midi {
-                    channel,
-                    message: MidiMessage::NoteOn { key, vel },
-                } if vel.as_int() > 0 => ons.push((channel.as_int(), key.as_int())),
-                TrackEventKind::Midi {
-                    channel,
-                    message: MidiMessage::NoteOff { key, .. },
-                } => offs.push((channel.as_int(), key.as_int())),
+                TrackEventKind::Midi { channel, message: MidiMessage::NoteOn { key, vel } }
+                    if vel.as_int() > 0 =>
+                {
+                    ons.push((channel.as_int(), key.as_int()))
+                }
+                TrackEventKind::Midi { channel, message: MidiMessage::NoteOff { key, .. } } => {
+                    offs.push((channel.as_int(), key.as_int()))
+                }
                 _ => {}
             }
         }
@@ -524,10 +526,14 @@ mod tests {
         let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
         let mut rec = RecorderBackend::new(Box::new(NullRenderer), finished.clone(), 44100);
 
-        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(200.0, 2, 2)) });
+        rec.handle_event(AudioEvent::UpdateMusicalParams {
+            params: Box::new(params_at(200.0, 2, 2)),
+        });
         rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
         advance(&mut rec, 4.0);
-        rec.handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params_at(240.0, 2, 2)) });
+        rec.handle_event(AudioEvent::UpdateMusicalParams {
+            params: Box::new(params_at(240.0, 2, 2)),
+        });
         rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
 
         let queue = finished.lock().map_err(|e| e.to_string())?;

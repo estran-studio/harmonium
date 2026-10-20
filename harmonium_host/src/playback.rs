@@ -663,9 +663,8 @@ impl PlaybackEngine {
             params.bpm = self.measure_bpm;
             params.time_signature = self.measure_sig;
             params.set_swing_ratio(self.swing_ratio);
-            self.renderer.handle_event(AudioEvent::UpdateMusicalParams {
-                params: Box::new(params),
-            });
+            self.renderer
+                .handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params) });
         }
     }
 
@@ -1165,9 +1164,8 @@ impl PlaybackEngine {
                     // Forwarded so recorders (MIDI tempo/signature metas,
                     // MusicXML) track the commanded params; the measure load
                     // path refines them to the sounding values on change.
-                    self.renderer.handle_event(AudioEvent::UpdateMusicalParams {
-                        params: params.clone(),
-                    });
+                    self.renderer
+                        .handle_event(AudioEvent::UpdateMusicalParams { params: params.clone() });
                     self.reported_bpm = params.bpm;
                     self.reported_signature = params.time_signature;
                     self.musical_params = *params;

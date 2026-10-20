@@ -391,9 +391,8 @@ pub fn parse_feet_value(raw: &str) -> Result<FeetOpt> {
     if raw.eq_ignore_ascii_case("off") {
         return Ok(FeetOpt::Off);
     }
-    let density: u8 = raw
-        .parse()
-        .map_err(|_| anyhow!("Densité invalide: {raw}. Utiliser: --feet 0|1|2|off"))?;
+    let density: u8 =
+        raw.parse().map_err(|_| anyhow!("Densité invalide: {raw}. Utiliser: --feet 0|1|2|off"))?;
     if density > 2 {
         return Err(anyhow!("Densité hors plage ({density}). Utiliser: --feet 0|1|2|off"));
     }
