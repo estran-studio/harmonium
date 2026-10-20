@@ -561,6 +561,11 @@ pub struct MusicalParams {
     #[serde(default)]
     pub enable_voicing: bool,
 
+    /// Arrêter la génération après le dernier tour de l'air courant
+    /// (utilisé pour l'outro en mode export avec `--bars`).
+    #[serde(default)]
+    pub end_after_tour: bool,
+
     // ═══════════════════════════════════════════════════════════════════
     // RYTHME
     // ═══════════════════════════════════════════════════════════════════
@@ -829,6 +834,7 @@ impl Default for MusicalParams {
             enable_harmony: true,
             enable_melody: true,
             enable_voicing: false,
+            end_after_tour: false,
 
             // Rythme
             rhythm_mode: RhythmMode::Euclidean,
