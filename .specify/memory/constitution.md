@@ -1,10 +1,12 @@
 # Constitution Harmonium
 
-Harmonium est un moteur Rust de musique procédurale **de style folklorique
-québécois / canadien-français**, piloté en temps réel par l'état d'un jeu
-(« 1837 », roguelike Rust/Bevy). Le beat est exposé au gameplay ; deux
-jauges émotionnelles (sacre, faim) et l'intensité de l'action pilotent la
-musique.
+Harmonium est un moteur Rust de musique procédurale **traditionnelle,
+multi-styles selon la configuration**, piloté en temps réel par l'état d'un
+jeu (« 1837 », roguelike Rust/Bevy). Le jeu couvre plusieurs traditions :
+québécoise / canadienne-française (la première), acadienne, autochtones,
+britannique coloniale, et d'autres à venir. Le beat est exposé au gameplay ;
+deux jauges émotionnelles (sacre, faim) et l'intensité de l'action pilotent
+la musique.
 
 Ce document est court à dessein. Il fixe ce qui ne se renégocie pas à chaque
 feature. Le reste se décide en écoutant.
@@ -45,11 +47,17 @@ mort, alias de compatibilité, `#[cfg]` sans consommateur, commentaires
 
 ### V. Le style est en données, les algorithmes en code
 
-Tout ce qui définit la personnalité musicale (patterns de pieds, cellules
-mélodiques, seuils, vélocités, tessitures, tonalités permises, tempos par
-type de tune) vit dans `TuningParams` / `StyleProfile` (TOML), jamais en
-constante inline. `harmonium_lab` mesure la distance entre le généré et un
-corpus de référence ; les décisions de style s'appuient sur cette mesure et
+Un style (une tradition et un type d'air : reel québécois, gigue acadienne,
+marche fifre-et-tambour britannique, chant au tambour…) est un **profil de
+style** en données : signature et grille, forme, banques de cellules
+mélodiques, modes et tonalités permis, modèle d'harmonie (fonctionnelle,
+modale, bourdon ou aucune), instruments, percussions, arrangement, tempos,
+vélocités, tessitures. Il vit dans `TuningParams` / `StyleProfile` (TOML),
+jamais en constante inline ni en `match` sur un nom de style. Ajouter un style
+ne demande que des données ; un algorithme manquant (ex. appel-réponse,
+bourdon) s'ajoute une fois, en code générique, réutilisable par tous les
+styles. `harmonium_lab` mesure la distance entre le généré et un corpus de
+référence par style ; les décisions de style s'appuient sur cette mesure et
 sur l'écoute, dans cet ordre.
 
 ### VI. Tests sur le contrat, pas sur les internes
@@ -57,6 +65,15 @@ sur l'écoute, dans cet ordre.
 Les tests portent sur le flux de snapshots et sur `BeatInfo` : timing des
 notes, cadences, répétition de forme, position publiée. Un test qui lit un
 état privé est fragile et refusé.
+
+### VII. Respect des traditions
+
+Chaque style s'appuie sur un corpus de référence dont la provenance et les
+droits sont notés dans un manifeste. Pour les musiques autochtones : pas de
+chants sacrés ou cérémoniels, pas de corpus sans droits clairs, et une
+validation par des musiciens ou conseillers des nations concernées avant
+qu'un style entre dans le jeu. Un style se nomme par sa tradition précise
+(nation, région, époque), jamais par une étiquette générique.
 
 ## Périmètre du workspace
 
@@ -86,4 +103,5 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 2.0.0 | **Ratifiée** : 2026-10-18
+**Version** : 3.0.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-20
+(moteur multi-styles par profils de données, principe VII)

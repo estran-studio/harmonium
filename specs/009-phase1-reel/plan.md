@@ -325,16 +325,29 @@ Dette connue, à traiter au passage :
 1. **Écoute ciblée, 30 min** : noter par élément ce qui sonne « pas trad »
    (cellules, pieds, swing, tempo, cadences, accompagnement). Correction en
    données d'abord.
-2. **Phase 2 — l'idiome** (ce qui manque le plus à l'oreille) :
-   ornements rendus en temps-échantillon (cut, roll, triolet d'archet,
-   double-corde), variation d'ornementation aux reprises, accordéon en
-   doublure, humanisation des pieds, puis gigue 6/8 et valse.
-3. **P1-T6** dès que l'écoute dit « c'est un reel ».
-4. **Phase 3 — le jeu** : plugin Bevy sur `create_offline_engine`, couche
-   `GameMood` (sacre, faim, intensité) → paramètres trad.
+2. **Phase 2 — moteur multi-styles par profils** (constitution v3, principe V) :
+   remplacer `TuneKind` et les constantes du reel (2/2, 16 pas, parties de 8,
+   AABB) par un `StyleProfile` en TOML : grille et signature, grammaire de
+   forme (AABB, AABBCC, couplet-refrain, appel-réponse, strophique), banques
+   de cellules, modèle d'harmonie (fonctionnelle, modale, bourdon, aucune),
+   instruments, percussions, arrangement. Le reel devient un profil parmi
+   d'autres, sans changement audible (goldens identiques). Preuve : gigue
+   6/8 et valse 3/4 québécoises ajoutées **sans toucher au code**, à partir
+   du corpus du labo (88 gigues, 67 valses).
+3. **Phase 3 — l'idiome du reel** : ornements en temps-échantillon (cut,
+   roll, triolet d'archet, double-corde), variation aux reprises, accordéon,
+   mode mineur et 3 parties (*Reel Béatrice*).
+4. **Phase 4 — autres traditions**, une par profil + corpus au labo :
+   acadienne (proche, même instrumentarium), britannique coloniale (fifre et
+   tambour, country dances, hymnes), autochtones (principe VII : consultation
+   avant entrée dans le jeu, pas de chants sacrés).
+5. **P1-T6** dès que l'écoute dit « c'est un reel » ; Legacy n'est pas un
+   profil de style, il est supprimé.
+6. **Phase 5 — le jeu** : plugin Bevy sur `create_offline_engine`, couche
+   `GameMood` (sacre, faim, intensité) → paramètres du profil actif.
 
 Orchestration : agent `omp` dans des worktrees Orca, un worktree par tâche,
 merge `--no-ff` par le coordinateur après tests + clippy + fmt + écoute.
-Routage des modèles : Antigravity (gemini-4-argon difficile,
-claude-sonnet-5-5 moyen, gemini-3.8-flash mécanique), repli Muse, puis
-DeepInfra (DeepSeek-V4-Pro / V4-Flash) quand un quota tombe.
+Routage des modèles : `~/.harmonium-orch/models.md`, `omp usage` vérifié avant
+chaque lancement ; depuis 2026-10-20, OpenRouter (`deepseek-v4-pro` difficile,
+`deepseek-v4.1-flash` moyen et mécanique) tant que les abonnements sont épuisés.
