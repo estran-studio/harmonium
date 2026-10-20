@@ -14,8 +14,9 @@ use std::collections::BTreeMap;
 
 use super::{
     accomp::{Guitarist, bass_bar},
+    cells::Cell,
     feet::feet_notes,
-    fiddle::{BARS_PER_STRAIN, FiddleLine},
+    fiddle::{BARS_PER_STRAIN, FiddleLine, same_cell_up_to_octave},
     harmony::{ChordDegree, ChordQuality, TUNE_HARMONY_BARS, TradChord, TuneHarmony},
     mode::{Mode, PitchClass},
     plan::{BarRole, TuneKind, TunePlan},
@@ -249,25 +250,39 @@ impl TradGenerator {
             if self.tunes.contains_key(&idx) {
                 continue;
             }
-            let prev_plan =
-                idx.checked_sub(1).and_then(|prev_idx| self.tunes.get(&prev_idx).map(|t| t.plan));
-            let tune = self.build_tune(idx, prev_plan, rng);
+            let prev = idx.checked_sub(1).and_then(|prev_idx| self.tunes.get(&prev_idx));
+            let prev_plan = prev.map(|t| t.plan);
+            let prev_first_cell = prev.map(|t| t.fiddle.cells_a()[0].clone());
+            let tune = self.build_tune(idx, prev_plan, prev_first_cell, rng);
             self.tunes.insert(idx, tune);
         }
     }
 
     /// Construit un [`ActiveTune`] complet (`TunePlan` + `FiddleLine` + `TuneHarmony`).
+    ///
+    /// Règle P1-T7 : deux tunes consécutifs ne commencent pas par la même
+    /// cellule (à une transposition d'octave près) ; en cas de collision, la
+    /// ligne est retirée (tirage déterministe suivant) jusqu'à 8 essais.
     fn build_tune(
         &self,
         tune_index: usize,
         prev_plan: Option<TunePlan>,
+        prev_first_cell: Option<Cell>,
         rng: &mut dyn RngCore,
     ) -> ActiveTune {
         let plan = match prev_plan {
             None => TunePlan::draw_with_params(rng, None, &self.tuning.reel_fiddle),
             Some(prev) => draw_next_tune_plan(prev, &self.tuning.reel_fiddle, rng),
         };
-        let fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
+        let mut fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
+        if let Some(prev_first) = prev_first_cell {
+            for _ in 0..8 {
+                if !same_cell_up_to_octave(&fiddle.cells_a()[0], &prev_first) {
+                    break;
+                }
+                fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
+            }
+        }
 
         let distinct_melody: [Vec<TimelineNote>; TUNE_HARMONY_BARS] = std::array::from_fn(|i| {
             let bar_in_tune =

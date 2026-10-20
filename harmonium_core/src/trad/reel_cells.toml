@@ -29,12 +29,23 @@ cells = [
   { role = "cad_full", notes = "3 2 1 7, 1 - - -" },
   { role = "cad_full", notes = "5 4 3 2 1 - 5, -" }, # tonique + pickup
 
-  # --- Extensions idiomatiques trad québécois (18 cellules) ---
-  # open (3 nouvelles -> 5 au total)
+  # --- Extensions P1-T7 (8 cellules `open` : attaques sur tous les degrés) + idiomatiques (18 cellules) ---
+  # open (11 nouvelles -> 13 au total)
   { role = "open", notes = "3 3 1 3 5 3 2 1" },      # attaque doublée sur la tierce (strain A)
   { role = "open", notes = "8 8 6 8 7 6 5 6" },      # attaque doublée à l'octave haute (strain B)
   { role = "open", notes = "5 6 8 8 7 6 5 3" },      # appel ascendant vers l'octave (strain B)
-
+  { role = "open", notes = "2 2 4 2 5 4 2 1" },      # attaque doublée sur la sus-tonique
+  { role = "open", notes = "4 4 2 4 6 4 5 4" },      # attaque doublée sur la sous-dominante
+  { role = "open", notes = "6 6 5 6 8 6 5 4" },      # attaque doublée sur le 6e degré
+  { role = "open", notes = "7 7 5 7 8 7 6 5" },      # attaque doublée sur le 7e degré
+  { role = "open", notes = "1 3 1 2 3 5 3 2" },      # montée conjointe depuis la tonique
+  { role = "open", notes = "3 5 3 1 2 3 5 3" },      # arpège de tonique resserré
+  { role = "open", notes = "6 5 3 5 6 8 6 5" },      # descente puis appel vers l'octave
+  { role = "open", notes = "4 5 4 3 2 3 4 5" },      # vague conjointe haute (strain A/B)
+  { role = "open", notes = "7 8 7 6 5 6 7 6" },      # descente depuis l'octave sur le 7e degré
+  { role = "open", notes = "2 3 2 1 2 4 5 4" },      # broderie grave puis montée (strain A)
+  { role = "open", notes = "5 4 5 6 5 3 4 5" },      # vague médiane autour de la quinte
+  { role = "open", notes = "8 7 8 6 7 8 7 6" },      # broderie d'octave descendante (strain B)
   # arp (3 nouvelles -> 5 au total)
   { role = "arp", notes = "2 4 6 4 2 4 6 5" },       # arpège de sus-tonique / dominante
   { role = "arp", notes = "4 6 8 6 4 6 8 6" },       # arpège de sous-dominante IV dans l'aigu (strain B)
@@ -54,9 +65,11 @@ cells = [
   { role = "cad_half", notes = "6 5 4 3 2 - - -" },  # demi-cadence conjointe sur le 2e degré
   { role = "cad_half", notes = "6 7 8 6 5 - - -" },  # demi-cadence haute sur la dominante (5)
   { role = "cad_half", notes = "8 7 6 5 7 - - -" },  # demi-cadence haute sur le 7e degré
+  { role = "cad_half", notes = "5, 1 2 3 4 3 2 5" }, # demi-cadence par le grave sur la dominante (P1-T7)
 
   # cad_full (3 nouvelles -> 5 au total)
   { role = "cad_full", notes = "2 3 2 7, 1 - - -" }, # cadence avec sensible/sous-tonique inférieure
   { role = "cad_full", notes = "5 3 2 1 1 - - -" },  # cadence avec double coup d'archet sur la tonique
   { role = "cad_full", notes = "6 5 4 3 2 1 1 -" },  # descente conjointe vers tonique doublée
+  { role = "cad_full", notes = "4, 1 2 3 4 3 2 1" }, # cadence par le grave sur la tonique (P1-T7)
 ]
