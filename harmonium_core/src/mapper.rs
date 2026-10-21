@@ -187,6 +187,25 @@ impl EmotionMapper {
         params
     }
 
+    /// Applique les quatre axes d'un profil à des paramètres existants.
+    /// Le tempo reste une base : le générateur applique la courbe d'énergie.
+    /// Aucun nom de style ni borne de tempo musicale n'est codé dans le mapper.
+    pub fn apply_dynamics(
+        &self,
+        emotions: &EngineParams,
+        dynamics: &crate::trad::dynamics::StyleDynamics,
+        nominal_bpm: f32,
+        params: &mut MusicalParams,
+    ) {
+        params.bpm = nominal_bpm;
+        params.intensity = dynamics.intensity_from_emotions(emotions.arousal, emotions.tension);
+        params.rhythm_density = emotions.density;
+        params.rhythm_tension = emotions.tension;
+        params.harmony_valence = emotions.valence;
+        params.harmony_tension = emotions.tension;
+        params.melody_smoothness = emotions.smoothness;
+    }
+
     /// Fonction statique pour usage rapide sans instancier le mapper
     #[must_use]
     pub fn quick_map(emotions: &EngineParams) -> MusicalParams {

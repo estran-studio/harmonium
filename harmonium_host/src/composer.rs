@@ -77,6 +77,12 @@ impl Generator {
         }
     }
 
+    fn invalidate_future(&mut self, playing_bar: usize) {
+        if let Self::Reel(generator) = self {
+            generator.invalidate_future(playing_bar);
+        }
+    }
+
     /// Réinitialise le générateur à son état initial pour le seek déterministe.
     pub fn reset_to_initial(&mut self, ctx: &GenerationContext) {
         match self {
@@ -511,6 +517,7 @@ impl MusicComposer {
         };
 
         self.writehead.timeline.invalidate_from(regen_from);
+        self.generator.invalidate_future(playhead_bar);
         self.writehead.current_bar = regen_from;
 
         // New epoch: staged boxes at or past the cut are stale. The caller
@@ -794,6 +801,11 @@ impl MusicComposer {
         self.musical_params.set_feet_density(density);
     }
 
+    /// Énergie du style (0..1), audible après `invalidate_future`.
+    pub fn set_intensity(&mut self, intensity: f32) {
+        self.musical_params.set_intensity(intensity);
+    }
+
     pub fn enable_rhythm(&mut self, e: bool) {
         self.musical_params.enable_rhythm = e;
     }
@@ -971,18 +983,37 @@ impl MusicComposer {
             return;
         }
 
-        self.cached_emotions.arousal = arousal;
-        self.cached_emotions.valence = valence;
-        self.cached_emotions.density = density;
-        self.cached_emotions.tension = tension;
+        let finite_axis = |value: f32, fallback: f32| {
+            if value.is_finite() { value.clamp(0.0, 1.0) } else { fallback }
+        };
+        self.cached_emotions.arousal = finite_axis(arousal, self.cached_emotions.arousal);
+        self.cached_emotions.valence = finite_axis(valence, self.cached_emotions.valence);
+        self.cached_emotions.density = finite_axis(density, self.cached_emotions.density);
+        self.cached_emotions.tension = finite_axis(tension, self.cached_emotions.tension);
 
-        let mapped = self.emotion_mapper.map(&self.cached_emotions);
+        let mapped = match &self.generator {
+            Generator::Legacy(_) => self.emotion_mapper.map(&self.cached_emotions),
+            Generator::Reel(generator) => {
+                let mut params = self.musical_params.clone();
+                self.emotion_mapper.apply_dynamics(
+                    &self.cached_emotions,
+                    &generator.tuning.reel_intensity,
+                    generator.tuning.reel_fiddle.default_bpm,
+                    &mut params,
+                );
+                params
+            }
+        };
 
         // Preserve runtime state that shouldn't be overwritten by the mapper
         let mut new_params = mapped;
         new_params.rhythm_mode = self.musical_params.rhythm_mode;
         new_params.style = self.musical_params.style;
         new_params.feet_density = self.musical_params.feet_density;
+        new_params.swing_ratio = self.musical_params.swing_ratio;
+        new_params.time_signature = self.musical_params.time_signature;
+        new_params.pulse = self.musical_params.pulse;
+        new_params.end_after_tour = self.musical_params.end_after_tour;
         new_params.enable_rhythm = self.musical_params.enable_rhythm;
         new_params.enable_harmony = self.musical_params.enable_harmony;
         new_params.enable_melody = self.musical_params.enable_melody;
