@@ -46,6 +46,10 @@ pub fn print_help() {
                 "Change le style (en reel : 230 BPM, swing 0.56, 2/2, programmes GM D10)",
             ),
             ("feet <0|1|2>", "Densité de podorythmie (0 = talon 0,8 ; 1 = standard ; 2 = ornée)"),
+            (
+                "intensity <0..1>",
+                "Énergie, articulation, pieds et chop ; effet à la prochaine mesure",
+            ),
             ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
         ],
     );
@@ -175,6 +179,12 @@ pub fn print_command_help(command: &str) {
             println!("  {}  - Emotion (-1 to 1)", "valence".green());
             println!("  {}  - Melodic smoothness (0-1)", "smoothness".green());
             println!("  {}  - Octave shift (-2 to 2)", "octave".green());
+        }
+
+        "intensity" => {
+            println!("intensity <0..1> : énergie du style ; 0.5 conserve le rendu par défaut.");
+            println!("Reel : tempo borné autour du style, notes plus sèches, accents et pieds plus forts.");
+            println!("L'air courant garde ses hauteurs ; la nouvelle distribution de cellules attend l'air suivant.");
         }
 
         "emotion" => {

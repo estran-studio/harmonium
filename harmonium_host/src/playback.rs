@@ -277,6 +277,8 @@ pub struct PlaybackEngine {
     audible_bpm: f32,
     // Active tempo override (D4). `None` = follow the measure tempo.
     tempo_override: Option<TempoRamp>,
+    // An explicit SetTempo wins over data-driven measure ramps.
+    tempo_override_explicit: bool,
 
     // Predictive clock (D1): the current state plus the triple-buffer
     // producer half. `clock` is copied into the buffer on each publish (a
@@ -406,6 +408,7 @@ impl PlaybackEngine {
             measure_bpm: bpm,
             audible_bpm: bpm,
             tempo_override: None,
+            tempo_override_explicit: false,
             clock: TransportClock::initial(sample_rate as u32),
             clock_tx,
             current_pulse: PulseSpec::default(),
@@ -592,6 +595,7 @@ impl PlaybackEngine {
         if step.is_multiple_of(steps_per_pulse) {
             self.freeze_pulse(step, steps_per_pulse);
         }
+        self.relay_measure_params();
 
         // Frozen duration of the entered step, from its pulse's fresh table.
         let duration = self.step_durations[self.step_index];
@@ -625,8 +629,6 @@ impl PlaybackEngine {
                 return Some(duration);
             }
         }
-        // Unguarded again: relay a newly loaded measure's tempo/signature.
-        self.relay_measure_params();
 
         // Cursor for the next entry: the advanced step's slot in the current
         // table (a newly opened pulse is frozen at its own entry above).
@@ -649,22 +651,18 @@ impl PlaybackEngine {
         Some(duration)
     }
 
-    /// Relay the sounding measure's tempo/signature to the renderer (the
-    /// MIDI recorder turns them into file metas). Fires only on change, so
-    /// steady-state playback stays allocation-free. Must run outside
-    /// `RtGuard`: building the params event allocates.
+    /// Métadonnées de la pulse audible : payload Copy, sans Box ni clone.
     fn relay_measure_params(&mut self) {
-        if (self.measure_bpm - self.reported_bpm).abs() > 0.01
+        if (self.audible_bpm - self.reported_bpm).abs() > 0.01
             || self.measure_sig != self.reported_signature
         {
-            self.reported_bpm = self.measure_bpm;
+            self.reported_bpm = self.audible_bpm;
             self.reported_signature = self.measure_sig;
-            let mut params = self.musical_params.clone();
-            params.bpm = self.measure_bpm;
-            params.time_signature = self.measure_sig;
-            params.set_swing_ratio(self.swing_ratio);
-            self.renderer
-                .handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params) });
+            self.renderer.handle_event(AudioEvent::MeasureTiming {
+                bpm: self.audible_bpm,
+                time_signature: self.measure_sig,
+                swing_ratio: self.swing_ratio,
+            });
         }
     }
 
@@ -688,6 +686,13 @@ impl PlaybackEngine {
         if current_step.is_multiple_of(4) {
             self.send_report();
         }
+    }
+
+    fn start_tempo_ramp(&mut self, bpm: f32, ramp_pulses: u8) {
+        let target = bpm.clamp(40.0, 300.0);
+        let remaining = ramp_pulses.max(1);
+        let step = (target - self.audible_bpm) / f32::from(remaining);
+        self.tempo_override = Some(TempoRamp { target, remaining, step });
     }
     /// Freeze the pulse timing at a pulse boundary: apply one tempo-ramp step
     /// (D4), compute the pulse's whole-frame step durations (swing, D3) and
@@ -881,10 +886,20 @@ impl PlaybackEngine {
             // would panic in debug builds.
             self.measure_bpm = slot.measure.tempo;
             self.swing_ratio = slot.measure.swing_ratio;
-            if self.tempo_override.is_none() {
-                self.audible_bpm = self.measure_bpm;
-            }
             self.current_pulse = slot.measure.pulse;
+            if !self.tempo_override_explicit {
+                if self.first_measure_loaded
+                    && slot.measure.position.is_some()
+                    && self.measure_bpm != self.audible_bpm
+                {
+                    // Même rampe que SetTempo, sur une mesure de pulses :
+                    // aucune coupure, aucun seek et aucune horloge reconstruite.
+                    self.start_tempo_ramp(self.measure_bpm, self.current_pulse.pulses_per_bar);
+                } else {
+                    self.tempo_override = None;
+                    self.audible_bpm = self.measure_bpm;
+                }
+            }
             self.measure_sig = slot.measure.time_signature;
 
             // Update chord info for reports
@@ -1174,15 +1189,11 @@ impl PlaybackEngine {
                     // D4: the audible tempo advances at pulse boundaries only
                     // (the D1 invariant); `ramp_pulses == 0` is a jump applied
                     // at the next boundary.
-                    let target = bpm.clamp(40.0, 300.0);
-                    let (remaining, step) = if ramp_pulses == 0 {
-                        (1u8, target - self.audible_bpm)
-                    } else {
-                        (ramp_pulses, (target - self.audible_bpm) / f32::from(ramp_pulses))
-                    };
-                    self.tempo_override = Some(TempoRamp { target, remaining, step });
+                    self.tempo_override_explicit = true;
+                    self.start_tempo_ramp(bpm, ramp_pulses);
                 }
                 PlaybackCommand::ClearTempo => {
+                    self.tempo_override_explicit = false;
                     self.tempo_override = None;
                     self.audible_bpm = self.measure_bpm;
                 }

@@ -23,9 +23,29 @@ impl HarmoniumCompleter {
     pub fn new() -> Self {
         Self {
             commands: vec![
-                "set", "emotion", "direct", "enable", "disable", "record", "stop", "state", "show",
-                "status", "seek", "loop", "reset", "swing", "tempo", "beat", "style", "feet",
-                "seed", "help", "quit", "exit",
+                "set",
+                "emotion",
+                "direct",
+                "enable",
+                "disable",
+                "record",
+                "stop",
+                "state",
+                "show",
+                "status",
+                "seek",
+                "loop",
+                "reset",
+                "swing",
+                "tempo",
+                "beat",
+                "style",
+                "feet",
+                "seed",
+                "intensity",
+                "help",
+                "quit",
+                "exit",
             ],
             set_params: vec![
                 "bpm",
@@ -210,8 +230,17 @@ impl HarmoniumCompleter {
             "help" => {
                 if tokens.len() <= 2 {
                     [
-                        "set", "emotion", "enable", "disable", "record", "swing", "tempo", "beat",
-                        "style", "feet",
+                        "set",
+                        "emotion",
+                        "enable",
+                        "disable",
+                        "record",
+                        "swing",
+                        "tempo",
+                        "beat",
+                        "style",
+                        "feet",
+                        "intensity",
                     ]
                     .iter()
                     .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })

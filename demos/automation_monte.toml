@@ -1,0 +1,16 @@
+# Calme -> très intense en 96 mesures. 0.5 = rendu neutre du style.
+[[keys]]
+bar = 1
+intensity = 0.1
+
+[[keys]]
+bar = 32
+intensity = 0.5
+
+[[keys]]
+bar = 64
+intensity = 0.8
+
+[[keys]]
+bar = 96
+intensity = 1.0

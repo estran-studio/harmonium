@@ -312,9 +312,8 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
             return handle_profile_command(state, &tokens[1..]);
         }
 
-        // Phase-0/1 CLI commands: swing, tempo, beat, style, feet (parsed locally,
-        // they need the playback ring / clock reader, not `EngineCommand`).
-        "swing" | "tempo" | "beat" | "style" | "feet" => {
+        // Commandes CLI trad et horloge (hors EngineCommand).
+        "swing" | "tempo" | "beat" | "style" | "feet" | "intensity" => {
             return handle_clock_command(state, &tokens);
         }
         _ => {}
@@ -403,6 +402,14 @@ fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> 
             print_success_msg(&format!(
                 "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
             ));
+        }
+        Ok(CliCommand::Intensity(value)) => {
+            if let Ok(mut c) = state.composer.lock() {
+                c.set_intensity(value);
+                c.invalidate_future();
+            }
+            state.send_invalidate();
+            print_success_msg(&format!("Intensité {value:.2} : effet à la prochaine mesure"));
         }
         Err(e) => {
             println!("{} {}", "[ERROR]".red().bold(), e);
@@ -852,9 +859,10 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
     Ok(())
 }
 
-/// Check if tokens contain relative value syntax (+/-)
+/// Seules les formes préfixées a+/v-/d+/t- sont relatives ; une valence
+/// numérique négative appartient à la commande absolue à quatre axes.
 fn has_relative_values(tokens: &[&str]) -> bool {
-    tokens.iter().any(|t| t.contains('+') || t.contains('-'))
+    tokens.iter().any(|t| matches!(t.as_bytes(), [b'a' | b'v' | b'd' | b't', b'+' | b'-', ..]))
 }
 
 /// Handle relative emotion adjustments (e.g., "emotion a+0.1 v-0.2")
@@ -1296,5 +1304,35 @@ mod tests {
         assert_eq!(format_reel_form_position(plan.bar_role_1based(13)), "A2 m.5/8");
         assert_eq!(format_reel_form_position(plan.bar_role_1based(17)), "B1 m.1/8");
         assert_eq!(format_reel_form_position(plan.bar_role_1based(32)), "B2 m.8/8");
+    }
+
+    #[test]
+    fn negative_absolute_valence_reaches_the_trad_mapper() -> Result<()> {
+        let (composer, _playback, playback_cmd_tx, report_rx, clock_reader, finished_recordings) =
+            harmonium::audio::create_offline_engine(None, None, 44100.0)
+                .map_err(|e| anyhow::anyhow!(e))?;
+        let mut state = ReplState {
+            composer: Arc::new(Mutex::new(composer)),
+            playback_cmd_tx,
+            report_rx,
+            clock_reader,
+            finished_recordings,
+            cached_state: None,
+            emotion_state: EmotionState::default(),
+        };
+        handle_command("style reel", &mut state)?;
+        handle_command("emotion 0.8 -0.5 0.9 0.7", &mut state)?;
+        {
+            let composer = state.composer.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+            let params = composer.musical_params();
+            assert_eq!(params.harmony_valence, -0.5);
+            assert_eq!(params.rhythm_density, 0.9);
+            assert_eq!(params.harmony_tension, 0.7);
+            assert!(params.intensity > 0.8);
+        }
+        handle_command("emotion v+0.1", &mut state)?;
+        let composer = state.composer.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
+        assert!((composer.musical_params().harmony_valence + 0.4).abs() < 0.0001);
+        Ok(())
     }
 }

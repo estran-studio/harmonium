@@ -449,6 +449,15 @@ impl NativeHandle {
         }
     }
 
+    /// Règle l'énergie et ne régénère que les mesures futures.
+    pub fn set_intensity(&mut self, intensity: f32) {
+        if let Ok(mut c) = self.composer.lock() {
+            c.set_intensity(intensity);
+            c.invalidate_future();
+            Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
+        }
+    }
+
     /// En `Style::Reel`, retourne le `(TunePlan, BarRole)` de la mesure courante sous le playhead.
     #[must_use]
     pub fn reel_bar_info(

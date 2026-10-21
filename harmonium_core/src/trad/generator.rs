@@ -93,6 +93,23 @@ impl TradGenerator {
         self.musical_params = params;
     }
 
+    /// Garde le plan déjà audible ; les airs futurs seront tirés avec les
+    /// nouveaux paramètres. Ne modifie jamais la mélodie de l'air courant.
+    pub fn invalidate_future(&mut self, playing_bar: usize) {
+        let current_tune = self.position_of(playing_bar).tune_index;
+        self.tunes.retain(|&index, _| index <= current_tune);
+    }
+
+    fn feet_density(&self) -> u8 {
+        let p = &self.musical_params;
+        let d = &self.tuning.reel_intensity;
+        (f32::from(p.feet_density)
+            + d.feet_intensity.eval(p.intensity)
+            + d.density_feet.eval(p.rhythm_density))
+        .round()
+        .clamp(0.0, 2.0) as u8
+    }
+
     /// Met à jour les paramètres de tuning et invalide le cache de tunes afin que
     /// les nouvelles banques/constantes prennent effet dès la prochaine mesure.
     pub fn update_tuning(&mut self, tuning: TuningParams) {
@@ -218,19 +235,21 @@ impl TradGenerator {
             TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
         };
         flag && self.tuning.reel_arrangement.allows(track, position)
+            && self.tuning.reel_intensity.allows(track, self.musical_params.rhythm_density)
     }
 
     /// Vrai si `track` joue pendant une mesure d'intro selon la forme tirée.
     fn track_active_in_intro(&self, track: TrackId, intro_info: &IntroInfo) -> bool {
-        match track {
-            TrackId::Melody => intro_info.melody_active() && self.musical_params.enable_melody,
-            TrackId::Chords | TrackId::Bass => {
-                intro_info.chords_active() && self.musical_params.enable_harmony
+        self.tuning.reel_intensity.allows(track, self.musical_params.rhythm_density)
+            && match track {
+                TrackId::Melody => intro_info.melody_active() && self.musical_params.enable_melody,
+                TrackId::Chords | TrackId::Bass => {
+                    intro_info.chords_active() && self.musical_params.enable_harmony
+                }
+                TrackId::Heel | TrackId::Toe => {
+                    intro_info.feet_active() && self.musical_params.enable_rhythm
+                }
             }
-            TrackId::Heel | TrackId::Toe => {
-                intro_info.feet_active() && self.musical_params.enable_rhythm
-            }
-        }
     }
 
     /// Génère une [`Measure`] complète pour `bar_index` (1-based dans le flux du moteur).
@@ -246,7 +265,10 @@ impl TradGenerator {
         let kind = TuneKind::Reel;
         let time_sig = kind.time_signature();
         let steps = kind.steps_per_bar();
-        let tempo = self.musical_params.bpm;
+        let tempo = self
+            .tuning
+            .reel_intensity
+            .tempo_for(self.musical_params.bpm, self.musical_params.intensity);
 
         let mut measure = Measure::new(bar_index, time_sig, tempo, steps);
         measure.pulse = kind.pulse_spec();
@@ -281,6 +303,8 @@ impl TradGenerator {
             self.fill_tour_measure(&tune, &position, &mut measure);
         }
 
+        self.apply_dynamics(&mut measure);
+
         measure
     }
 
@@ -314,7 +338,7 @@ impl TradGenerator {
                 if self.track_active_in_intro(TrackId::Heel, intro) {
                     let (heel_notes, _) = feet_notes(
                         &tuning.reel_feet,
-                        self.musical_params.feet_density,
+                        self.feet_density(),
                         steps,
                         &[0i8; REEL_STEPS],
                     );
@@ -414,7 +438,7 @@ impl TradGenerator {
     ) {
         let bar_in_tour = position.bar_in_tour();
         let plan = tune.plan;
-        let chords = tune.harmony.chords_for_bar(bar_in_tour);
+        let chords = self.chords_for_bar(tune, bar_in_tour);
         measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
 
         // 1. Mélodie (violon, D6)
@@ -452,7 +476,7 @@ impl TradGenerator {
             let strain_slot = if bar_in_tour < 2 * BARS_PER_STRAIN { 0 } else { BARS_PER_STRAIN };
             let humanize = &tune.feet_humanize[strain_slot + bar_in_tour % BARS_PER_STRAIN];
             let (heel_notes, toe_notes) =
-                feet_notes(&self.tuning.reel_feet, self.musical_params.feet_density, 16, humanize);
+                feet_notes(&self.tuning.reel_feet, self.feet_density(), 16, humanize);
             if heel_active {
                 for mut note in heel_notes {
                     note.id = self.alloc_note_id();
@@ -558,12 +582,115 @@ impl TradGenerator {
         }
     }
 
+    /// Variation harmonique de l'accompagnement uniquement : cadences et
+    /// squelette mélodique restent ceux de l'air.
+    fn chords_for_bar(&self, tune: &ActiveTune, bar: usize) -> [TradChord; 2] {
+        let mut chords = tune.harmony.chords_for_bar(bar);
+        let threshold =
+            self.tuning.reel_intensity.tension_dominant.eval(self.musical_params.harmony_tension);
+        let slot = bar % BARS_PER_STRAIN;
+        if slot != 3 && slot != 7 && (slot as f32 / BARS_PER_STRAIN as f32) < threshold {
+            chords[1] = TradChord::new(ChordDegree::V, ChordQuality::Major);
+        }
+        chords
+    }
+
+    fn apply_dynamics(&mut self, measure: &mut Measure) {
+        let p = &self.musical_params;
+        let d = &self.tuning.reel_intensity;
+        let duration =
+            d.fiddle_duration.eval(p.intensity) * d.tension_duration.eval(p.harmony_tension);
+        let strong = d.strong_accent.eval(p.intensity)
+            + d.brightness_accent.eval(d.valence_input(p.harmony_valence));
+        let offbeat = d.tension_offbeat.eval(p.harmony_tension);
+        let chord_duration = d.tension_chord_duration.eval(p.harmony_tension);
+        for (&track, notes) in &mut measure.tracks {
+            let velocity = d.velocity(track, p.intensity);
+            for note in notes {
+                let accent = if track == TrackId::Melody {
+                    if note.start_step % usize::from(measure.pulse.steps_per_pulse) == 0 {
+                        strong
+                    } else if note.start_step % 4 != 0 {
+                        offbeat
+                    } else {
+                        0.0
+                    }
+                } else {
+                    0.0
+                };
+                note.velocity =
+                    (f32::from(note.velocity) * velocity + accent).round().clamp(1.0, 127.0) as u8;
+                if track == TrackId::Melody {
+                    note.duration_steps =
+                        (note.duration_steps as f32 * duration).round().max(1.0) as usize;
+                    note.duration_steps = note.duration_steps.min(measure.steps - note.start_step);
+                } else if track == TrackId::Chords {
+                    note.duration_steps =
+                        (note.duration_steps as f32 * chord_duration).round().max(1.0) as usize;
+                    note.duration_steps = note.duration_steps.min(measure.steps - note.start_step);
+                }
+            }
+        }
+        // Ornement déterministe d'une tenue : aucun nouveau tirage ni mutation
+        // du plan. Le degré adjacent appartient toujours au mode de l'air.
+        let passing = d.density_passing.eval(p.rhythm_density);
+        if passing <= 0.0 {
+            return;
+        }
+        let Some(position) = measure.position else {
+            return;
+        };
+        if position.is_intro() || position.bar_in_strain == BARS_PER_STRAIN {
+            return;
+        }
+        let Some(plan) = self.tunes.get(&position.tune_index).map(|t| t.plan) else {
+            return;
+        };
+        if let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) {
+            let original_count = notes.len();
+            for index in 0..original_count {
+                let note = &notes[index];
+                if note.duration_steps < 3
+                    || (note.start_step as f32 / measure.steps as f32) >= passing
+                {
+                    continue;
+                }
+                let mut ornament = note.clone();
+                ornament.start_step += note.duration_steps - 1;
+                ornament.duration_steps = 1;
+                let next_pitch = (note.pitch.saturating_add(1)
+                    ..=note.pitch.saturating_add(3).min(127))
+                    .find(|&pitch| plan.mode.contains_midi(plan.key, pitch));
+                let Some(pitch) = next_pitch else {
+                    continue;
+                };
+                notes[index].duration_steps -= 1;
+                ornament.pitch = pitch;
+                ornament.id = self.next_note_id;
+                self.next_note_id += 1;
+                notes.push(ornament);
+            }
+            notes.sort_by_key(|note| note.start_step);
+        }
+    }
+
     /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`Guitarist`]
     /// depuis le début de la passe de strain courante (`(bar_in_tour / 8) * 8`),
     /// garantissant des reprises A1=A2, B1=B2 et des tours identiques même après
     /// invalidation.
     fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
         let strain_pass_start = (bar_in_tour / BARS_PER_STRAIN) * BARS_PER_STRAIN;
+        let harmony = &self.tuning.trad_harmony;
+        let d = &self.tuning.reel_intensity;
+        let chop_offset = d.chop_intensity.eval(self.musical_params.intensity)
+            + d.density_chop.eval(self.musical_params.rhythm_density);
+        let steps = if chop_offset != 0.0 {
+            let pattern =
+                (1.0 + chop_offset).round().clamp(0.0, (d.chop_patterns.len() - 1) as f32) as usize;
+            &d.chop_patterns[pattern]
+        } else {
+            &harmony.chop_steps
+        };
         let mut guitarist = Guitarist::new();
         let mut dummy_id = 0u64;
         let mut dummy_next = || {
@@ -571,27 +698,29 @@ impl TradGenerator {
             dummy_id
         };
         for b in strain_pass_start..bar_in_tour {
-            let c = tune.harmony.chords_for_bar(b);
-            let _ = guitarist.chop_bar(
+            let c = self.chords_for_bar(tune, b);
+            let _ = guitarist.chop_bar_on_steps(
                 c,
                 tune.plan.key,
                 tune.plan.mode,
-                &self.tuning.trad_harmony,
+                harmony,
+                steps,
                 &mut dummy_next,
             );
         }
-        let chords = tune.harmony.chords_for_bar(bar_in_tour);
+        let chords = self.chords_for_bar(tune, bar_in_tour);
         let next_note_id = &mut self.next_note_id;
         let mut next_id = || {
             let id = *next_note_id;
             *next_note_id += 1;
             id
         };
-        guitarist.chop_bar(
+        guitarist.chop_bar_on_steps(
             chords,
             tune.plan.key,
             tune.plan.mode,
-            &self.tuning.trad_harmony,
+            harmony,
+            steps,
             &mut next_id,
         )
     }
@@ -640,17 +769,44 @@ impl TradGenerator {
         prev_first_cell: Option<Cell>,
         rng: &mut dyn RngCore,
     ) -> ActiveTune {
-        let plan = match prev_plan {
-            None => TunePlan::draw_with_params(rng, None, &self.tuning.reel_fiddle),
-            Some(prev) => draw_next_tune_plan(prev, &self.tuning.reel_fiddle, rng),
+        let dynamics = &self.tuning.reel_intensity;
+        let valence = self.musical_params.harmony_valence;
+        let plan = if valence == dynamics.neutral_valence {
+            match prev_plan {
+                None => TunePlan::draw_with_params(rng, None, &self.tuning.reel_fiddle),
+                Some(prev) => draw_next_tune_plan(prev, &self.tuning.reel_fiddle, rng),
+            }
+        } else {
+            dynamics.draw_color(valence, rng)
         };
-        let mut fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
+        let mut fiddle_params = self.tuning.reel_fiddle.clone();
+        let intensity = self.musical_params.intensity;
+        fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
+            * dynamics.run_weight.eval(intensity))
+        .round()
+        .max(1.0) as u32;
+        fiddle_params.weight_role_arp = (fiddle_params.weight_role_arp as f32
+            * dynamics.arp_weight.eval(intensity))
+        .round()
+        .max(1.0) as u32;
+        fiddle_params.weight_role_turn = (fiddle_params.weight_role_turn as f32
+            * dynamics.turn_weight.eval(intensity))
+        .round()
+        .max(1.0) as u32;
+        fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
+            + dynamics.color_register.eval(dynamics.valence_input(valence)))
+        .round()
+        .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
+            as u8;
+        let mut fiddle =
+            FiddleLine::with_params(plan, &self.tuning.reel_cells, &fiddle_params, rng);
         if let Some(prev_first) = prev_first_cell {
             for _ in 0..8 {
                 if !same_cell_up_to_octave(&fiddle.cells_a()[0], &prev_first) {
                     break;
                 }
-                fiddle = FiddleLine::from_tuning(plan, &self.tuning, rng);
+                fiddle =
+                    FiddleLine::with_params(plan, &self.tuning.reel_cells, &fiddle_params, rng);
             }
         }
 

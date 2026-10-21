@@ -7,7 +7,7 @@
 Générer en continu un **reel** québécois que des oreilles québécoises
 reconnaissent comme tel, à partir d'un seed. Ensemble minimal : violon,
 guitare (chop), basse, pieds (talon, pointe). Synthèse SoundFont GM
-provisoire. Pas encore de pilotage par jauges (phase 3).
+provisoire. Pilotage par les quatre émotions du jeu : P1-T12 ci-dessous.
 
 Ce qui rend un reel identifiable, et que cette phase doit produire :
 **forme AABB stricte**, **cellules d'une mesure** en croches, **cadences
@@ -361,3 +361,140 @@ merge `--no-ff` par le coordinateur après tests + clippy + fmt + écoute.
 Routage des modèles : `~/.harmonium-orch/models.md`, `omp usage` vérifié avant
 chaque lancement ; depuis 2026-10-20, OpenRouter (`deepseek-v4-pro` difficile,
 `deepseek-v4.1-flash` moyen et mécanique) tant que les abonnements sont épuisés.
+
+## P1-T12 — Intensité, quatre émotions et automation d'export
+
+### Contrat et données
+
+- `MusicalParams.intensity` est bornée à `0..1`, défaut `0.5` (rendu neutre).
+  `TuningParams.reel_intensity` charge `trad/reel_intensity.toml` dans
+  `StyleDynamics` ; la même section est remplaçable via `TuningOverlay`.
+  Courbes par points, interpolation linéaire, endpoints maintenus ; validation
+  des domaines, points ordonnés et finis, palette non vide et motifs de chop.
+- Le mapper reçoit les données du générateur, jamais un nom de style : Legacy
+  conserve son mapping 70–180 ; trad conserve une base nominale dans
+  `MusicalParams.bpm`, puis applique le décalage d'intensité à `Measure.tempo`.
+  Avec les données livrées : 230 − 10 à 230 + 15 BPM.
+- Les concepts ennemis/vie/damnation/sacré restent dans le jeu. Il ne transmet
+  que `set_emotions(arousal, valence, density, tension)` en mode émotion.
+
+| Axe | Effet immédiat à la mesure suivante | Effet au prochain air |
+|---|---|---|
+| Arousal → intensity | Énergie/vélocités, tempo borné, coups de pieds, chop, notes plus courtes, accents forts | Poids run/arp/turn |
+| Valence (−1..1) | Brillance des accents | Mode/tonalité pondérés et centre de registre |
+| Density (0..1) | Instruments actifs sous les plafonds du jeu et de l'arrangement, pieds, chop, notes de passage sur les tenues | Aucun changement du plan |
+| Tension (0..1) | Accents de contretemps, articulation sèche, dominantes plus fréquentes et tenues | Aucun changement du plan |
+
+- Le plan de l'air déjà audible est conservé ; seules les mesures futures et
+  les plans d'airs non encore entendus sont invalidés. AABB conserve les
+  hauteurs et positions du squelette mélodique sous automation d'intensité ;
+  vélocités/durées et ornements de densité restent des paramètres de rendu.
+- Un changement de tempo d'une mesure trad utilise la rampe existante de
+  `SetTempo`, sur le nombre de pulses d'une mesure (deux en reel). Un override
+  `SetTempo` explicite garde priorité. Pas de seek, pulse en cours inchangée.
+  Les métadonnées MIDI suivent le tempo audible de chaque pulse via un
+  `AudioEvent::MeasureTiming` sans Box/clone de paramètres dans le callback.
+- `TUNING_VERSION` reste 5 : le point neutre ne change pas les snapshots.
+
+### Utilisation
+
+REPL : `style reel`, `intensity 0.8`, ou `emotion 0.8 -0.5 0.9 0.7`.
+Les mutations passent par les setters du composer + `invalidate_future`,
+puis transmission de `take_pending_drop` et régénération des mesures futures,
+comme pour `create_offline_engine` côté jeu.
+
+```bash
+cargo run -p harmonium-cli -- --export --style reel --bars 100 --seed 1 \
+  --automation demos/automation_monte.toml \
+  --record-wav demos/intensity_seed1.wav --record-midi demos/intensity_seed1.mid \
+  --record-truth demos/intensity_seed1.json
+
+cargo run -p harmonium-cli -- --export --style reel --bars 100 --seed 1 \
+  --automation demos/automation_combat.toml \
+  --record-wav demos/combat_seed1.wav --record-midi demos/combat_seed1.mid
+```
+
+Automation : `[[keys]]`, `bar` positif strictement croissant ; champs optionnels
+`intensity`, `arousal`, `valence`, `density`, `tension`, `bpm`, `feet`.
+Chaque champ est interpolé indépendamment ; les premières/dernières valeurs
+sont maintenues hors de leur intervalle. `feet` est interpolé puis arrondi à
+0/1/2. `bpm` désigne la base avant le décalage d'intensité. Les commandes
+directes (`intensity`, `bpm`, `feet`) gagnent sur le mapping émotionnel.
+Un champ émotionnel absent conserve sa valeur initiale. Un export automatisé
+peut traverser plusieurs airs ; il ne force pas l'outro du premier air.
+
+Avec automation, `--record-truth` écrit un objet : `measures` (snapshot et
+intensité réellement appliquée), `bar_start_frames` (horloge audio),
+`sample_rate`, `rendered_frames`, et `reports` (rapports périodiques habituels).
+Sans automation, le tableau de rapports historique reste inchangé.
+
+### Mesures du rendu P1-T12 (seed 1, 100 mesures)
+
+Fichiers locaux : `demos/intensity_seed1.{wav,mid,json}` et
+`demos/combat_seed1.{wav,mid,json}` ; seuls les TOML des scénarios sont versionnés.
+GeneralUser GS (32 319 396 octets), 44 100 Hz stéréo float32. La banque dédiée
+`harmonium_trad.sf2` est absente de ce worktree : les pieds utilisent le kit GM,
+pas les échantillons CC0 du propriétaire. Cette limite affecte le timbre et le
+RMS, pas les événements générés.
+
+| Mesures | Intensité moy. | Vél. violon | Vél. pieds | Durée violon (ms) | Frappes pieds/mesure | RMS (dBFS) |
+|---|---:|---:|---:|---:|---:|---:|
+| 1–8 | 0.145 | 65.85 | 34.00 | 177.5 | 0.25 | -44.87 |
+| 9–16 | 0.248 | 71.25 | — | 189.0 | 0.00 | -37.13 |
+| 17–24 | 0.352 | 76.26 | — | 159.6 | 0.00 | -35.76 |
+| 25–32 | 0.455 | 80.73 | — | 152.4 | 0.00 | -34.88 |
+| 33–40 | 0.542 | 84.66 | 48.54 | 166.1 | 7.00 | -34.16 |
+| 41–48 | 0.617 | 87.85 | 52.81 | 163.3 | 8.00 | -33.87 |
+| 49–56 | 0.692 | 90.00 | 55.45 | 145.0 | 8.00 | -33.44 |
+| 57–64 | 0.767 | 92.18 | 51.43 | 93.6 | 11.00 | -32.68 |
+| 65–72 | 0.828 | 94.72 | 54.34 | 92.9 | 12.00 | -32.19 |
+| 73–80 | 0.878 | 97.10 | 56.66 | 95.3 | 12.00 | -31.78 |
+| 81–88 | 0.928 | 98.19 | 57.99 | 77.6 | 12.00 | -31.51 |
+| 89–96 | 0.978 | 99.40 | 60.57 | 72.5 | 12.00 | -31.42 |
+| 97–100 | 1.000 | 99.64 | 59.42 | 73.0 | 9.00 | -32.77 |
+
+Moyennes de vélocité/durée pondérées par note ; pieds = talon + pointe.
+Durée écrite jusqu'au NoteOff (hors release SF2), calculée sur les pas gelés
+des pulses avec rampe et swing. Les durées de mesures reconstruites concordent
+exactement avec tous les `bar_start_frames` publiés. RMS calculé sur les
+échantillons du WAV, énergie des deux canaux moyennée, aux frontières exactes
+des mesures ; la dernière tranche inclut la fin du dernier buffer de rendu.
+L'intro et les entrées D11 sont conservées : l'absence de pieds en 9–32 est
+attendue, leur entrée principale est en 33–40. L'ajout de pointes faibles
+explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
+
+### Preuves observées
+
+- Latence : chacun des quatre axes, appelé au milieu de la mesure 1, modifie
+  la mesure 2, soit **une mesure** ; la pulse en cours garde sa borne de fin,
+  chaque pulse suivante commence exactement sur la précédente, sans saut de
+  mesure. L'arousal 1 donne 245 BPM ; la rampe de la mesure 2 atteint cette
+  cible sur sa deuxième pulse.
+- Reprises : hauteurs/positions A1=A2 et B1=B2 vérifiées aussi sur le vrai
+  export automatisé, y compris le décalage de l'intro.
+- Deux exports indépendants de 100 mesures donnent WAV, MIDI et JSON
+  **identiques bit à bit**. SHA-256 :
+  WAV `f7279da47779a6d20b08d140ddeba4f2658dc78c9a700fd8e58ea7460ef0af7b`,
+  MIDI `76fbfa50d1272dddfe558351fe05d905ed645bc51059d088745ed6b280e74388`,
+  JSON `003764959aea753c5e14fc45c8d51f35c2f026f5cf447135e04d602e87bfc196`.
+- Snapshots neutres : probe temporaire supprimée, **768 snapshots**
+  (seeds 1, 2, 3 × 256 mesures) comparés à une archive de `main` :
+  mêmes octets, SHA-256
+  `71e88162199eb2ddc41cfc513586fbfe8478cda2d0ca9b1cfd1d0cb2c5cac0de`.
+- Export invalide réel : `bar=1 intensity=1.5` sort 1 avec le chemin, la mesure,
+  le champ et le domaine `0..1`. REPL réel : `intensity 0.9` accepté,
+  `intensity 1.2` refusé ; `emotion 0.8 -0.5 0.9 0.7` transmet bien les quatre
+  axes. Ce smoke a révélé/corrigé le routage préexistant des valences absolues
+  négatives vers la syntaxe relative ; test régressif conservé.
+- Clippy production : `cargo clippy --workspace --lib --bins --message-format=json`
+  exécuté sur la branche et l'archive `main`, même `target/debug` :
+  **187 diagnostics de chaque côté, zéro nouveau**, comparaison code/message/
+  chemin sans les numéros de ligne. `-D warnings` global reste bloqué par la
+  dette préexistante (notamment `unwrap_used`/`expect_used` des exports Legacy) ;
+  elle n'est ni masquée ni étendue dans cette tâche.
+
+- Vérification finale : `cargo test --workspace` **507 réussis, 33 ignorés** ;
+  `cargo fmt --all -- --check` passe. Baseline `main` de la comparaison :
+  `b1e4184066d90cdc5f8f2de33236229849267de6`. Un seul profil `target/debug`,
+  archive de comparaison et probes supprimées après mesure.
+
