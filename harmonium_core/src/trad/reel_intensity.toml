@@ -1,6 +1,7 @@
 # Pilotage continu du reel. Le point neutre conserve le rendu P1-T11.
 # Multiplicateurs de vélocité et de durée ; décalages en BPM/pas/vélocité.
 neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, -0.03], [0.3, 0.0], [1.0, 0.10]]
 tempo_offset = [[0.0, -10.0], [0.5, 0.0], [1.0, 15.0]]
@@ -17,8 +18,8 @@ arp_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.0]]
 turn_weight = [[0.0, 2.0], [0.5, 1.0], [1.0, 0.4]]
 
 # La couleur structurelle ne change qu'au prochain air ; les accents sont immédiats.
-color_register = [[0.0, -5.0], [0.3, 0.0], [1.0, 5.0]]
-brightness_accent = [[0.0, -8.0], [0.3, 0.0], [1.0, 10.0]]
+color_register = [[0.0, -5.0], [0.65, 0.0], [1.0, 5.0]]
+brightness_accent = [[0.0, -8.0], [0.65, 0.0], [1.0, 10.0]]
 density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
 density_chop = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
 density_passing = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]

@@ -983,13 +983,10 @@ impl MusicComposer {
             return;
         }
 
-        let finite_axis = |value: f32, fallback: f32| {
-            if value.is_finite() { value.clamp(0.0, 1.0) } else { fallback }
-        };
-        self.cached_emotions.arousal = finite_axis(arousal, self.cached_emotions.arousal);
-        self.cached_emotions.valence = finite_axis(valence, self.cached_emotions.valence);
-        self.cached_emotions.density = finite_axis(density, self.cached_emotions.density);
-        self.cached_emotions.tension = finite_axis(tension, self.cached_emotions.tension);
+        self.cached_emotions.arousal = arousal;
+        self.cached_emotions.valence = valence;
+        self.cached_emotions.density = density;
+        self.cached_emotions.tension = tension;
 
         let mapped = match &self.generator {
             Generator::Legacy(_) => self.emotion_mapper.map(&self.cached_emotions),

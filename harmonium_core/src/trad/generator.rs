@@ -600,8 +600,8 @@ impl TradGenerator {
         let d = &self.tuning.reel_intensity;
         let duration =
             d.fiddle_duration.eval(p.intensity) * d.tension_duration.eval(p.harmony_tension);
-        let strong =
-            d.strong_accent.eval(p.intensity) + d.brightness_accent.eval(p.harmony_valence);
+        let strong = d.strong_accent.eval(p.intensity)
+            + d.brightness_accent.eval(d.valence_input(p.harmony_valence));
         let offbeat = d.tension_offbeat.eval(p.harmony_tension);
         for (&track, notes) in &mut measure.tracks {
             let velocity = d.velocity(track, p.intensity);
@@ -795,7 +795,7 @@ impl TradGenerator {
         .round()
         .max(1.0) as u32;
         fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
-            + dynamics.color_register.eval(valence))
+            + dynamics.color_register.eval(dynamics.valence_input(valence)))
         .round()
         .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
             as u8;

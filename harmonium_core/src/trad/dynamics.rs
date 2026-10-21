@@ -74,6 +74,8 @@ pub struct StyleDynamics {
     pub bass_velocity: Curve,
     pub feet_velocity: Curve,
     pub neutral_valence: f32,
+    /// Domaine de l'API émotionnelle, normalisé avant les courbes de couleur.
+    pub valence_range: [f32; 2],
     pub feet_intensity: Curve,
     pub fiddle_duration: Curve,
     pub strong_accent: Curve,
@@ -108,7 +110,42 @@ impl Default for StyleDynamics {
         static EMBEDDED: LazyLock<StyleDynamics> =
             LazyLock::new(|| match StyleDynamics::from_toml(REEL_INTENSITY_TOML) {
                 Ok(data) => data,
-                Err(error) => panic!("table de dynamique embarquée invalide: {error}"),
+                // Même contrat que les autres tables embarquées : un défaut
+                // illisible reste INVALIDE, détecté par TuningParams::validate,
+                // jamais remplacé par un deuxième jeu de valeurs musicales.
+                Err(_) => {
+                    let empty = || Curve(Vec::new());
+                    StyleDynamics {
+                        arousal_intensity: empty(),
+                        tension_intensity: empty(),
+                        tempo_offset: empty(),
+                        melody_velocity: empty(),
+                        guitar_velocity: empty(),
+                        bass_velocity: empty(),
+                        feet_velocity: empty(),
+                        neutral_valence: 0.0,
+                        valence_range: [0.0, 0.0],
+                        feet_intensity: empty(),
+                        fiddle_duration: empty(),
+                        strong_accent: empty(),
+                        chop_intensity: empty(),
+                        run_weight: empty(),
+                        arp_weight: empty(),
+                        turn_weight: empty(),
+                        color: Vec::new(),
+                        color_register: empty(),
+                        brightness_accent: empty(),
+                        density_feet: empty(),
+                        density_chop: empty(),
+                        density_passing: empty(),
+                        density_tracks: Vec::new(),
+                        chop_patterns: Vec::new(),
+                        tension_offbeat: empty(),
+                        tension_duration: empty(),
+                        tension_dominant: empty(),
+                        tension_chord_duration: empty(),
+                    }
+                }
             });
         EMBEDDED.clone()
     }
@@ -122,8 +159,15 @@ impl StyleDynamics {
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        if !self.neutral_valence.is_finite() || !(0.0..=1.0).contains(&self.neutral_valence) {
-            return Err("neutral_valence: attendu 0..1".into());
+        if !self.neutral_valence.is_finite()
+            || !self.valence_range.iter().all(|v| v.is_finite())
+            || self.valence_range[0] >= self.valence_range[1]
+            || !(self.valence_range[0]..=self.valence_range[1]).contains(&self.neutral_valence)
+        {
+            return Err(
+                "valence_range: bornes finies croissantes contenant neutral_valence requises"
+                    .into(),
+            );
         }
         for (name, curve, min, max) in [
             ("arousal_intensity", &self.arousal_intensity, 0.0, 1.0),
@@ -213,7 +257,14 @@ impl StyleDynamics {
         .eval(intensity)
     }
 
+    #[must_use]
+    pub fn valence_input(&self, valence: f32) -> f32 {
+        ((valence - self.valence_range[0]) / (self.valence_range[1] - self.valence_range[0]))
+            .clamp(0.0, 1.0)
+    }
+
     pub fn draw_color(&self, valence: f32, rng: &mut dyn RngCore) -> TunePlan {
+        let valence = self.valence_input(valence);
         let total: f32 = self.color.iter().map(|c| c.weight.eval(valence)).sum();
         let mut pick = rng.next_range_usize(0..1_000_000) as f32 / 1_000_000.0 * total;
         for choice in &self.color {

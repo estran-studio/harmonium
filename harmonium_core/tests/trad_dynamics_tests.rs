@@ -89,7 +89,7 @@ fn intensity_automation_preserves_aabb_pitches() {
 
 #[test]
 fn color_bias_is_a_majority_on_fifty_tunes_and_waits_for_the_next_tune() {
-    for (valence, minor) in [(0.0, true), (1.0, false)] {
+    for (valence, minor) in [(-1.0, true), (1.0, false)] {
         let (mut generator, mut rng) = generator();
         generator.generate_measure(1, &mut rng);
         let original = generator.tune_for_bar(1).unwrap().plan;
