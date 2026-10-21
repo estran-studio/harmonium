@@ -312,9 +312,8 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
             return handle_profile_command(state, &tokens[1..]);
         }
 
-        // Phase-0/1 CLI commands: swing, tempo, beat, style, feet (parsed locally,
-        // they need the playback ring / clock reader, not `EngineCommand`).
-        "swing" | "tempo" | "beat" | "style" | "feet" => {
+        // Commandes CLI trad et horloge (hors EngineCommand).
+        "swing" | "tempo" | "beat" | "style" | "feet" | "intensity" => {
             return handle_clock_command(state, &tokens);
         }
         _ => {}
@@ -403,6 +402,14 @@ fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> 
             print_success_msg(&format!(
                 "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
             ));
+        }
+        Ok(CliCommand::Intensity(value)) => {
+            if let Ok(mut c) = state.composer.lock() {
+                c.set_intensity(value);
+                c.invalidate_future();
+            }
+            state.send_invalidate();
+            print_success_msg(&format!("Intensité {value:.2} : effet à la prochaine mesure"));
         }
         Err(e) => {
             println!("{} {}", "[ERROR]".red().bold(), e);

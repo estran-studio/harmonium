@@ -7,7 +7,7 @@
 Générer en continu un **reel** québécois que des oreilles québécoises
 reconnaissent comme tel, à partir d'un seed. Ensemble minimal : violon,
 guitare (chop), basse, pieds (talon, pointe). Synthèse SoundFont GM
-provisoire. Pas encore de pilotage par jauges (phase 3).
+provisoire. Pilotage par les quatre émotions du jeu : P1-T12 ci-dessous.
 
 Ce qui rend un reel identifiable, et que cette phase doit produire :
 **forme AABB stricte**, **cellules d'une mesure** en croches, **cadences
@@ -351,3 +351,70 @@ merge `--no-ff` par le coordinateur après tests + clippy + fmt + écoute.
 Routage des modèles : `~/.harmonium-orch/models.md`, `omp usage` vérifié avant
 chaque lancement ; depuis 2026-10-20, OpenRouter (`deepseek-v4-pro` difficile,
 `deepseek-v4.1-flash` moyen et mécanique) tant que les abonnements sont épuisés.
+
+## P1-T12 — Intensité, quatre émotions et automation d'export
+
+### Contrat et données
+
+- `MusicalParams.intensity` est bornée à `0..1`, défaut `0.5` (rendu neutre).
+  `TuningParams.reel_intensity` charge `trad/reel_intensity.toml` dans
+  `StyleDynamics` ; la même section est remplaçable via `TuningOverlay`.
+  Courbes par points, interpolation linéaire, endpoints maintenus ; validation
+  des domaines, points ordonnés et finis, palette non vide et motifs de chop.
+- Le mapper reçoit les données du générateur, jamais un nom de style : Legacy
+  conserve son mapping 70–180 ; trad conserve une base nominale dans
+  `MusicalParams.bpm`, puis applique le décalage d'intensité à `Measure.tempo`.
+  Avec les données livrées : 230 − 10 à 230 + 15 BPM.
+- Les concepts ennemis/vie/damnation/sacré restent dans le jeu. Il ne transmet
+  que `set_emotions(arousal, valence, density, tension)` en mode émotion.
+
+| Axe | Effet immédiat à la mesure suivante | Effet au prochain air |
+|---|---|---|
+| Arousal → intensity | Énergie/vélocités, tempo borné, coups de pieds, chop, notes plus courtes, accents forts | Poids run/arp/turn |
+| Valence (−1..1) | Brillance des accents | Mode/tonalité pondérés et centre de registre |
+| Density (0..1) | Instruments actifs sous les plafonds du jeu et de l'arrangement, pieds, chop, notes de passage sur les tenues | Aucun changement du plan |
+| Tension (0..1) | Accents de contretemps, articulation sèche, dominantes plus fréquentes et tenues | Aucun changement du plan |
+
+- Le plan de l'air déjà audible est conservé ; seules les mesures futures et
+  les plans d'airs non encore entendus sont invalidés. AABB conserve les
+  hauteurs et positions du squelette mélodique sous automation d'intensité ;
+  vélocités/durées et ornements de densité restent des paramètres de rendu.
+- Un changement de tempo d'une mesure trad utilise la rampe existante de
+  `SetTempo`, sur le nombre de pulses d'une mesure (deux en reel). Un override
+  `SetTempo` explicite garde priorité. Pas de seek, pulse en cours inchangée.
+  Les métadonnées MIDI suivent le tempo audible de chaque pulse via un
+  `AudioEvent::MeasureTiming` sans Box/clone de paramètres dans le callback.
+- `TUNING_VERSION` reste 5 : le point neutre ne change pas les snapshots.
+
+### Utilisation
+
+REPL : `style reel`, `intensity 0.8`, ou `emotion 0.8 -0.5 0.9 0.7`.
+Les mutations passent par les setters du composer + `invalidate_future`,
+puis transmission de `take_pending_drop` et régénération des mesures futures,
+comme pour `create_offline_engine` côté jeu.
+
+```bash
+cargo run -p harmonium-cli -- --export --style reel --bars 100 --seed 1 \
+  --automation demos/automation_monte.toml \
+  --record-wav demos/intensity_seed1.wav --record-midi demos/intensity_seed1.mid \
+  --record-truth demos/intensity_seed1.json
+
+cargo run -p harmonium-cli -- --export --style reel --bars 100 --seed 1 \
+  --automation demos/automation_combat.toml \
+  --record-wav demos/combat_seed1.wav --record-midi demos/combat_seed1.mid
+```
+
+Automation : `[[keys]]`, `bar` positif strictement croissant ; champs optionnels
+`intensity`, `arousal`, `valence`, `density`, `tension`, `bpm`, `feet`.
+Chaque champ est interpolé indépendamment ; les premières/dernières valeurs
+sont maintenues hors de leur intervalle. `feet` est interpolé puis arrondi à
+0/1/2. `bpm` désigne la base avant le décalage d'intensité. Les commandes
+directes (`intensity`, `bpm`, `feet`) gagnent sur le mapping émotionnel.
+Un champ émotionnel absent conserve sa valeur initiale. Un export automatisé
+peut traverser plusieurs airs ; il ne force pas l'outro du premier air.
+
+Avec automation, `--record-truth` écrit un objet : `measures` (snapshot et
+intensité réellement appliquée), `bar_start_frames` (horloge audio),
+`sample_rate`, `rendered_frames`, et `reports` (rapports périodiques habituels).
+Sans automation, le tableau de rapports historique reste inchangé.
+

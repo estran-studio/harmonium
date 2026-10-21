@@ -320,6 +320,8 @@ pub enum CliCommand {
     Style(Style),
     /// Set reel podorythmie density (`0`, `1` or `2`).
     Feet(u8),
+    /// Énergie du style, bornée explicitement à 0..1.
+    Intensity(f32),
 }
 
 /// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
@@ -343,6 +345,17 @@ pub fn parse_cli_command(tokens: &[&str]) -> Result<CliCommand> {
         }
         Some("style") => parse_style_command(&tokens[1..]),
         Some("feet") => parse_feet_command(&tokens[1..]),
+        Some("intensity") => {
+            if tokens.len() != 2 {
+                return Err(anyhow!("Usage: intensity <0..1>"));
+            }
+            let value: f32 =
+                tokens[1].parse().map_err(|_| anyhow!("Intensité invalide: {}", tokens[1]))?;
+            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                return Err(anyhow!("Intensité invalide: {} (attendu 0..1)", tokens[1]));
+            }
+            Ok(CliCommand::Intensity(value))
+        }
         Some(other) => Err(anyhow!("Not a CLI command: {other}")),
         None => Err(anyhow!("Empty command")),
     }

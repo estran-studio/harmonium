@@ -13,7 +13,10 @@ use anyhow::Result;
 use harmonium::{audio, playback::PlaybackCommand};
 use harmonium_core::{events::RecordFormat, params::Style};
 
-use crate::parser::{FeetOpt, SWING_MAX, SWING_MIN};
+use crate::{
+    automation::Automation,
+    parser::{FeetOpt, SWING_MAX, SWING_MIN},
+};
 
 const SAMPLE_RATE: f64 = 44100.0;
 const CHANNELS: usize = 2;
@@ -31,17 +34,19 @@ pub fn run(
     feet: Option<FeetOpt>,
     swing: Option<f32>,
     tours: Option<usize>,
+    automation_path: Option<String>,
     record_wav: Option<String>,
     record_midi: Option<String>,
     record_musicxml: Option<String>,
     record_truth: Option<String>,
 ) -> Result<()> {
+    let automation = automation_path.as_deref().map(Automation::load).transpose()?;
     let (
         mut composer,
         mut playback,
         mut playback_cmd_tx,
         mut report_rx,
-        _clock_reader,
+        mut clock_reader,
         finished_recordings,
     ) = audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, SAMPLE_RATE)
         .map_err(|e| anyhow::anyhow!(e))?;
@@ -69,9 +74,19 @@ pub fn run(
     if let Some(n) = tours {
         composer.set_tours_per_tune(n).map_err(|e| anyhow::anyhow!("--tours : {e}"))?;
     }
-    // --bars implique une fin après le dernier tour complet (outro, P1-T11)
-    if target_bars.is_some() {
+    // Une automation peut traverser plusieurs airs : ne pas terminer au
+    // premier tour final. L'export fixe conserve son outro historique.
+    if target_bars.is_some() && automation.is_none() {
         composer.set_end_after_tour(true);
+    }
+    let initial_emotions = [
+        composer.musical_params().intensity,
+        composer.musical_params().harmony_valence,
+        composer.musical_params().rhythm_density,
+        composer.musical_params().harmony_tension,
+    ];
+    if let Some(automation) = &automation {
+        automation.apply(1, &mut composer, initial_emotions);
     }
     composer.invalidate_future();
 
@@ -84,9 +99,22 @@ pub fn run(
     let _ = playback_cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())));
 
-    let initial_bars = target_bars.unwrap_or(32).max(32);
+    let initial_bars = if automation.is_some() { 1 } else { target_bars.unwrap_or(32).max(32) };
     composer.set_writehead_lookahead(initial_bars + 16);
     composer.generate_bars(initial_bars);
+    let mut automated_measures = Vec::new();
+    if automation.is_some() {
+        for snapshot in composer.take_snapshots() {
+            automated_measures.push(serde_json::json!({
+                "bar": snapshot.index,
+                "intensity": composer.musical_params().intensity,
+                "measure": snapshot,
+            }));
+        }
+    }
+    let mut prepared_after = 0usize;
+    let mut bar_start_frames = std::collections::BTreeMap::new();
+    bar_start_frames.insert(1usize, 0u64);
 
     if composer.musical_params().style == Style::Reel {
         let mp = composer.musical_params();
@@ -171,8 +199,33 @@ pub fn run(
             break;
         }
 
-        // Keep the ring buffer fed
-        composer.generate_ahead();
+        if let Some(automation) = &automation {
+            if rendered_samples > 0 {
+                let current_bar = composer.playhead_bar();
+                let has_next = target_bars.is_none_or(|last| current_bar < last);
+                if has_next && current_bar != prepared_after {
+                    automation.apply(current_bar + 1, &mut composer, initial_emotions);
+                    if let Some((bar, _)) = composer.take_pending_drop() {
+                        playback_cmd_tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| {
+                            anyhow::anyhow!("file de commandes pleine pendant l'automation")
+                        })?;
+                    }
+                    prepared_after = current_bar;
+                }
+                // Exactement une mesure future ; jamais de pré-génération
+                // de clés avec les paramètres de la mesure précédente.
+                composer.generate_bars(if has_next { 2 } else { 1 });
+                for snapshot in composer.take_snapshots() {
+                    automated_measures.push(serde_json::json!({
+                        "bar": snapshot.index,
+                        "intensity": composer.musical_params().intensity,
+                        "measure": snapshot,
+                    }));
+                }
+            }
+        } else {
+            composer.generate_ahead();
+        }
 
         let chunk_samples =
             total_samples.map_or(BUFFER_SIZE, |max_s| (max_s - rendered_samples).min(BUFFER_SIZE));
@@ -186,6 +239,10 @@ pub fn run(
         // Drive the playback engine
         playback.process_buffer(&mut buffer[..chunk_len], CHANNELS, std::time::Instant::now());
         rendered_samples += chunk_samples;
+        let clock = clock_reader.read();
+        if clock.pulse_in_bar == 0 {
+            bar_start_frames.entry(clock.position.bar).or_insert(clock.pulse_start_frame);
+        }
 
         // Poll reports
         while let Ok(report) = report_rx.pop() {
@@ -259,12 +316,25 @@ pub fn run(
 
     // Save truth snapshots
     if let Some(truth_path) = record_truth {
-        let truth_json = serde_json::to_string_pretty(&truth_snapshots)?;
+        let snapshot_count =
+            if automation.is_some() { automated_measures.len() } else { truth_snapshots.len() };
+        let truth = if automation.is_some() {
+            serde_json::json!({
+                "sample_rate": SAMPLE_RATE,
+                "rendered_frames": rendered_samples,
+                "bar_start_frames": bar_start_frames,
+                "measures": automated_measures,
+                "reports": truth_snapshots,
+            })
+        } else {
+            serde_json::Value::Array(truth_snapshots)
+        };
+        let truth_json = serde_json::to_string_pretty(&truth)?;
         std::fs::write(&truth_path, &truth_json)?;
         println!(
             "Saved ground truth to {} ({} snapshots, {} bytes)",
             truth_path,
-            truth_snapshots.len(),
+            snapshot_count,
             truth_json.len()
         );
     }

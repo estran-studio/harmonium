@@ -3,6 +3,7 @@
 //! Uses the decoupled MusicComposer + PlaybackEngine architecture.
 //! Use `--export` mode for headless batch export (no REPL, runs as fast as possible).
 
+mod automation;
 mod check_cells;
 mod completer;
 mod export;
@@ -48,6 +49,10 @@ struct Args {
     /// Number of measures to render in export mode (starting from measure 1)
     #[arg(long)]
     bars: Option<usize>,
+
+    /// Courbes TOML par mesure (export seulement).
+    #[arg(long, value_name = "FILE", requires = "export")]
+    automation: Option<String>,
 
     /// Musical style to use (`legacy` or `reel`)
     #[arg(long)]
@@ -143,6 +148,7 @@ fn main() -> Result<()> {
             parsed_feet,
             args.swing,
             args.tours,
+            args.automation,
             record_wav,
             args.record_midi,
             args.record_musicxml,

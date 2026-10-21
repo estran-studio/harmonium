@@ -1,0 +1,56 @@
+# Le jeu traduit ses concepts en émotions : le moteur ne connaît que ces axes.
+# Arousal/density/tension : 0..1 ; valence : -1..1.
+# Les transitions entre points sont linéaires, les extrémités sont maintenues.
+
+# Calme : ensemble léger, détendu, lumineux.
+[[keys]]
+bar = 1
+arousal = 0.15
+valence = 0.4
+density = 0.3
+tension = 0.1
+
+[[keys]]
+bar = 16
+arousal = 0.15
+valence = 0.4
+density = 0.3
+tension = 0.1
+
+# Arrivée des ennemis : énergie et texture montent.
+[[keys]]
+bar = 32
+arousal = 0.8
+valence = -0.2
+density = 0.85
+tension = 0.6
+
+# Vie basse : couleur sombre, dominantes et contretemps secs.
+[[keys]]
+bar = 56
+arousal = 0.95
+valence = -0.9
+density = 1.0
+tension = 1.0
+
+[[keys]]
+bar = 64
+arousal = 0.95
+valence = -0.9
+density = 1.0
+tension = 1.0
+
+# Victoire : tension relâchée, accents brillants, ensemble encore présent.
+[[keys]]
+bar = 80
+arousal = 0.6
+valence = 0.95
+density = 0.75
+tension = 0.05
+
+[[keys]]
+bar = 96
+arousal = 0.35
+valence = 0.95
+density = 0.6
+tension = 0.05
