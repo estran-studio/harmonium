@@ -603,6 +603,7 @@ impl TradGenerator {
         let strong = d.strong_accent.eval(p.intensity)
             + d.brightness_accent.eval(d.valence_input(p.harmony_valence));
         let offbeat = d.tension_offbeat.eval(p.harmony_tension);
+        let chord_duration = d.tension_chord_duration.eval(p.harmony_tension);
         for (&track, notes) in &mut measure.tracks {
             let velocity = d.velocity(track, p.intensity);
             for note in notes {
@@ -624,10 +625,8 @@ impl TradGenerator {
                         (note.duration_steps as f32 * duration).round().max(1.0) as usize;
                     note.duration_steps = note.duration_steps.min(measure.steps - note.start_step);
                 } else if track == TrackId::Chords {
-                    note.duration_steps = (note.duration_steps as f32
-                        * d.tension_chord_duration.eval(p.harmony_tension))
-                    .round()
-                    .max(1.0) as usize;
+                    note.duration_steps =
+                        (note.duration_steps as f32 * chord_duration).round().max(1.0) as usize;
                     note.duration_steps = note.duration_steps.min(measure.steps - note.start_step);
                 }
             }
