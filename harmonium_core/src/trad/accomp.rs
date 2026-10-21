@@ -136,8 +136,21 @@ impl Guitarist {
         params: &TradHarmonyParams,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
-        let mut notes = Vec::with_capacity(params.chop_steps.len() * 3);
-        for &step in &params.chop_steps {
+        self.chop_bar_on_steps(chords, key, mode, params, &params.chop_steps, next_id)
+    }
+
+    /// Variante pilotée par un motif emprunté au profil, sans copier le tuning.
+    pub(crate) fn chop_bar_on_steps(
+        &mut self,
+        chords: [TradChord; 2],
+        key: PitchClass,
+        mode: Mode,
+        params: &TradHarmonyParams,
+        steps: &[usize],
+        next_id: &mut impl FnMut() -> NoteId,
+    ) -> Vec<TimelineNote> {
+        let mut notes = Vec::with_capacity(steps.len() * 3);
+        for &step in steps {
             let Some(voicing) = self.voice(chords[half_of(step)], key, mode, params) else {
                 continue;
             };

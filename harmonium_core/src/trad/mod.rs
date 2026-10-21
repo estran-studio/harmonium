@@ -23,6 +23,7 @@
 pub mod accomp;
 pub mod arrangement;
 pub mod cells;
+pub mod dynamics;
 pub mod feet;
 pub mod fiddle;
 pub mod generator;

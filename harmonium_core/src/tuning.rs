@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     harmony::steedman_grammar::GrammarStyle,
     params::TimeSignature,
-    trad::{arrangement::ReelArrangement, cells::CellBank, feet::FeetTable, harmony::ChordDegree},
+    trad::{
+        arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics, feet::FeetTable,
+        harmony::ChordDegree,
+    },
 };
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
@@ -617,6 +620,9 @@ pub struct TuningParams {
     /// Tours d'un air et entrées progressives des pistes du reel (D11, constitution V).
     #[serde(default)]
     pub reel_arrangement: ReelArrangement,
+    /// Pilotage continu du style : intensité, couleur, densité et tension.
+    #[serde(default)]
+    pub reel_intensity: StyleDynamics,
 }
 
 impl Default for TuningParams {
@@ -636,6 +642,7 @@ impl Default for TuningParams {
             trad_harmony: TradHarmonyParams::default(),
             reel_feet: FeetTable::default(),
             reel_arrangement: ReelArrangement::default(),
+            reel_intensity: StyleDynamics::default(),
         }
     }
 }
@@ -1160,6 +1167,9 @@ impl TuningParams {
         if let Err(err) = self.reel_arrangement.validate() {
             errors.push(ValidationError { field: "reel_arrangement", message: err.to_string() });
         }
+        if let Err(message) = self.reel_intensity.validate() {
+            errors.push(ValidationError { field: "reel_intensity", message });
+        }
 
         // --- TradHarmonyParams (D7, D8) ---
         let th = &self.trad_harmony;
@@ -1487,6 +1497,8 @@ pub struct TuningOverlay {
     pub reel_feet: Option<FeetTable>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reel_arrangement: Option<ReelArrangement>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reel_intensity: Option<StyleDynamics>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1662,6 +1674,9 @@ impl TuningParams {
         }
         if let Some(reel_arrangement) = &overlay.reel_arrangement {
             result.reel_arrangement = reel_arrangement.clone();
+        }
+        if let Some(dynamics) = &overlay.reel_intensity {
+            result.reel_intensity = dynamics.clone();
         }
 
         if let Some(trad_harmony) = &overlay.trad_harmony {

@@ -541,6 +541,10 @@ pub struct MusicalParams {
     #[serde(default = "default_feet_density")]
     pub feet_density: u8,
 
+    /// Énergie du style (0..1), point neutre 0.5 : conserve le rendu historique.
+    #[serde(default = "default_density")]
+    pub intensity: f32,
+
     // ═══════════════════════════════════════════════════════════════════
     // MODULES ON/OFF (pour debug/tests)
     // ═══════════════════════════════════════════════════════════════════
@@ -828,6 +832,7 @@ impl Default for MusicalParams {
             master_volume: default_master_volume(),
             style: Style::default(),
             feet_density: default_feet_density(),
+            intensity: default_density(),
 
             // Modules
             enable_rhythm: true,
@@ -939,6 +944,11 @@ impl MusicalParams {
     /// Définit la densité de podorythmie, bornée à `0..=2`.
     pub fn set_feet_density(&mut self, density: u8) {
         self.feet_density = density.min(2);
+    }
+
+    /// Définit l'énergie ; une entrée non finie revient au point neutre.
+    pub fn set_intensity(&mut self, intensity: f32) {
+        self.intensity = if intensity.is_finite() { intensity.clamp(0.0, 1.0) } else { 0.5 };
     }
 
     /// Builder pattern: set BPM
