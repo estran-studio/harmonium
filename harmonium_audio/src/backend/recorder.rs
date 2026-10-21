@@ -250,6 +250,35 @@ impl RecorderBackend {
         }
     }
 
+    fn update_timing(&mut self, bpm: f32, signature: TimeSignature, swing_ratio: f32) {
+        if self.midi_track.is_some() {
+            if (bpm - self.musicxml_params.bpm).abs() > 0.01 {
+                let bpm = if bpm > 0.0 { bpm } else { 120.0 };
+                let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
+                let delta = self.steps_to_ticks(self.midi_steps_since_last);
+                if let Some(track) = &mut self.midi_track {
+                    self.midi_steps_since_last = 0.0;
+                    track.push(TrackEvent {
+                        delta: delta.into(),
+                        kind: TrackEventKind::Meta(MetaMessage::Tempo(
+                            microseconds_per_beat.into(),
+                        )),
+                    });
+                }
+            }
+            if signature != self.musicxml_params.time_signature {
+                let delta = self.steps_to_ticks(self.midi_steps_since_last);
+                if let Some(track) = &mut self.midi_track {
+                    self.midi_steps_since_last = 0.0;
+                    track.push(time_signature_event(delta, &signature));
+                }
+            }
+        }
+        self.musicxml_params.bpm = bpm;
+        self.musicxml_params.time_signature = signature;
+        self.musicxml_params.swing_ratio = swing_ratio;
+    }
+
     fn start_musicxml(&mut self) {
         self.musicxml_events = Some(Vec::new());
         self.musicxml_steps_elapsed = 0.0; // Reset to f64
@@ -306,35 +335,14 @@ impl AudioRenderer for RecorderBackend {
                 self.current_samples_per_step = *samples_per_step;
             }
             AudioEvent::UpdateMusicalParams { params } => {
-                // MIDI tempo / time-signature changes mid-recording: the file
-                // follows the real tempo, changes included.
-                if self.midi_track.is_some() {
-                    if (params.bpm - self.musicxml_params.bpm).abs() > 0.01 {
-                        let bpm = if params.bpm > 0.0 { params.bpm } else { 120.0 };
-                        let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
-                        let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                        if let Some(track) = &mut self.midi_track {
-                            self.midi_steps_since_last = 0.0;
-                            track.push(TrackEvent {
-                                delta: delta.into(),
-                                kind: TrackEventKind::Meta(MetaMessage::Tempo(
-                                    microseconds_per_beat.into(),
-                                )),
-                            });
-                        }
-                    }
-                    if params.time_signature != self.musicxml_params.time_signature {
-                        let delta = self.steps_to_ticks(self.midi_steps_since_last);
-                        if let Some(track) = &mut self.midi_track {
-                            self.midi_steps_since_last = 0.0;
-                            track.push(time_signature_event(delta, &params.time_signature));
-                        }
-                    }
-                }
+                self.update_timing(params.bpm, params.time_signature, params.swing_ratio);
                 for (ch, prog) in crate::voice_manager::gm_programs_for_style(params.style) {
                     self.channel_programs[ch as usize] = prog;
                 }
                 self.musicxml_params = *params.clone();
+            }
+            AudioEvent::MeasureTiming { bpm, time_signature, swing_ratio } => {
+                self.update_timing(*bpm, *time_signature, *swing_ratio);
             }
             AudioEvent::NoteOn { .. } | AudioEvent::NoteOff { .. } => {
                 // Capture MusicXML with step timestamp

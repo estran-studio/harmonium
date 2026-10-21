@@ -92,7 +92,9 @@ impl AudioRenderer for SynthBackend {
             AudioEvent::SetMixerGains { lead, chords, bass, snare, hat } => {
                 self.voice_manager.set_gains(lead, chords, bass, snare, hat);
             }
-            AudioEvent::TimingUpdate { .. } | AudioEvent::UpdateMusicalParams { .. } => {}
+            AudioEvent::TimingUpdate { .. }
+            | AudioEvent::UpdateMusicalParams { .. }
+            | AudioEvent::MeasureTiming { .. } => {}
             _ => self.voice_manager.process_event(event),
         }
     }

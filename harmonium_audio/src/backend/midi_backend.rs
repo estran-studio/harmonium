@@ -60,7 +60,7 @@ impl AudioRenderer for MidiBackend {
             AudioEvent::TimingUpdate { samples_per_step } => {
                 self.current_samples_per_step = samples_per_step;
             }
-            AudioEvent::UpdateMusicalParams { .. } => {
+            AudioEvent::UpdateMusicalParams { .. } | AudioEvent::MeasureTiming { .. } => {
                 // Ignore - only RecorderBackend needs this
             }
             AudioEvent::NoteOn { note, velocity, channel } => {

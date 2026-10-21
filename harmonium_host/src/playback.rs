@@ -595,6 +595,7 @@ impl PlaybackEngine {
         if step.is_multiple_of(steps_per_pulse) {
             self.freeze_pulse(step, steps_per_pulse);
         }
+        self.relay_measure_params();
 
         // Frozen duration of the entered step, from its pulse's fresh table.
         let duration = self.step_durations[self.step_index];
@@ -628,8 +629,6 @@ impl PlaybackEngine {
                 return Some(duration);
             }
         }
-        // Unguarded again: relay a newly loaded measure's tempo/signature.
-        self.relay_measure_params();
 
         // Cursor for the next entry: the advanced step's slot in the current
         // table (a newly opened pulse is frozen at its own entry above).
@@ -652,22 +651,18 @@ impl PlaybackEngine {
         Some(duration)
     }
 
-    /// Relay the sounding measure's tempo/signature to the renderer (the
-    /// MIDI recorder turns them into file metas). Fires only on change, so
-    /// steady-state playback stays allocation-free. Must run outside
-    /// `RtGuard`: building the params event allocates.
+    /// Métadonnées de la pulse audible : payload Copy, sans Box ni clone.
     fn relay_measure_params(&mut self) {
-        if (self.measure_bpm - self.reported_bpm).abs() > 0.01
+        if (self.audible_bpm - self.reported_bpm).abs() > 0.01
             || self.measure_sig != self.reported_signature
         {
-            self.reported_bpm = self.measure_bpm;
+            self.reported_bpm = self.audible_bpm;
             self.reported_signature = self.measure_sig;
-            let mut params = self.musical_params.clone();
-            params.bpm = self.measure_bpm;
-            params.time_signature = self.measure_sig;
-            params.set_swing_ratio(self.swing_ratio);
-            self.renderer
-                .handle_event(AudioEvent::UpdateMusicalParams { params: Box::new(params) });
+            self.renderer.handle_event(AudioEvent::MeasureTiming {
+                bpm: self.audible_bpm,
+                time_signature: self.measure_sig,
+                swing_ratio: self.swing_ratio,
+            });
         }
     }
 

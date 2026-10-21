@@ -424,6 +424,7 @@ impl VoiceManager {
             }
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::UpdateMusicalParams { .. }
+            | AudioEvent::MeasureTiming { .. }
             | AudioEvent::LoadFont { .. }
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }

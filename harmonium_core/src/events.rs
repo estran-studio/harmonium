@@ -41,6 +41,12 @@ pub enum AudioEvent {
     UpdateMusicalParams {
         params: Box<MusicalParams>,
     },
+    /// Métadonnées de la pulse audible, sans allocation sur le chemin audio.
+    MeasureTiming {
+        bpm: f32,
+        time_signature: crate::params::TimeSignature,
+        swing_ratio: f32,
+    },
     StartRecording {
         format: RecordFormat,
     },
