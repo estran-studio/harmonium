@@ -320,6 +320,16 @@ Dette connue, à traiter au passage :
   `test.sf2` et dépendent de la présence de GeneralUser ; à réécrire.
 - Logs du générateur Legacy imprimés en plein REPL (`→ Chord: …`).
 
+## Objectif de la première démo du jeu (priorité, 2026-10-21)
+
+Un reel sur lequel le personnage danse la gigue, et qui évolue selon les
+ennemis, la vie et la barre damnation/sacré. Ces concepts restent dans le
+jeu : le jeu les traduit en 4 émotions (`arousal`, `valence`, `density`,
+`tension`) et le moteur ne connaît que ces 4. Exigences moteur (P1-T12) :
+chaque émotion a un effet audible et distinct en trad, un changement
+s'entend à la mesure suivante, la pulse `BeatInfo` ne saute jamais (tempo
+par rampe), automation d'export pour écouter un scénario de combat.
+
 ## Suite proposée (prochaine session)
 
 1. **Écoute ciblée, 30 min** : noter par élément ce qui sonne « pas trad »
