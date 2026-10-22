@@ -116,6 +116,7 @@ impl RecorderBackend {
                 let mut progs = [0u8; 16];
                 for (ch, prog) in crate::voice_manager::gm_programs_for_style(
                     harmonium_core::params::Style::Legacy,
+                    &harmonium_core::StyleProfile::builtin().instruments,
                 ) {
                     progs[ch as usize] = prog;
                 }
@@ -336,7 +337,10 @@ impl AudioRenderer for RecorderBackend {
             }
             AudioEvent::UpdateMusicalParams { params } => {
                 self.update_timing(params.bpm, params.time_signature, params.swing_ratio);
-                for (ch, prog) in crate::voice_manager::gm_programs_for_style(params.style) {
+                for (ch, prog) in crate::voice_manager::gm_programs_for_style(
+                    params.style,
+                    &params.profile_instruments,
+                ) {
                     self.channel_programs[ch as usize] = prog;
                 }
                 self.musicxml_params = *params.clone();

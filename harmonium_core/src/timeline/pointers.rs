@@ -126,7 +126,7 @@ impl Playhead {
             sample_rate,
             time_signature: TimeSignature::default(),
             ticks_per_beat,
-            events: Vec::with_capacity(8),
+            events: Vec::with_capacity(2 * 64 + 7),
             // Pré-alloué hors callback : 5 pistes × notes tenues simultanées
             // (accords, croisements de barre) restent bien sous 64.
             pending_offs: Vec::with_capacity(64),
@@ -145,7 +145,7 @@ impl Playhead {
             "load_measure called while a measure is still loaded"
         );
         self.samples_per_step = {
-            let steps_per_beat = self.ticks_per_beat as f64;
+            let steps_per_beat = measure.steps_per_quarter();
             let bpm = measure.tempo as f64;
             (self.sample_rate * 60.0 / bpm / steps_per_beat) as usize
         };
@@ -261,30 +261,22 @@ impl Playhead {
 
     /// Advance the musical position by one step
     fn advance_position(&mut self) {
-        self.position.tick += 1;
-        if self.position.tick >= self.ticks_per_beat {
+        let next_step = self.position.step_in_bar(self.ticks_per_beat) + 1;
+        let steps = self
+            .current_measure
+            .as_ref()
+            .map_or_else(|| self.time_signature.steps_per_bar(self.ticks_per_beat), |m| m.steps);
+        if next_step >= steps.max(1) {
             self.position.tick = 0;
-            self.position.beat += 1;
-            // A bar is `steps_per_bar` grid steps, not `numerator ×
-            // ticks_per_beat`: 2/2 has four quarter-note beats (two half
-            // notes), 6/8 has three (six eighths grouped in twos). For x/4
-            // the numerator already equals the grid-beat count, so 4/4 and
-            // 3/4 are unchanged. `.max(1)` keeps an exotic sub-grid meter
-            // from wrapping at beat 0.
-            let beats_per_bar = (self.time_signature.steps_per_bar(self.ticks_per_beat)
-                / self.ticks_per_beat)
-                .max(1);
-            if self.position.beat > beats_per_bar {
-                self.position.beat = 1;
-                self.position.bar += 1;
-                // Current measure is exhausted: park it for the caller to
-                // reclaim with `take_finished` (never dropped on this thread).
-                // The slot is empty here: the caller reclaims after every tick.
-                debug_assert!(
-                    self.finished_measure.is_none(),
-                    "finished measure was not reclaimed"
-                );
-                self.finished_measure = self.current_measure.take();
+            self.position.beat = 1;
+            self.position.bar += 1;
+            debug_assert!(self.finished_measure.is_none(), "finished measure was not reclaimed");
+            self.finished_measure = self.current_measure.take();
+        } else {
+            self.position.tick += 1;
+            if self.position.tick >= self.ticks_per_beat {
+                self.position.tick = 0;
+                self.position.beat += 1;
             }
         }
     }

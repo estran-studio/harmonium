@@ -40,7 +40,7 @@ fn render_reel(
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_seed(seed);
-    composer.set_style(Style::Reel);
+    composer.set_style(Style::Profile);
     if let Some(ratio) = swing {
         composer.set_swing_ratio(ratio);
     }

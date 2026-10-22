@@ -22,7 +22,7 @@ fn generator() -> (TradGenerator, ChaCha8Rng) {
         ..Default::default()
     };
     let params = MusicalParams {
-        style: Style::Reel,
+        style: Style::Profile,
         bpm: tuning.profile.meter.default_bpm,
         ..Default::default()
     };

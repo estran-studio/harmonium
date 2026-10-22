@@ -490,7 +490,7 @@ pub enum HarmonyStrategy {
     Auto,
 }
 
-/// Style de génération musicale (D1 : générateur legacy transitoire vs reel trad québécois).
+/// Choix de générateur : Legacy ou moteur piloté par un profil de données.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Style {
@@ -498,9 +498,8 @@ pub enum Style {
     #[default]
     #[serde(alias = "Legacy")]
     Legacy,
-    /// Reel traditionnel québécois (forme AABB, cellules en croches, podorythmie).
-    #[serde(alias = "Reel")]
-    Reel,
+    /// Générateur traditionnel piloté par `profile_id` et le profil du tuning.
+    Profile,
 }
 
 /// Paramètres purement techniques. Le moteur obéit à ça directement.
@@ -536,6 +535,12 @@ pub struct MusicalParams {
     /// Style de génération musicale (`Legacy` par défaut).
     #[serde(default)]
     pub style: Style,
+    /// Identifiant du profil installé ; partagé sans allocation au clonage audio.
+    #[serde(default = "default_profile_id")]
+    pub profile_id: std::sync::Arc<str>,
+    /// Instrumentarium résolu sur le thread principal pour le rendu et les exports.
+    #[serde(default = "default_profile_instruments")]
+    pub profile_instruments: crate::style_profile::ProfileInstruments,
 
     /// Densité de podorythmie (0..=2, défaut 1 ; bornée via [`MusicalParams::set_feet_density`]).
     #[serde(default = "default_feet_density")]
@@ -821,6 +826,13 @@ fn default_muted_channels() -> Vec<bool> {
     vec![false; 16]
 }
 
+fn default_profile_id() -> std::sync::Arc<str> {
+    std::sync::Arc::from(crate::StyleProfile::builtin().meta.id.as_str())
+}
+fn default_profile_instruments() -> crate::style_profile::ProfileInstruments {
+    crate::StyleProfile::builtin().instruments
+}
+
 impl Default for MusicalParams {
     fn default() -> Self {
         Self {
@@ -831,6 +843,8 @@ impl Default for MusicalParams {
             pulse: None,
             master_volume: default_master_volume(),
             style: Style::default(),
+            profile_id: default_profile_id(),
+            profile_instruments: default_profile_instruments(),
             feet_density: default_feet_density(),
             intensity: default_density(),
 
@@ -1190,8 +1204,8 @@ mod tests {
         assert_eq!(params.style, Style::Legacy);
         assert_eq!(params.feet_density, 1);
 
-        params.set_style(Style::Reel);
-        assert_eq!(params.style, Style::Reel);
+        params.set_style(Style::Profile);
+        assert_eq!(params.style, Style::Profile);
 
         params.set_feet_density(0);
         assert_eq!(params.feet_density, 0);
@@ -1200,8 +1214,8 @@ mod tests {
         params.set_feet_density(99);
         assert_eq!(params.feet_density, 2);
 
-        let built = MusicalParams::default().style(Style::Reel).feet_density(5);
-        assert_eq!(built.style, Style::Reel);
+        let built = MusicalParams::default().style(Style::Profile).feet_density(5);
+        assert_eq!(built.style, Style::Profile);
         assert_eq!(built.feet_density, 2);
     }
 }

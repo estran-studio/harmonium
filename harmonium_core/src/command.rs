@@ -175,10 +175,10 @@ pub enum EngineCommand {
     SetWriteheadLookahead(usize),
 
     // === STYLE PROFILE ===
-    /// Load a style profile, applying its tuning overlay to engine parameters.
+    /// Installe un profil validé et sélectionne le générateur de profils.
     SetStyleProfile(Box<crate::style_profile::StyleProfile>),
 
-    /// Clear the active style profile, reverting to default tuning.
+    /// Rétablit le profil embarqué et sélectionne son générateur.
     ClearStyleProfile,
 
     // === UTILITY ===

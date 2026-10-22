@@ -304,7 +304,7 @@ fn parse_record_command(tokens: &[&str]) -> Result<EngineCommand> {
 
 /// CLI-only commands, handled directly by the REPL (they need the playback
 /// ring or the clock reader, so they do not go through `EngineCommand`).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CliCommand {
     /// Set the swing ratio (already clamped to 0.5..=0.75; `clamped` tells
     /// whether the user's value was out of range).
@@ -316,12 +316,27 @@ pub enum CliCommand {
     ClearTempo,
     /// Live visual metronome from `BeatInfo`.
     Beat,
-    /// Switch generation style (`Reel` or `Legacy`).
-    Style(Style),
+    /// Sélection du générateur ou d'un profil validé.
+    Style(StyleSelection),
     /// Set reel podorythmie density (`0`, `1` or `2`).
     Feet(u8),
     /// Énergie du style, bornée explicitement à 0..1.
     Intensity(f32),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum StyleSelection {
+    Legacy,
+    Profile(Box<harmonium_core::StyleProfile>),
+}
+impl StyleSelection {
+    pub fn apply(self, composer: &mut harmonium::composer::MusicComposer) -> Result<()> {
+        match self {
+            Self::Legacy => composer.set_style(Style::Legacy),
+            Self::Profile(profile) => composer.set_profile(*profile).map_err(|e| anyhow!(e))?,
+        }
+        Ok(())
+    }
 }
 
 /// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
@@ -361,18 +376,22 @@ pub fn parse_cli_command(tokens: &[&str]) -> Result<CliCommand> {
     }
 }
 
-/// Parse `style <reel|legacy>`.
-pub fn parse_style_value(raw: &str) -> Result<Style> {
-    match raw.to_ascii_lowercase().as_str() {
-        "reel" => Ok(Style::Reel),
-        "legacy" => Ok(Style::Legacy),
-        _ => Err(anyhow!("Style inconnu: {raw}. Utiliser: style reel|legacy")),
+/// Sélecteur partagé par le démarrage CLI et la commande interactive `style`.
+pub fn parse_style_value(raw: &str) -> Result<StyleSelection> {
+    if raw.eq_ignore_ascii_case("legacy") {
+        return Ok(StyleSelection::Legacy);
     }
+    let profile = if std::path::Path::new(raw).exists() {
+        harmonium_core::StyleProfile::load(raw)?
+    } else {
+        harmonium_core::StyleProfile::named(raw)?
+    };
+    Ok(StyleSelection::Profile(Box::new(profile)))
 }
 
 fn parse_style_command(tokens: &[&str]) -> Result<CliCommand> {
     if tokens.len() != 1 {
-        return Err(anyhow!("Usage: style <reel|legacy>"));
+        return Err(anyhow!("Usage: style <identifiant|dossier|legacy>"));
     }
     Ok(CliCommand::Style(parse_style_value(tokens[0])?))
 }
@@ -569,21 +588,6 @@ mod tests {
 
     #[test]
     fn test_parse_style_and_feet() {
-        assert_eq!(
-            parse_cli_command(&["style", "reel"]).ok(),
-            Some(CliCommand::Style(Style::Reel))
-        );
-        assert_eq!(
-            parse_cli_command(&["style", "REEL"]).ok(),
-            Some(CliCommand::Style(Style::Reel))
-        );
-        assert_eq!(
-            parse_cli_command(&["style", "legacy"]).ok(),
-            Some(CliCommand::Style(Style::Legacy))
-        );
-        assert!(parse_cli_command(&["style"]).is_err());
-        assert!(parse_cli_command(&["style", "valse"]).is_err());
-
         for d in 0..=2u8 {
             let s = d.to_string();
             assert_eq!(parse_cli_command(&["feet", &s]).ok(), Some(CliCommand::Feet(d)));

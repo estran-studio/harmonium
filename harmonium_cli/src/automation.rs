@@ -191,7 +191,7 @@ mod tests {
             font_queue,
             seed,
         );
-        composer.set_style(Style::Reel);
+        composer.set_style(Style::Profile);
         composer.set_tuning(TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
@@ -257,7 +257,7 @@ mod tests {
                     Default::default(),
                     seed,
                 );
-                composer.set_style(Style::Reel);
+                composer.set_style(Style::Profile);
                 composer.use_emotion_mode();
                 composer.set_emotions(0.5, 0.0, 0.5, 0.0);
                 let mut bars = Vec::new();

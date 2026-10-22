@@ -307,11 +307,6 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
             return handle_relative_emotion(state, &tokens[1..]);
         }
 
-        // Style profile commands
-        "profile" => {
-            return handle_profile_command(state, &tokens[1..]);
-        }
-
         // Commandes CLI trad et horloge (hors EngineCommand).
         "swing" | "tempo" | "beat" | "style" | "feet" | "intensity" => {
             return handle_clock_command(state, &tokens);
@@ -379,18 +374,22 @@ fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> 
             return run_beat(state);
         }
         Ok(CliCommand::Style(style)) => {
-            let (bpm, swing, ts) = if let Ok(mut c) = state.composer.lock() {
-                c.set_style(style);
+            let (label, bpm, swing, ts) = {
+                let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                style.apply(&mut c)?;
                 c.invalidate_future();
                 let mp = c.musical_params();
-                (mp.bpm, mp.swing_ratio, mp.time_signature)
-            } else {
-                (120.0, 0.5, harmonium_core::params::TimeSignature::default())
+                let label = if mp.style == harmonium_core::params::Style::Legacy {
+                    "legacy".to_string()
+                } else {
+                    mp.profile_id.to_string()
+                };
+                (label, mp.bpm, mp.swing_ratio, mp.time_signature)
             };
             state.send_invalidate();
             print_success_msg(&format!(
-                "Style réglé à {:?} (BPM {:.0}, swing {:.2}, signature {}/{})",
-                style, bpm, swing, ts.numerator, ts.denominator
+                "Style réglé à {} (BPM {:.0}, swing {:.2}, signature {}/{})",
+                label, bpm, swing, ts.numerator, ts.denominator
             ));
         }
         Ok(CliCommand::Feet(density)) => {
@@ -804,6 +803,20 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
             print_success_msg(&format!("Seed réglé à {seed}"));
         }
 
+        EngineCommand::SetStyleProfile(profile) => {
+            let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            c.set_profile(*profile).map_err(|e| anyhow::anyhow!(e))?;
+            drop(c);
+            state.send_invalidate();
+        }
+        EngineCommand::ClearStyleProfile => {
+            let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            c.set_profile(harmonium_core::StyleProfile::default())
+                .map_err(|e| anyhow::anyhow!(e))?;
+            drop(c);
+            state.send_invalidate();
+        }
+
         // === Playback commands → audio thread ===
         EngineCommand::SetChannelGain { channel, gain } => {
             let _ = state.playback_cmd_tx.push(PlaybackCommand::SetChannelGain { channel, gain });
@@ -965,15 +978,19 @@ fn create_prompt(state: &ReplState) -> String {
     }
 }
 
-/// Formate la position dans la forme AABB d'un reel (ex. `"A2 m.5/8"`).
+/// Position dans la forme décrite par le profil.
 #[must_use]
-pub fn format_reel_form_position(role: harmonium_core::trad::BarRole) -> String {
-    format!("{:?}{} m.{}/8", role.strain, role.pass, role.bar_in_strain)
+pub fn format_profile_form_position(
+    role: harmonium_core::trad::BarRole,
+    plan: &harmonium_core::trad::TunePlan,
+) -> String {
+    let part = &plan.profile.form.parts[role.strain.0];
+    format!("{}{} m.{}/{}", part.name, role.pass, role.bar_in_strain, part.roles.len())
 }
 
 /// Formate la tonalité et le mode d'un [`harmonium_core::trad::TunePlan`] (ex. `"D Ionian"`).
 #[must_use]
-pub fn format_reel_tune_key_mode(plan: harmonium_core::trad::TunePlan) -> String {
+pub fn format_profile_tune_key_mode(plan: &harmonium_core::trad::TunePlan) -> String {
     format!("{} {:?}", harmonium_core::trad::pitch_class_name(plan.key), plan.mode)
 }
 
@@ -986,7 +1003,7 @@ fn print_state(state: &mut ReplState) {
         (
             c.musical_params().style,
             c.musical_params().feet_density,
-            c.reel_bar_info(bar),
+            c.profile_bar_info(bar),
             c.config.key.clone(),
             c.config.scale.clone(),
         )
@@ -1012,8 +1029,11 @@ fn print_state(state: &mut ReplState) {
         println!("  Style: {}", format!("{style:?}").green());
         println!("  Feet Density: {}", format!("{feet_density}").green());
         if let Some((plan, role)) = &reel_info {
-            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan.clone()).green());
-            println!("  Form Position: {}", format_reel_form_position(*role).magenta().bold());
+            println!("  Tune Key/Mode: {}", format_profile_tune_key_mode(plan).green());
+            println!(
+                "  Form Position: {}",
+                format_profile_form_position(*role, plan).magenta().bold()
+            );
         }
         println!();
 
@@ -1048,7 +1068,7 @@ fn print_state(state: &mut ReplState) {
             format!("{} ({} chords)", report.progression_name, report.progression_length).green()
         );
         let key_str = if let Some((plan, _)) = reel_info {
-            format_reel_tune_key_mode(plan)
+            format_profile_tune_key_mode(&plan)
         } else if !report.session_key.is_empty() {
             format!("{} {}", report.session_key, report.session_scale)
         } else {
@@ -1113,8 +1133,11 @@ fn print_state(state: &mut ReplState) {
         println!("  Style: {}", format!("{style:?}").green());
         println!("  Feet Density: {}", format!("{feet_density}").green());
         if let Some((plan, role)) = reel_info {
-            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan).green());
-            println!("  Form Position: {}", format_reel_form_position(role).magenta().bold());
+            println!("  Tune Key/Mode: {}", format_profile_tune_key_mode(&plan).green());
+            println!(
+                "  Form Position: {}",
+                format_profile_form_position(role, &plan).magenta().bold()
+            );
         } else {
             println!("  Key: {}", format!("{comp_key} {comp_scale}").green());
         }
@@ -1122,172 +1145,6 @@ fn print_state(state: &mut ReplState) {
     } else {
         println!("{}", "No state available yet. Engine may still be initializing.".yellow());
     }
-}
-
-// ---------------------------------------------------------------------------
-// Style Profile Commands
-// ---------------------------------------------------------------------------
-
-/// Default directory for style profiles.
-fn profiles_dir() -> std::path::PathBuf {
-    // Look for tune_output relative to the workspace root
-    let candidates = [
-        std::path::PathBuf::from("../tune_output"),
-        std::path::PathBuf::from("./tune_output"),
-        dirs::home_dir().unwrap_or_default().join(".harmonium").join("profiles"),
-    ];
-    for c in &candidates {
-        if c.is_dir() {
-            return c.clone();
-        }
-    }
-    candidates[0].clone()
-}
-
-fn handle_profile_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> {
-    let subcmd = tokens.first().copied().unwrap_or("help");
-
-    match subcmd {
-        "list" | "ls" => {
-            let dir = profiles_dir();
-            if !dir.is_dir() {
-                println!(
-                    "{} No profiles directory found at {}",
-                    "[WARN]".yellow().bold(),
-                    dir.display()
-                );
-                return Ok(true);
-            }
-            let mut profiles: Vec<String> = Vec::new();
-            if let Ok(entries) = std::fs::read_dir(&dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.extension().and_then(|e| e.to_str()) == Some("toml") {
-                        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                            profiles.push(stem.to_string());
-                        }
-                    }
-                }
-            }
-            profiles.sort();
-            if profiles.is_empty() {
-                println!("No .toml profiles found in {}", dir.display());
-            } else {
-                println!(
-                    "{} Available profiles (in {}):",
-                    "[PROFILES]".cyan().bold(),
-                    dir.display()
-                );
-                for p in &profiles {
-                    println!("  - {}", p.green());
-                }
-                println!();
-                println!("Usage: {} <name>", "profile load".bold());
-            }
-        }
-
-        "load" => {
-            let name = tokens.get(1).copied().unwrap_or("");
-            if name.is_empty() {
-                println!("{} Usage: profile load <name>", "[ERROR]".red().bold());
-                return Ok(true);
-            }
-
-            let dir = profiles_dir();
-            let path = dir.join(format!("{}.toml", name));
-
-            if !path.exists() {
-                println!("{} Profile not found: {}", "[ERROR]".red().bold(), path.display());
-                println!("Run {} to see available profiles", "profile list".bold());
-                return Ok(true);
-            }
-
-            match load_and_apply_profile(state, &path) {
-                Ok(info) => {
-                    println!("{} Loaded profile: {}", "[OK]".green().bold(), name.cyan());
-                    println!("  BPM: {:.0}, Density: {:.2}, Tension: {:.2}, Valence: {:.2}, Arousal: {:.2}",
-                        info.bpm, info.density, info.tension, info.valence, info.arousal);
-                }
-                Err(e) => {
-                    println!("{} Failed to load profile: {}", "[ERROR]".red().bold(), e);
-                }
-            }
-        }
-
-        "clear" => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_tuning(harmonium_core::tuning::TuningParams::default());
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            println!("{} Style profile cleared (back to defaults)", "[OK]".green().bold());
-        }
-
-        _ => {
-            println!("{}  profile list          — list available profiles", "Usage:".bold());
-            println!("         profile load <name>   — load a style profile");
-            println!("         profile clear         — revert to default tuning");
-        }
-    }
-
-    Ok(true)
-}
-
-struct ProfileInfo {
-    bpm: f32,
-    density: f32,
-    tension: f32,
-    valence: f32,
-    arousal: f32,
-}
-
-fn load_and_apply_profile(state: &mut ReplState, path: &std::path::Path) -> Result<ProfileInfo> {
-    let toml_str = std::fs::read_to_string(path)?;
-
-    // Parse the [render] section for emotion params
-    let raw: toml::Value = toml::from_str(&toml_str)?;
-    let render = raw.get("render");
-
-    let bpm = render.and_then(|r| r.get("bpm")).and_then(|v| v.as_float()).unwrap_or(120.0) as f32;
-    let density =
-        render.and_then(|r| r.get("density")).and_then(|v| v.as_float()).unwrap_or(0.5) as f32;
-    let tension =
-        render.and_then(|r| r.get("tension")).and_then(|v| v.as_float()).unwrap_or(0.4) as f32;
-    let valence =
-        render.and_then(|r| r.get("valence")).and_then(|v| v.as_float()).unwrap_or(0.3) as f32;
-    let arousal =
-        render.and_then(|r| r.get("arousal")).and_then(|v| v.as_float()).unwrap_or(0.5) as f32;
-
-    // Parse TuningParams (all sections except [render])
-    // Re-parse with [render] stripped — or just parse the full thing and let serde ignore unknown
-    let tuning: harmonium_core::tuning::TuningParams = {
-        // Remove [render] section and parse as TuningParams
-        let mut filtered = raw.clone();
-        if let Some(table) = filtered.as_table_mut() {
-            table.remove("render");
-        }
-        let filtered_str = toml::to_string(&filtered)?;
-        toml::from_str(&filtered_str)?
-    };
-
-    // Apply tuning
-    if let Ok(mut c) = state.composer.lock() {
-        c.set_tuning(tuning);
-        c.set_bpm(bpm);
-        c.set_rhythm_mode(harmonium_core::sequencer::RhythmMode::ClassicGroove);
-        c.set_emotions(arousal, valence, density, tension);
-        c.sync_generator();
-        c.invalidate_future();
-    }
-    state.send_invalidate();
-
-    // Update cached emotion state
-    state.emotion_state.arousal = arousal;
-    state.emotion_state.valence = valence;
-    state.emotion_state.density = density;
-    state.emotion_state.tension = tension;
-
-    Ok(ProfileInfo { bpm, density, tension, valence, arousal })
 }
 
 #[cfg(test)]

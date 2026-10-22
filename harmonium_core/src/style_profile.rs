@@ -113,7 +113,7 @@ pub struct ProfileHarmony {
     pub steps_per_chord: usize,
     pub candidates: Vec<ModeChords>,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfileInstruments {
     pub melody_program: u8,
@@ -162,15 +162,27 @@ const BANKS: [(&str, &str, &str); 4] = [
 ];
 impl Default for StyleProfile {
     fn default() -> Self {
+        Self::builtin().clone()
+    }
+}
+impl StyleProfile {
+    /// Profil embarqué partagé ; aucun accès au disque ni copie de banque.
+    pub fn builtin() -> &'static Self {
         static DEFAULT: LazyLock<StyleProfile> =
             LazyLock::new(|| match StyleProfile::decode(EMBEDDED, None, true) {
                 Ok(profile) => profile,
                 Err(error) => unreachable!("profil embarqué invalide : {error}"),
             });
-        DEFAULT.clone()
+        &DEFAULT
     }
-}
-impl StyleProfile {
+    /// Résolution des identifiants distribués avec le moteur (alias CLI inclus).
+    pub fn named(id: &str) -> Result<Self, ProfileError> {
+        if id.eq_ignore_ascii_case("reel") || id.eq_ignore_ascii_case(&Self::builtin().meta.id) {
+            Ok(Self::default())
+        } else {
+            Err(ProfileError::new("meta.id", format!("profil inconnu : {id}")))
+        }
+    }
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ProfileError> {
         let path = path.as_ref();
         let file = if path.is_dir() { path.join("profile.toml") } else { path.to_path_buf() };
@@ -270,7 +282,9 @@ impl StyleProfile {
         }
         let m = &self.meter;
         check(
-            m.time_signature.numerator > 0 && m.time_signature.denominator.is_power_of_two(),
+            (1..=64).contains(&m.time_signature.numerator)
+                && m.time_signature.denominator <= 64
+                && m.time_signature.denominator.is_power_of_two(),
             "meter.time_signature",
             "signature positive, dénominateur puissance de deux",
         )?;
@@ -462,7 +476,8 @@ impl StyleProfile {
             "modèle disponible : trad_functional",
         )?;
         check(
-            self.harmony.steps_per_chord > 0 && m.steps_per_bar % self.harmony.steps_per_chord == 0,
+            self.harmony.steps_per_chord > 0
+                && m.steps_per_bar.is_multiple_of(self.harmony.steps_per_chord),
             "harmony.steps_per_chord",
             "doit diviser steps_per_bar",
         )?;
@@ -542,6 +557,7 @@ impl StyleProfile {
         ] {
             check(program <= 127, &format!("instruments.{name}"), "programme MIDI dans 0..127")?;
         }
+        check(i.percussion_bank <= 255, "instruments.percussion_bank", "banque SF2 dans 0..255")?;
         self.arrangement.validate().map_err(|error| {
             use crate::trad::ArrangementError as E;
             let field = match &error {

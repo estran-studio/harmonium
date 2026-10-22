@@ -54,9 +54,13 @@ struct Args {
     #[arg(long, value_name = "FILE", requires = "export")]
     automation: Option<String>,
 
-    /// Musical style to use (`legacy` or `reel`)
+    /// Profil embarqué (`reel_quebecois`, alias `reel`) ou générateur `legacy`.
     #[arg(long)]
     style: Option<String>,
+
+    /// Dossier d'un profil externe (contient profile.toml et ses banques).
+    #[arg(long, value_name = "DOSSIER", conflicts_with = "style")]
+    profile: Option<std::path::PathBuf>,
 
     /// Deterministic session seed
     #[arg(long)]
@@ -100,9 +104,10 @@ fn main() -> Result<()> {
         std::process::exit(check_cells::run(path));
     }
 
-    let parsed_style = match args.style.as_deref() {
-        Some(s) => Some(parser::parse_style_value(s)?),
-        None => None,
+    let parsed_style = if let Some(path) = &args.profile {
+        Some(parser::StyleSelection::Profile(Box::new(harmonium_core::StyleProfile::load(path)?)))
+    } else {
+        args.style.as_deref().map(parser::parse_style_value).transpose()?
     };
     let parsed_feet = match args.feet.as_deref() {
         Some(s) => Some(parser::parse_feet_value(s).map_err(|e| anyhow::anyhow!(e))?),
@@ -162,7 +167,7 @@ fn main() -> Result<()> {
             _stream,
             config,
             composer_mutex,
-            playback_cmd_tx,
+            mut playback_cmd_tx,
             _live_midi_tx,
             report_rx,
             _font_queue,
@@ -174,6 +179,31 @@ fn main() -> Result<()> {
 
         // Wrap composer in Arc for sharing with the generation thread
         let composer = Arc::new(composer_mutex);
+        {
+            let mut c = composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let Some(seed) = args.seed {
+                c.set_seed(seed);
+            }
+            if let Some(style) = parsed_style {
+                style.apply(&mut c)?;
+            }
+            c.invalidate_future();
+            if let Some((bar, _)) = c.take_pending_drop() {
+                playback_cmd_tx
+                    .push(harmonium::playback::PlaybackCommand::DropFrom { bar })
+                    .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
+            }
+            for (channel, program) in c.take_pending_program_changes() {
+                playback_cmd_tx
+                    .push(harmonium::playback::PlaybackCommand::ProgramChange { channel, program })
+                    .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
+            }
+            playback_cmd_tx
+                .push(harmonium::playback::PlaybackCommand::UpdateMusicalParams(Box::new(
+                    c.musical_params().clone(),
+                )))
+                .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
+        }
 
         // Spawn a generation thread to continuously feed the ring buffer
         let gen_composer = composer.clone();

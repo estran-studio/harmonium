@@ -266,7 +266,8 @@ pub struct PlaybackEngine {
     // Per-step timing (D3 swing + D4 ramp): `step_durations[..step_count]`
     // is the frozen frame length of each step of the current pulse (the D1
     // invariant), `step_index` the step currently being rendered.
-    step_durations: [usize; 16],
+    step_durations: [usize; u8::MAX as usize],
+    steps_per_quarter: f64,
     step_count: usize,
     step_index: usize,
     // Swing ratio of the measure under the playhead (0.5 = straight).
@@ -401,7 +402,8 @@ impl PlaybackEngine {
             entered_step: 0,
             step_open: false,
             frame_counter: 0,
-            step_durations: [samples_per_step; 16],
+            step_durations: [samples_per_step; u8::MAX as usize],
+            steps_per_quarter: 4.0,
             step_count: 4,
             step_index: 0,
             swing_ratio: 0.5,
@@ -720,19 +722,34 @@ impl PlaybackEngine {
     /// pulse at the current audible tempo and swing ratio (D3), frozen in
     /// `step_durations`. Compound pulses (6 steps) ignore the swing.
     fn compute_pulse_steps(&mut self, steps_per_pulse: usize) {
-        let truncated_step = (self.sample_rate * 60.0 / f64::from(self.audible_bpm) / 4.0) as usize;
+        let truncated_step =
+            (self.sample_rate * 60.0 / f64::from(self.audible_bpm) / self.steps_per_quarter)
+                .max(1.0) as usize;
         // Swing or a tempo ramp use the *rounded* quarter (no truncation
         // drift); a plain straight pulse keeps the pre-swing truncated step,
         // so the snapshot stream is unchanged.
         let rounded = self.swing_ratio > 0.5 || self.tempo_override.is_some();
         let quarter = (self.sample_rate * 60.0 / f64::from(self.audible_bpm)).round() as usize;
 
-        if rounded && steps_per_pulse != 6 {
-            // Swing unit (ratio 0.5 under a ramp still yields a straight but
-            // rounded quarter) — the unit sums to the rounded quarter.
-            let unit = swing_unit(quarter, self.swing_ratio);
-            for u in 0..steps_per_pulse / 4 {
-                self.step_durations[u * 4..u * 4 + 4].copy_from_slice(&unit);
+        let quarter_steps = self.steps_per_quarter as usize;
+        if rounded
+            && quarter_steps > 0
+            && quarter_steps.is_multiple_of(2)
+            && self.steps_per_quarter == quarter_steps as f64
+            && steps_per_pulse.is_multiple_of(quarter_steps)
+        {
+            let half = quarter_steps / 2;
+            let first =
+                (f64::from(self.swing_ratio) * quarter as f64 / half as f64).round() as usize;
+            let second = ((1.0 - f64::from(self.swing_ratio)) * quarter as f64 / half as f64)
+                .round() as usize;
+            for unit in self.step_durations[..steps_per_pulse].chunks_exact_mut(quarter_steps) {
+                unit[..half].fill(first);
+                unit[half..].fill(second);
+                let sum = half * (first + second);
+                unit[quarter_steps - 1] = (unit[quarter_steps - 1] as isize + quarter as isize
+                    - sum as isize)
+                    .max(1) as usize;
             }
         } else {
             // Straight without swing/ramp, or compound (swing ignored):
@@ -901,6 +918,7 @@ impl PlaybackEngine {
                 }
             }
             self.measure_sig = slot.measure.time_signature;
+            self.steps_per_quarter = slot.measure.steps_per_quarter();
 
             // Update chord info for reports
             self.last_chord_name =

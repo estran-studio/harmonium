@@ -68,7 +68,7 @@ impl ActiveTune {
 // TradGenerator
 // ---------------------------------------------------------------------------
 
-/// Générateur de musique traditionnelle québécoise (`Style::Reel`, D1).
+/// Générateur de musique traditionnelle québécoise (`Style::Profile`, D1).
 #[derive(Clone, Debug)]
 pub struct TradGenerator {
     /// Paramètres musicaux courants (tempo, swing, densité des pieds, activations).
@@ -1187,7 +1187,7 @@ mod tests {
     fn make_reel_params() -> MusicalParams {
         let rf = crate::StyleProfile::default().meter;
         let mut params = MusicalParams::default();
-        params.set_style(Style::Reel);
+        params.set_style(Style::Profile);
         params.bpm = rf.default_bpm;
         params.set_swing_ratio(rf.default_swing_ratio);
         params.time_signature = rf.time_signature;
