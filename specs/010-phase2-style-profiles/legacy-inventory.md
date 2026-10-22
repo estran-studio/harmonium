@@ -265,3 +265,45 @@ et le nouveau champ `chord_changes` est omis quand il est vide.
 - Harnais de comparaison et exemple de smoke jetables retirés du dépôt.
   Aucun changement au callback audio ; export offline jazz exécuté en debug
   sans déclenchement du contrôle d'allocations temps réel.
+
+---
+
+## 7. Exécution finale P2-T5c — Nettoyage sans compromis et bascule définitive sur les profils
+
+**Statut** : complété (exécute P1-T6 et P2-T5c).
+
+### Actions réalisées
+
+1. **Moteur par défaut = profils** :
+   - `MusicComposer`, `NativeHandle` et `create_offline_engine` démarrent exclusivement sur le profil embarqué `reel_quebecois`.
+   - L'enum `Style`, `Generator::Legacy`, `build_legacy_generator` et la sélection Legacy sont entièrement supprimés.
+   - Le host instancie directement `TradGenerator`.
+2. **Suppression intégrale du code Legacy** :
+   - `harmonium_core/src/timeline/generator.rs` (2132 lignes) supprimé.
+   - Modules harmonie legacy : `harmony/driver.rs` (1097 lignes), `pivot.rs` (284 lignes), `basic.rs` (151 lignes), `melody.rs` (715 lignes), `neo_riemannian.rs` (419 lignes), `parsimonious.rs` (605 lignes) et l'adaptateur `steedman_grammar.rs` supprimés. Le dossier `harmony/` n'existe plus.
+   - `harmonium_core/src/sequencer.rs` (2028 lignes), `fractal.rs` (42 lignes) et l'ancien exportateur `export.rs` (1507 lignes) supprimés.
+   - `harmonium_core/src/tuning.rs` : suppression des 9 structures legacy et de leurs overlays (~1400 lignes). `TuningParams` contient uniquement `pub profile: StyleProfile`. `TUNING_VERSION` bumpé à 10.
+   - `harmonium_core/src/params.rs`, `command.rs`, `mapper.rs` : commandes et réglages legacy supprimés. Le mapper applique les émotions uniquement aux courbes `[dynamics]` du profil.
+   - `harmonium_audio` : suppression de `GM_PROGRAM_PIANO`, des branches legacy de `voice_manager.rs`, et du dossier `harmonium_audio/src/voicing/*` (non utilisé par les modèles portés).
+   - `harmonium_cli` : suppression de `style legacy`, de toutes les commandes `set rhythm_*`, `set harmony_*`, `set octave`, `voicing`, ainsi que de leurs textes d'aide et complétions.
+   - `harmonium_lab` : suppression de l'agent d'optimisation legacy `src/agent/` (`claude.rs`, `mod.rs`), migration du calcul TRQ vers `SerializableTRQ` autonome dans `dna_types.rs`, suppression de la dépendance orpheline `musicxml`.
+3. **Tests et goldens** :
+   - `snapshot_stream_seed42_8bars.json` legacy supprimé (3559 lignes).
+   - Réancrage de `snapshot_stream_unchanged` sur le profil par défaut (`reel_quebecois`) avec `snapshot_stream_reel_seed42_8bars.json` généré.
+   - Suppression de `music_generation_tests.rs` (1106 lignes), `key_space_probe.rs` (172 lignes) et `barline_integration_tests.rs` (235 lignes).
+   - Adaptation des tests host (`beat_info_tests.rs`, `deterministic_seek_tests.rs`, `swing_tempo_tests.rs`, `handoff_tests.rs`) pour tourner sur le profil par défaut.
+4. **Documentation** :
+   - README mis à jour pour `harmonium_core`, `harmonium_cli`, `harmonium_audio` et `harmonium_host`.
+   - `specs/009-phase1-reel/plan.md` : P1-T6 marquée faite.
+
+### Bilan et Invariants
+
+- **Lignes supprimées** : > 22 500 lignes de code mort et tests obsolètes éliminées.
+- **Invariants respectés** :
+  - Test D2 (`automation::tests::profile_d2_main_note_reference`) : 22 558 notes comparées, 1000 mesures, 0 différence.
+  - Fixture jazz (`jazz_profile_tests`) : test de génération AABA 64 mesures vert.
+  - Déterminisme et snapshot stream du reel québécois : test `snapshot_stream_unchanged` vert.
+- `cargo test --workspace` : 329 tests passés, 1 ignoré, 0 échec.
+- `cargo clippy --workspace --all-targets` : 0 nouveau warning.
+- `cargo fmt --all -- --check` : conforme.
+- `cargo build --release -p harmonium-cli` : compilation réussie sans erreur.

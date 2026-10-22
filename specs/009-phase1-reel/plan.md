@@ -1,6 +1,6 @@
 # Phase 1 — Un reel identifiable
 
-**Statut** : démo validée à l'oreille (2026-10-22) — P1-T1..T5, T7..T13, SF1, SK1/SK2 mergées ; P1-T6 (suppression Legacy) en attente | **Date** : 2026-10-22 | **Dépend de** : phase 0 (horloge, swing, rampe)
+**Statut** : démo validée à l'oreille (2026-10-22) — P1-T1..T5, T7..T13, SF1, SK1/SK2 mergées ; P1-T6 (suppression Legacy) exécutée en P2-T5c | **Date** : 2026-10-22 | **Dépend de** : phase 0 (horloge, swing, rampe)
 
 Verdict du propriétaire : « pour notre démo, la musique générée fait bien l'affaire ». Réserve :
 les pieds sonnent encore peu réalistes (échantillons CC0 provisoires, à remplacer par ses
@@ -230,7 +230,7 @@ arrangement plat `ReelArrangement::from_start(1)`.
 | P1-T3 | Podorythmie (D9) | T1 | gemini-3.8-flash |
 | P1-T4 | `TradHarmonizer` + accompagnement (D7, D8), sur une ligne quelconque | T1 | claude-sonnet-5-5 (antigravity) |
 | P1-T5 | `TradGenerator` câblé au composer, canaux + GM (D10), CLI `style reel`, WAV de démo | T2, T3, T4 | gemini-4-argon |
-| P1-T6 | Suppression du chemin Legacy | validation à l'oreille | — |
+| P1-T6 | Suppression du chemin Legacy (exécutée par P2-T5c) | validation à l'oreille | fait |
 
 ## Acceptation
 
@@ -265,7 +265,7 @@ arrangement plat `ReelArrangement::from_start(1)`.
 | P1-T4 Harmonisation + accompagnement | mergée |
 | P1-T5 `TradGenerator` câblé, CLI `style`/`feet`, programmes GM | mergée |
 | SF1 GeneralUser GS par défaut (`make soundfont`), détection GM réelle | mergée |
-| P1-T6 Suppression du chemin Legacy | **en attente** |
+| P1-T6 Suppression du chemin Legacy | **fait** (exécutée en P2-T5c) |
 | P1-T8 Tours d'un air et entrées progressives (D11) | mergée à valider |
 
 Vérifié par le coordinateur, sur le flux MIDI des démos (seeds 1 et 2) :
