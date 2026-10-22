@@ -227,3 +227,111 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
 
     Ok(())
 }
+
+#[test]
+fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error::Error>> {
+    let profile = StyleProfile::distributed()
+        .iter()
+        .find(|p| p.meter.time_signature == TimeSignature::new(3, 4))
+        .expect("profil 3/4 distribué");
+
+    assert_eq!(&StyleProfile::named(&profile.meta.id)?, profile);
+    let prefix = profile.meta.id.split('_').next().unwrap();
+    assert_eq!(&StyleProfile::named(prefix)?, profile);
+    for tag in &profile.meta.tags {
+        if StyleProfile::distributed().iter().filter(|p| p.meta.tags.contains(tag)).count() == 1 {
+            assert_eq!(&StyleProfile::named(tag)?, profile);
+        }
+    }
+
+    assert_eq!(profile.meter.steps_per_bar, 12);
+    assert_eq!(profile.meter.steps_per_unit, 2);
+    assert_eq!(profile.meter.steps_per_pulse, 4);
+    assert_eq!(profile.meter.pulses_per_bar, 3);
+    assert_eq!(profile.meter.default_swing_ratio, 0.5);
+
+    assert_eq!(profile.form.sequence, vec![0, 0, 1, 1]);
+    assert_eq!(profile.form.parts.len(), 2);
+    assert_eq!(profile.form.parts[0].roles.len(), 8);
+    assert_eq!(profile.form.parts[1].roles.len(), 8);
+    assert_eq!(profile.form.bars_per_tour(), 32);
+
+    let tuning = harmonium_core::TuningParams { profile: profile.clone(), ..Default::default() };
+    let mut params = MusicalParams::default();
+    params.set_style(harmonium_core::params::Style::Profile);
+    params.bpm = profile.meter.default_bpm;
+    params.enable_melody = true;
+    params.enable_harmony = true;
+    params.enable_rhythm = true;
+
+    let mut gen1 = TradGenerator::new(params.clone(), tuning.clone());
+    let mut rng1 = ChaCha8Rng::seed_from_u64(42);
+    let snapshots1: Vec<_> = (1..=64)
+        .map(|bar| MeasureSnapshot::from_measure(&gen1.generate_measure(bar, &mut rng1)))
+        .collect();
+
+    let mut gen2 = TradGenerator::new(params, tuning);
+    let mut rng2 = ChaCha8Rng::seed_from_u64(42);
+    let snapshots2: Vec<_> = (1..=64)
+        .map(|bar| MeasureSnapshot::from_measure(&gen2.generate_measure(bar, &mut rng2)))
+        .collect();
+
+    for (s1, s2) in snapshots1.iter().zip(&snapshots2) {
+        assert_eq!(notes(s1), notes(s2));
+    }
+
+    for snap in &snapshots1 {
+        assert_eq!((snap.time_sig_numerator, snap.time_sig_denominator), (3, 4));
+        assert_eq!(snap.steps, 12);
+        assert_eq!((snap.pulse.steps_per_pulse, snap.pulse.pulses_per_bar), (4, 3));
+        assert!(!snap.chord_name.is_empty());
+
+        if let Some(pos) = snap.position {
+            for note in snap.notes.iter().filter(|n| n.track == 0) {
+                assert!(
+                    pos.mode.contains_midi(pos.key, note.pitch),
+                    "note {} hors du mode {:?} en tonalité {}",
+                    note.pitch,
+                    pos.mode,
+                    pos.key
+                );
+            }
+        }
+
+        // Accompagnement oom-pah-pah : basse au pas 0, accords aux pas 4 et 8
+        let bass_steps: Vec<_> =
+            snap.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
+        if !bass_steps.is_empty() {
+            assert!(
+                bass_steps.iter().all(|&step| step == 0),
+                "pas basse inattendus: {:?}",
+                bass_steps
+            );
+        }
+
+        let chord_steps: Vec<_> =
+            snap.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
+        if !chord_steps.is_empty() {
+            assert!(
+                chord_steps.iter().all(|&step| step == 4 || step == 8),
+                "pas accords inattendus: {:?}",
+                chord_steps
+            );
+        }
+    }
+
+    let tour_bars: Vec<_> =
+        snapshots1.iter().filter_map(|s| s.position).filter(|p| !p.is_intro()).collect();
+    assert!(!tour_bars.is_empty());
+    assert_eq!(tour_bars[0].part, Part(0));
+    assert_eq!(tour_bars[0].pass, 1);
+    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[8].part, Part(0));
+    assert_eq!(tour_bars[8].pass, 2);
+    assert_eq!(tour_bars[16].part, Part(1));
+    assert_eq!(tour_bars[16].pass, 1);
+    assert_eq!(tour_bars[24].part, Part(1));
+    assert_eq!(tour_bars[24].pass, 2);
+
+    Ok(())
+}

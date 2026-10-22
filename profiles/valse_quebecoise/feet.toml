@@ -1,0 +1,40 @@
+# Table de podorythmie pour la valse québécoise en 3/4 (12 pas).
+#
+# Densité 0 : talon uniquement au temps 1 (pas 0).
+# Densité 1 : talon au temps 1 (0) + pointe aux temps 2 et 3 (4, 8).
+# Densité 2 : talon au temps 1 (0) + pointe aux temps 2 et 3 doublée (4, 6, 8, 10),
+#             les croches faibles ayant un delta de vélocité de -20.
+#
+# Avec `harmonium_trad.sf2` (banque de pieds, SK2) : talon = touche 36,
+# pointe = touche 37, banque 0 programme 0.
+
+heel_note = 36
+toe_note = 37
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 0.9
+velocity_humanize = 12
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel" },
+]
+
+[[patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 4, track = "Toe" },
+  { step = 8, track = "Toe" },
+]
+
+[[patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 4, track = "Toe" },
+  { step = 6, track = "Toe", delta_velocity = -20 },
+  { step = 8, track = "Toe" },
+  { step = 10, track = "Toe", delta_velocity = -20 },
+]

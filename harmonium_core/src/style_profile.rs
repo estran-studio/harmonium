@@ -184,61 +184,7 @@ impl StyleProfile {
     }
     /// Profil embarqué partagé ; aucun accès au disque ni copie de banque.
     pub fn builtin() -> &'static Self {
-        static FALLBACK: LazyLock<StyleProfile> =
-            LazyLock::new(|| StyleProfile::from_toml("").unwrap_or_else(|_| StyleProfile {
-                meta: ProfileMeta {
-                    id: "default".into(),
-                    name: "Default".into(),
-                    tradition: "".into(),
-                    tags: Vec::new(),
-                    corpus: "".into(),
-                },
-                meter: ProfileMeter {
-                    time_signature: crate::params::TimeSignature::new(4, 4),
-                    steps_per_bar: 16,
-                    steps_per_unit: 2,
-                    steps_per_pulse: 4,
-                    pulses_per_bar: 4,
-                    default_swing_ratio: 0.5,
-                    default_bpm: 120.0,
-                    min_bpm: 60.0,
-                    max_bpm: 240.0,
-                },
-                form: ProfileForm { parts: Vec::new(), sequence: Vec::new() },
-                melody: ProfileMelody {
-                    cell_units: 8,
-                    cells: crate::trad::cells::CellBank { cells: Vec::new() },
-                    params: crate::tuning::ReelFiddleParams::default(),
-                    key_modes: Vec::new(),
-                    strong_units: Vec::new(),
-                    weak_units: Vec::new(),
-                },
-                harmony: ProfileHarmony {
-                    model: "trad_functional".into(),
-                    steps_per_chord: 8,
-                    candidates: Vec::new(),
-                },
-                accompaniment: crate::tuning::TradHarmonyParams::default(),
-                percussion: crate::trad::feet::FeetTable {
-                    heel_note: 36,
-                    toe_note: 37,
-                    heel_velocity: 55,
-                    toe_velocity: 45,
-                    feet_gain: 1.0,
-                    velocity_humanize: 12,
-                    patterns: Vec::new(),
-                },
-                instruments: ProfileInstruments {
-                    melody_program: 0,
-                    chords_program: 0,
-                    bass_program: 0,
-                    percussion_bank: 0,
-                    percussion_program: 0,
-                },
-                arrangement: crate::trad::arrangement::ReelArrangement::default(),
-                dynamics: crate::trad::dynamics::StyleDynamics::default(),
-            }));
-        Self::distributed().first().unwrap_or(&FALLBACK)
+        &Self::distributed()[0]
     }
     /// Résolution des identifiants distribués avec le moteur (alias CLI inclus).
     pub fn named(id: &str) -> Result<Self, ProfileError> {
