@@ -559,6 +559,11 @@ impl StyleProfile {
         self.percussion.validate().map_err(|e| ProfileError::new("percussion", e))?;
         for (i, pattern) in self.percussion.patterns.iter().enumerate() {
             check(
+                pattern.euclidean_steps().is_none_or(|steps| steps == m.steps_per_bar),
+                &format!("percussion.patterns[{i}].euclid.steps"),
+                "doit égaler meter.steps_per_bar",
+            )?;
+            check(
                 pattern.hits.iter().all(|h| h.step < m.steps_per_bar),
                 &format!("percussion.patterns[{i}].hits"),
                 "pas hors mesure",

@@ -1,3 +1,4 @@
+pub mod algo;
 pub mod command;
 pub mod events;
 pub mod export;

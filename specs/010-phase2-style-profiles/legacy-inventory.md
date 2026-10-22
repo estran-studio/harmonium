@@ -166,3 +166,7 @@ graph TD
   (Legacy, profils, host, audio et labo) utilisent les nouveaux chemins.
   La conversion vers la qualité Legacy reste dans `harmony/basic.rs`,
   à supprimer avec ce module en P2-T5c.
+- Rythme : Bjorklund de `sequencer.rs` → `algo/euclidean.rs`.
+  Les motifs `percussion.patterns` acceptent `euclid = { pulses, steps, rotation }`
+  et `track = "Heel" | "Toe"` (défaut Heel). Rotation positive vers la droite ;
+  le chargeur développe les pas une seule fois, hors callback audio.
