@@ -1361,6 +1361,16 @@ pub const fn is_tonic_chord(chord: TradChord) -> bool {
 // Tests
 // ---------------------------------------------------------------------------
 
+fn nearest_pitch(pcs: impl IntoIterator<Item = u8>, center: u8, low: u8, high: u8) -> u8 {
+    pcs.into_iter()
+        .flat_map(|pc| {
+            let octave = (i16::from(center) - i16::from(pc)).div_euclid(12);
+            [octave - 1, octave, octave + 1].map(move |o| o * 12 + i16::from(pc))
+        })
+        .filter(|&pitch| pitch >= i16::from(low) && pitch <= i16::from(high))
+        .min_by_key(|&pitch| (pitch - i16::from(center)).abs())
+        .map_or_else(|| unreachable!("validated register spans an octave"), |pitch| pitch as u8)
+}
 #[cfg(test)]
 mod tests {
     use rand::SeedableRng;
@@ -1692,15 +1702,4 @@ mod tests {
         config.pickup_eighths = 4;
         assert!(matches!(config.validate(), Err(ArrangementError::PickupEighthsOutOfRange(4))));
     }
-}
-
-fn nearest_pitch(pcs: impl IntoIterator<Item = u8>, center: u8, low: u8, high: u8) -> u8 {
-    pcs.into_iter()
-        .flat_map(|pc| {
-            let octave = (i16::from(center) - i16::from(pc)).div_euclid(12);
-            [octave - 1, octave, octave + 1].map(move |o| o * 12 + i16::from(pc))
-        })
-        .filter(|&pitch| pitch >= i16::from(low) && pitch <= i16::from(high))
-        .min_by_key(|&pitch| (pitch - i16::from(center)).abs())
-        .map_or_else(|| unreachable!("validated register spans an octave"), |pitch| pitch as u8)
 }

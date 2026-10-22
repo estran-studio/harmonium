@@ -124,5 +124,11 @@ fn configured_rules_and_zero_weights_control_audible_chords()
     p = profile(16, false);
     p.harmony.rules[0].weight = f32::NAN;
     assert!(p.validate().is_err());
+    p = profile(16, false);
+    p.harmony.rules = vec![rule(I, vec![II], 1.5e38), rule(I, vec![IV], 1.5e38)];
+    for rule in &mut p.harmony.rules {
+        rule.category = RuleCategory::Preparation;
+    }
+    assert_eq!(p.validate().unwrap_err().field, "harmony.rules");
     Ok(())
 }

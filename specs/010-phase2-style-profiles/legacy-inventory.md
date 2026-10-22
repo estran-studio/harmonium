@@ -232,3 +232,36 @@ Le contrat existant `automation::tests::profile_d2_main_note_reference`
 est vert sans modification de `profile_d2_main.json`. Les goldens
 existants ne sont pas régénérés : les profils trad n'ont pas changé de notes
 et le nouveau champ `chord_changes` est omis quand il est vide.
+
+### P2-T5c : reste à supprimer, sans supprimer les briques portées
+
+- `Style::Legacy` et sa sélection dans host/CLI/audio, `timeline/generator.rs`,
+  `sequencer.rs` (le Bjorklund canonique est dans `algo`), ancien export
+  événementiel, mapper Legacy et `fractal.rs`.
+- Tout le driver `harmony` restant : `driver`, `pivot`, `basic`, `melody`,
+  `neo_riemannian`, `parsimonious` et l'adaptateur `steedman_grammar`.
+  Retirer aussi la conversion Legacy implémentée dans `basic.rs`.
+- Paramètres/commandes Legacy et tests/goldens devenus sans consommateurs.
+  Le labo importe encore le `TRQ` de `parsimonious` pour ses métriques :
+  migrer ou remplacer ces usages avant la suppression, sans conserver le driver.
+- **Conserver** `theory/*`, `algo/euclidean.rs`, `models/*`, les exports
+  MIDI/MusicXML de `timeline` et **l'actuel** `style_profile.rs` : ce dernier
+  est maintenant le chargeur v2, pas la vieille surcouche citée dans l'inventaire
+  historique. Les voicers audio restent en réserve active de bibliothèque ;
+  ils n'ont pas été branchés par cette tâche.
+
+### Vérification finale P2-T5b
+
+- `cargo fmt --all` puis `cargo fmt --all -- --check` : conformes.
+- `cargo test --workspace` : **512 passés**, 33 ignorés (suites existantes).
+  Legacy, D2 et contrats de profils inclus ; aucun golden régénéré.
+- `cargo clippy --workspace --all-targets` : code retour 0. Comparaison
+  structurée de `cargo clippy --workspace --message-format=json` avec main :
+  **aucun nouveau diagnostic hors tests** (189 avertissements préexistants
+  dans main, 188 dans la branche ; un ancien `needless_bool` supprimé).
+- Le chargeur CLI refuse avant initialisation audio un poids fini dont le
+  multiplicateur de catégorie ferait déborder la somme effective :
+  `harmony.rules: somme des poids effectifs finie positive` (code retour 1 attendu).
+- Harnais de comparaison et exemple de smoke jetables retirés du dépôt.
+  Aucun changement au callback audio ; export offline jazz exécuté en debug
+  sans déclenchement du contrôle d'allocations temps réel.

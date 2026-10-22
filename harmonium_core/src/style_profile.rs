@@ -531,12 +531,13 @@ impl StyleProfile {
                     &format!("harmony.rules[{i}]"),
                     "poids fini positif ou nul, 1..64 symboles, valences ordonnées dans -1..1",
                 )?;
-                total += rule.weight;
+                total += rule.weight
+                    * crate::models::jazz::GrammarStyle::Jazz.category_weight(rule.category);
             }
             check(
                 total.is_finite() && total > 0.0,
                 "harmony.rules",
-                "somme des poids finie positive",
+                "somme des poids effectifs finie positive",
             )?;
         }
         let mut modes = HashSet::new();
