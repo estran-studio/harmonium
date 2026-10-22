@@ -64,3 +64,46 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
     }
     Ok(())
 }
+
+#[test]
+fn compound_meter_beat_info_contract() -> Result<(), String> {
+    let profile = StyleProfile::distributed()
+        .iter()
+        .find(|p| p.meter.time_signature == harmonium_core::params::TimeSignature::new(6, 8))
+        .expect("profil 6/8 distribué");
+    let (mut composer, mut playback, mut commands, _reports, mut clock, _recordings) =
+        create_offline_engine(None, None, 44100.0)?;
+    composer.set_profile(profile.clone())?;
+    composer.set_seed(1);
+    composer.generate_bars(4);
+    commands
+        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+        .map_err(|_| "file pleine")?;
+    let mut buffer = [0.0f32; 128];
+    let mut saw_downbeat = false;
+    let mut saw_backbeat = false;
+    for _ in 0..4000 {
+        playback.process_buffer(&mut buffer, 2, std::time::Instant::now());
+        let state = clock.read();
+        if state.next_pulse_frame == 0 {
+            continue;
+        }
+        let beat_info = harmonium::clock::BeatInfo::from_clock(&state, std::time::Instant::now());
+        assert_eq!(beat_info.pulses_per_bar, 2);
+        assert!(beat_info.pulse == 1 || beat_info.pulse == 2);
+        if beat_info.is_downbeat {
+            saw_downbeat = true;
+            assert_eq!(beat_info.pulse, 1);
+        }
+        if beat_info.is_backbeat {
+            saw_backbeat = true;
+            assert_eq!(beat_info.pulse, 2);
+        }
+        if state.position.bar >= 2 {
+            break;
+        }
+    }
+    assert!(saw_downbeat, "doit observer un downbeat (pulse 1)");
+    assert!(saw_backbeat, "doit observer un backbeat (pulse 2)");
+    Ok(())
+}
