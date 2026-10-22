@@ -32,15 +32,15 @@ use crate::{
 
 /// Abstraction minimale de générateur de mesures choisie selon [`Style`] (D1).
 ///
-/// Unifie `TimelineGenerator` (`Style::Legacy`) et `TradGenerator` (`Style::Reel`)
+/// Unifie `TimelineGenerator` (`Style::Legacy`) et `TradGenerator` (`Style::Profile`)
 /// derrière les 6 opérations utilisées par [`MusicComposer`] :
 /// `generate_measure`, `update_params`, `update_tuning`, `reset_to_initial`,
 /// `silent_advance` et `snap_current_state`.
 pub enum Generator {
     /// Générateur procédural legacy (conservé jusqu'à P1-T6).
     Legacy(Box<TimelineGenerator>),
-    /// Générateur de musique traditionnelle québécoise (`Style::Reel`).
-    Reel(TradGenerator),
+    /// Générateur de musique traditionnelle québécoise (`Style::Profile`).
+    Profile(TradGenerator),
 }
 
 impl Generator {
@@ -49,7 +49,7 @@ impl Generator {
     pub const fn style(&self) -> Style {
         match self {
             Self::Legacy(_) => Style::Legacy,
-            Self::Reel(_) => Style::Reel,
+            Self::Profile(_) => Style::Profile,
         }
     }
 
@@ -57,7 +57,7 @@ impl Generator {
     pub fn generate_measure(&mut self, bar_index: usize, rng: &mut dyn RngCore) -> Measure {
         match self {
             Self::Legacy(g) => g.generate_measure(bar_index, rng),
-            Self::Reel(g) => g.generate_measure(bar_index, rng),
+            Self::Profile(g) => g.generate_measure(bar_index, rng),
         }
     }
 
@@ -65,7 +65,7 @@ impl Generator {
     pub fn update_params(&mut self, params: MusicalParams) {
         match self {
             Self::Legacy(g) => g.update_params(params),
-            Self::Reel(g) => g.update_params(params),
+            Self::Profile(g) => g.update_params(params),
         }
     }
 
@@ -73,12 +73,12 @@ impl Generator {
     pub fn update_tuning(&mut self, tuning: TuningParams) {
         match self {
             Self::Legacy(g) => g.update_tuning(tuning),
-            Self::Reel(g) => g.update_tuning(tuning),
+            Self::Profile(g) => g.update_tuning(tuning),
         }
     }
 
     fn invalidate_future(&mut self, playing_bar: usize) {
-        if let Self::Reel(generator) = self {
+        if let Self::Profile(generator) = self {
             generator.invalidate_future(playing_bar);
         }
     }
@@ -87,7 +87,7 @@ impl Generator {
     pub fn reset_to_initial(&mut self, ctx: &GenerationContext) {
         match self {
             Self::Legacy(g) => g.reset_to_initial(ctx),
-            Self::Reel(g) => g.reset_to_initial(ctx),
+            Self::Profile(g) => g.reset_to_initial(ctx),
         }
     }
 
@@ -95,7 +95,7 @@ impl Generator {
     pub fn silent_advance(&mut self, target_bar: usize, rng: &mut dyn RngCore) {
         match self {
             Self::Legacy(g) => g.silent_advance(target_bar, rng),
-            Self::Reel(g) => g.silent_advance(target_bar, rng),
+            Self::Profile(g) => g.silent_advance(target_bar, rng),
         }
     }
 
@@ -104,7 +104,7 @@ impl Generator {
     pub fn snap_current_state(&mut self) {
         match self {
             Self::Legacy(g) => g.snap_current_state(),
-            Self::Reel(g) => g.snap_current_state(),
+            Self::Profile(g) => g.snap_current_state(),
         }
     }
 
@@ -112,7 +112,7 @@ impl Generator {
     pub fn reset_chart_index(&mut self) {
         match self {
             Self::Legacy(g) => g.reset_chart_index(),
-            Self::Reel(g) => g.reset_chart_index(),
+            Self::Profile(g) => g.reset_chart_index(),
         }
     }
 
@@ -121,16 +121,16 @@ impl Generator {
     pub fn tuning(&self) -> &TuningParams {
         match self {
             Self::Legacy(g) => &g.tuning,
-            Self::Reel(g) => &g.tuning,
+            Self::Profile(g) => &g.tuning,
         }
     }
 
-    /// En `Style::Reel`, retourne le `(TunePlan, BarRole)` de la mesure 1-based `bar_number`.
+    /// En `Style::Profile`, retourne le `(TunePlan, BarRole)` de la mesure 1-based `bar_number`.
     #[must_use]
-    pub fn reel_bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
+    pub fn profile_bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
         match self {
             Self::Legacy(_) => None,
-            Self::Reel(g) => g.bar_info(bar_number),
+            Self::Profile(g) => g.bar_info(bar_number),
         }
     }
 }
@@ -382,7 +382,7 @@ impl MusicComposer {
             }
 
             let measure = self.generator.generate_measure(bar_idx, &mut self.rng);
-            if let Some((plan, _)) = self.generator.reel_bar_info(bar_idx) {
+            if let Some((plan, _)) = self.generator.profile_bar_info(bar_idx) {
                 self.config.key = pitch_class_name(plan.key).to_string();
                 self.config.scale = format!("{:?}", plan.mode);
             }
@@ -747,27 +747,28 @@ impl MusicComposer {
         self.musical_params.set_swing_ratio(ratio);
     }
 
-    /// Change le style de génération (`Legacy` ou `Reel`), applique les défauts
-    /// du style depuis [`TuningParams`] (D3, constitution V) et prépare les
-    /// changements de programmes GM (D10).
+    /// Sélectionne le générateur et applique ses défauts, depuis le profil actif.
     pub fn set_style(&mut self, style: Style) {
         let tuning = self.generator.tuning().clone();
         let style_changed = self.generator.style() != style;
         self.musical_params.set_style(style);
 
         match style {
-            Style::Reel => {
-                let rf = &tuning.reel_fiddle;
+            Style::Profile => {
+                let rf = &tuning.profile.meter;
                 self.musical_params.bpm = rf.default_bpm;
                 self.emotion_mapped_bpm = rf.default_bpm;
                 self.bpm_override = None;
                 self.musical_params.set_swing_ratio(rf.default_swing_ratio);
-                self.musical_params.time_signature = rf.default_time_signature;
+                self.musical_params.time_signature = rf.time_signature;
+                self.musical_params.pulse = Some(rf.pulse_spec());
+                self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
+                self.musical_params.profile_instruments = tuning.profile.instruments;
                 self.config.bpm = self.musical_params.bpm;
                 if style_changed {
                     self.rng = Self::seeded_rng_past_init(self.session_seed);
                     self.generator =
-                        Generator::Reel(TradGenerator::new(self.musical_params.clone(), tuning));
+                        Generator::Profile(TradGenerator::new(self.musical_params.clone(), tuning));
                 } else {
                     self.generator.update_params(self.musical_params.clone());
                 }
@@ -779,6 +780,7 @@ impl MusicComposer {
                 self.bpm_override = None;
                 self.musical_params.set_swing_ratio(defaults.swing_ratio);
                 self.musical_params.time_signature = defaults.time_signature;
+                self.musical_params.pulse = defaults.pulse;
                 self.config.bpm = self.musical_params.bpm;
                 self.config.key = format!("{}", self.init_key);
                 self.config.scale = format!("{:?}", self.init_scale);
@@ -793,8 +795,28 @@ impl MusicComposer {
         }
 
         self.pending_program_changes.clear();
-        self.pending_program_changes
-            .extend_from_slice(&harmonium_audio::voice_manager::gm_programs_for_style(style));
+        self.pending_program_changes.extend_from_slice(
+            &harmonium_audio::voice_manager::gm_programs_for_style(
+                style,
+                &self.musical_params.profile_instruments,
+            ),
+        );
+    }
+
+    /// Installe atomiquement un profil validé et sélectionne son générateur.
+    pub fn set_profile(&mut self, profile: harmonium_core::StyleProfile) -> Result<(), String> {
+        profile.validate().map_err(|e| e.to_string())?;
+        let mut tuning = self.generator.tuning().clone();
+        tuning.profile = profile;
+        self.set_tuning(tuning);
+        self.set_style(Style::Profile);
+        self.invalidate_future();
+        Ok(())
+    }
+
+    pub fn set_profile_id(&mut self, id: &str) -> Result<(), String> {
+        let profile = harmonium_core::StyleProfile::named(id).map_err(|e| e.to_string())?;
+        self.set_profile(profile)
     }
 
     pub fn set_feet_density(&mut self, density: u8) {
@@ -990,12 +1012,12 @@ impl MusicComposer {
 
         let mapped = match &self.generator {
             Generator::Legacy(_) => self.emotion_mapper.map(&self.cached_emotions),
-            Generator::Reel(generator) => {
+            Generator::Profile(generator) => {
                 let mut params = self.musical_params.clone();
                 self.emotion_mapper.apply_dynamics(
                     &self.cached_emotions,
-                    &generator.tuning.reel_intensity,
-                    generator.tuning.reel_fiddle.default_bpm,
+                    &generator.tuning.profile.dynamics,
+                    generator.tuning.profile.meter.default_bpm,
                     &mut params,
                 );
                 params
@@ -1058,20 +1080,27 @@ impl MusicComposer {
 
     /// Apply a TuningParams to the generator (for style profile loading).
     pub fn set_tuning(&mut self, tuning: harmonium_core::tuning::TuningParams) {
+        self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
+        self.musical_params.profile_instruments = tuning.profile.instruments;
         self.generator.update_tuning(tuning);
+    }
+
+    /// Profil actif, y compris lorsque le générateur Legacy est sélectionné.
+    pub fn profile(&self) -> &harmonium_core::StyleProfile {
+        &self.generator.tuning().profile
     }
 
     /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
     #[must_use]
     pub fn tours_per_tune(&self) -> usize {
-        self.generator.tuning().reel_arrangement.tours_per_tune
+        self.generator.tuning().profile.arrangement.tours_per_tune
     }
 
     /// Force le nombre de tours par air (D11) ; refuse une valeur hors `1..=MAX_TOURS`.
     pub fn set_tours_per_tune(&mut self, tours: usize) -> Result<(), String> {
         let mut tuning = self.generator.tuning().clone();
-        tuning.reel_arrangement.tours_per_tune = tours;
-        tuning.reel_arrangement.validate().map_err(|e| e.to_string())?;
+        tuning.profile.arrangement.tours_per_tune = tours;
+        tuning.profile.arrangement.validate().map_err(|e| e.to_string())?;
         self.generator.update_tuning(tuning);
         Ok(())
     }
@@ -1127,10 +1156,10 @@ impl MusicComposer {
         self.writehead.timeline.get_measure(bar)
     }
 
-    /// En `Style::Reel`, retourne le [`TunePlan`] et le [`BarRole`] de la mesure 1-based `bar`.
+    /// En `Style::Profile`, retourne le [`TunePlan`] et le [`BarRole`] de la mesure 1-based `bar`.
     #[must_use]
-    pub fn reel_bar_info(&self, bar: usize) -> Option<(TunePlan, BarRole)> {
-        self.generator.reel_bar_info(bar)
+    pub fn profile_bar_info(&self, bar: usize) -> Option<(TunePlan, BarRole)> {
+        self.generator.profile_bar_info(bar)
     }
     pub fn last_chord_name(&self) -> &ArrayString<64> {
         &self.last_chord_name

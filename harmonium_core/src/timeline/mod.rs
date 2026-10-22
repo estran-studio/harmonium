@@ -222,6 +222,13 @@ pub struct Measure {
 }
 
 impl Measure {
+    /// Résolution de la grille active, rapportée au tempo à la noire.
+    #[must_use]
+    pub fn steps_per_quarter(&self) -> f64 {
+        self.steps as f64 * self.time_signature.denominator as f64
+            / (self.time_signature.numerator as f64 * 4.0)
+    }
+
     /// Create an empty measure with the given parameters
     #[must_use]
     pub fn new(index: usize, time_signature: TimeSignature, tempo: f32, steps: usize) -> Self {

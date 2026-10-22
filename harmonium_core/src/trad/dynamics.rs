@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::{Mode, TunePlan};
 use crate::{harmony::RngCore, timeline::TrackId};
 
-pub const REEL_INTENSITY_TOML: &str = include_str!("reel_intensity.toml");
+pub const REEL_INTENSITY_TOML: &str =
+    include_str!("../../../profiles/reel_quebecois/dynamics.toml");
 
 /// Courbe continue sur un axe normalisé, extrapolation constante aux extrémités.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -69,15 +70,6 @@ pub enum ModeShiftBoundary {
     #[default]
     Phrase,
     Part,
-}
-
-impl ModeShiftBoundary {
-    pub(crate) const fn bars(self) -> usize {
-        match self {
-            Self::Phrase => 4,
-            Self::Part => 8,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -276,11 +268,9 @@ impl StyleDynamics {
             }
         }
         if self.chop_patterns.is_empty()
-            || self.chop_patterns.iter().any(|p| {
-                p.is_empty() || p.iter().any(|&s| s >= 16) || p.windows(2).any(|s| s[0] >= s[1])
-            })
+            || self.chop_patterns.iter().any(|p| p.is_empty() || p.windows(2).any(|s| s[0] >= s[1]))
         {
-            return Err("chop_patterns: motifs non vides, pas croissants dans 0..15 requis".into());
+            return Err("chop_patterns: motifs non vides, pas croissants requis".into());
         }
         for (index, threshold) in self.density_tracks.iter().enumerate() {
             if !threshold.minimum.is_finite()
@@ -338,17 +328,23 @@ impl StyleDynamics {
         bright
     }
 
-    pub fn draw_color(&self, valence: f32, rng: &mut dyn RngCore) -> TunePlan {
+    pub fn draw_color(
+        &self,
+        valence: f32,
+        rng: &mut dyn RngCore,
+        profile: std::sync::Arc<crate::StyleProfile>,
+    ) -> TunePlan {
         let valence = self.valence_input(valence);
         let total: f32 = self.color.iter().map(|c| c.weight.eval(valence)).sum();
         let mut pick = rng.next_range_usize(0..1_000_000) as f32 / 1_000_000.0 * total;
         for choice in &self.color {
             let weight = choice.weight.eval(valence);
             if pick < weight {
-                return TunePlan::reel(choice.key, choice.mode);
+                return TunePlan::with_profile(choice.key, choice.mode, profile);
             }
             pick -= weight;
         }
-        self.color.last().map_or_else(TunePlan::default, |c| TunePlan::reel(c.key, c.mode))
+        let c = &self.color[self.color.len() - 1];
+        TunePlan::with_profile(c.key, c.mode, profile)
     }
 }

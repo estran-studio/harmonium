@@ -42,8 +42,8 @@ pub fn print_help() {
         "TRAD / REEL (phase 1)",
         &[
             (
-                "style <reel|legacy>",
-                "Change le style (en reel : 230 BPM, swing 0.56, 2/2, programmes GM D10)",
+                "style <identifiant|dossier|legacy>",
+                "Charge un profil (reel_quebecois, alias reel) ou son dossier ; legacy conserve l’ancien moteur",
             ),
             ("feet <0|1|2>", "Densité de podorythmie (0 = talon 0,8 ; 1 = standard ; 2 = ornée)"),
             (
@@ -290,7 +290,7 @@ pub fn print_command_help(command: &str) {
             );
             println!();
             println!("{}", "SYNTAX:".bold());
-            println!("  style <reel|legacy>");
+            println!("  style <identifiant|dossier|legacy>");
         }
 
         "feet" => {

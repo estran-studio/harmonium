@@ -29,7 +29,7 @@ pub fn run(
     feet_sf2_bytes: Option<&[u8]>,
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
-    style: Option<Style>,
+    style: Option<crate::parser::StyleSelection>,
     seed: Option<u64>,
     feet: Option<FeetOpt>,
     swing: Option<f32>,
@@ -55,7 +55,7 @@ pub fn run(
         composer.set_seed(s);
     }
     if let Some(st) = style {
-        composer.set_style(st);
+        st.apply(&mut composer)?;
     }
     // Le style réapplique ses défauts (dont le swing) : les réglages
     // d'export passent après, via les paramètres existants.
@@ -116,11 +116,12 @@ pub fn run(
     let mut bar_start_frames = std::collections::BTreeMap::new();
     bar_start_frames.insert(1usize, 0u64);
 
-    if composer.musical_params().style == Style::Reel {
+    if composer.musical_params().style == Style::Profile {
         let mp = composer.musical_params();
         let feet = if mp.enable_rhythm { mp.feet_density.to_string() } else { "off".to_string() };
         println!(
-            "Reel export: seed={}, feet={}, tours/air={}, bpm={:.1}, swing={:.2}, sig={}/{}",
+            "Profil {} : seed={}, feet={}, tours/air={}, bpm={:.1}, swing={:.2}, sig={}/{}",
+            mp.profile_id,
             composer.session_seed(),
             feet,
             composer.tours_per_tune(),
@@ -129,9 +130,9 @@ pub fn run(
             mp.time_signature.numerator,
             mp.time_signature.denominator
         );
-        let bars_per_tune = harmonium_core::trad::BARS_PER_TOUR * composer.tours_per_tune();
+        let bars_per_tune = composer.profile().form.bars_per_tour() * composer.tours_per_tune();
         for tune_start_bar in (1..=initial_bars).step_by(bars_per_tune) {
-            if let Some((plan, _)) = composer.reel_bar_info(tune_start_bar) {
+            if let Some((plan, _)) = composer.profile_bar_info(tune_start_bar) {
                 println!(
                     "  Tune {} (bars {}..={}): {} {:?}",
                     (tune_start_bar - 1) / bars_per_tune + 1,

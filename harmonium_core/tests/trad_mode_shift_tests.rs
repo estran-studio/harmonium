@@ -14,14 +14,15 @@ use rand_chacha::ChaCha8Rng;
 
 fn tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement = ReelArrangement::from_start(3);
-    tuning.reel_intensity.color = vec![ColorChoice {
+    tuning.profile.arrangement = ReelArrangement::from_start(3, Default::default());
+    tuning.profile.dynamics.color = vec![ColorChoice {
         key: 2,
         mode: Mode::Ionian,
         weight: Curve(vec![[0.0, 1.0], [1.0, 1.0]]),
     }];
     tuning
-        .reel_intensity
+        .profile
+        .dynamics
         .parallel_modes
         .retain(|c| !(c.bright == Mode::Ionian && c.dark == Mode::Dorian));
     tuning
@@ -130,7 +131,7 @@ fn part_boundary_waits_eight_bars_and_speculative_shift_can_be_cancelled() {
     let mut params = MusicalParams::default();
     params.harmony_valence = 0.4;
     let mut table = tuning();
-    table.reel_intensity.mode_shift_boundary =
+    table.profile.dynamics.mode_shift_boundary =
         harmonium_core::trad::dynamics::ModeShiftBoundary::Part;
     let mut generator = TradGenerator::new(params.clone(), table);
     let mut rng = ChaCha8Rng::seed_from_u64(3);
@@ -173,7 +174,7 @@ fn invalid_mode_tables_are_rejected() {
             d.parallel_modes[0].dark = Mode::Ionian
         },
     ] {
-        let mut invalid = valid.reel_intensity.clone();
+        let mut invalid = valid.profile.dynamics.clone();
         mutate(&mut invalid);
         assert!(invalid.validate().is_err());
     }
@@ -186,12 +187,12 @@ fn parallel_mode_keeps_valid_diatonic_notes_at_the_midi_floor() {
         let mut params = MusicalParams::default();
         params.harmony_valence = 0.4;
         let mut table = tuning();
-        table.reel_intensity.color[0].key = 1;
-        table.reel_fiddle.tessitura_min = 0;
-        table.reel_fiddle.tessitura_max = 12;
-        table.reel_fiddle.tonic_midi_min = 1;
-        table.reel_fiddle.tonic_midi_max = 1;
-        table.reel_fiddle.melody_center_midi = 6;
+        table.profile.dynamics.color[0].key = 1;
+        table.profile.melody.params.tessitura_min = 0;
+        table.profile.melody.params.tessitura_max = 12;
+        table.profile.melody.params.tonic_midi_min = 1;
+        table.profile.melody.params.tonic_midi_max = 1;
+        table.profile.melody.params.melody_center_midi = 6;
         let mut generator = TradGenerator::new(params.clone(), table);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         for bar in 1..=32 {

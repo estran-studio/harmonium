@@ -159,21 +159,23 @@ ahead of the measures (`set bpm` stays the nominal generated tempo); the
 engine clamps it to 40–300 BPM and `state` shows the audible BPM.
 
 
-### Trad / Reel (phase 1)
+### Profils de style (phase 2)
 
 ```bash
-style reel                       # Switch to traditional Québécois Reel (230 BPM, swing 0.56, 2/2, GM programs D10)
-style legacy                     # Restore Legacy generator and GM programs
-feet 1                           # Podorythmie density: 0 (heel 0,8), 1 (standard), 2 (ornamented)
-seed 1                           # Set deterministic session seed and restart from bar 1
+style reel_quebecois             # Profil embarqué (alias : reel) : 230 BPM, swing 0.56, 2/2
+style profiles/mon_style         # Profil externe : dossier contenant profile.toml
+style legacy                     # Générateur Legacy
+feet 1                           # Podorythmie : 0 (talon), 1 (standard), 2 (ornée)
+seed 1                           # Graine de session, redémarre à la mesure 1
 ```
 
-In `style reel`, `state` displays the active style, feet density, current tune key/mode (e.g. `D Ionian`), and position within the AABB form (e.g. `A2 m.5/8`).
+`--style <id>` ou `--profile <dossier>` choisissent le profil au démarrage (voir `profiles/README.md`).
+`state` affiche le profil actif, la tonalité/mode courants et la position dans la forme (ex. `A2 m.5/8`).
 
 ### Offline Batch Export (`--export`)
 
 ```bash
-cargo run -p harmonium-cli --release -- --export --bars 64 --style reel --seed 1 --feet 1 \
+cargo run -p harmonium-cli --release -- --export --bars 64 --style reel_quebecois --seed 1 --feet 1 \
   --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid
 ```
 

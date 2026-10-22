@@ -14,14 +14,11 @@ use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::fiddle::BARS_PER_STRAIN;
-use crate::timeline::TrackId;
+use crate::{style_profile::ProfileForm, timeline::TrackId};
 
 /// Contenu brut de la table TOML embarquée d'arrangement du reel (D11 + P1-T11).
-pub const REEL_ARRANGEMENT_TOML: &str = include_str!("reel_arrangement.toml");
-
-/// Nombre de mesures d'un tour AABB complet (A1 + A2 + B1 + B2).
-pub const BARS_PER_TOUR: usize = 4 * BARS_PER_STRAIN;
+pub const REEL_ARRANGEMENT_TOML: &str =
+    include_str!("../../../profiles/reel_quebecois/arrangement.toml");
 
 /// Nombre maximal de tours par air et borne haute du `tour` d'une entrée.
 pub const MAX_TOURS: usize = 16;
@@ -49,36 +46,16 @@ pub enum Section {
 // Partie d'un air AABB
 // ---------------------------------------------------------------------------
 
-/// Partie d'un air AABB.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum Part {
-    /// Partie A (mesures 1–16 d'un tour : A1 puis sa reprise A2).
-    A,
-    /// Partie B (mesures 17–32 d'un tour : B1 puis sa reprise B2).
-    B,
-}
-
+/// Indice 0-based d'une partie dans le profil.
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[serde(transparent)]
+pub struct Part(pub usize);
 impl Part {
-    const fn index(self) -> usize {
-        match self {
-            Self::A => 0,
-            Self::B => 1,
-        }
+    pub const fn index(self) -> usize {
+        self.0
     }
-
-    fn parse(s: &str) -> Option<Self> {
-        match s {
-            "A" => Some(Self::A),
-            "B" => Some(Self::B),
-            _ => None,
-        }
-    }
-}
-
-/// Rang d'une passe de strain dans un air : `0` = tour 1 / A / passe 1, croissant
-/// par passe de 8 mesures. Seul endroit où `(tour, part, pass)` devient un ordre.
-const fn pass_ordinal(tour: usize, part: Part, pass: usize) -> usize {
-    ((tour.saturating_sub(1)) * 2 + part.index()) * 2 + pass.saturating_sub(1)
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +87,10 @@ pub struct TunePosition {
     pub key: u8,
     /// Mode effectivement entendu à cette mesure.
     pub mode: super::Mode,
+    /// Indices 0-based dans le tour et son schéma de passes.
+    pub bar_in_cycle: usize,
+    pub sequence_index: usize,
+    pub passes_per_tour: usize,
 }
 
 impl TunePosition {
@@ -120,46 +101,40 @@ impl TunePosition {
     /// Pour `each_tune = false`, passer `intro_bars` identique pour chaque air
     /// (seul le premier a une intro) ; la fonction décale `bar` d'autant.
     #[must_use]
-    pub const fn at_bar(
+    pub fn at_bar(
         bar: usize,
         tours: usize,
         intro_bars: usize,
         key: u8,
         mode: super::Mode,
+        form: &ProfileForm,
     ) -> Self {
-        let tours = if tours == 0 { 1 } else { tours };
-        let cycle = BARS_PER_TOUR * tours;
-
-        // Mesures 1..=intro_bars → intro du premier air
-        if bar <= intro_bars {
-            return Self {
-                section: Section::Intro,
-                tune_index: 0,
-                tour: 0,
-                tours,
-                part: Part::A,
-                pass: 0,
-                bar_in_strain: 0,
-                key,
-                mode,
-            };
-        }
-
-        let shifted = bar - intro_bars;
-        let zero = shifted.saturating_sub(1);
-        let in_tune = zero % cycle;
-        let in_tour = in_tune % BARS_PER_TOUR;
-        let in_part = in_tour % (2 * BARS_PER_STRAIN);
+        let tours = tours.max(1);
+        let cycle = form.bars_per_tour() * tours;
+        let zero = bar.saturating_sub(intro_bars + 1);
+        let bar_in_cycle = zero % form.bars_per_tour();
+        let (part, pass, offset) = form.position(bar_in_cycle);
+        let sequence_index = form
+            .sequence
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| **p == part)
+            .nth(pass - 1)
+            .map_or(0, |(i, _)| i);
+        let intro = bar <= intro_bars;
         Self {
-            section: Section::Tour,
+            section: if intro { Section::Intro } else { Section::Tour },
             tune_index: zero / cycle,
-            tour: in_tune / BARS_PER_TOUR + 1,
+            tour: if intro { 0 } else { (zero % cycle) / form.bars_per_tour() + 1 },
             tours,
-            part: if in_tour < 2 * BARS_PER_STRAIN { Part::A } else { Part::B },
-            pass: in_part / BARS_PER_STRAIN + 1,
-            bar_in_strain: in_part % BARS_PER_STRAIN + 1,
+            part: Part(part),
+            pass: if intro { 0 } else { pass },
+            bar_in_strain: if intro { 0 } else { offset + 1 },
             key,
             mode,
+            bar_in_cycle,
+            sequence_index,
+            passes_per_tour: form.sequence.len(),
         }
     }
 
@@ -168,11 +143,7 @@ impl TunePosition {
     /// Panique en debug pour `Section::Intro` (pas de tour pendant l'intro).
     #[must_use]
     pub const fn bar_in_tour(&self) -> usize {
-        debug_assert!(
-            matches!(self.section, Section::Tour),
-            "bar_in_tour n'est pas défini pour une mesure d'intro"
-        );
-        pass_ordinal(1, self.part, self.pass) * BARS_PER_STRAIN + self.bar_in_strain - 1
+        self.bar_in_cycle
     }
 
     /// Vrai au dernier tour de l'air.
@@ -188,7 +159,7 @@ impl TunePosition {
     }
 
     const fn ordinal(&self) -> usize {
-        pass_ordinal(self.tour, self.part, self.pass)
+        self.tour.saturating_sub(1) * self.passes_per_tour + self.sequence_index
     }
 }
 
@@ -341,8 +312,8 @@ pub struct EntryPoint {
 impl EntryPoint {
     /// Entrée dès le début de l'air.
     #[must_use]
-    pub const fn from_start() -> Self {
-        Self { tour: 1, part: Part::A, pass: 1 }
+    pub const fn from_start(part: Part) -> Self {
+        Self { tour: 1, part, pass: 1 }
     }
 }
 
@@ -394,9 +365,7 @@ pub enum ArrangementError {
     MissingTrack(TrackId),
     /// `tour` hors de `1..=`[`MAX_TOURS`].
     TourOutOfRange { track: TrackId, tour: i64 },
-    /// `part` n'est ni `"A"` ni `"B"`.
-    UnknownPart { track: TrackId, part: String },
-    /// `pass` n'est ni `1` ni `2`.
+    /// Passe d'entrée nulle.
     PassOutOfRange { track: TrackId, pass: i64 },
     /// `bars` d'une forme d'intro hors limites.
     IntroBarsOutOfRange { role: IntroRole, bars: usize },
@@ -426,9 +395,6 @@ impl fmt::Display for ArrangementError {
                 f,
                 "tour d'entrée hors limites pour {track:?} (attendu 1..={MAX_TOURS}) : {tour}"
             ),
-            Self::UnknownPart { track, part } => {
-                write!(f, "partie inconnue pour {track:?} : « {part} » (attendu \"A\" ou \"B\")")
-            }
             Self::PassOutOfRange { track, pass } => {
                 write!(f, "passe d'entrée hors limites pour {track:?} (attendu 1 ou 2) : {pass}")
             }
@@ -476,7 +442,7 @@ impl<'de> Deserialize<'de> for ReelArrangement {
 #[derive(Deserialize)]
 struct RawEntry {
     tour: i64,
-    part: String,
+    part: usize,
     pass: i64,
 }
 
@@ -512,8 +478,7 @@ impl TryFrom<RawArrangement> for ReelArrangement {
                 .entries
                 .remove(&format!("{track:?}"))
                 .ok_or(ArrangementError::MissingTrack(track))?;
-            let part = Part::parse(&entry.part)
-                .ok_or(ArrangementError::UnknownPart { track, part: entry.part })?;
+            let part = Part(entry.part);
             let tour = usize::try_from(entry.tour)
                 .map_err(|_| ArrangementError::TourOutOfRange { track, tour: entry.tour })?;
             let pass = usize::try_from(entry.pass)
@@ -533,7 +498,6 @@ impl TryFrom<RawArrangement> for ReelArrangement {
             entries,
             intro: raw.intro,
         };
-        table.validate()?;
         Ok(table)
     }
 }
@@ -544,15 +508,16 @@ impl Default for ReelArrangement {
     /// [`crate::tuning::TuningParams::validate`]) ; en cas d'erreur de données,
     /// repli sur trois tours avec toutes les pistes dès le début et sans intro.
     fn default() -> Self {
-        Self::from_toml(REEL_ARRANGEMENT_TOML).unwrap_or_else(|_| Self::from_start(3))
+        Self::from_toml(REEL_ARRANGEMENT_TOML)
+            .unwrap_or_else(|error| unreachable!("embedded arrangement: {error}"))
     }
 }
 
 impl ReelArrangement {
     /// Arrangement plat : `tours_per_tune` tours, toutes les pistes dès le début, sans intro.
     #[must_use]
-    pub const fn from_start(tours_per_tune: usize) -> Self {
-        let start = EntryPoint::from_start();
+    pub const fn from_start(tours_per_tune: usize, first_part: Part) -> Self {
+        let start = EntryPoint::from_start(first_part);
         Self {
             tours_per_tune,
             intro_each_tune: false,
@@ -571,7 +536,9 @@ impl ReelArrangement {
     pub fn from_toml(toml_str: &str) -> Result<Self, ArrangementError> {
         let raw: RawArrangement =
             toml::from_str(toml_str).map_err(|e| ArrangementError::TomlParse(e.to_string()))?;
-        Self::try_from(raw)
+        let table = Self::try_from(raw)?;
+        table.validate()?;
+        Ok(table)
     }
 
     /// Valide `tours_per_tune`, les `tour`/`pass` des entrées et la section `[intro]`.
@@ -588,7 +555,7 @@ impl ReelArrangement {
                     tour: i64::try_from(entry.tour).unwrap_or(i64::MAX),
                 });
             }
-            if !(1..=2).contains(&entry.pass) {
+            if entry.pass == 0 {
                 return Err(ArrangementError::PassOutOfRange {
                     track,
                     pass: i64::try_from(entry.pass).unwrap_or(i64::MAX),
@@ -611,7 +578,7 @@ impl ReelArrangement {
     /// plafonds appliqués par le générateur. Les pistes sont autorisées
     /// pendant l'intro selon [`IntroInfo::tracks_active_during_intro`].
     #[must_use]
-    pub fn allows(&self, track: TrackId, position: &TunePosition) -> bool {
+    pub fn allows(&self, track: TrackId, position: &TunePosition, form: &ProfileForm) -> bool {
         // Pendant l'intro, l'autorisation est gérée par le générateur
         // (seules certaines pistes jouent selon la forme).
         if position.is_intro() {
@@ -622,7 +589,14 @@ impl ReelArrangement {
         }
         let entry = self.entry(track);
         let last_tour = self.tours_per_tune.max(1);
-        position.ordinal() >= pass_ordinal(entry.tour.min(last_tour), entry.part, entry.pass)
+        let sequence = form
+            .sequence
+            .iter()
+            .enumerate()
+            .filter(|(_, part)| **part == entry.part.0)
+            .nth(entry.pass - 1)
+            .map_or(form.sequence.len(), |(i, _)| i);
+        position.ordinal() >= (entry.tour.min(last_tour) - 1) * form.sequence.len() + sequence
     }
 }
 
@@ -674,25 +648,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn embedded_table_validates_with_documented_defaults() -> Result<(), ArrangementError> {
-        let table = ReelArrangement::from_toml(REEL_ARRANGEMENT_TOML)?;
-        assert_eq!(table, ReelArrangement::default());
-        assert_eq!(table.tours_per_tune, 3);
-        assert!(!table.intro_each_tune);
-        assert_eq!(table.entry(TrackId::Melody), EntryPoint::from_start());
-        assert_eq!(table.entry(TrackId::Bass), EntryPoint { tour: 1, part: Part::A, pass: 2 });
-        assert_eq!(table.entry(TrackId::Toe), EntryPoint { tour: 2, part: Part::A, pass: 1 });
-        // Intro par défaut
-        assert!(!table.intro.forms.is_empty());
-        assert_eq!(table.intro.pickup_eighths, 2);
-        assert!(!table.intro.each_tune);
-        Ok(())
-    }
-
-    #[test]
     fn position_maps_bars_to_structure() {
         // Sans intro
-        let p = TunePosition::at_bar(1, 3, 0, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            1,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert_eq!(
             p,
             TunePosition {
@@ -700,43 +665,102 @@ mod tests {
                 tune_index: 0,
                 tour: 1,
                 tours: 3,
-                part: Part::A,
+                part: Part(0),
                 pass: 1,
                 bar_in_strain: 1,
                 key: 2,
                 mode: super::super::Mode::Ionian,
+                bar_in_cycle: 0,
+                sequence_index: 0,
+                passes_per_tour: 4,
             }
         );
-        let p = TunePosition::at_bar(9, 3, 0, 2, super::super::Mode::Ionian);
-        assert_eq!((p.part, p.pass, p.bar_in_strain), (Part::A, 2, 1));
-        let p = TunePosition::at_bar(25, 3, 0, 2, super::super::Mode::Ionian);
-        assert_eq!((p.part, p.pass, p.bar_in_strain, p.tour), (Part::B, 2, 1, 1));
+        let p = TunePosition::at_bar(
+            9,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
+        assert_eq!((p.part, p.pass, p.bar_in_strain), (Part(0), 2, 1));
+        let p = TunePosition::at_bar(
+            25,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
+        assert_eq!((p.part, p.pass, p.bar_in_strain, p.tour), (Part(1), 2, 1, 1));
         assert_eq!(p.bar_in_tour(), 24);
-        let p = TunePosition::at_bar(33, 3, 0, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            33,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert_eq!(
             (p.tour, p.part, p.pass, p.bar_in_strain, p.bar_in_tour()),
-            (2, Part::A, 1, 1, 0)
+            (2, Part(0), 1, 1, 0)
         );
-        let p = TunePosition::at_bar(96, 3, 0, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            96,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert_eq!((p.tune_index, p.tour, p.bar_in_tour()), (0, 3, 31));
         assert!(p.is_last_tour());
-        let p = TunePosition::at_bar(97, 3, 0, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            97,
+            3,
+            0,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert_eq!((p.tune_index, p.tour, p.bar_in_tour()), (1, 1, 0));
     }
 
     #[test]
     fn position_with_intro_bars() {
         // 2 mesures d'intro, 3 tours de 32 = 96 mesures d'air
-        let p = TunePosition::at_bar(1, 3, 2, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            1,
+            3,
+            2,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert!(p.is_intro());
         assert_eq!(p.section, Section::Intro);
         assert_eq!(p.tune_index, 0);
 
-        let p = TunePosition::at_bar(2, 3, 2, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            2,
+            3,
+            2,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert!(p.is_intro());
 
         // Mesure 3 = première mesure de l'air
-        let p = TunePosition::at_bar(3, 3, 2, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            3,
+            3,
+            2,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert!(!p.is_intro());
         assert_eq!(p.section, Section::Tour);
         assert_eq!(p.tune_index, 0);
@@ -744,7 +768,14 @@ mod tests {
         assert_eq!(p.bar_in_strain, 1);
 
         // Après tout l'air (2 + 96 = 98), mesure 99 = tune 1
-        let p = TunePosition::at_bar(99, 3, 2, 2, super::super::Mode::Ionian);
+        let p = TunePosition::at_bar(
+            99,
+            3,
+            2,
+            2,
+            super::super::Mode::Ionian,
+            &crate::StyleProfile::default().form,
+        );
         assert_eq!(p.tune_index, 1);
         assert_eq!(p.tour, 1);
     }
@@ -752,29 +783,41 @@ mod tests {
     #[test]
     fn entries_beyond_last_tour_are_clamped() {
         let mut table = ReelArrangement::default();
-        assert!(
-            !table.allows(
-                TrackId::Heel,
-                &TunePosition::at_bar(1, 3, 0, 2, super::super::Mode::Ionian)
-            )
-        );
+        assert!(!table.allows(
+            TrackId::Heel,
+            &TunePosition::at_bar(
+                1,
+                3,
+                0,
+                2,
+                super::super::Mode::Ionian,
+                &crate::StyleProfile::default().form
+            ),
+            &crate::StyleProfile::default().form
+        ));
         table.tours_per_tune = 1;
         // Tour unique : l'entrée du tour 2 est ramenée au dernier tour (le 1er).
-        assert!(
-            table.allows(
-                TrackId::Heel,
-                &TunePosition::at_bar(1, 1, 0, 2, super::super::Mode::Ionian)
-            )
-        );
+        assert!(table.allows(
+            TrackId::Heel,
+            &TunePosition::at_bar(
+                1,
+                1,
+                0,
+                2,
+                super::super::Mode::Ionian,
+                &crate::StyleProfile::default().form
+            ),
+            &crate::StyleProfile::default().form
+        ));
     }
 
     fn toml_with(replace: (&str, &str)) -> String {
         let ok = "tours_per_tune = 3\n[entries]\n\
-            Melody = { tour = 1, part = \"A\", pass = 1 }\n\
-            Chords = { tour = 1, part = \"A\", pass = 2 }\n\
-            Bass = { tour = 1, part = \"A\", pass = 2 }\n\
-            Heel = { tour = 2, part = \"A\", pass = 1 }\n\
-            Toe = { tour = 2, part = \"A\", pass = 1 }\n";
+            Melody = { tour = 1, part = 0, pass = 1 }\n\
+            Chords = { tour = 1, part = 0, pass = 2 }\n\
+            Bass = { tour = 1, part = 0, pass = 2 }\n\
+            Heel = { tour = 2, part = 0, pass = 1 }\n\
+            Toe = { tour = 2, part = 0, pass = 1 }\n";
         assert!(ok.contains(replace.0));
         ok.replace(replace.0, replace.1)
     }
@@ -786,29 +829,22 @@ mod tests {
             Err(ArrangementError::TourOutOfRange { track: TrackId::Heel, tour: 0 })
         );
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with((
-                "Heel = { tour = 2, part = \"A\"",
-                "Heel = { tour = 2, part = \"C\""
-            ))),
-            Err(ArrangementError::UnknownPart { track: TrackId::Heel, part: "C".to_owned() })
-        );
-        assert_eq!(
             ReelArrangement::from_toml(&toml_with(("Toe = {", "Cymbale = {"))),
             Err(ArrangementError::UnknownTrack("Cymbale".to_owned()))
         );
         assert_eq!(
             ReelArrangement::from_toml(&toml_with((
-                "Toe = { tour = 2, part = \"A\", pass = 1 }\n",
+                "Toe = { tour = 2, part = 0, pass = 1 }\n",
                 ""
             ))),
             Err(ArrangementError::MissingTrack(TrackId::Toe))
         );
         assert_eq!(
             ReelArrangement::from_toml(&toml_with((
-                "Toe = { tour = 2, part = \"A\", pass = 1",
-                "Toe = { tour = 2, part = \"A\", pass = 3"
+                "Toe = { tour = 2, part = 0, pass = 1",
+                "Toe = { tour = 2, part = 0, pass = 0"
             ))),
-            Err(ArrangementError::PassOutOfRange { track: TrackId::Toe, pass: 3 })
+            Err(ArrangementError::PassOutOfRange { track: TrackId::Toe, pass: 0 })
         );
         assert_eq!(
             ReelArrangement::from_toml(&toml_with(("tours_per_tune = 3", "tours_per_tune = 0"))),

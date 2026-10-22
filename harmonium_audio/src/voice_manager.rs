@@ -23,7 +23,7 @@ impl ChannelRoute {
 
 /// Programme GM pour le piano acoustique (mélodie `Style::Legacy`).
 pub const GM_PROGRAM_PIANO: u8 = 0;
-/// Programme GM pour le violon (mélodie `Style::Reel`, D10 : 41 1-based = 40 0-based).
+/// Programme GM pour le violon (mélodie `Style::Profile`, D10 : 41 1-based = 40 0-based).
 pub const GM_PROGRAM_VIOLIN: u8 = 40;
 /// Programme GM pour la guitare acoustique cordes acier (`Chords`, D10 : 25 1-based = 24 0-based).
 pub const GM_PROGRAM_STEEL_GUITAR: u8 = 24;
@@ -37,19 +37,21 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 /// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
 pub const FEET_BANK_OFFSET: u32 = 1;
 
-/// Retourne les couples `(logical_channel, gm_program)` pour les pistes mélodiques/harmoniques
-/// selon le [`harmonium_core::params::Style`] actif (D10) :
-/// - `Style::Reel` : Melody (0) → 40 (violon), Chords (1) → 24 (guitare acier), Bass (2) → 32 (basse acoustique)
-/// - `Style::Legacy` : Melody (0) → 0 (piano), Chords (1) → 24, Bass (2) → 32
+/// Programmes des trois pistes mélodiques : Legacy conservé, sinon données du profil.
 #[must_use]
-pub const fn gm_programs_for_style(style: harmonium_core::params::Style) -> [(u8, u8); 3] {
+pub const fn gm_programs_for_style(
+    style: harmonium_core::params::Style,
+    instruments: &harmonium_core::style_profile::ProfileInstruments,
+) -> [(u8, u8); 3] {
     match style {
         harmonium_core::params::Style::Legacy => {
             [(0, GM_PROGRAM_PIANO), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
         }
-        harmonium_core::params::Style::Reel => {
-            [(0, GM_PROGRAM_VIOLIN), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
-        }
+        harmonium_core::params::Style::Profile => [
+            (0, instruments.melody_program),
+            (1, instruments.chords_program),
+            (2, instruments.bass_program),
+        ],
     }
 }
 /// Détermine si une séquence de numéros de banques contient la banque 128 (kit de batterie GM).
@@ -68,6 +70,8 @@ pub struct VoiceManager {
     pub current_programs: [u8; 16],
     /// Maps logical channels to MIDI channels (e.g. drums/feet ch3/ch4 → MIDI ch9)
     pub midi_channel_map: [u8; 16],
+    /// Banque explicitement chargée par l'hôte pour les percussions, prioritaire au repli du profil.
+    percussion_bank_override: Option<u32>,
 }
 
 /// Default map: logical channel N → MIDI channel N, except Heel (3) and Toe (4) → MIDI channel 9 (D10).
@@ -101,6 +105,7 @@ impl VoiceManager {
             current_banks: [None; 16],
             current_programs: default_channel_programs(),
             midi_channel_map: default_midi_channel_map(),
+            percussion_bank_override: None,
         };
         if let Some(bytes) = sf2_bytes {
             vm.add_font(0, bytes);
@@ -157,6 +162,7 @@ impl VoiceManager {
     /// Les programmes mélodiques/harmoniques sont inchangés : Melody (0), Chords (1),
     /// Bass (2) selon le style GM (`apply_style_programs`).
     pub fn configure_gm_defaults(&mut self, gm_compatible: bool, feet_loaded: bool) {
+        self.percussion_bank_override = feet_loaded.then_some(FEET_BANK_OFFSET);
         if feet_loaded {
             // Banque de pieds dédiée (SK2) : Heel (3) et Toe (4) sur leurs canaux
             // MIDI propres, banque décalée FEET_BANK_OFFSET, programme 0.
@@ -194,7 +200,10 @@ impl VoiceManager {
             program_id: 0,
         });
 
-        self.apply_style_programs(harmonium_core::params::Style::Legacy);
+        self.apply_style_programs(
+            harmonium_core::params::Style::Legacy,
+            &harmonium_core::StyleProfile::builtin().instruments,
+        );
     }
 
     /// Détermine si la SoundFont chargée dans oxisynth contient un preset en banque 128 (kit de batterie GM).
@@ -284,10 +293,22 @@ impl VoiceManager {
         missing
     }
 
-    /// Applique les programmes GM d'un [`harmonium_core::params::Style`] (D10).
-    pub fn apply_style_programs(&mut self, style: harmonium_core::params::Style) {
-        for (ch, prog) in gm_programs_for_style(style) {
+    /// Applique l'instrumentarium déjà résolu, sans allocation dans le callback.
+    pub fn apply_style_programs(
+        &mut self,
+        style: harmonium_core::params::Style,
+        instruments: &harmonium_core::style_profile::ProfileInstruments,
+    ) {
+        for (ch, prog) in gm_programs_for_style(style, instruments) {
             self.set_channel_program(ch as usize, prog);
+        }
+        if style == harmonium_core::params::Style::Profile {
+            let bank =
+                self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
+            for channel in [3, 4] {
+                self.set_channel_route(channel, ChannelRoute { bank });
+                self.set_channel_program(channel, instruments.percussion_program);
+            }
         }
     }
 
@@ -422,8 +443,10 @@ impl VoiceManager {
             AudioEvent::ProgramChange { channel, program } => {
                 self.set_channel_program(channel as usize, program);
             }
+            AudioEvent::UpdateMusicalParams { params } => {
+                self.apply_style_programs(params.style, &params.profile_instruments);
+            }
             AudioEvent::TimingUpdate { .. }
-            | AudioEvent::UpdateMusicalParams { .. }
             | AudioEvent::MeasureTiming { .. }
             | AudioEvent::LoadFont { .. }
             | AudioEvent::SetChannelRoute { .. }
@@ -447,29 +470,7 @@ impl VoiceManager {
 
 #[cfg(test)]
 mod tests {
-    use harmonium_core::params::Style;
-
     use super::*;
-
-    #[test]
-    fn gm_programs_match_d10_and_restore_on_legacy() {
-        let mut vm = VoiceManager::new(None, 44100.0);
-        assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL);
-        assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL);
-        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_PIANO));
-        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
-        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
-
-        vm.apply_style_programs(Style::Reel);
-        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_VIOLIN));
-        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
-        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
-
-        vm.apply_style_programs(Style::Legacy);
-        assert_eq!(vm.channel_program(0), Some(GM_PROGRAM_PIANO));
-        assert_eq!(vm.channel_program(1), Some(GM_PROGRAM_STEEL_GUITAR));
-        assert_eq!(vm.channel_program(2), Some(GM_PROGRAM_ACOUSTIC_BASS));
-    }
 
     #[test]
     fn test_bank_128_detection_synthetic() {

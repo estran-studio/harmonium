@@ -1,19 +1,10 @@
-//! Style tuning parameters — the ~83 "personality constants" that define how
-//! the engine interprets real-time user controls (density, tension, valence).
-//!
-//! `TuningParams` holds sensible defaults matching every current hardcoded
-//! constant in the engine. Loading a `StyleProfile` applies a partial
-//! `TuningOverlay` on top of these defaults.
+//! Paramètres du générateur Legacy et profil actif du générateur traditionnel.
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    harmony::steedman_grammar::GrammarStyle,
-    params::TimeSignature,
-    trad::{
-        arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics, feet::FeetTable,
-        harmony::ChordDegree,
-    },
+    harmony::steedman_grammar::GrammarStyle, style_profile::StyleProfile,
+    trad::harmony::ChordDegree,
 };
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
@@ -21,7 +12,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 8;
+pub const TUNING_VERSION: u32 = 9;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -441,25 +432,6 @@ impl Default for EmotionalQuadrantParams {
 /// Paramètres de planification, de style et de ligne de violon du reel traditionnel (D3, D4, D6, constitution V).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ReelFiddleParams {
-    /// Tempo nominal par défaut du style Reel à la noire (`230.0`, D3).
-    #[serde(default = "default_reel_bpm")]
-    pub default_bpm: f32,
-    /// Ratio de swing par défaut du style Reel (`0.56`, D3).
-    #[serde(default = "default_reel_swing_ratio")]
-    pub default_swing_ratio: f32,
-    /// Signature rythmique par défaut du style Reel (`2/2`, D3).
-    #[serde(default = "default_reel_time_signature")]
-    pub default_time_signature: TimeSignature,
-    /// Poids de tirage pour Ré majeur (`D Ionian`, D4).
-    pub weight_d_ionian: u32,
-    /// Poids de tirage pour Sol majeur (`G Ionian`, D4).
-    pub weight_g_ionian: u32,
-    /// Poids de tirage pour La majeur (`A Ionian`, D4).
-    pub weight_a_ionian: u32,
-    /// Poids de tirage pour La mixolydien (`A Mixolydian`, D4).
-    pub weight_a_mixolydian: u32,
-    /// Poids de tirage pour Ré mixolydien (`D Mixolydian`, D4).
-    pub weight_d_mixolydian: u32,
     /// Poids de tirage du rôle libre `CellRole::Run` (D6).
     pub weight_role_run: u32,
     /// Poids de tirage du rôle libre `CellRole::Arp` (D6).
@@ -472,8 +444,6 @@ pub struct ReelFiddleParams {
     pub continuity_max_retries: usize,
     /// Hauteur moyenne visée de la mélodie en MIDI (`71` = si4, P1-T7).
     pub melody_center_midi: u8,
-    /// Surélévation de la strain B par rapport à la strain A, en demi-tons (`2`, P1-T7).
-    pub strain_b_lift_semitones: i8,
     /// Borne inférieure MIDI pour le choix de l'octave de la tonique (`66` = F#4, P1-T7).
     pub tonic_midi_min: u8,
     /// Borne supérieure MIDI pour le choix de l'octave de la tonique (`77` = F5, P1-T7).
@@ -490,44 +460,9 @@ pub struct ReelFiddleParams {
     pub even_eighth_velocity_offset: i8,
 }
 
-const fn default_reel_bpm() -> f32 {
-    230.0
-}
-
-const fn default_reel_swing_ratio() -> f32 {
-    0.56
-}
-
-const fn default_reel_time_signature() -> TimeSignature {
-    TimeSignature::new(2, 2)
-}
-
 impl Default for ReelFiddleParams {
     fn default() -> Self {
-        Self {
-            default_bpm: default_reel_bpm(),
-            default_swing_ratio: default_reel_swing_ratio(),
-            default_time_signature: default_reel_time_signature(),
-            weight_d_ionian: 3,
-            weight_g_ionian: 3,
-            weight_a_ionian: 2,
-            weight_a_mixolydian: 1,
-            weight_d_mixolydian: 1,
-            weight_role_run: 4,
-            weight_role_arp: 3,
-            weight_role_turn: 3,
-            max_continuity_step_distance: 2,
-            continuity_max_retries: 16,
-            melody_center_midi: 71,
-            strain_b_lift_semitones: 2,
-            tonic_midi_min: 66,
-            tonic_midi_max: 77,
-            tessitura_min: 55,
-            tessitura_max: 88,
-            base_velocity: 94,
-            strong_eighth_velocity_offset: 12,
-            even_eighth_velocity_offset: -10,
-        }
+        StyleProfile::default().melody.params
     }
 }
 
@@ -569,22 +504,7 @@ pub struct TradHarmonyParams {
 
 impl Default for TradHarmonyParams {
     fn default() -> Self {
-        Self {
-            strong_steps: vec![0, 8],
-            strong_weight: 2,
-            weak_weight: 1,
-            tie_priority: vec![ChordDegree::I, ChordDegree::V, ChordDegree::IV],
-            bass_steps: vec![0, 8],
-            bass_duration_steps: 4,
-            bass_velocity: 78,
-            bass_low: 40,
-            bass_high: 50,
-            chop_steps: vec![4, 12],
-            chop_duration_steps: 1,
-            chop_velocity: 72,
-            guitar_center: 60,
-            guitar_max_drift: 6,
-        }
+        StyleProfile::default().accompaniment
     }
 }
 
@@ -605,24 +525,9 @@ pub struct TuningParams {
     pub perfect_balance: PerfectBalanceParams,
     pub arrangement: ArrangementParams,
     pub emotional_quadrant: EmotionalQuadrantParams,
-    /// Paramètres de planification et de ligne de violon du reel (D4, D6, constitution V).
+    /// Profil actif : source unique de la grille, de la forme et des banques.
     #[serde(default)]
-    pub reel_fiddle: ReelFiddleParams,
-    /// Banque de cellules mélodiques du reel traditionnel québécois (D5, constitution V).
-    #[serde(default)]
-    pub reel_cells: CellBank,
-    /// Harmonisation et accompagnement du reel (D7, D8).
-    #[serde(default)]
-    pub trad_harmony: TradHarmonyParams,
-    /// Table de podorythmie du reel traditionnel québécois (D9, constitution V).
-    #[serde(default)]
-    pub reel_feet: FeetTable,
-    /// Tours d'un air et entrées progressives des pistes du reel (D11, constitution V).
-    #[serde(default)]
-    pub reel_arrangement: ReelArrangement,
-    /// Pilotage continu du style : intensité, couleur, densité et tension.
-    #[serde(default)]
-    pub reel_intensity: StyleDynamics,
+    pub profile: StyleProfile,
 }
 
 impl Default for TuningParams {
@@ -637,12 +542,7 @@ impl Default for TuningParams {
             perfect_balance: PerfectBalanceParams::default(),
             arrangement: ArrangementParams::default(),
             emotional_quadrant: EmotionalQuadrantParams::default(),
-            reel_fiddle: ReelFiddleParams::default(),
-            reel_cells: CellBank::default(),
-            trad_harmony: TradHarmonyParams::default(),
-            reel_feet: FeetTable::default(),
-            reel_arrangement: ReelArrangement::default(),
-            reel_intensity: StyleDynamics::default(),
+            profile: StyleProfile::default(),
         }
     }
 }
@@ -1059,137 +959,9 @@ impl TuningParams {
             eq.energetic_tension_threshold,
         );
 
-        // --- ReelFiddleParams (D4, D6) ---
-        let rf = &self.reel_fiddle;
-        check_range(&mut errors, "reel_fiddle.default_bpm", rf.default_bpm, 40.0, 300.0);
-        check_range(
-            &mut errors,
-            "reel_fiddle.default_swing_ratio",
-            rf.default_swing_ratio,
-            0.5,
-            0.75,
-        );
-        if rf.default_time_signature.numerator == 0 || rf.default_time_signature.denominator == 0 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.default_time_signature",
-                message: format!(
-                    "numerator ({}) and denominator ({}) must be > 0",
-                    rf.default_time_signature.numerator, rf.default_time_signature.denominator
-                ),
-            });
+        if let Err(error) = self.profile.validate() {
+            errors.push(ValidationError { field: "profile", message: error.to_string() });
         }
-        let key_weight_sum = rf
-            .weight_d_ionian
-            .saturating_add(rf.weight_g_ionian)
-            .saturating_add(rf.weight_a_ionian)
-            .saturating_add(rf.weight_a_mixolydian)
-            .saturating_add(rf.weight_d_mixolydian);
-        if key_weight_sum == 0 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.weight_*_ionian/mixolydian",
-                message: "at least one key/mode weight must be > 0".to_string(),
-            });
-        }
-        let role_weight_sum = rf
-            .weight_role_run
-            .saturating_add(rf.weight_role_arp)
-            .saturating_add(rf.weight_role_turn);
-        if role_weight_sum == 0 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.weight_role_*",
-                message: "at least one free role weight must be > 0".to_string(),
-            });
-        }
-        if rf.continuity_max_retries == 0 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.continuity_max_retries",
-                message: "expected >= 1, got 0".to_string(),
-            });
-        }
-        if rf.max_continuity_step_distance < 0 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.max_continuity_step_distance",
-                message: format!("expected >= 0, got {}", rf.max_continuity_step_distance),
-            });
-        }
-        if rf.melody_center_midi < rf.tessitura_min || rf.melody_center_midi > rf.tessitura_max {
-            errors.push(ValidationError {
-                field: "reel_fiddle.melody_center_midi",
-                message: format!(
-                    "expected within tessitura {}..={}, got {}",
-                    rf.tessitura_min, rf.tessitura_max, rf.melody_center_midi
-                ),
-            });
-        }
-        if !(-12..=12).contains(&rf.strain_b_lift_semitones) {
-            errors.push(ValidationError {
-                field: "reel_fiddle.strain_b_lift_semitones",
-                message: format!("expected -12..=12, got {}", rf.strain_b_lift_semitones),
-            });
-        }
-        if rf.tonic_midi_min > rf.tonic_midi_max || rf.tonic_midi_max > 127 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.tonic_midi_min/max",
-                message: format!(
-                    "invalid tonic MIDI range {}..={}",
-                    rf.tonic_midi_min, rf.tonic_midi_max
-                ),
-            });
-        }
-        if rf.tessitura_min > rf.tessitura_max
-            || rf.tessitura_max.saturating_sub(rf.tessitura_min) < 12
-            || rf.tessitura_max > 127
-        {
-            errors.push(ValidationError {
-                field: "reel_fiddle.tessitura_min/max",
-                message: format!(
-                    "invalid tessitura range {}..={} (must span at least 12 semitones)",
-                    rf.tessitura_min, rf.tessitura_max
-                ),
-            });
-        }
-        if rf.base_velocity == 0 || rf.base_velocity > 127 {
-            errors.push(ValidationError {
-                field: "reel_fiddle.base_velocity",
-                message: format!("expected 1..=127, got {}", rf.base_velocity),
-            });
-        }
-
-        // --- Reel CellBank (D5) ---
-        if let Err(err) = self.reel_cells.validate() {
-            errors.push(ValidationError { field: "reel_cells", message: err.to_string() });
-        }
-        // --- Reel FeetTable (D9) ---
-        if let Err(err) = self.reel_feet.validate() {
-            errors.push(ValidationError { field: "reel_feet", message: err.to_string() });
-        }
-        // --- ReelArrangement (D11) ---
-        if let Err(err) = self.reel_arrangement.validate() {
-            errors.push(ValidationError { field: "reel_arrangement", message: err.to_string() });
-        }
-        if let Err(message) = self.reel_intensity.validate() {
-            errors.push(ValidationError { field: "reel_intensity", message });
-        }
-
-        // --- TradHarmonyParams (D7, D8) ---
-        let th = &self.trad_harmony;
-        let mut check_th = |ok: bool, message: &str| {
-            if !ok {
-                errors.push(ValidationError { field: "trad_harmony", message: message.to_owned() });
-            }
-        };
-        check_th(th.strong_weight > 0 && th.weak_weight > 0, "les poids de vote doivent être > 0");
-        check_th(!th.tie_priority.is_empty(), "tie_priority ne doit pas être vide");
-        check_th(
-            th.bass_low <= th.bass_high && th.bass_high <= 127,
-            "bass_low <= bass_high <= 127 requis",
-        );
-        check_th(th.bass_duration_steps > 0 && th.chop_duration_steps > 0, "durées en pas > 0");
-        check_th(
-            th.bass_steps.iter().chain(&th.chop_steps).all(|&s| s < 16),
-            "pas d'accompagnement hors mesure (< 16)",
-        );
-        check_th(th.guitar_center <= 127, "guitar_center <= 127 requis");
 
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
@@ -1414,55 +1186,6 @@ pub struct EmotionalQuadrantOverlay {
     pub energetic_tension_threshold: Option<f32>,
 }
 
-/// Partial overlay for `ReelFiddleParams`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct ReelFiddleOverlay {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_bpm: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_swing_ratio: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_time_signature: Option<TimeSignature>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_d_ionian: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_g_ionian: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_a_ionian: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_a_mixolydian: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_d_mixolydian: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_role_run: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_role_arp: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub weight_role_turn: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_continuity_step_distance: Option<i8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub continuity_max_retries: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub melody_center_midi: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub strain_b_lift_semitones: Option<i8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tonic_midi_min: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tonic_midi_max: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tessitura_min: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tessitura_max: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub base_velocity: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub strong_eighth_velocity_offset: Option<i8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub even_eighth_velocity_offset: Option<i8>,
-}
-
 // ---------------------------------------------------------------------------
 // Root TuningOverlay
 // ---------------------------------------------------------------------------
@@ -1489,16 +1212,7 @@ pub struct TuningOverlay {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub emotional_quadrant: Option<EmotionalQuadrantOverlay>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reel_fiddle: Option<ReelFiddleOverlay>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reel_cells: Option<CellBank>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trad_harmony: Option<TradHarmonyParams>,
-    pub reel_feet: Option<FeetTable>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reel_arrangement: Option<ReelArrangement>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reel_intensity: Option<StyleDynamics>,
+    pub profile: Option<StyleProfile>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1640,47 +1354,8 @@ impl TuningParams {
             apply!(b.energetic_tension_threshold, o.energetic_tension_threshold);
         }
 
-        if let Some(o) = &overlay.reel_fiddle {
-            let b = &mut result.reel_fiddle;
-            apply!(b.default_bpm, o.default_bpm);
-            apply!(b.default_swing_ratio, o.default_swing_ratio);
-            apply!(b.default_time_signature, o.default_time_signature);
-            apply!(b.weight_d_ionian, o.weight_d_ionian);
-            apply!(b.weight_g_ionian, o.weight_g_ionian);
-            apply!(b.weight_a_ionian, o.weight_a_ionian);
-            apply!(b.weight_a_mixolydian, o.weight_a_mixolydian);
-            apply!(b.weight_d_mixolydian, o.weight_d_mixolydian);
-            apply!(b.weight_role_run, o.weight_role_run);
-            apply!(b.weight_role_arp, o.weight_role_arp);
-            apply!(b.weight_role_turn, o.weight_role_turn);
-            apply!(b.max_continuity_step_distance, o.max_continuity_step_distance);
-            apply!(b.continuity_max_retries, o.continuity_max_retries);
-            apply!(b.melody_center_midi, o.melody_center_midi);
-            apply!(b.strain_b_lift_semitones, o.strain_b_lift_semitones);
-            apply!(b.tonic_midi_min, o.tonic_midi_min);
-            apply!(b.tonic_midi_max, o.tonic_midi_max);
-            apply!(b.tessitura_min, o.tessitura_min);
-            apply!(b.tessitura_max, o.tessitura_max);
-            apply!(b.base_velocity, o.base_velocity);
-            apply!(b.strong_eighth_velocity_offset, o.strong_eighth_velocity_offset);
-            apply!(b.even_eighth_velocity_offset, o.even_eighth_velocity_offset);
-        }
-
-        if let Some(reel_cells) = &overlay.reel_cells {
-            result.reel_cells = reel_cells.clone();
-        }
-        if let Some(reel_feet) = &overlay.reel_feet {
-            result.reel_feet = reel_feet.clone();
-        }
-        if let Some(reel_arrangement) = &overlay.reel_arrangement {
-            result.reel_arrangement = reel_arrangement.clone();
-        }
-        if let Some(dynamics) = &overlay.reel_intensity {
-            result.reel_intensity = dynamics.clone();
-        }
-
-        if let Some(trad_harmony) = &overlay.trad_harmony {
-            result.trad_harmony = trad_harmony.clone();
+        if let Some(profile) = &overlay.profile {
+            result.profile = profile.clone();
         }
 
         result
@@ -1810,39 +1485,5 @@ mod tests {
         tp.neo_riemannian.positive_p_cumulative = 0.5;
         let errs = tp.validate().unwrap_err();
         assert!(errs.iter().any(|e| e.field.contains("positive_r/p")));
-    }
-    #[test]
-    fn validation_catches_invalid_reel_feet() {
-        let mut tp = TuningParams::default();
-        tp.reel_feet.patterns.clear();
-        let errs = tp.validate().unwrap_err();
-        assert!(errs.iter().any(|e| e.field == "reel_feet"));
-    }
-
-    #[test]
-    fn validation_catches_invalid_reel_arrangement() {
-        let mut tp = TuningParams::default();
-        tp.reel_arrangement.entries.heel.tour = 0;
-        let errs = tp.validate().err().unwrap_or_default();
-        assert!(errs.iter().any(|e| e.field == "reel_arrangement"));
-    }
-
-    #[test]
-    fn overlay_applies_reel_arrangement() {
-        let custom = ReelArrangement { tours_per_tune: 5, ..ReelArrangement::default() };
-        let overlay = TuningOverlay { reel_arrangement: Some(custom), ..Default::default() };
-        let result = TuningParams::default().with_overlay(&overlay);
-        assert_eq!(result.reel_arrangement.tours_per_tune, 5);
-    }
-
-    #[test]
-    fn overlay_applies_reel_feet() {
-        let base = TuningParams::default();
-        let mut custom_feet = FeetTable::default();
-        custom_feet.heel_velocity = 115;
-
-        let overlay = TuningOverlay { reel_feet: Some(custom_feet.clone()), ..Default::default() };
-        let result = base.with_overlay(&overlay);
-        assert_eq!(result.reel_feet.heel_velocity, 115);
     }
 }

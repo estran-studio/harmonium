@@ -1,4 +1,4 @@
-//! Tests d'acceptation sur le flux de snapshots du moteur en `Style::Reel`
+//! Tests d'acceptation sur le flux de snapshots du moteur en `Style::Profile`
 //! via `create_offline_engine` (20 seeds, 64 mesures, critères 1–4 du plan + seek déterministe).
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
@@ -16,10 +16,17 @@ const BARS_64: usize = 64;
 
 /// Un seul tour, tout le monde dès la mesure 1 : isole forme et accompagnement de D11.
 fn flat_tuning() -> TuningParams {
-    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+    TuningParams {
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p
+        },
+        ..TuningParams::default()
+    }
 }
 
-/// Génère 64 mesures de `Style::Reel` via `create_offline_engine` pour un seed et une densité donnés.
+/// Génère 64 mesures de `Style::Profile` via `create_offline_engine` pour un seed et une densité donnés.
 fn generate_offline_reel_stream(
     seed: u64,
     feet_density: u8,
@@ -28,7 +35,7 @@ fn generate_offline_reel_stream(
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_tuning(flat_tuning());
-    composer.set_style(Style::Reel);
+    composer.set_style(Style::Profile);
     composer.set_feet_density(feet_density);
     composer.set_seed(seed);
     composer.set_writehead_lookahead(BARS_64 + 4);
@@ -133,7 +140,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
         // Critères 1 et 2 sur les deux tunes (mesures 1..=32 et 33..=64)
         for tune_offset in [0usize, 32] {
             let (plan, _) = composer
-                .reel_bar_info(tune_offset + 1)
+                .profile_bar_info(tune_offset + 1)
                 .ok_or_else(|| "plan du tune absent dans le composer".to_string())?;
             // Reprises A1 == A2 et B1 == B2 (notes et harmonie identiques)
             for b in 0..8 {
@@ -185,14 +192,15 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             }
         }
 
-        let (plan1, _) = composer.reel_bar_info(1).ok_or_else(|| "tune 1 absent".to_string())?;
-        let (plan2, _) = composer.reel_bar_info(33).ok_or_else(|| "tune 2 absent".to_string())?;
+        let (plan1, _) = composer.profile_bar_info(1).ok_or_else(|| "tune 1 absent".to_string())?;
+        let (plan2, _) =
+            composer.profile_bar_info(33).ok_or_else(|| "tune 2 absent".to_string())?;
         assert!(is_same_or_relative_plan(plan1, plan2));
     }
     Ok(())
 }
 
-/// Critère 4 : Déterminisme, diversité des seeds, `set_seed` et seek déterministe en `Style::Reel`.
+/// Critère 4 : Déterminisme, diversité des seeds, `set_seed` et seek déterministe en `Style::Profile`.
 #[test]
 fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
     for seed in 0..NUM_SEEDS {
@@ -221,7 +229,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, None, SAMPLE_RATE)?;
         composer.set_tuning(flat_tuning());
-        composer.set_style(Style::Reel);
+        composer.set_style(Style::Profile);
         composer.set_seed(seed);
         composer.set_writehead_lookahead(BARS_64 + 4);
         composer.generate_bars(4);
@@ -248,8 +256,8 @@ fn set_style_applies_tuning_defaults_and_queues_gm_programs() -> Result<(), Stri
     let (mut composer, mut playback, mut cmd_tx, _report_rx, _clock_reader, _recordings) =
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
-    composer.set_style(Style::Reel);
-    assert_eq!(composer.musical_params().style, Style::Reel);
+    composer.set_style(Style::Profile);
+    assert_eq!(composer.musical_params().style, Style::Profile);
     assert!((composer.musical_params().bpm - 230.0).abs() < f32::EPSILON);
     assert!((composer.musical_params().swing_ratio - 0.56).abs() < f32::EPSILON);
     assert_eq!(composer.musical_params().time_signature, TimeSignature::new(2, 2));

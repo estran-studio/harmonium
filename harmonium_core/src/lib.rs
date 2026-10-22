@@ -28,6 +28,4 @@ pub use params::{
 pub use report::{EngineReport, MeasureSnapshot, NoteEvent, NoteSnapshot};
 pub use sequencer::Sequencer;
 pub use style_profile::StyleProfile;
-pub use tuning::{
-    ReelFiddleOverlay, ReelFiddleParams, TUNING_VERSION, TuningOverlay, TuningParams,
-};
+pub use tuning::{ReelFiddleParams, TUNING_VERSION, TuningOverlay, TuningParams};

@@ -437,6 +437,15 @@ impl NativeHandle {
         }
     }
 
+    pub fn set_profile(&mut self, profile: harmonium_core::StyleProfile) -> Result<(), String> {
+        let mut c = self.composer.lock().map_err(|e| e.to_string())?;
+        c.set_profile(profile)?;
+        Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
+        self.playback_cmd_tx
+            .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())))
+            .map_err(|_| "file de commandes audio pleine".to_string())
+    }
+
     /// Règle la densité de podorythmie (`0..=2`, D9) et invalide les mesures futures.
     pub fn set_feet_density(&mut self, density: u8) {
         if let Ok(mut c) = self.composer.lock() {
@@ -458,13 +467,13 @@ impl NativeHandle {
         }
     }
 
-    /// En `Style::Reel`, retourne le `(TunePlan, BarRole)` de la mesure courante sous le playhead.
+    /// En `Style::Profile`, retourne le `(TunePlan, BarRole)` de la mesure courante sous le playhead.
     #[must_use]
-    pub fn reel_bar_info(
+    pub fn profile_bar_info(
         &self,
     ) -> Option<(harmonium_core::trad::TunePlan, harmonium_core::trad::BarRole)> {
         let c = self.composer.lock().ok()?;
-        c.reel_bar_info(c.playhead_bar())
+        c.profile_bar_info(c.playhead_bar())
     }
 
     pub fn set_density(&self, density: f32) {
