@@ -1,0 +1,38 @@
+# Arrangement du reel acadien : tours d'un air, entrées progressives et intros idiomatiques.
+#
+# Un air est joué `tours_per_tune` tours AABB de 32 mesures avant d'en tirer un nouveau.
+# Chaque tour rejoue la même ligne mélodique et la même harmonie.
+#
+# Entrées progressives :
+# Le violon démarre seul (tour 1, A1).
+# Guitare et basse entrent à la reprise de A (tour 1, A2).
+# La podorythmie (talon et pointe) entre au deuxième tour (tour 2, A1).
+
+tours_per_tune = 3
+intro_each_tune = false
+
+[entries]
+Melody = { tour = 1, part = 0, pass = 1 }
+Chords = { tour = 1, part = 0, pass = 2 }
+Bass = { tour = 1, part = 0, pass = 2 }
+Heel = { tour = 2, part = 0, pass = 1 }
+Toe = { tour = 2, part = 0, pass = 1 }
+
+[intro]
+pickup_eighths = 2
+each_tune = false
+
+[[intro.forms]]
+role = "percussion"
+weight = 3
+bars = 1
+
+[[intro.forms]]
+role = "tail"
+weight = 2
+bars = 2
+
+[[intro.forms]]
+role = "vamp"
+weight = 1
+bars = 2

@@ -1,0 +1,100 @@
+# Pilotage continu du reel acadien par les émotions (Arousal, Tension, Valence, Density).
+# Multiplicateurs de vélocité et de durée ; décalages en BPM/pas/vélocité.
+
+neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
+mode_shift_boundary = "phrase"
+dark_below = -0.3
+bright_above = 0.1
+
+# En Acadie, le mode dorien est très prépondérant (14.2 % du corpus contre 6.4 % au Québec),
+# reflétant l'influence maritime et cap-bretonnaise (airs modaux, cordes à vide).
+parallel_modes = [
+  { bright = "ionian", dark = "dorian", weight = 3 },
+  { bright = "ionian", dark = "aeolian", weight = 2 },
+  { bright = "mixolydian", dark = "dorian", weight = 2 },
+]
+
+arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
+tension_intensity = [[0.0, -0.03], [0.3, 0.0], [1.0, 0.10]]
+tempo_offset = [[0.0, -10.0], [0.5, 0.0], [1.0, 15.0]]
+
+# Mix : le violon mène à toutes les intensités
+melody_velocity = [[0.0, 0.72], [0.5, 1.0], [1.0, 1.35]]
+guitar_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 0.80]]
+bass_velocity = [[0.0, 0.80], [0.5, 1.0], [1.0, 1.0]]
+feet_velocity = [[0.0, 0.60], [0.5, 1.0], [1.0, 1.65]]
+feet_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+fiddle_duration = [[0.0, 1.15], [0.5, 1.0], [1.0, 0.85]]
+strong_accent = [[0.0, -4.0], [0.5, 0.0], [1.0, 8.0]]
+chop_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
+run_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.5]]
+arp_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.0]]
+turn_weight = [[0.0, 2.0], [0.5, 1.0], [1.0, 0.4]]
+
+# Tonalité et registre au prochain air ; mode parallèle à la prochaine phrase
+color_register = [[0.0, -5.0], [0.65, 0.0], [1.0, 5.0]]
+brightness_accent = [[0.0, -8.0], [0.65, 0.0], [1.0, 10.0]]
+density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+density_chop = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
+density_passing = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+density_tracks = [
+  { track = "Melody", minimum = 0.0 },
+  { track = "Bass", minimum = 0.15 },
+  { track = "Chords", minimum = 0.25 },
+  { track = "Heel", minimum = 0.10 },
+  { track = "Toe", minimum = 0.35 },
+]
+chop_patterns = [[4], [4, 12], [2, 4, 10, 12], [2, 4, 6, 10, 12, 14]]
+
+# Tension : contretemps, tenues et dominantes
+tension_offbeat = [[0.0, -3.0], [0.3, 0.0], [1.0, 24.0]]
+tension_duration = [[0.0, 1.1], [0.3, 1.0], [1.0, 0.7]]
+tension_dominant = [[0.0, 0.0], [0.3, 0.0], [1.0, 0.75]]
+tension_chord_duration = [[0.0, 1.0], [0.3, 1.0], [1.0, 1.5]]
+
+# Tonalités observées dans le corpus acadien : La (9), Ré (2), Sol (7), Mi (4)
+[[color]]
+key = 9
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 4.0], [1.0, 6.0]]
+
+[[color]]
+key = 2
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 4.0], [1.0, 6.0]]
+
+[[color]]
+key = 7
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 3.0], [1.0, 5.0]]
+
+[[color]]
+key = 9
+mode = "mixolydian"
+weight = [[0.0, 0.1], [0.5, 1.5], [1.0, 3.0]]
+
+[[color]]
+key = 9
+mode = "dorian"
+weight = [[0.0, 6.0], [0.5, 1.0], [1.0, 0.0]]
+
+[[color]]
+key = 4
+mode = "dorian"
+weight = [[0.0, 4.0], [0.5, 0.5], [1.0, 0.0]]
+
+[[color]]
+key = 2
+mode = "dorian"
+weight = [[0.0, 3.0], [0.5, 0.0], [1.0, 0.0]]
+
+[[color]]
+key = 7
+mode = "aeolian"
+weight = [[0.0, 4.0], [0.5, 0.0], [1.0, 0.0]]
+
+[[color]]
+key = 9
+mode = "aeolian"
+weight = [[0.0, 3.0], [0.5, 0.0], [1.0, 0.0]]
