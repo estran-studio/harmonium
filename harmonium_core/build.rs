@@ -42,41 +42,39 @@ fn bundle_profiles() -> Result<(), Box<dyn std::error::Error>> {
         let text = std::fs::read_to_string(&profile_path)?;
         let mut root: toml::Value = toml::from_str(&text)?;
 
-        if let Some(files) = root.as_table_mut().and_then(|t| t.remove("files")) {
-            if let Some(files_tbl) = files.as_table() {
-                for (key, filename) in files_tbl {
-                    let fname = filename
-                        .as_str()
-                        .ok_or_else(|| format!("files.{key} dans {}", profile_path.display()))?;
-                    let target = match key.as_str() {
-                        "cells" => "melody.cells",
-                        "feet" => "percussion",
-                        "arrangement" => "arrangement",
-                        "dynamics" => "dynamics",
-                        _ => return Err(format!("banque {key}").into()),
-                    };
-                    let bank_path = dir.join(fname);
-                    let bank_text = std::fs::read_to_string(&bank_path)?;
-                    let bank_val: toml::Value = toml::from_str(&bank_text)?;
-                    if target == "melody.cells" {
-                        if let Some(melody) =
-                            root.get_mut("melody").and_then(toml::Value::as_table_mut)
-                        {
-                            melody.insert("cells".into(), bank_val);
-                        }
-                    } else if let Some(tbl) = root.as_table_mut() {
-                        tbl.insert(target.into(), bank_val);
+        if let Some(files) = root.as_table_mut().and_then(|t| t.remove("files"))
+            && let Some(files_tbl) = files.as_table()
+        {
+            for (key, filename) in files_tbl {
+                let fname = filename
+                    .as_str()
+                    .ok_or_else(|| format!("files.{key} dans {}", profile_path.display()))?;
+                let target = match key.as_str() {
+                    "cells" => "melody.cells",
+                    "feet" => "percussion",
+                    "arrangement" => "arrangement",
+                    "dynamics" => "dynamics",
+                    _ => return Err(format!("banque {key}").into()),
+                };
+                let bank_path = dir.join(fname);
+                let bank_text = std::fs::read_to_string(&bank_path)?;
+                let bank_val: toml::Value = toml::from_str(&bank_text)?;
+                if target == "melody.cells" {
+                    if let Some(melody) = root.get_mut("melody").and_then(toml::Value::as_table_mut)
+                    {
+                        melody.insert("cells".into(), bank_val);
                     }
+                } else if let Some(tbl) = root.as_table_mut() {
+                    tbl.insert(target.into(), bank_val);
                 }
             }
         }
 
-        if let Some(intro) = root.as_table_mut().and_then(|table| table.remove("intro")) {
-            if let Some(arrangement) =
+        if let Some(intro) = root.as_table_mut().and_then(|table| table.remove("intro"))
+            && let Some(arrangement) =
                 root.get_mut("arrangement").and_then(toml::Value::as_table_mut)
-            {
-                arrangement.insert("intro".into(), intro);
-            }
+        {
+            arrangement.insert("intro".into(), intro);
         }
 
         let inlined = toml::to_string(&root)?;
