@@ -213,3 +213,22 @@ Smoke CLI exécuté avec `--export --profile tests/fixtures/profiles/jazz_test
 Premières huit mesures observées : `Am7 | Dm7 | G7 | C | Dm7 | G7 | C | F`.
 La banque locale `assets/test.sf2` ne fournit pas tous les programmes GM :
 preuve de génération/export, pas validation du timbre ni écoute de style.
+
+### Non-régression trad (D2)
+
+Comparaison effectuée avec une extraction isolée de `main`
+(`f81fd7bdaf7bf7d761a2f892ae4beae6fcb90084`), exécutée avec le même
+harnais jetable que la branche de portage. Comparaison JSON exacte des
+tuples `(piste, hauteur, début, durée, vélocité)`, par mesure et dans l'ordre
+de publication, mêmes paramètres et mêmes graines :
+
+| Profil | Graines | Mesures par graine | Résultat |
+|---|---|---|---|
+| reel_quebecois | 1, 2, 3 | 64 | Identique à main |
+| gigue_quebecoise | 1, 2, 3 | 64 | Identique à main |
+| valse_quebecoise | 1, 2, 3 | 64 | Identique à main |
+
+Le contrat existant `automation::tests::profile_d2_main_note_reference`
+est vert sans modification de `profile_d2_main.json`. Les goldens
+existants ne sont pas régénérés : les profils trad n'ont pas changé de notes
+et le nouveau champ `chord_changes` est omis quand il est vide.
