@@ -143,9 +143,7 @@ impl Automation {
 mod tests {
     use anyhow::anyhow;
     use harmonium::playback::pack;
-    use harmonium_core::{
-        params::Style, report::MeasureSnapshot, trad::ReelArrangement, tuning::TuningParams,
-    };
+    use harmonium_core::{report::MeasureSnapshot, trad::ReelArrangement, tuning::TuningParams};
 
     use super::*;
 
@@ -191,7 +189,7 @@ mod tests {
             font_queue,
             seed,
         );
-        composer.set_style(Style::Profile);
+
         composer.set_tuning(TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
@@ -257,7 +255,7 @@ mod tests {
                     Default::default(),
                     seed,
                 );
-                composer.set_style(Style::Profile);
+
                 composer.use_emotion_mode();
                 composer.set_emotions(0.5, 0.0, 0.5, 0.0);
                 let mut bars = Vec::new();

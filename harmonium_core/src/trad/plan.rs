@@ -4,7 +4,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use super::{arrangement::Part, cells::CellRole, mode::Mode};
-use crate::{harmony::RngCore, style_profile::StyleProfile, theory::PitchClass};
+use crate::{algo::RngCore, style_profile::StyleProfile, theory::PitchClass};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ImposedRole {

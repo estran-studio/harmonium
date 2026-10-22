@@ -54,7 +54,7 @@ struct Args {
     #[arg(long, value_name = "FILE", requires = "export")]
     automation: Option<String>,
 
-    /// Profil embarqué (`reel_quebecois`, alias `reel`) ou générateur `legacy`.
+    /// Identifiant d'un profil embarqué (défaut : `reel_quebecois`).
     #[arg(long)]
     style: Option<String>,
 
@@ -114,7 +114,7 @@ fn main() -> Result<()> {
     }
 
     let parsed_style = if let Some(path) = &args.profile {
-        Some(parser::StyleSelection::Profile(Box::new(harmonium_core::StyleProfile::load(path)?)))
+        Some(Box::new(harmonium_core::StyleProfile::load(path)?))
     } else {
         args.style.as_deref().map(parser::parse_style_value).transpose()?
     };
@@ -194,7 +194,7 @@ fn main() -> Result<()> {
                 c.set_seed(seed);
             }
             if let Some(style) = parsed_style {
-                style.apply(&mut c)?;
+                c.set_profile(*style).map_err(|e| anyhow::anyhow!(e))?;
             }
             c.invalidate_future();
             if let Some((bar, _)) = c.take_pending_drop() {

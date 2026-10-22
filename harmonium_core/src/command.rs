@@ -6,9 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    events::RecordFormat, harmony::HarmonyMode, params::HarmonyStrategy, sequencer::RhythmMode,
-};
+use crate::events::RecordFormat;
 
 /// Unified command interface for controlling the engine
 /// All control flows through these commands (CLI, OSC)
@@ -36,66 +34,6 @@ pub enum EngineCommand {
 
     /// Enable/disable melody module
     EnableMelody(bool),
-
-    /// Enable/disable voicing (harmonized chords)
-    EnableVoicing(bool),
-
-    // === RHYTHM ===
-    /// Set rhythm mode (Euclidean | PerfectBalance | ClassicGroove)
-    SetRhythmMode(RhythmMode),
-
-    /// Set rhythm steps (16, 48, 96, 192)
-    SetRhythmSteps(usize),
-
-    /// Set rhythm pulses (1-steps)
-    SetRhythmPulses(usize),
-
-    /// Set rhythm rotation (0-steps)
-    SetRhythmRotation(usize),
-
-    /// Set rhythm density (0.0-1.0, for PerfectBalance mode)
-    SetRhythmDensity(f32),
-
-    /// Set rhythm tension (0.0-1.0)
-    SetRhythmTension(f32),
-
-    /// Set secondary rhythm parameters (for polyrhythm)
-    SetRhythmSecondary { steps: usize, pulses: usize, rotation: usize },
-
-    /// Set fixed kick mode (true = drum kit MIDI note 36, false = harmonized synth bass)
-    SetFixedKick(bool),
-
-    // === HARMONY ===
-    /// Set harmony mode (Basic | Driver)
-    SetHarmonyMode(HarmonyMode),
-
-    /// Set harmony strategy (Steedman | NeoRiemannian | Parsimonious | Auto)
-    SetHarmonyStrategy(HarmonyStrategy),
-
-    /// Set harmony tension (0.0-1.0, affects LCC level)
-    SetHarmonyTension(f32),
-
-    /// Set harmony valence (-1.0 to 1.0, major/minor bias)
-    SetHarmonyValence(f32),
-
-    /// Set measures per chord (1 or 2)
-    SetHarmonyMeasuresPerChord(usize),
-
-    /// Set key root (0-11, where 0 is C)
-    SetKeyRoot(u8),
-
-    // === MELODY / VOICING ===
-    /// Set melody smoothness (0.0-1.0, Hurst factor)
-    SetMelodySmoothness(f32),
-
-    /// Set melody octave (3-6)
-    SetMelodyOctave(i32),
-
-    /// Set voicing density (0.0-1.0)
-    SetVoicingDensity(f32),
-
-    /// Set voicing tension (0.0-1.0)
-    SetVoicingTension(f32),
 
     // === MIXER (per-channel) ===
     /// Set channel gain (channel 0-15, gain 0.0-1.0)
@@ -126,20 +64,6 @@ pub enum EngineCommand {
 
     /// Set emotional parameters (arousal, valence, density, tension), applied in emotion mode
     SetEmotionParams { arousal: f32, valence: f32, density: f32, tension: f32 },
-
-    // === BATCH OPERATIONS ===
-    /// Set all rhythm parameters in one command
-    SetAllRhythmParams {
-        mode: RhythmMode,
-        steps: usize,
-        pulses: usize,
-        rotation: usize,
-        density: f32,
-        tension: f32,
-        secondary_steps: usize,
-        secondary_pulses: usize,
-        secondary_rotation: usize,
-    },
 
     // === TIMELINE (Playhead control) ===
     /// Seek to a specific bar number (1-based)
@@ -196,24 +120,6 @@ mod tests {
     #[test]
     fn test_command_serde_roundtrip() {
         let cmd = EngineCommand::SetBpm(140.0);
-        let json = serde_json::to_string(&cmd).unwrap();
-        let deserialized: EngineCommand = serde_json::from_str(&json).unwrap();
-        assert_eq!(cmd, deserialized);
-    }
-
-    #[test]
-    fn test_complex_command_serde() {
-        let cmd = EngineCommand::SetAllRhythmParams {
-            mode: RhythmMode::PerfectBalance,
-            steps: 48,
-            pulses: 12,
-            rotation: 4,
-            density: 0.7,
-            tension: 0.5,
-            secondary_steps: 12,
-            secondary_pulses: 3,
-            secondary_rotation: 0,
-        };
         let json = serde_json::to_string(&cmd).unwrap();
         let deserialized: EngineCommand = serde_json::from_str(&json).unwrap();
         assert_eq!(cmd, deserialized);

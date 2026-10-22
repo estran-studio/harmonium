@@ -154,3 +154,42 @@ fn triple_meter_beat_info_contract() -> Result<(), String> {
     assert!(saw_pulse3, "doit observer pulse 3");
     Ok(())
 }
+
+/// Changer de profil applique ses défauts (tempo, swing, signature) et met en file les
+/// programmes SoundFont de ses instruments ; revenir au reel restaure les siens.
+#[test]
+fn switching_profiles_applies_defaults_and_queues_programs() -> Result<(), String> {
+    use harmonium_core::params::TimeSignature;
+
+    let (mut composer, mut playback, mut commands, _reports, _clock, _recordings) =
+        create_offline_engine(None, None, 44100.0)?;
+
+    composer.set_profile_id("gigue_quebecoise")?;
+    let params = composer.musical_params();
+    assert!((params.bpm - 172.5).abs() < f32::EPSILON);
+    assert!((params.swing_ratio - 0.5).abs() < f32::EPSILON);
+    assert_eq!(params.time_signature, TimeSignature::new(6, 8));
+    let _ = composer.take_pending_program_changes();
+
+    let mut custom = StyleProfile::named("gigue_quebecoise").map_err(|e| e.to_string())?;
+    custom.meta.id = "gigue_flute".into();
+    custom.instruments.melody_program = 73;
+    composer.set_profile(custom)?;
+    let programs = composer.take_pending_program_changes();
+    assert!(programs.contains(&(0, 73)), "programme mélodie attendu : {programs:?}");
+    for (channel, program) in programs {
+        commands
+            .push(PlaybackCommand::ProgramChange { channel, program })
+            .map_err(|_| "file de commandes pleine")?;
+    }
+    let mut buffer = [0.0f32; 512];
+    playback.process_buffer(&mut buffer, 2, std::time::Instant::now());
+
+    composer.set_profile_id("reel")?;
+    let params = composer.musical_params();
+    assert!((params.bpm - 230.0).abs() < f32::EPSILON);
+    assert!((params.swing_ratio - 0.56).abs() < f32::EPSILON);
+    assert_eq!(params.time_signature, TimeSignature::new(2, 2));
+    assert!(composer.take_pending_program_changes().contains(&(0, 40)));
+    Ok(())
+}

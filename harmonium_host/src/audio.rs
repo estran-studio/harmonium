@@ -379,16 +379,17 @@ mod tests {
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+        let nominal_bpm = composer.profile().meter.default_bpm;
 
         // In direct mode, set_bpm should work normally
         composer.set_bpm(155.0);
         assert!((composer.musical_params().bpm - 155.0).abs() < 0.01, "BPM should be 155");
 
-        // Reset BPM reverts to the initial emotion_mapped_bpm (120.0 default)
+        // Reset BPM restores the active profile's nominal tempo.
         composer.reset_bpm();
         assert!(
-            (composer.musical_params().bpm - 120.0).abs() < 0.01,
-            "BPM should revert to default 120 after reset, got {}",
+            (composer.musical_params().bpm - nominal_bpm).abs() < 0.01,
+            "BPM should revert to the profile tempo after reset, got {}",
             composer.musical_params().bpm
         );
     }

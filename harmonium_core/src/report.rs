@@ -5,13 +5,8 @@
 
 use arrayvec::ArrayString;
 use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 
-use crate::{
-    harmony::HarmonyMode,
-    params::{MusicalParams, PulseSpec, TimeSignature},
-    sequencer::RhythmMode,
-};
+use crate::params::{MusicalParams, PulseSpec, TimeSignature};
 
 /// Lightweight snapshot of a note for score rendering (e.g., VexFlow).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -167,39 +162,6 @@ pub struct EngineReport {
     /// Length of current progression
     pub progression_length: usize,
 
-    /// Current harmony mode
-    pub harmony_mode: HarmonyMode,
-
-    // === RHYTHM STATE ===
-    /// Primary sequencer steps
-    pub primary_steps: usize,
-
-    /// Primary sequencer pulses
-    pub primary_pulses: usize,
-
-    /// Primary sequencer rotation
-    pub primary_rotation: usize,
-
-    /// Primary pattern (fixed-size array to avoid allocation)
-    #[serde(with = "BigArray")]
-    pub primary_pattern: [bool; 192],
-
-    /// Secondary sequencer steps
-    pub secondary_steps: usize,
-
-    /// Secondary sequencer pulses
-    pub secondary_pulses: usize,
-
-    /// Secondary sequencer rotation
-    pub secondary_rotation: usize,
-
-    /// Secondary pattern (fixed-size array)
-    #[serde(with = "BigArray")]
-    pub secondary_pattern: [bool; 192],
-
-    /// Current rhythm mode
-    pub rhythm_mode: RhythmMode,
-
     // === NOTES TRIGGERED (this tick) ===
     /// Notes triggered since the last report (pre-allocated capacity)
     pub notes: Vec<NoteEvent>,
@@ -237,16 +199,6 @@ impl Default for EngineReport {
             chord_is_minor: false,
             progression_name: ArrayString::new(),
             progression_length: 0,
-            harmony_mode: HarmonyMode::default(),
-            primary_steps: 16,
-            primary_pulses: 5,
-            primary_rotation: 0,
-            primary_pattern: [false; 192],
-            secondary_steps: 12,
-            secondary_pulses: 3,
-            secondary_rotation: 0,
-            secondary_pattern: [false; 192],
-            rhythm_mode: RhythmMode::default(),
             notes: Vec::with_capacity(16), // Pre-allocated
             sample_offset: 0,
             new_measures: Vec::new(),

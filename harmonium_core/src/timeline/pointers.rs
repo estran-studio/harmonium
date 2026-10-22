@@ -1,7 +1,6 @@
 //! Writehead and Playhead - the two sides of the timeline architecture
 //!
-//! - **Writehead** (main thread): Generates measures ahead of playback using the
-//!   same algorithms as the legacy engine (Sequencer, HarmonicDriver, HarmonyNavigator).
+//! - **Writehead** (main thread): Generates measures ahead of playback from a validated profile.
 //!   Writes completed `Measure` structs to a ring buffer for the Playhead.
 //!
 //! - **Playhead** (audio thread): Reads measures from the ring buffer, converts

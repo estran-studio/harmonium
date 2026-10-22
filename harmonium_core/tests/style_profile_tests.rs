@@ -151,7 +151,6 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
 
     let tuning = harmonium_core::TuningParams { profile: profile.clone(), ..Default::default() };
     let mut params = MusicalParams::default();
-    params.set_style(harmonium_core::params::Style::Profile);
     params.bpm = profile.meter.default_bpm;
     params.enable_melody = true;
     params.enable_harmony = true;
@@ -258,7 +257,6 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
 
     let tuning = harmonium_core::TuningParams { profile: profile.clone(), ..Default::default() };
     let mut params = MusicalParams::default();
-    params.set_style(harmonium_core::params::Style::Profile);
     params.bpm = profile.meter.default_bpm;
     params.enable_melody = true;
     params.enable_harmony = true;

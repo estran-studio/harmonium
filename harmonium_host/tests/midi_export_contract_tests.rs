@@ -13,7 +13,7 @@
 use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
-use harmonium_core::{events::RecordFormat, params::Style};
+use harmonium_core::events::RecordFormat;
 use midly::{MetaMessage, MidiMessage, Smf, TrackEventKind};
 
 const SAMPLE_RATE: f64 = 44100.0;
@@ -40,7 +40,7 @@ fn render_reel(
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_seed(seed);
-    composer.set_style(Style::Profile);
+
     if let Some(ratio) = swing {
         composer.set_swing_ratio(ratio);
     }
@@ -61,7 +61,8 @@ fn render_reel(
     composer.set_writehead_lookahead(bars + 16);
     composer.generate_bars(bars);
 
-    let _ = cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Midi));
+    let _ = cmd_tx
+        .push(PlaybackCommand::StartRecording(harmonium_core::events::AudioRecordFormat::Midi));
 
     let mut rendered_samples = 0usize;
     let mut buffer = vec![0.0f32; BUFFER_SIZE * CHANNELS];
@@ -76,7 +77,8 @@ fn render_reel(
         while report_rx.pop().is_ok() {}
     }
 
-    let _ = cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Midi));
+    let _ = cmd_tx
+        .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Midi));
     buffer.fill(0.0);
     playback.process_buffer(&mut buffer, CHANNELS, Instant::now());
 

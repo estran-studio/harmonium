@@ -48,10 +48,10 @@ pub enum AudioEvent {
         swing_ratio: f32,
     },
     StartRecording {
-        format: RecordFormat,
+        format: AudioRecordFormat,
     },
     StopRecording {
-        format: RecordFormat,
+        format: AudioRecordFormat,
     },
     /// Set mixer gains for each instrument (0.0-1.0)
     SetMixerGains {
@@ -68,4 +68,20 @@ pub enum RecordFormat {
     Wav,
     Midi,
     MusicXml,
+}
+
+/// Formats capturés par le rendu ; MusicXML vient des mesures du compositeur.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum AudioRecordFormat {
+    Wav,
+    Midi,
+}
+
+impl From<AudioRecordFormat> for RecordFormat {
+    fn from(format: AudioRecordFormat) -> Self {
+        match format {
+            AudioRecordFormat::Wav => Self::Wav,
+            AudioRecordFormat::Midi => Self::Midi,
+        }
+    }
 }

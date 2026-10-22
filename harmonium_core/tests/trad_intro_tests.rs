@@ -2,7 +2,7 @@
 //! formes d'intro, levée (anacrouse), déterminisme, `each_tune`, validation.
 
 use harmonium_core::{
-    params::{MusicalParams, Style},
+    params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     trad::{
         IntroConfig, IntroForm, IntroRole, ReelArrangement, Section, TradGenerator, TunePosition,
@@ -15,7 +15,7 @@ use rand_chacha::ChaCha8Rng;
 fn reel_params() -> MusicalParams {
     let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
-    params.set_style(Style::Profile);
+
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;

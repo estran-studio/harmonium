@@ -197,7 +197,7 @@ fn invalidate_future_after_generation_keeps_playhead_bar() {
         Some(2),
         "regeneration starts after the playhead bar"
     );
-    assert_eq!(before[0].tempo, 120.0, "bar 1 kept its original tempo");
+    assert_eq!(before[0].tempo, 230.0, "bar 1 kept the default profile's original tempo");
     assert!(
         after.iter().all(|m| (m.tempo - 150.0).abs() < f32::EPSILON),
         "regenerated bars use the new tempo"

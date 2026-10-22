@@ -3,7 +3,6 @@ use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
-    params::Style,
     timeline::TrackId,
     trad::{Mode, ReelArrangement},
     tuning::TuningParams,
@@ -14,7 +13,7 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
     let (mut composer, mut playback, mut tx, _reports, mut clock, _recordings) =
         create_offline_engine(None, None, 44100.0)?;
     composer.set_seed(1);
-    composer.set_style(Style::Profile);
+
     composer.set_tuning(TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;

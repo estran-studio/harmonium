@@ -12,7 +12,7 @@
 //! playback engine writes it every buffer — so a wrong bar derivation on
 //! either side changes *how many* bars get generated and breaks the golden.
 //!
-//! To regenerate golden files, delete `tests/golden_measures/` and re-run tests.
+//! Régénération explicite : HARMONIUM_UPDATE_GOLDENS=1 cargo test -p harmonium --test snapshot_stream_tests.
 
 use harmonium::audio::create_offline_engine;
 use harmonium_core::report::MeasureSnapshot;
@@ -20,13 +20,15 @@ use harmonium_core::report::MeasureSnapshot;
 const SEED: u64 = 42;
 const BARS: usize = 8;
 const SAMPLE_RATE: f64 = 44100.0;
-const BPM: f64 = 120.0;
 
-/// Total samples for `bars` of 4/4 at `BPM`.
-fn samples_for_bars(bars: usize) -> usize {
-    let beats_per_bar = 4.0f64;
-    let seconds_per_beat = 60.0 / BPM;
-    let seconds_per_bar = seconds_per_beat * beats_per_bar;
+/// Nombre d'échantillons couvrant les mesures au tempo et à la métrique du profil.
+fn samples_for_bars(
+    bars: usize,
+    bpm: f32,
+    signature: harmonium_core::params::TimeSignature,
+) -> usize {
+    let beats_per_bar = signature.numerator as f64 * 4.0 / signature.denominator as f64;
+    let seconds_per_bar = beats_per_bar * 60.0 / f64::from(bpm);
     (seconds_per_bar * bars as f64 * SAMPLE_RATE) as usize
 }
 
@@ -43,7 +45,7 @@ fn assert_golden(name: &str, measures: &[MeasureSnapshot]) {
 
     let actual_json = serde_json::to_string_pretty(measures).expect("Failed to serialize measures");
 
-    if path.exists() {
+    if std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_none() {
         let expected_json = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("Failed to read golden file {}: {e}", path.display()));
 
@@ -111,7 +113,8 @@ fn snapshot_stream_unchanged() {
     // Drive playback for 8 bars, generating ahead before every buffer like
     // the real-time path does. The composer reads the shared playhead
     // position inside generate_ahead(); the playback engine writes it.
-    let total_samples = samples_for_bars(BARS);
+    let params = composer.musical_params();
+    let total_samples = samples_for_bars(BARS, params.bpm, params.time_signature);
     let chunk_size = 1024;
     let channels = 2;
     let mut buffer = vec![0.0f32; chunk_size * channels];
@@ -133,5 +136,5 @@ fn snapshot_stream_unchanged() {
     // position read by the composer — the interaction this change touches.
     let snapshots = composer.take_snapshots();
     assert!(snapshots.len() >= BARS, "Expected at least {BARS} snapshots, got {}", snapshots.len());
-    assert_golden("snapshot_stream_seed42_8bars", &snapshots);
+    assert_golden("snapshot_stream_reel_seed42_8bars", &snapshots);
 }

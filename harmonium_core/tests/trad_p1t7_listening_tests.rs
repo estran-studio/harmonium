@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 use harmonium_core::{
-    params::{MusicalParams, Style},
+    params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
     trad::{ReelArrangement, TradGenerator, same_cell_up_to_octave},
@@ -35,7 +35,7 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
     let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
-    params.set_style(Style::Profile);
+
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;

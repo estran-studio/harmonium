@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 
 use super::{Mode, TunePlan};
-use crate::{harmony::RngCore, timeline::TrackId};
+use crate::{algo::RngCore, timeline::TrackId};
 
 pub const REEL_INTENSITY_TOML: &str =
     include_str!("../../../profiles/reel_quebecois/dynamics.toml");

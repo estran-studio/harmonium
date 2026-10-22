@@ -44,6 +44,21 @@ struct ReplState {
 }
 
 impl ReplState {
+    fn start_recording(&mut self, format: RecordFormat) -> Result<()> {
+        self.composer
+            .lock()
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?
+            .start_recording(format, &mut self.playback_cmd_tx)
+            .map_err(anyhow::Error::msg)
+    }
+
+    fn stop_recording(&mut self, format: RecordFormat) -> Result<()> {
+        self.composer
+            .lock()
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?
+            .stop_recording(format, &mut self.playback_cmd_tx, &self.finished_recordings)
+            .map_err(anyhow::Error::msg)
+    }
     fn poll_reports(&mut self) {
         while let Ok(report) = self.report_rx.pop() {
             self.cached_state = Some(report);
@@ -236,16 +251,12 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
                         return Ok(true);
                     }
                 };
-                let _ = state.playback_cmd_tx.push(PlaybackCommand::StopRecording(format));
+                state.stop_recording(format)?;
                 println!("{} Recording {:?} stopped", "[OK]".green().bold(), format);
             } else {
-                let _ =
-                    state.playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Wav));
-                let _ =
-                    state.playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Midi));
-                let _ = state
-                    .playback_cmd_tx
-                    .push(PlaybackCommand::StopRecording(RecordFormat::MusicXml));
+                for format in [RecordFormat::Wav, RecordFormat::Midi, RecordFormat::MusicXml] {
+                    state.stop_recording(format)?;
+                }
                 println!("{} All recordings stopped", "[OK]".green().bold());
             }
             return Ok(true);
@@ -376,14 +387,10 @@ fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> 
         Ok(CliCommand::Style(style)) => {
             let (label, bpm, swing, ts) = {
                 let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-                style.apply(&mut c)?;
+                c.set_profile(*style).map_err(|e| anyhow::anyhow!(e))?;
                 c.invalidate_future();
                 let mp = c.musical_params();
-                let label = if mp.style == harmonium_core::params::Style::Legacy {
-                    "legacy".to_string()
-                } else {
-                    mp.profile_id.to_string()
-                };
+                let label = mp.profile_id.to_string();
                 (label, mp.bpm, mp.swing_ratio, mp.time_signature)
             };
             state.send_invalidate();
@@ -559,132 +566,6 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
             print_success_msg(&format!("Time signature set to {}/{}", numerator, denominator));
         }
 
-        EngineCommand::SetRhythmMode(mode) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_mode(mode);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Rhythm mode set to {:?}", mode));
-        }
-
-        EngineCommand::SetRhythmSteps(steps) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_steps(steps);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Steps set to {}", steps));
-        }
-
-        EngineCommand::SetRhythmPulses(pulses) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_pulses(pulses);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Pulses set to {}", pulses));
-        }
-
-        EngineCommand::SetRhythmRotation(rotation) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_rotation(rotation);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Rotation set to {}", rotation));
-        }
-
-        EngineCommand::SetRhythmDensity(density) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_density(density);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Density set to {:.2}", density));
-        }
-
-        EngineCommand::SetRhythmTension(tension) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_tension(tension);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Rhythm tension set to {:.2}", tension));
-        }
-
-        EngineCommand::SetHarmonyMode(mode) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_harmony_mode(mode);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Harmony mode set to {:?}", mode));
-        }
-
-        EngineCommand::SetHarmonyTension(tension) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_harmony_tension(tension);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Harmony tension set to {:.2}", tension));
-        }
-
-        EngineCommand::SetHarmonyValence(valence) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_harmony_valence(valence);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Harmony valence set to {:.2}", valence));
-        }
-
-        EngineCommand::SetHarmonyStrategy(strategy) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_harmony_strategy(strategy);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Harmony strategy set to {:?}", strategy));
-        }
-
-        EngineCommand::SetMelodySmoothness(smoothness) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_melody_smoothness(smoothness);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Smoothness set to {:.2}", smoothness));
-        }
-
-        EngineCommand::SetMelodyOctave(octave) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_melody_octave(octave);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Octave set to {}", octave));
-        }
-
-        EngineCommand::SetVoicingDensity(density) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_voicing_density(density);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Voicing density set to {:.2}", density));
-        }
-
-        EngineCommand::SetVoicingTension(tension) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_voicing_tension(tension);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Voicing tension set to {:.2}", tension));
-        }
-
         EngineCommand::EnableRhythm(enabled) => {
             if let Ok(mut c) = state.composer.lock() {
                 c.enable_rhythm(enabled);
@@ -710,71 +591,6 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
             }
             state.send_invalidate();
             print_success_msg(&format!("Melody {}", if enabled { "enabled" } else { "disabled" }));
-        }
-
-        EngineCommand::EnableVoicing(enabled) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.enable_voicing(enabled);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Voicing {}", if enabled { "enabled" } else { "disabled" }));
-        }
-
-        EngineCommand::SetFixedKick(fixed) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_fixed_kick(fixed);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Fixed kick {}", if fixed { "ON" } else { "OFF" }));
-        }
-
-        EngineCommand::SetAllRhythmParams {
-            mode,
-            steps,
-            pulses,
-            rotation,
-            density,
-            tension,
-            secondary_steps,
-            secondary_pulses,
-            secondary_rotation,
-        } => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_all_rhythm_params(
-                    mode,
-                    steps,
-                    pulses,
-                    rotation,
-                    density,
-                    tension,
-                    secondary_steps,
-                    secondary_pulses,
-                    secondary_rotation,
-                );
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg("All rhythm params updated");
-        }
-
-        EngineCommand::SetRhythmSecondary { steps, pulses, rotation } => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_rhythm_secondary(steps, pulses, rotation);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Secondary rhythm: {steps}s/{pulses}p/r{rotation}"));
-        }
-
-        EngineCommand::SetKeyRoot(root) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_key_root(root);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Key root set to {}", root));
         }
 
         EngineCommand::ResetBpm => {
@@ -850,12 +666,12 @@ fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
         }
 
         EngineCommand::StartRecording(format) => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::StartRecording(format));
+            state.start_recording(format)?;
             print_success_msg(&format!("Recording {:?} started", format));
         }
 
         EngineCommand::StopRecording(format) => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::StopRecording(format));
+            state.stop_recording(format)?;
             print_success_msg(&format!("Recording {:?} stopped", format));
         }
 
@@ -1001,7 +817,7 @@ fn print_state(state: &mut ReplState) {
     let composer_snapshot = state.composer.lock().ok().map(|c| {
         let bar = state.get_state().map_or_else(|| c.playhead_bar(), |r| r.current_bar.max(1));
         (
-            c.musical_params().style,
+            c.musical_params().profile_id.clone(),
             c.musical_params().feet_density,
             c.profile_bar_info(bar),
             c.config.key.clone(),
@@ -1011,7 +827,7 @@ fn print_state(state: &mut ReplState) {
 
     if let Some(report) = state.get_state() {
         let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot.unwrap_or((
-            report.musical_params.style,
+            report.musical_params.profile_id.clone(),
             report.musical_params.feet_density,
             None,
             report.session_key.to_string(),
@@ -1061,7 +877,6 @@ fn print_state(state: &mut ReplState) {
 
         // Harmony
         println!("{}", "HARMONY:".yellow().bold());
-        println!("  Mode: {}", format!("{:?}", report.harmony_mode).green());
         println!("  Current Chord: {}", format!("{}", report.current_chord).magenta().bold());
         println!(
             "  Progression: {}",
@@ -1077,37 +892,6 @@ fn print_state(state: &mut ReplState) {
         println!("  Key: {}", key_str.green());
         println!();
 
-        // Rhythm
-        println!("{}", "RHYTHM:".yellow().bold());
-        println!("  Mode: {}", format!("{:?}", report.rhythm_mode).green());
-        println!(
-            "  Primary: {} steps, {} pulses, rotation {}",
-            format!("{}", report.primary_steps).green(),
-            format!("{}", report.primary_pulses).green(),
-            format!("{}", report.primary_rotation).green()
-        );
-        println!(
-            "  Secondary: {} steps, {} pulses, rotation {}",
-            format!("{}", report.secondary_steps).green(),
-            format!("{}", report.secondary_pulses).green(),
-            format!("{}", report.secondary_rotation).green()
-        );
-
-        // Print pattern (first 32 steps)
-        print!("  Pattern: ");
-        for (i, &trigger) in report.primary_pattern.iter().enumerate().take(32) {
-            if i > 0 && i % 16 == 0 {
-                print!("| ");
-            }
-            if trigger {
-                print!("{}", "█".green());
-            } else {
-                print!("{}", "·".dimmed());
-            }
-        }
-        println!();
-        println!();
-
         // Modules
         println!("{}", "MODULES:".yellow().bold());
         println!(
@@ -1121,10 +905,6 @@ fn print_state(state: &mut ReplState) {
         println!(
             "  Melody:  {}",
             if report.musical_params.enable_melody { "ON".green() } else { "OFF".red() }
-        );
-        println!(
-            "  Voicing: {}",
-            if report.musical_params.enable_voicing { "ON".green() } else { "OFF".red() }
         );
         println!();
     } else if let Some((style, feet_density, reel_info, comp_key, comp_scale)) = composer_snapshot {

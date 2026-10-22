@@ -11,7 +11,7 @@ use std::{
 
 use anyhow::Result;
 use harmonium::{audio, playback::PlaybackCommand};
-use harmonium_core::{events::RecordFormat, params::Style};
+use harmonium_core::events::RecordFormat;
 
 use crate::{
     automation::Automation,
@@ -29,7 +29,7 @@ pub fn run(
     feet_sf2_bytes: Option<&[u8]>,
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
-    style: Option<crate::parser::StyleSelection>,
+    style: Option<Box<harmonium_core::StyleProfile>>,
     seed: Option<u64>,
     feet: Option<FeetOpt>,
     swing: Option<f32>,
@@ -55,7 +55,7 @@ pub fn run(
         composer.set_seed(s);
     }
     if let Some(st) = style {
-        st.apply(&mut composer)?;
+        composer.set_profile(*st).map_err(|e| anyhow::anyhow!(e))?;
     }
     // Le style réapplique ses défauts (dont le swing) : les réglages
     // d'export passent après, via les paramètres existants.
@@ -116,7 +116,7 @@ pub fn run(
     let mut bar_start_frames = std::collections::BTreeMap::new();
     bar_start_frames.insert(1usize, 0u64);
 
-    if composer.musical_params().style == Style::Profile {
+    {
         let mp = composer.musical_params();
         let feet = if mp.enable_rhythm { mp.feet_density.to_string() } else { "off".to_string() };
         println!(
@@ -143,30 +143,22 @@ pub fn run(
                 );
             }
         }
-    } else {
-        let mp = composer.musical_params();
-        println!(
-            "Legacy export: seed={}, key={} {}, bpm={:.1}, swing={:.2}, sig={}/{}",
-            composer.session_seed(),
-            composer.config.key,
-            composer.config.scale,
-            mp.bpm,
-            mp.swing_ratio,
-            mp.time_signature.numerator,
-            mp.time_signature.denominator
-        );
     }
     let has_recordings = record_wav.is_some() || record_midi.is_some() || record_musicxml.is_some();
 
     // Start recordings via playback command queue
     if record_wav.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Wav));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StartRecording(harmonium_core::events::AudioRecordFormat::Wav));
     }
     if record_midi.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Midi));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StartRecording(harmonium_core::events::AudioRecordFormat::Midi));
     }
     if record_musicxml.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::MusicXml));
+        composer
+            .start_recording(RecordFormat::MusicXml, &mut playback_cmd_tx)
+            .map_err(anyhow::Error::msg)?;
     }
 
     if has_recordings {
@@ -264,12 +256,8 @@ pub fn run(
                     "chord": report.current_chord.as_str(),
                     "chord_root_offset": report.chord_root_offset,
                     "chord_is_minor": report.chord_is_minor,
-                    "harmony_mode": format!("{:?}", report.harmony_mode),
-                    "rhythm_mode": format!("{:?}", report.rhythm_mode),
                     "bpm": report.musical_params.bpm,
                     "time_signature": format!("{}/{}", report.time_signature.numerator, report.time_signature.denominator),
-                    "primary_steps": report.primary_steps,
-                    "primary_pulses": report.primary_pulses,
                     "session_key": report.session_key.as_str(),
                     "session_scale": report.session_scale.as_str(),
                 });
@@ -299,13 +287,17 @@ pub fn run(
     );
     // Stop recordings
     if record_wav.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Wav));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Wav));
     }
     if record_midi.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Midi));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Midi));
     }
     if record_musicxml.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::MusicXml));
+        composer
+            .stop_recording(RecordFormat::MusicXml, &mut playback_cmd_tx, &finished_recordings)
+            .map_err(anyhow::Error::msg)?;
     }
 
     // The engine needs one more process_buffer call to handle the stop commands

@@ -21,9 +21,7 @@ impl ChannelRoute {
     }
 }
 
-/// Programme GM pour le piano acoustique (mélodie `Style::Legacy`).
-pub const GM_PROGRAM_PIANO: u8 = 0;
-/// Programme GM pour le violon (mélodie `Style::Profile`, D10 : 41 1-based = 40 0-based).
+/// Programme GM du violon (40, index 0-based).
 pub const GM_PROGRAM_VIOLIN: u8 = 40;
 /// Programme GM pour la guitare acoustique cordes acier (`Chords`, D10 : 25 1-based = 24 0-based).
 pub const GM_PROGRAM_STEEL_GUITAR: u8 = 24;
@@ -37,22 +35,16 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 /// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
 pub const FEET_BANK_OFFSET: u32 = 1;
 
-/// Programmes des trois pistes mélodiques : Legacy conservé, sinon données du profil.
+/// Programmes des trois pistes mélodiques, résolus depuis le profil.
 #[must_use]
-pub const fn gm_programs_for_style(
-    style: harmonium_core::params::Style,
+pub const fn gm_programs_for_profile(
     instruments: &harmonium_core::style_profile::ProfileInstruments,
 ) -> [(u8, u8); 3] {
-    match style {
-        harmonium_core::params::Style::Legacy => {
-            [(0, GM_PROGRAM_PIANO), (1, GM_PROGRAM_STEEL_GUITAR), (2, GM_PROGRAM_ACOUSTIC_BASS)]
-        }
-        harmonium_core::params::Style::Profile => [
-            (0, instruments.melody_program),
-            (1, instruments.chords_program),
-            (2, instruments.bass_program),
-        ],
-    }
+    [
+        (0, instruments.melody_program),
+        (1, instruments.chords_program),
+        (2, instruments.bass_program),
+    ]
 }
 /// Détermine si une séquence de numéros de banques contient la banque 128 (kit de batterie GM).
 #[must_use]
@@ -87,9 +79,11 @@ fn default_midi_channel_map() -> [u8; 16] {
 
 fn default_channel_programs() -> [u8; 16] {
     let mut progs = [0u8; 16];
-    progs[0] = GM_PROGRAM_PIANO;
-    progs[1] = GM_PROGRAM_STEEL_GUITAR;
-    progs[2] = GM_PROGRAM_ACOUSTIC_BASS;
+    for (channel, program) in
+        gm_programs_for_profile(&harmonium_core::StyleProfile::builtin().instruments)
+    {
+        progs[channel as usize] = program;
+    }
     progs
 }
 
@@ -200,10 +194,7 @@ impl VoiceManager {
             program_id: 0,
         });
 
-        self.apply_style_programs(
-            harmonium_core::params::Style::Legacy,
-            &harmonium_core::StyleProfile::builtin().instruments,
-        );
+        self.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
     }
 
     /// Détermine si la SoundFont chargée dans oxisynth contient un preset en banque 128 (kit de batterie GM).
@@ -259,7 +250,6 @@ impl VoiceManager {
         });
 
         let required = [
-            (GM_PROGRAM_PIANO, "piano acoustique (programme 0)"),
             (GM_PROGRAM_STEEL_GUITAR, "guitare acier (programme 24)"),
             (GM_PROGRAM_ACOUSTIC_BASS, "basse acoustique (programme 32)"),
             (GM_PROGRAM_VIOLIN, "violon (programme 40)"),
@@ -294,21 +284,17 @@ impl VoiceManager {
     }
 
     /// Applique l'instrumentarium déjà résolu, sans allocation dans le callback.
-    pub fn apply_style_programs(
+    pub fn apply_profile_programs(
         &mut self,
-        style: harmonium_core::params::Style,
         instruments: &harmonium_core::style_profile::ProfileInstruments,
     ) {
-        for (ch, prog) in gm_programs_for_style(style, instruments) {
+        for (ch, prog) in gm_programs_for_profile(instruments) {
             self.set_channel_program(ch as usize, prog);
         }
-        if style == harmonium_core::params::Style::Profile {
-            let bank =
-                self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
-            for channel in [3, 4] {
-                self.set_channel_route(channel, ChannelRoute { bank });
-                self.set_channel_program(channel, instruments.percussion_program);
-            }
+        let bank = self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
+        for channel in [3, 4] {
+            self.set_channel_route(channel, ChannelRoute { bank });
+            self.set_channel_program(channel, instruments.percussion_program);
         }
     }
 
@@ -444,7 +430,7 @@ impl VoiceManager {
                 self.set_channel_program(channel as usize, program);
             }
             AudioEvent::UpdateMusicalParams { params } => {
-                self.apply_style_programs(params.style, &params.profile_instruments);
+                self.apply_profile_programs(&params.profile_instruments);
             }
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MeasureTiming { .. }

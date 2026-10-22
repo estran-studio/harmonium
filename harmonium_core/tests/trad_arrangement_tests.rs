@@ -2,9 +2,9 @@
 //! tours d'un air, entrées progressives des pistes, plafonds `enable_*`, position exposée.
 
 use harmonium_core::{
-    params::{MusicalParams, Style},
+    params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    timeline::{GenerationContext, TrackId},
+    timeline::TrackId,
     trad::{
         ArrangementError, IntroConfig, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator,
         TunePosition,
@@ -13,14 +13,13 @@ use harmonium_core::{
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
 const SEEDS: [u64; 5] = [1, 2, 3, 7, 11];
 
 fn reel_params() -> MusicalParams {
     let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
-    params.set_style(Style::Profile);
+
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;
@@ -141,12 +140,7 @@ fn later_tours_do_not_consume_the_rng() {
         let linear = stream(seed, 100);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut sought = TradGenerator::new(reel_params(), flat_tuning());
-        sought.reset_to_initial(&GenerationContext {
-            session_seed: seed,
-            key: PitchSymbol::D,
-            scale: ScaleType::Diatonic,
-            key_pc: 2,
-        });
+        sought.reset_to_initial();
         sought.silent_advance(97, &mut rng);
         for b in 97..=100 {
             let snap = MeasureSnapshot::from_measure(&sought.generate_measure(b, &mut rng));
