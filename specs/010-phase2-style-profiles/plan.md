@@ -1,7 +1,9 @@
 # Phase 2 — Profils de style : un style = des données
 
-**Statut** : T1–T5 mergées (2026-10-22) ; reste le critère 4 (écoute du propriétaire : kits
-`harmonium_lab/target/blindtest/{gigue-1,valse-1}`, démos `demos/{gigue,valse}_seed1.wav`) |
+**Statut** : T1–T5 mergées (2026-10-22), plus P4-T1 (marche britannique coloniale) et P4-T2 (reel
+acadien). Première écoute du propriétaire sur les démos gigue, valse, marche et reel acadien
+(2026-10-22) : « c'est quand même bien, je suis agréablement surpris ». Reste à confirmer le critère 4
+par les kits à l'aveugle `harmonium_lab/target/blindtest/{gigue-1,valse-1}` |
 **Dépend de** : phase 1 (reel validé pour la démo)
 
 Bilan :
