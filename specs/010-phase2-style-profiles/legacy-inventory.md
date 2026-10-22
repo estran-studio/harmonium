@@ -197,3 +197,19 @@ optimiser ses renversements/octaves dans la tessiture. Les fonctions pures
 réutilisables sont déjà dans `theory/voice_leading.rs`. En P2-T5c, supprimer
 le driver `harmony/parsimonious.rs` avec Legacy ; aucune copie dormante n'est
 gardée, et le code historique reste accessible dans Git.
+
+### Fixture jazz synthétique (hors distribution)
+
+`tests/fixtures/profiles/jazz_test/` contient un exercice 4/4, swing 2:1,
+AABA de 32 mesures à 120 BPM, cellules artificielles et percussion euclidienne.
+Ce n'est pas un style jazz validé : aucun corpus ni validation d'écoute.
+Le test de snapshots `harmonium_core/tests/jazz_profile_tests.rs` couvre les
+graines 1..10 sur 64 mesures : reprises A identiques, accords valides,
+ii-V-I (relatif à la tonalité publiée), déterminisme, mélodie dans les
+accords/gammes publiés et onsets de percussion aux pas 1, 5, 9, 13.
+
+Smoke CLI exécuté avec `--export --profile tests/fixtures/profiles/jazz_test
+--seed 42 --bars 32` : 64 secondes de rendu, export MIDI de 5 619 octets.
+Premières huit mesures observées : `Am7 | Dm7 | G7 | C | Dm7 | G7 | C | F`.
+La banque locale `assets/test.sf2` ne fournit pas tous les programmes GM :
+preuve de génération/export, pas validation du timbre ni écoute de style.
