@@ -60,6 +60,22 @@ pub struct ActiveTune {
     pub feet_humanize: [[i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS],
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
+    initial_mode: Mode,
+    initial_dark: bool,
+    bright_mode: Mode,
+    dark_mode: Option<Mode>,
+    /// Historique audible : une invalidation retire seulement les décisions futures.
+    mode_changes: BTreeMap<usize, (Mode, bool)>,
+    mode_requests: BTreeMap<usize, bool>,
+}
+
+impl ActiveTune {
+    fn color_at(&self, bar: usize) -> (Mode, bool) {
+        self.mode_changes
+            .range(..=bar)
+            .next_back()
+            .map_or((self.initial_mode, self.initial_dark), |(_, &color)| color)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -93,11 +109,15 @@ impl TradGenerator {
         self.musical_params = params;
     }
 
-    /// Garde le plan déjà audible ; les airs futurs seront tirés avec les
-    /// nouveaux paramètres. Ne modifie jamais la mélodie de l'air courant.
+    /// Garde les cellules et les décisions déjà audibles ; retire uniquement
+    /// les décisions de mode et les airs encore futurs.
     pub fn invalidate_future(&mut self, playing_bar: usize) {
         let current_tune = self.position_of(playing_bar).tune_index;
         self.tunes.retain(|&index, _| index <= current_tune);
+        for tune in self.tunes.values_mut() {
+            tune.mode_changes.retain(|&bar, _| bar <= playing_bar);
+            tune.mode_requests.retain(|&bar, _| bar <= playing_bar);
+        }
     }
 
     fn feet_density(&self) -> u8 {
@@ -161,7 +181,9 @@ impl TradGenerator {
     pub fn bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
         let tune = self.tune_for_bar(bar_number)?;
         let role = tune.plan.bar_role_1based(bar_number.max(1));
-        Some((tune.plan, role))
+        let mut plan = tune.plan;
+        plan.mode = tune.color_at(bar_number).0;
+        Some((plan, role))
     }
 
     /// Position structurée de la mesure 1-based `bar_number` (unique conversion
@@ -183,6 +205,10 @@ impl TradGenerator {
             let intro_bars =
                 self.tunes.get(&tune_idx).map(|t| t.intro_info.intro_bars).unwrap_or(0);
 
+            let (key, mode) = self
+                .tunes
+                .get(&tune_idx)
+                .map_or((0, Mode::Ionian), |t| (t.plan.key, t.color_at(bar_number).0));
             let body_start = offset + intro_bars + 1;
             let body_end = offset + intro_bars + cycle; // dernière mesure du corps (incluse)
 
@@ -196,6 +222,8 @@ impl TradGenerator {
                     part: arrangement::Part::A,
                     pass: 0,
                     bar_in_strain: 0,
+                    key,
+                    mode,
                 };
             }
 
@@ -218,6 +246,8 @@ impl TradGenerator {
                     },
                     pass: in_part / BARS_PER_STRAIN + 1,
                     bar_in_strain: in_part % BARS_PER_STRAIN + 1,
+                    key,
+                    mode,
                 };
             }
 
@@ -260,6 +290,8 @@ impl TradGenerator {
         // position dépend du nombre de mesures d'intro (tirées au RNG).
         self.ensure_tunes_covering(bar_index, rng);
 
+        let position = self.position_of(bar_index);
+        self.update_parallel_mode(bar_index, &position, rng);
         let position = self.position_of(bar_index);
 
         let kind = TuneKind::Reel;
@@ -306,6 +338,51 @@ impl TradGenerator {
         self.apply_dynamics(&mut measure);
 
         measure
+    }
+
+    fn update_parallel_mode(&mut self, bar: usize, position: &TunePosition, rng: &mut dyn RngCore) {
+        let dynamics = &self.tuning.reel_intensity;
+        let Some(tune) = self.tunes.get_mut(&position.tune_index) else { return };
+        let (mut mode, dark) = tune.color_at(bar);
+        let requested = tune
+            .mode_requests
+            .range(..=bar)
+            .next_back()
+            .map_or(tune.initial_dark, |(_, &requested)| requested);
+        let valence = self.musical_params.harmony_valence;
+        let target_dark = if valence < dynamics.dark_below {
+            true
+        } else if valence > dynamics.bright_above {
+            false
+        } else {
+            requested
+        };
+        if target_dark != requested {
+            tune.mode_requests.insert(bar, target_dark);
+        }
+        if !position.is_intro()
+            && (position.bar_in_strain - 1) % dynamics.mode_shift_boundary.bars() == 0
+            && target_dark != dark
+        {
+            mode = if target_dark {
+                *tune
+                    .dark_mode
+                    .get_or_insert_with(|| dynamics.draw_parallel_dark(tune.bright_mode, rng))
+            } else {
+                tune.bright_mode
+            };
+            tune.mode_changes.insert(bar, (mode, target_dark));
+        }
+        if tune.plan.mode != mode {
+            tune.plan.mode = mode;
+            tune.fiddle.set_mode(mode);
+            let melody: [Vec<TimelineNote>; TUNE_HARMONY_BARS] = std::array::from_fn(|i| {
+                let bar = if i < BARS_PER_STRAIN { i } else { i + BARS_PER_STRAIN };
+                tune.fiddle.notes_for_bar(bar)
+            });
+            tune.harmony = TuneHarmony::new(tune.plan, &melody, &self.tuning.trad_harmony)
+                .unwrap_or_else(|_| fallback_tune_harmony(tune.plan));
+        }
     }
 
     /// Remplit une mesure d'intro selon la forme tirée et la levée.
@@ -590,7 +667,12 @@ impl TradGenerator {
             self.tuning.reel_intensity.tension_dominant.eval(self.musical_params.harmony_tension);
         let slot = bar % BARS_PER_STRAIN;
         if slot != 3 && slot != 7 && (slot as f32 / BARS_PER_STRAIN as f32) < threshold {
-            chords[1] = TradChord::new(ChordDegree::V, ChordQuality::Major);
+            // La dominante garde la qualité diatonique du mode courant.
+            chords[1] = super::harmony::candidate_chords(tune.plan.mode)
+                .iter()
+                .copied()
+                .find(|c| c.degree == ChordDegree::V)
+                .unwrap_or(chords[1]);
         }
         chords
     }
@@ -824,7 +906,25 @@ impl TradGenerator {
         // Tirer l'intro (P1-T11)
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
 
-        ActiveTune { tune_index, plan, fiddle, harmony, feet_humanize, intro_info }
+        let bright_mode = dynamics
+            .parallel_modes
+            .iter()
+            .find(|c| c.dark == plan.mode)
+            .map_or(plan.mode, |c| c.bright);
+        ActiveTune {
+            tune_index,
+            plan,
+            fiddle,
+            harmony,
+            feet_humanize,
+            intro_info,
+            initial_mode: plan.mode,
+            initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,
+            bright_mode,
+            dark_mode: plan.mode.is_minor().then_some(plan.mode),
+            mode_changes: BTreeMap::new(),
+            mode_requests: BTreeMap::new(),
+        }
     }
 
     /// Tire une intro pour `tune_index` selon `IntroConfig` (P1-T11).

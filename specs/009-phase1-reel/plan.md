@@ -334,8 +334,8 @@ Validé à l'oreille (2026-10-22, `demos/combat_seed1.wav`, après correction
 du mixage `2e4089a`) : « on sent une progression plus rapide et intense
 pendant que la musique joue ». Mixage retenu : le violon mène à toutes les
 intensités ; guitare 5 à 12 dB sous le violon, basse 1 à 4 dB sous.
-Reste ouvert : la valence ne change le mode qu'à l'air suivant (environ
-100 mesures avec 3 tours), donc le mineur n'arrive pas pendant un combat.
+P1-T13 permet désormais le passage au mode parallèle pendant l'air, à la
+frontière de phrase suivante (voir ci-dessous).
 
 ## Suite proposée (prochaine session)
 
@@ -388,13 +388,13 @@ chaque lancement ; depuis 2026-10-20, OpenRouter (`deepseek-v4-pro` difficile,
 | Axe | Effet immédiat à la mesure suivante | Effet au prochain air |
 |---|---|---|
 | Arousal → intensity | Énergie/vélocités, tempo borné, coups de pieds, chop, notes plus courtes, accents forts | Poids run/arp/turn |
-| Valence (−1..1) | Brillance des accents | Mode/tonalité pondérés et centre de registre |
+| Valence (−1..1) | Brillance des accents ; mode parallèle à la prochaine phrase (P1-T13) | Tonalité pondérée et centre de registre |
 | Density (0..1) | Instruments actifs sous les plafonds du jeu et de l'arrangement, pieds, chop, notes de passage sur les tenues | Aucun changement du plan |
 | Tension (0..1) | Accents de contretemps, articulation sèche, dominantes plus fréquentes et tenues | Aucun changement du plan |
 
-- Le plan de l'air déjà audible est conservé ; seules les mesures futures et
-  les plans d'airs non encore entendus sont invalidés. AABB conserve les
-  hauteurs et positions du squelette mélodique sous automation d'intensité ;
+- Les cellules de l'air déjà audible sont conservées ; seules les mesures futures et
+  les plans d'airs non encore entendus sont invalidés. AABB conserve les degrés et
+  positions du squelette mélodique sous automation d'intensité/valence ;
   vélocités/durées et ornements de densité restent des paramètres de rendu.
 - Un changement de tempo d'une mesure trad utilise la rampe existante de
   `SetTempo`, sur le nombre de pulses d'une mesure (deux en reel). Un override
@@ -504,4 +504,29 @@ explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
   `cargo fmt --all -- --check` passe. Baseline `main` de la comparaison :
   `b1e4184066d90cdc5f8f2de33236229849267de6`. Un seul profil `target/debug`,
   archive de comparaison et probes supprimées après mesure.
+
+
+## P1-T13 — Mode parallèle pendant l'air
+
+- `reel_intensity.toml` : `mode_shift_boundary = "phrase"` (4 mesures) ou
+  `"part"` (8), `dark_below = -0.3`, `bright_above = 0.1`. Seuils stricts ;
+  entre les seuils, la dernière demande reste mémorisée jusqu'à la frontière.
+- Table pondérée `parallel_modes` : ionien → éolien (3) / dorien (1),
+  mixolydien → dorien (1). Tirage par le RNG injecté au premier passage sombre,
+  mémorisé pour l'air ; retour au mode clair d'origine, sur la même tonique.
+  Un air né mineur utilise le mode clair de la première ligne correspondante.
+- Les mêmes cellules sont relues en conservant degré, octave et rythme de chaque
+  note déjà choisie. L'harmonie est revotée seulement au changement de mode ;
+  basse et chop utilisent ce mode, y compris les dominantes sous tension.
+- `invalidate_future` conserve les décisions audibles et retire les décisions
+  spéculatives futures ; aucune mutation de la mesure en cours ni de `BeatInfo`.
+- `MeasureSnapshot.position` publie toujours `key` et `mode` en trad, intro et
+  outro comprises. Décision du coordinateur : publication inconditionnelle,
+  rupture de snapshot assumée, `TUNING_VERSION` **6 → 7**. L'invariant neutre
+  porte sur toutes les notes (piste, hauteur, début, durée, vélocité), pas sur
+  les nouveaux octets des métadonnées. Aucun tirage ajouté au chemin neutre.
+- Régression reproduite avant correction : le degré 3 de la mesure 5 restait
+  majeur après valence −0.9 à la mesure 3. Les six tests de contrat
+  `trad_mode_shift_tests` passent après correction (frontières, degrés/octaves,
+  hystérésis, notes d'accompagnement/ornements, invalidation et déterminisme).
 

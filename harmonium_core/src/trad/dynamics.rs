@@ -62,6 +62,32 @@ pub struct ColorChoice {
     pub weight: Curve,
 }
 
+/// Frontière musicale autorisée pour une nouvelle couleur parallèle.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModeShiftBoundary {
+    #[default]
+    Phrase,
+    Part,
+}
+
+impl ModeShiftBoundary {
+    pub(crate) const fn bars(self) -> usize {
+        match self {
+            Self::Phrase => 4,
+            Self::Part => 8,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ParallelModeChoice {
+    pub bright: Mode,
+    pub dark: Mode,
+    pub weight: u32,
+}
+
 /// Section générique du futur profil de style, chargée dans `TuningParams`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -96,6 +122,11 @@ pub struct StyleDynamics {
     pub tension_duration: Curve,
     pub tension_dominant: Curve,
     pub tension_chord_duration: Curve,
+    #[serde(default)]
+    pub mode_shift_boundary: ModeShiftBoundary,
+    pub dark_below: f32,
+    pub bright_above: f32,
+    pub parallel_modes: Vec<ParallelModeChoice>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -144,6 +175,10 @@ impl Default for StyleDynamics {
                         tension_duration: empty(),
                         tension_dominant: empty(),
                         tension_chord_duration: empty(),
+                        mode_shift_boundary: ModeShiftBoundary::Phrase,
+                        dark_below: 0.0,
+                        bright_above: 0.0,
+                        parallel_modes: Vec::new(),
                     }
                 }
             });
@@ -168,6 +203,34 @@ impl StyleDynamics {
                 "valence_range: bornes finies croissantes contenant neutral_valence requises"
                     .into(),
             );
+        }
+        if !self.dark_below.is_finite()
+            || !self.bright_above.is_finite()
+            || self.dark_below >= self.bright_above
+            || self.dark_below < self.valence_range[0]
+            || self.bright_above > self.valence_range[1]
+        {
+            return Err(
+                "parallel_modes: seuils finis dark_below < bright_above dans valence_range requis"
+                    .into(),
+            );
+        }
+        if self.parallel_modes.is_empty()
+            || self
+                .parallel_modes
+                .iter()
+                .any(|c| c.bright.is_minor() || !c.dark.is_minor() || c.weight == 0)
+            || self.parallel_modes.iter().map(|c| u64::from(c.weight)).sum::<u64>()
+                > u64::from(u32::MAX)
+            || Mode::ALL.iter().any(|mode| {
+                if mode.is_minor() {
+                    !self.parallel_modes.iter().any(|c| c.dark == *mode)
+                } else {
+                    !self.parallel_modes.iter().any(|c| c.bright == *mode)
+                }
+            })
+        {
+            return Err("parallel_modes: table claire → sombre complète et poids positifs (somme <= u32::MAX) requis".into());
         }
         for (name, curve, min, max) in [
             ("arousal_intensity", &self.arousal_intensity, 0.0, 1.0),
@@ -261,6 +324,18 @@ impl StyleDynamics {
     pub fn valence_input(&self, valence: f32) -> f32 {
         ((valence - self.valence_range[0]) / (self.valence_range[1] - self.valence_range[0]))
             .clamp(0.0, 1.0)
+    }
+    pub(crate) fn draw_parallel_dark(&self, bright: Mode, rng: &mut dyn RngCore) -> Mode {
+        let total: u32 =
+            self.parallel_modes.iter().filter(|c| c.bright == bright).map(|c| c.weight).sum();
+        let mut pick = rng.next_range_usize(0..total as usize);
+        for choice in self.parallel_modes.iter().filter(|c| c.bright == bright) {
+            if pick < choice.weight as usize {
+                return choice.dark;
+            }
+            pick -= choice.weight as usize;
+        }
+        bright
     }
 
     pub fn draw_color(&self, valence: f32, rng: &mut dyn RngCore) -> TunePlan {

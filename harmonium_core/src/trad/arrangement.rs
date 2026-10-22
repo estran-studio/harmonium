@@ -106,6 +106,10 @@ pub struct TunePosition {
     pub pass: usize,
     /// Mesure dans la passe (`1..=8`). Non significatif pour `Section::Intro`.
     pub bar_in_strain: usize,
+    /// Tonique de l'air : stable jusqu'au prochain air.
+    pub key: u8,
+    /// Mode effectivement entendu à cette mesure.
+    pub mode: super::Mode,
 }
 
 impl TunePosition {
@@ -116,7 +120,13 @@ impl TunePosition {
     /// Pour `each_tune = false`, passer `intro_bars` identique pour chaque air
     /// (seul le premier a une intro) ; la fonction décale `bar` d'autant.
     #[must_use]
-    pub const fn at_bar(bar: usize, tours: usize, intro_bars: usize) -> Self {
+    pub const fn at_bar(
+        bar: usize,
+        tours: usize,
+        intro_bars: usize,
+        key: u8,
+        mode: super::Mode,
+    ) -> Self {
         let tours = if tours == 0 { 1 } else { tours };
         let cycle = BARS_PER_TOUR * tours;
 
@@ -130,6 +140,8 @@ impl TunePosition {
                 part: Part::A,
                 pass: 0,
                 bar_in_strain: 0,
+                key,
+                mode,
             };
         }
 
@@ -146,6 +158,8 @@ impl TunePosition {
             part: if in_tour < 2 * BARS_PER_STRAIN { Part::A } else { Part::B },
             pass: in_part / BARS_PER_STRAIN + 1,
             bar_in_strain: in_part % BARS_PER_STRAIN + 1,
+            key,
+            mode,
         }
     }
 
@@ -678,7 +692,7 @@ mod tests {
     #[test]
     fn position_maps_bars_to_structure() {
         // Sans intro
-        let p = TunePosition::at_bar(1, 3, 0);
+        let p = TunePosition::at_bar(1, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!(
             p,
             TunePosition {
@@ -688,39 +702,41 @@ mod tests {
                 tours: 3,
                 part: Part::A,
                 pass: 1,
-                bar_in_strain: 1
+                bar_in_strain: 1,
+                key: 2,
+                mode: super::super::Mode::Ionian,
             }
         );
-        let p = TunePosition::at_bar(9, 3, 0);
+        let p = TunePosition::at_bar(9, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!((p.part, p.pass, p.bar_in_strain), (Part::A, 2, 1));
-        let p = TunePosition::at_bar(25, 3, 0);
+        let p = TunePosition::at_bar(25, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!((p.part, p.pass, p.bar_in_strain, p.tour), (Part::B, 2, 1, 1));
         assert_eq!(p.bar_in_tour(), 24);
-        let p = TunePosition::at_bar(33, 3, 0);
+        let p = TunePosition::at_bar(33, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!(
             (p.tour, p.part, p.pass, p.bar_in_strain, p.bar_in_tour()),
             (2, Part::A, 1, 1, 0)
         );
-        let p = TunePosition::at_bar(96, 3, 0);
+        let p = TunePosition::at_bar(96, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!((p.tune_index, p.tour, p.bar_in_tour()), (0, 3, 31));
         assert!(p.is_last_tour());
-        let p = TunePosition::at_bar(97, 3, 0);
+        let p = TunePosition::at_bar(97, 3, 0, 2, super::super::Mode::Ionian);
         assert_eq!((p.tune_index, p.tour, p.bar_in_tour()), (1, 1, 0));
     }
 
     #[test]
     fn position_with_intro_bars() {
         // 2 mesures d'intro, 3 tours de 32 = 96 mesures d'air
-        let p = TunePosition::at_bar(1, 3, 2);
+        let p = TunePosition::at_bar(1, 3, 2, 2, super::super::Mode::Ionian);
         assert!(p.is_intro());
         assert_eq!(p.section, Section::Intro);
         assert_eq!(p.tune_index, 0);
 
-        let p = TunePosition::at_bar(2, 3, 2);
+        let p = TunePosition::at_bar(2, 3, 2, 2, super::super::Mode::Ionian);
         assert!(p.is_intro());
 
         // Mesure 3 = première mesure de l'air
-        let p = TunePosition::at_bar(3, 3, 2);
+        let p = TunePosition::at_bar(3, 3, 2, 2, super::super::Mode::Ionian);
         assert!(!p.is_intro());
         assert_eq!(p.section, Section::Tour);
         assert_eq!(p.tune_index, 0);
@@ -728,7 +744,7 @@ mod tests {
         assert_eq!(p.bar_in_strain, 1);
 
         // Après tout l'air (2 + 96 = 98), mesure 99 = tune 1
-        let p = TunePosition::at_bar(99, 3, 2);
+        let p = TunePosition::at_bar(99, 3, 2, 2, super::super::Mode::Ionian);
         assert_eq!(p.tune_index, 1);
         assert_eq!(p.tour, 1);
     }
@@ -736,10 +752,20 @@ mod tests {
     #[test]
     fn entries_beyond_last_tour_are_clamped() {
         let mut table = ReelArrangement::default();
-        assert!(!table.allows(TrackId::Heel, &TunePosition::at_bar(1, 3, 0)));
+        assert!(
+            !table.allows(
+                TrackId::Heel,
+                &TunePosition::at_bar(1, 3, 0, 2, super::super::Mode::Ionian)
+            )
+        );
         table.tours_per_tune = 1;
         // Tour unique : l'entrée du tour 2 est ramenée au dernier tour (le 1er).
-        assert!(table.allows(TrackId::Heel, &TunePosition::at_bar(1, 1, 0)));
+        assert!(
+            table.allows(
+                TrackId::Heel,
+                &TunePosition::at_bar(1, 1, 0, 2, super::super::Mode::Ionian)
+            )
+        );
     }
 
     fn toml_with(replace: (&str, &str)) -> String {
