@@ -233,4 +233,63 @@ mod tests {
         }
         Ok(())
     }
+
+    /// D2 : contrat de notes capturé sur main 64266ff avant le refactor P2-T1.
+    #[test]
+    fn profile_d2_main_note_reference() -> Result<()> {
+        let automation = Automation::from_toml(include_str!("../../demos/automation_combat.toml"))?;
+        let mut runs = Vec::new();
+        let mut count = 0;
+        for automated in [false, true] {
+            for seed in 1..=5 {
+                let transport = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(pack(1, 0)));
+                let (measure_tx, _measure_rx) = rtrb::RingBuffer::new(256);
+                let (_return_tx, return_rx) = rtrb::RingBuffer::new(256);
+                let mut composer = MusicComposer::new_with_seed(
+                    44100.0,
+                    measure_tx,
+                    return_rx,
+                    transport.clone(),
+                    Default::default(),
+                    seed,
+                );
+                composer.set_style(Style::Reel);
+                composer.use_emotion_mode();
+                composer.set_emotions(0.5, 0.0, 0.5, 0.0);
+                let mut bars = Vec::new();
+                for bar in 1usize..=100 {
+                    transport.store(
+                        pack(bar.saturating_sub(1).max(1), 0),
+                        std::sync::atomic::Ordering::Relaxed,
+                    );
+                    if automated {
+                        automation.apply(bar, &mut composer, [0.5, 0.0, 0.5, 0.0]);
+                    }
+                    composer.generate_bars(if bar == 1 { 1 } else { 2 });
+                    for snapshot in composer.take_snapshots() {
+                        let notes: Vec<_> = snapshot
+                            .notes
+                            .iter()
+                            .map(|n| (n.track, n.pitch, n.start_step, n.duration_steps, n.velocity))
+                            .collect();
+                        count += notes.len();
+                        bars.push((snapshot.index, notes));
+                    }
+                }
+                assert_eq!(bars.len(), 100);
+                runs.push(serde_json::json!({
+                    "seed": seed, "combat": automated, "bars": bars
+                }));
+            }
+        }
+        let actual = serde_json::json!({
+            "source": "main:64266ff5b27284a6cd37dfb82c500325776f1cb0",
+            "runs": runs
+        });
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/profile_d2_main.json");
+        let reference: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+        assert_eq!(actual, reference, "D2 : notes différentes de main");
+        println!("D2 : {count} notes comparées, 1000 mesures, 0 différence");
+        Ok(())
+    }
 }
