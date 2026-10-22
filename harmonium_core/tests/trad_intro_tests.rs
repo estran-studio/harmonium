@@ -105,6 +105,21 @@ fn vamp_intro_has_chords_only() {
     assert_eq!(position(&snaps, 3).section, Section::Tour);
 }
 
+/// Écoute 2026-10-22 : le décompte aux pieds s'arrêtait quand le violon entrait.
+/// Une piste qui a lancé l'air continue pendant le premier tour, même si
+/// l'arrangement la fait normalement entrer plus tard.
+#[test]
+fn intro_instruments_keep_playing_into_the_tune() {
+    let snaps = stream_with(1, 10, tuning_single_form(IntroRole::Percussion, 1, 0));
+    for b in 2..=10 {
+        assert!(has(bar(&snaps, b), TrackId::Heel), "m.{b}: le talon du décompte doit continuer");
+    }
+    let snaps = stream_with(1, 12, tuning_single_form(IntroRole::Vamp, 2, 0));
+    for b in 3..=12 {
+        assert!(has(bar(&snaps, b), TrackId::Chords), "m.{b}: la guitare du vamp doit continuer");
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Déterminisme et décalage
 // ---------------------------------------------------------------------------

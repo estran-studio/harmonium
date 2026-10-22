@@ -256,16 +256,33 @@ impl TradGenerator {
         }
     }
 
-    /// Vrai si `track` joue à `position` : l'arrangement l'autorise ET le drapeau
-    /// `enable_*` du jeu le permet. Seul calcul de « piste active ».
+    /// Vrai si `track` joue à `position` : l'arrangement l'autorise (ou la piste a
+    /// joué l'intro de cet air) ET le drapeau `enable_*` du jeu le permet. Seul
+    /// calcul de « piste active ».
     fn track_active(&self, track: TrackId, position: &TunePosition) -> bool {
         let flag = match track {
             TrackId::Melody => self.musical_params.enable_melody,
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
             TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
         };
-        flag && self.tuning.reel_arrangement.allows(track, position)
+        let entered = self.tuning.reel_arrangement.allows(track, position)
+            || self.played_intro(track, position.tune_index);
+        flag && entered
             && self.tuning.reel_intensity.allows(track, self.musical_params.rhythm_density)
+    }
+
+    /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
+    /// lancé l'air (décompte aux pieds, vamp) continue au lieu de se taire quand
+    /// le violon entre (écoute 2026-10-22).
+    fn played_intro(&self, track: TrackId, tune_index: usize) -> bool {
+        self.tunes.get(&tune_index).is_some_and(|tune| {
+            let intro = &tune.intro_info;
+            match track {
+                TrackId::Melody => intro.melody_active(),
+                TrackId::Chords | TrackId::Bass => intro.chords_active(),
+                TrackId::Heel | TrackId::Toe => intro.feet_active(),
+            }
+        })
     }
 
     /// Vrai si `track` joue pendant une mesure d'intro selon la forme tirée.
