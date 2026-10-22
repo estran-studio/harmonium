@@ -153,51 +153,73 @@ impl fmt::Display for ProfileError {
 }
 impl std::error::Error for ProfileError {}
 
-const EMBEDDED: &str = include_str!("../../profiles/reel_quebecois/profile.toml");
-const BANKS: [(&str, &str, &str); 4] = [
-    ("cells", "melody.cells", include_str!("../../profiles/reel_quebecois/cells.toml")),
-    ("feet", "percussion", include_str!("../../profiles/reel_quebecois/feet.toml")),
-    ("arrangement", "arrangement", include_str!("../../profiles/reel_quebecois/arrangement.toml")),
-    ("dynamics", "dynamics", include_str!("../../profiles/reel_quebecois/dynamics.toml")),
-];
+#[derive(Deserialize)]
+struct DistributedBundle {
+    profiles: Vec<String>,
+}
+
+const DISTRIBUTED_BUNDLE_TOML: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/distributed_profiles.toml"));
+
 impl Default for StyleProfile {
     fn default() -> Self {
         Self::builtin().clone()
     }
 }
 impl StyleProfile {
+    /// Profils distribués embarqués avec le moteur.
+    pub fn distributed() -> &'static [Self] {
+        static PROFILES: LazyLock<Vec<StyleProfile>> = LazyLock::new(|| {
+            let bundle: Result<DistributedBundle, _> = toml::from_str(DISTRIBUTED_BUNDLE_TOML);
+            match bundle {
+                Ok(b) => b
+                    .profiles
+                    .iter()
+                    .filter_map(|text| StyleProfile::from_toml(text).ok())
+                    .collect(),
+                Err(_) => Vec::new(),
+            }
+        });
+        &PROFILES
+    }
     /// Profil embarqué partagé ; aucun accès au disque ni copie de banque.
     pub fn builtin() -> &'static Self {
-        static DEFAULT: LazyLock<StyleProfile> =
-            LazyLock::new(|| match StyleProfile::decode(EMBEDDED, None, true) {
-                Ok(profile) => profile,
-                Err(error) => unreachable!("profil embarqué invalide : {error}"),
-            });
-        &DEFAULT
+        &Self::distributed()[0]
     }
     /// Résolution des identifiants distribués avec le moteur (alias CLI inclus).
     pub fn named(id: &str) -> Result<Self, ProfileError> {
-        if id.eq_ignore_ascii_case("reel") || id.eq_ignore_ascii_case(&Self::builtin().meta.id) {
-            Ok(Self::default())
-        } else {
-            Err(ProfileError::new("meta.id", format!("profil inconnu : {id}")))
+        if let Some(p) = Self::distributed().iter().find(|p| p.meta.id.eq_ignore_ascii_case(id)) {
+            return Ok(p.clone());
         }
+        if let Some(p) = Self::distributed().iter().find(|p| {
+            p.meta.id.split('_').next().is_some_and(|prefix| prefix.eq_ignore_ascii_case(id))
+        }) {
+            return Ok(p.clone());
+        }
+        let matching: Vec<_> = Self::distributed()
+            .iter()
+            .filter(|p| p.meta.tags.iter().any(|t| t.eq_ignore_ascii_case(id)))
+            .collect();
+        if matching.len() == 1 {
+            return Ok(matching[0].clone());
+        }
+        Err(ProfileError::new("meta.id", format!("profil inconnu : {id}")))
     }
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ProfileError> {
         let path = path.as_ref();
         let file = if path.is_dir() { path.join("profile.toml") } else { path.to_path_buf() };
         let text = std::fs::read_to_string(&file)
             .map_err(|e| ProfileError::new(file.display().to_string(), e))?;
-        Self::decode(&text, file.parent(), false)
+        Self::decode(&text, file.parent())
     }
     /// Lecture d'un profil autonome (banques inline, sans accès au disque).
     pub fn from_toml(text: &str) -> Result<Self, ProfileError> {
-        Self::decode(text, None, false)
+        Self::decode(text, None)
     }
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
         toml::to_string_pretty(self)
     }
-    fn decode(text: &str, base: Option<&Path>, embedded: bool) -> Result<Self, ProfileError> {
+    fn decode(text: &str, base: Option<&Path>) -> Result<Self, ProfileError> {
         let mut root: toml::Value =
             toml::from_str(text).map_err(|e| ProfileError::new("profile.toml", e))?;
         let files = root.as_table_mut().and_then(|t| t.remove("files"));
@@ -205,10 +227,13 @@ impl StyleProfile {
             let files =
                 files.as_table().ok_or_else(|| ProfileError::new("files", "table attendue"))?;
             for (key, filename) in files {
-                let (_, target, builtin) = BANKS
-                    .iter()
-                    .find(|(k, _, _)| *k == key)
-                    .ok_or_else(|| ProfileError::new(format!("files.{key}"), "banque inconnue"))?;
+                let target = match key.as_str() {
+                    "cells" => "melody.cells",
+                    "feet" => "percussion",
+                    "arrangement" => "arrangement",
+                    "dynamics" => "dynamics",
+                    _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
+                };
                 let name = filename
                     .as_str()
                     .ok_or_else(|| ProfileError::new(format!("files.{key}"), "chemin attendu"))?;
@@ -219,21 +244,17 @@ impl StyleProfile {
                         "chemin relatif sans .. requis",
                     ));
                 }
-                let contents = if embedded {
-                    builtin.to_string()
-                } else {
-                    let base = base.ok_or_else(|| {
-                        ProfileError::new(
-                            format!("files.{key}"),
-                            "référence externe : utiliser load(dossier)",
-                        )
-                    })?;
-                    std::fs::read_to_string(base.join(relative))
-                        .map_err(|e| ProfileError::new(format!("files.{key}"), e))?
-                };
+                let base = base.ok_or_else(|| {
+                    ProfileError::new(
+                        format!("files.{key}"),
+                        "référence externe : utiliser load(dossier)",
+                    )
+                })?;
+                let contents = std::fs::read_to_string(base.join(relative))
+                    .map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
                 let value = toml::from_str(&contents)
                     .map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
-                if *target == "melody.cells" {
+                if target == "melody.cells" {
                     root.get_mut("melody")
                         .and_then(toml::Value::as_table_mut)
                         .ok_or_else(|| ProfileError::new("melody", "table requise"))?

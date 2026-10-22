@@ -1165,9 +1165,9 @@ mod tests {
         assert_eq!(params.effective_pulse(4), PulseSpec { steps_per_pulse: 4, pulses_per_bar: 4 });
 
         // 6/8 derives a dotted-quarter pulse (6 steps).
-        let gigue =
+        let compound =
             MusicalParams { time_signature: TimeSignature::new(6, 8), ..MusicalParams::default() };
-        assert_eq!(gigue.effective_pulse(4).steps_per_pulse, 6);
+        assert_eq!(compound.effective_pulse(4).steps_per_pulse, 6);
 
         // An explicit override wins over the derived pulse.
         let overridden = MusicalParams {

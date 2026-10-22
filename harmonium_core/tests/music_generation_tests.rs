@@ -1005,7 +1005,7 @@ fn generate_all_lab_exports() {
 
     // ─── ODD METER SCENARIOS ──────────────────────────────────────
 
-    // Waltz 3/4 — Eb major
+    // Triple meter 3/4 — Eb major
     let mut p = MusicalParams::default();
     p.time_signature = harmonium_core::params::TimeSignature::new(3, 4);
     p.bpm = 120.0;
@@ -1017,7 +1017,7 @@ fn generate_all_lab_exports() {
     p.melody_smoothness = 0.55;
     p.harmony_measures_per_chord = 2;
     p.key_root = 3; // Eb
-    lab_scenario("lab_waltz_eb", &p, BARS, &SEEDS);
+    lab_scenario("lab_triple_eb", &p, BARS, &SEEDS);
 
     // 5/4 groove — G minor
     p.time_signature = harmonium_core::params::TimeSignature::new(5, 4);

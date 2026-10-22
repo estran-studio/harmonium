@@ -42,3 +42,28 @@ fn wrong_cell_length_exits_1_with_readable_error() -> std::io::Result<()> {
     assert!(stderr.contains("attendu 8 croches"), "stderr: {stderr}");
     Ok(())
 }
+
+#[test]
+fn all_distributed_profile_banks_are_valid() -> std::io::Result<()> {
+    for profile in harmonium_core::StyleProfile::distributed() {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../profiles/{}", profile.meta.id));
+        let cells_path = dir.join("cells.toml");
+        if cells_path.exists() {
+            let out = Command::new(env!("CARGO_BIN_EXE_harmonium-cli"))
+                .arg("--check-cells")
+                .arg(&cells_path)
+                .arg("--style")
+                .arg(&profile.meta.id)
+                .output()?;
+            assert_eq!(
+                out.status.code(),
+                Some(0),
+                "profile {} stderr: {}",
+                profile.meta.id,
+                String::from_utf8_lossy(&out.stderr)
+            );
+        }
+    }
+    Ok(())
+}
