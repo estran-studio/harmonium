@@ -21,7 +21,7 @@ use crate::{
 /// Incrémentée à chaque rupture assumée du contrat de snapshot (p. ex. D2 :
 /// renommage `TrackId { Melody, Chords, Bass, Heel, Toe }` et banque de
 /// cellules trad en phase 1).
-pub const TUNING_VERSION: u32 = 5;
+pub const TUNING_VERSION: u32 = 6;
 
 // ---------------------------------------------------------------------------
 // Param sub-structs (Layer 2 — style constants)
@@ -524,7 +524,7 @@ impl Default for ReelFiddleParams {
             tonic_midi_max: 77,
             tessitura_min: 55,
             tessitura_max: 88,
-            base_velocity: 84,
+            base_velocity: 94,
             strong_eighth_velocity_offset: 12,
             even_eighth_velocity_offset: -10,
         }
@@ -576,12 +576,12 @@ impl Default for TradHarmonyParams {
             tie_priority: vec![ChordDegree::I, ChordDegree::V, ChordDegree::IV],
             bass_steps: vec![0, 8],
             bass_duration_steps: 4,
-            bass_velocity: 90,
+            bass_velocity: 78,
             bass_low: 40,
             bass_high: 50,
             chop_steps: vec![4, 12],
             chop_duration_steps: 1,
-            chop_velocity: 100,
+            chop_velocity: 72,
             guitar_center: 60,
             guitar_max_drift: 6,
         }

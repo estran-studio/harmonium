@@ -5,14 +5,18 @@ valence_range = [-1.0, 1.0]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, -0.03], [0.3, 0.0], [1.0, 0.10]]
 tempo_offset = [[0.0, -10.0], [0.5, 0.0], [1.0, 15.0]]
-melody_velocity = [[0.0, 0.72], [0.5, 1.0], [1.0, 1.18]]
-guitar_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.18]]
-bass_velocity = [[0.0, 0.80], [0.5, 1.0], [1.0, 1.15]]
+# Mix : le violon mène à toutes les intensités. Au maximum, la guitare joue
+# plus de coups mais plus doucement ; le violon gagne en force sans raccourcir
+# ses notes au point de perdre son corps (écoute 2026-10-21 : guitare +13 dB
+# au-dessus du violon au pic, rejeté).
+melody_velocity = [[0.0, 0.72], [0.5, 1.0], [1.0, 1.35]]
+guitar_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 0.80]]
+bass_velocity = [[0.0, 0.80], [0.5, 1.0], [1.0, 1.0]]
 feet_velocity = [[0.0, 0.60], [0.5, 1.0], [1.0, 1.65]]
 feet_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
-fiddle_duration = [[0.0, 1.25], [0.5, 1.0], [1.0, 0.5]]
+fiddle_duration = [[0.0, 1.15], [0.5, 1.0], [1.0, 0.85]]
 strong_accent = [[0.0, -4.0], [0.5, 0.0], [1.0, 8.0]]
-chop_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+chop_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
 run_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.5]]
 arp_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.0]]
 turn_weight = [[0.0, 2.0], [0.5, 1.0], [1.0, 0.4]]
@@ -21,7 +25,7 @@ turn_weight = [[0.0, 2.0], [0.5, 1.0], [1.0, 0.4]]
 color_register = [[0.0, -5.0], [0.65, 0.0], [1.0, 5.0]]
 brightness_accent = [[0.0, -8.0], [0.65, 0.0], [1.0, 10.0]]
 density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
-density_chop = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+density_chop = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
 density_passing = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
 density_tracks = [
   { track = "Melody", minimum = 0.0 },
@@ -34,9 +38,9 @@ chop_patterns = [[4], [4, 12], [2, 4, 10, 12], [2, 4, 6, 10, 12, 14]]
 
 # Tension : contretemps, notes sèches et dominantes tenues, sans changer la tune.
 tension_offbeat = [[0.0, -3.0], [0.3, 0.0], [1.0, 24.0]]
-tension_duration = [[0.0, 1.2], [0.3, 1.0], [1.0, 0.5]]
+tension_duration = [[0.0, 1.1], [0.3, 1.0], [1.0, 0.7]]
 tension_dominant = [[0.0, 0.0], [0.3, 0.0], [1.0, 0.75]]
-tension_chord_duration = [[0.0, 1.0], [0.3, 1.0], [1.0, 3.0]]
+tension_chord_duration = [[0.0, 1.0], [0.3, 1.0], [1.0, 1.5]]
 
 [[color]]
 key = 2

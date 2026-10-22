@@ -812,17 +812,21 @@ mod tests {
     #[test]
     fn velocities_match_d6_accents() {
         let params = ReelFiddleParams::default();
-        // Croche 1 (idx 0) et croche 5 (idx 4) : 84 + 12 = 96
-        assert_eq!(eighth_velocity(0, &params), 96);
-        assert_eq!(eighth_velocity(4, &params), 96);
-        // Croches paires (idx 1, 3, 5, 7) : 84 - 10 = 74
-        assert_eq!(eighth_velocity(1, &params), 74);
-        assert_eq!(eighth_velocity(3, &params), 74);
-        assert_eq!(eighth_velocity(5, &params), 74);
-        assert_eq!(eighth_velocity(7, &params), 74);
-        // Croches 3 et 7 (idx 2, 6) : 84
-        assert_eq!(eighth_velocity(2, &params), 84);
-        assert_eq!(eighth_velocity(6, &params), 84);
+        let at =
+            |offset: i32| u8::try_from(i32::from(params.base_velocity) + offset).unwrap_or(u8::MAX);
+        let strong = at(i32::from(params.strong_eighth_velocity_offset));
+        let even = at(i32::from(params.even_eighth_velocity_offset));
+        // Croche 1 (idx 0) et croche 5 (idx 4) : accent fort
+        assert_eq!(eighth_velocity(0, &params), strong);
+        assert_eq!(eighth_velocity(4, &params), strong);
+        // Croches paires (idx 1, 3, 5, 7) : allégées
+        assert_eq!(eighth_velocity(1, &params), even);
+        assert_eq!(eighth_velocity(3, &params), even);
+        assert_eq!(eighth_velocity(5, &params), even);
+        assert_eq!(eighth_velocity(7, &params), even);
+        // Croches 3 et 7 (idx 2, 6) : base
+        assert_eq!(eighth_velocity(2, &params), params.base_velocity);
+        assert_eq!(eighth_velocity(6, &params), params.base_velocity);
     }
 
     #[test]

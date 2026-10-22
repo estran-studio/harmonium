@@ -198,7 +198,8 @@ mod tests {
             notes.iter().map(|n| (n.start_step, n.duration_steps, n.pitch)).collect();
         // Ré2 = 38 est sous la fenêtre : fondamentale Ré3 (50), quinte La2 (45).
         assert_eq!(layout, [(0, 4, 50), (8, 4, 45)]);
-        assert!(notes.iter().all(|n| n.velocity == 90));
+        let params = TradHarmonyParams::default();
+        assert!(notes.iter().all(|n| n.velocity == params.bass_velocity));
     }
 
     #[test]
@@ -246,7 +247,8 @@ mod tests {
         for (i, step) in [4, 12].into_iter().enumerate() {
             let group: Vec<_> = notes.iter().filter(|n| n.start_step == step).collect();
             assert_eq!(group.len(), 3, "step {step}");
-            assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == 100));
+            let chop_velocity = TradHarmonyParams::default().chop_velocity;
+            assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == chop_velocity));
             let mut pitches: Vec<u8> = group.iter().map(|n| n.pitch).collect();
             pitches.sort_unstable();
             pitches.dedup();
