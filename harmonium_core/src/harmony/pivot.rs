@@ -5,10 +5,8 @@
 
 use std::sync::Arc;
 
-use super::{
-    chord::{Chord, ChordType},
-    lydian_chromatic::LydianChromaticConcept,
-};
+use super::lydian_chromatic::LydianChromaticConcept;
+use crate::theory::chord::{Chord, ChordType};
 
 /// Seuil de tension pour basculer vers Steedman (en dessous)
 pub const STEEDMAN_THRESHOLD: f32 = 0.5;
@@ -188,7 +186,7 @@ impl PivotDetector {
 
     /// Retourne la gamme LCC suggérée pour un accord pivot
     #[must_use]
-    pub fn get_pivot_scale(&self, pivot: &Chord, tension: f32) -> Vec<super::chord::PitchClass> {
+    pub fn get_pivot_scale(&self, pivot: &Chord, tension: f32) -> Vec<crate::theory::PitchClass> {
         let parent = self.lcc.parent_lydian(pivot);
         let level = self.lcc.level_for_tension(tension);
         self.lcc.get_scale(parent, level)

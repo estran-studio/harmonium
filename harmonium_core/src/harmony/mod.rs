@@ -3,17 +3,14 @@
 //! Ce module contient toute la logique harmonique:
 //! - `basic`: Système `BasicHarmony` (quadrants émotionnels Russell)
 //! - `melody`: `HarmonyNavigator` (génération mélodique Markov+Fractal)
-//! - `chord`: Représentation enrichie des accords
 //! - `lydian_chromatic`: Lydian Chromatic Concept (12 niveaux)
 //! - `neo_riemannian`: Transformations P, L, R (triades uniquement)
 //! - `parsimonious`: Voice-leading parsimonieux (tous types d'accords)
 //! - `steedman_grammar`: Grammaire générative de progressions
 //! - `pivot`: Système de transition entre stratégies
-//! - `voice_leading`: Optimisation du voice-leading
 //! - `driver`: `HarmonicDriver` (orchestrateur principal)
 
 pub mod basic;
-pub mod chord;
 pub mod driver;
 pub mod lydian_chromatic;
 pub mod melody;
@@ -21,16 +18,16 @@ pub mod neo_riemannian;
 pub mod parsimonious;
 pub mod pivot;
 pub mod steedman_grammar;
-pub mod voice_leading;
 
-// Re-exports pour compatibilité
+// Types propres au générateur Legacy.
 pub use basic::{ChordQuality, ChordStep, Progression};
-pub use chord::{Chord, ChordType, PitchClass};
 pub use driver::HarmonicDriver;
 pub use lydian_chromatic::{LccLevel, LydianChromaticConcept, ScaleGuidance};
 pub use melody::HarmonyNavigator;
 pub use parsimonious::{Neighbor, ParsimoniousDriver, ParsimoniousTransform, TRQ};
 use rand::Rng;
+
+use crate::theory::{PitchClass, chord::Chord};
 
 /// Mode d'harmonie sélectionné
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

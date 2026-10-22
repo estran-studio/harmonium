@@ -15,7 +15,7 @@
 
 use serde::{Deserialize, Serialize};
 
-pub use crate::harmony::chord::PitchClass;
+use crate::theory::PitchClass;
 
 /// Mode diatonique utilisé dans le répertoire traditionnel québécois.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]

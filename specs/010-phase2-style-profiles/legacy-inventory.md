@@ -157,3 +157,12 @@ graph TD
    - Supprimer `harmonium_core/tests/music_generation_tests.rs`, `key_space_probe.rs`, `barline_integration_tests.rs`.
 4. **Mise à jour de la documentation** :
    - Nettoyer les README de `harmonium_core`, `harmonium_cli`, `harmonium_audio`.
+
+## 6. Portages P2-T5b réalisés
+
+- Théorie neutre : `harmony/chord.rs` → `theory/chord.rs` et
+  `harmony/voice_leading.rs` → `theory/voice_leading.rs`.
+  Alias canonique unique : `theory::PitchClass` ; tous les consommateurs
+  (Legacy, profils, host, audio et labo) utilisent les nouveaux chemins.
+  La conversion vers la qualité Legacy reste dans `harmony/basic.rs`,
+  à supprimer avec ce module en P2-T5c.

@@ -5,9 +5,9 @@
 
 use std::path::{Path, PathBuf};
 
-use harmonium_core::harmony::{
-    chord::{Chord, PitchClass},
-    parsimonious::TRQ,
+use harmonium_core::{
+    harmony::parsimonious::TRQ,
+    theory::{PitchClass, chord::Chord},
 };
 use thiserror::Error;
 use walkdir::WalkDir;

@@ -3,7 +3,7 @@
 //! Permet de swapper dynamiquement entre différents styles de voicing
 //! (Block Chords, Shell, Drop-2, etc.) selon le genre musical.
 
-use harmonium_core::harmony::chord::ChordType;
+use harmonium_core::theory::chord::ChordType;
 
 /// Contexte partagé pour tous les voicers
 #[derive(Clone, Debug)]

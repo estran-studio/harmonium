@@ -12,12 +12,10 @@
 
 use harmonium_core::{
     events::AudioEvent,
-    harmony::{
-        chord::{Chord, PitchClass},
-        parsimonious::TRQ,
-    },
+    harmony::parsimonious::TRQ,
     params::MusicalParams,
     sequencer::RhythmMode,
+    theory::{PitchClass, chord::Chord},
 };
 use serde::{Deserialize, Serialize};
 

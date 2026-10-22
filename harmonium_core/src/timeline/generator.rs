@@ -18,13 +18,13 @@ use crate::{
     harmony::{
         HarmonyMode, RngCore,
         basic::{ChordQuality, ChordStep, Progression},
-        chord::{Chord, ChordType},
         driver::HarmonicDriver,
         lydian_chromatic::LydianChromaticConcept,
         melody::HarmonyNavigator,
     },
     params::{CurrentState, MusicalParams},
     sequencer::{RhythmMode, Sequencer, StepTrigger},
+    theory::chord::{Chord, ChordType},
     tuning::TuningParams,
 };
 
@@ -59,7 +59,7 @@ pub struct TimelineGenerator {
     current_chord_type: ChordType,
 
     // === Chart mode ===
-    chord_chart: Vec<crate::harmony::Chord>,
+    chord_chart: Vec<Chord>,
     chart_index: usize,
 
     // === Note ID counter ===
@@ -1270,11 +1270,8 @@ impl TimelineGenerator {
     }
 
     /// Parse chord names into Chord structs, skipping invalid entries.
-    fn parse_chord_chart(chart_names: &[arrayvec::ArrayString<16>]) -> Vec<crate::harmony::Chord> {
-        chart_names
-            .iter()
-            .filter_map(|name| crate::harmony::Chord::from_name(name.as_str()).ok())
-            .collect()
+    fn parse_chord_chart(chart_names: &[arrayvec::ArrayString<16>]) -> Vec<Chord> {
+        chart_names.iter().filter_map(|name| Chord::from_name(name.as_str()).ok()).collect()
     }
 
     fn next_id(&mut self) -> NoteId {

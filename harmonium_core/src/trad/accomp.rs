@@ -1,11 +1,9 @@
 //! Basse et accords d'accompagnement : motifs en pas du profil, triades
 //! en conduite de voix serrée et alternance fondamentale/quinte de la basse.
 
-use super::{
-    harmony::TradChord,
-    mode::{Mode, PitchClass},
-};
+use super::{harmony::TradChord, mode::Mode};
 use crate::{
+    theory::PitchClass,
     timeline::{Articulation, NoteId, TimelineNote},
     tuning::TradHarmonyParams,
 };

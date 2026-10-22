@@ -12,12 +12,13 @@ use super::{
     feet::{draw_feet_humanize, feet_notes},
     fiddle::{FiddleLine, same_cell_up_to_octave, tonic_midi_for_key},
     harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
-    mode::{Mode, PitchClass},
+    mode::Mode,
     plan::{BarRole, ImposedRole, TunePlan},
 };
 use crate::{
     harmony::RngCore,
     params::MusicalParams,
+    theory::PitchClass,
     timeline::{
         Articulation, ChordContext, GenerationContext, Measure, NoteId, StateSnapshot,
         TimelineNote, TrackId,

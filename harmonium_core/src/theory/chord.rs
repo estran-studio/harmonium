@@ -6,8 +6,7 @@
 //! - Extensions et basse séparée
 //! - Niveau LCC (Lydian Chromatic Concept)
 
-/// Pitch class (0-11, où 0=C, 1=C#/Db, 2=D, etc.)
-pub type PitchClass = u8;
+use super::PitchClass;
 
 /// Noms des notes pour affichage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -512,31 +511,6 @@ impl Chord {
             .bass
             .map_or(String::new(), |b| format!("/{}", NoteName::from_pitch_class(b).as_str()));
         format!("{root_name}{suffix}{bass_str}")
-    }
-
-    /// Convertit vers le `ChordQuality` de l'ancien système (pour compatibilité)
-    #[must_use]
-    pub const fn to_basic_quality(&self) -> super::basic::ChordQuality {
-        match self.chord_type {
-            ChordType::Major
-            | ChordType::Major7
-            | ChordType::Augmented
-            | ChordType::Major6
-            | ChordType::Augmented7
-            | ChordType::Add9 => super::basic::ChordQuality::Major,
-            ChordType::Minor
-            | ChordType::Minor7
-            | ChordType::HalfDiminished
-            | ChordType::MinorMajor7
-            | ChordType::Minor6 => super::basic::ChordQuality::Minor,
-            ChordType::Diminished | ChordType::Diminished7 => {
-                super::basic::ChordQuality::Diminished
-            }
-            ChordType::Dominant7 | ChordType::Dominant7Sus4 => {
-                super::basic::ChordQuality::Dominant7
-            }
-            ChordType::Sus2 | ChordType::Sus4 => super::basic::ChordQuality::Sus2,
-        }
     }
 
     /// Identifie un accord à partir d'un ensemble de pitch classes.

@@ -9,8 +9,11 @@ use std::sync::{Arc, RwLock};
 
 use super::{
     HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType,
-    chord::{Chord, ChordType, PitchClass},
     lydian_chromatic::LydianChromaticConcept,
+};
+use crate::theory::{
+    PitchClass,
+    chord::{Chord, ChordType},
 };
 
 /// Chiffres romains (degrés de la gamme) - Version étendue

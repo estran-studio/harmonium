@@ -8,7 +8,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::chord::{Chord, ChordType, PitchClass};
+use crate::theory::{
+    PitchClass,
+    chord::{Chord, ChordType},
+};
 
 /// Improv guidance for one chord: the suggested scale + chord tones, derived
 /// from the Lydian Chromatic Concept. Consumed by the improv-coach UI to show

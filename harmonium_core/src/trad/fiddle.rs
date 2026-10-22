@@ -5,11 +5,12 @@
 use super::{
     arrangement::Part,
     cells::{Cell, CellBank, CellNote, CellRole, FIFTH_DIATONIC_STEPS},
-    mode::{PitchClass, degree_to_diatonic_step, diatonic_step_to_degree},
+    mode::{degree_to_diatonic_step, diatonic_step_to_degree},
     plan::{ImposedRole, TunePlan},
 };
 use crate::{
     harmony::RngCore,
+    theory::PitchClass,
     timeline::{Articulation, TimelineNote},
     tuning::{ReelFiddleParams, TuningParams},
 };
