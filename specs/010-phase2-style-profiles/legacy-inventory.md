@@ -180,3 +180,20 @@ graph TD
   publie son contexte et sa gamme dans `MeasureSnapshot.chord_changes`.
   Les cellules fournissent rythme et contour ; la réalisation jazz rapproche
   les hauteurs des accords/gammes publiés et coupe les tenues aux changements.
+
+### Voicing parcimonieux : report motivé
+
+`harmony/parsimonious.rs` n'est pas un voicer dépendant seulement de `theory` :
+`set_params` lit `tuning::VoiceLeadingParams` et l'implémentation de
+`HarmonyStrategy::next_chord` dépend du contexte/RNG Legacy. Surtout,
+`find_neighbors` et `find_path` **remplacent les accords** (voire leur
+cardinalité) ; ils ne réalisent pas les voix MIDI d'un accord fixé.
+Les brancher comme `[accompaniment] voicing = "parsimonious"` modifierait donc
+la progression choisie par Steedman, au lieu de seulement conduire ses voix.
+
+L'option `accompaniment.voicing` n'est pas introduite en P2-T5b, conformément
+à la condition de report. Un futur voicer devra conserver l'accord cible et
+optimiser ses renversements/octaves dans la tessiture. Les fonctions pures
+réutilisables sont déjà dans `theory/voice_leading.rs`. En P2-T5c, supprimer
+le driver `harmony/parsimonious.rs` avec Legacy ; aucune copie dormante n'est
+gardée, et le code historique reste accessible dans Git.
