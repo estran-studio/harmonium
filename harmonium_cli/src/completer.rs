@@ -13,10 +13,7 @@ use rustyline::{
 pub struct HarmoniumCompleter {
     commands: Vec<&'static str>,
     set_params: Vec<&'static str>,
-    modules: Vec<&'static str>,
     record_formats: Vec<&'static str>,
-    rhythm_modes: Vec<&'static str>,
-    harmony_modes: Vec<&'static str>,
 }
 
 impl HarmoniumCompleter {
@@ -26,8 +23,6 @@ impl HarmoniumCompleter {
                 "set",
                 "emotion",
                 "direct",
-                "enable",
-                "disable",
                 "record",
                 "stop",
                 "state",
@@ -53,37 +48,11 @@ impl HarmoniumCompleter {
                 "master_volume",
                 "time",
                 "time_signature",
-                "rhythm_mode",
-                "steps",
-                "pulses",
-                "rotation",
-                "density",
-                "rhythm_density",
-                "rhythm_tension",
-                "harmony_mode",
-                "harmony_tension",
-                "valence",
-                "harmony_valence",
-                "smoothness",
-                "melody_smoothness",
-                "octave",
-                "melody_octave",
-                "voicing_density",
-                "voicing_tension",
                 "gain",
                 "mute",
                 "unmute",
             ],
-            modules: vec!["rhythm", "harmony", "melody", "voicing"],
             record_formats: vec!["wav", "midi", "musicxml"],
-            rhythm_modes: vec![
-                "euclidean",
-                "perfect",
-                "perfectbalance",
-                "classic",
-                "classicgroove",
-            ],
-            harmony_modes: vec!["basic", "driver"],
         }
     }
 
@@ -125,22 +94,6 @@ impl HarmoniumCompleter {
                 } else if tokens.len() == 3 {
                     // Complete parameter values based on parameter type
                     match tokens[1] {
-                        "rhythm_mode" | "rhythm-mode" => self
-                            .rhythm_modes
-                            .iter()
-                            .map(|&mode| Pair {
-                                display: mode.to_string(),
-                                replacement: mode.to_string(),
-                            })
-                            .collect(),
-                        "harmony_mode" | "harmony-mode" => self
-                            .harmony_modes
-                            .iter()
-                            .map(|&mode| Pair {
-                                display: mode.to_string(),
-                                replacement: mode.to_string(),
-                            })
-                            .collect(),
                         "time" | "time_signature" => vec!["4/4", "3/4", "5/4", "7/8", "6/8"]
                             .iter()
                             .map(|&sig| Pair {
@@ -150,23 +103,6 @@ impl HarmoniumCompleter {
                             .collect(),
                         _ => vec![],
                     }
-                } else {
-                    vec![]
-                }
-            }
-
-            "enable" | "disable" => {
-                if tokens.len() <= 2 {
-                    let partial =
-                        if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
-                    self.modules
-                        .iter()
-                        .filter(|module| module.starts_with(&partial))
-                        .map(|&module| Pair {
-                            display: module.to_string(),
-                            replacement: module.to_string(),
-                        })
-                        .collect()
                 } else {
                     vec![]
                 }
@@ -204,7 +140,7 @@ impl HarmoniumCompleter {
                 if tokens.len() <= 2 {
                     let partial =
                         if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
-                    ["reel", "legacy"]
+                    ["reel_quebecois", "gigue_quebecoise", "valse_quebecoise"]
                         .iter()
                         .filter(|s| s.starts_with(&partial))
                         .map(|&s| Pair { display: s.to_string(), replacement: s.to_string() })

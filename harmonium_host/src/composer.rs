@@ -13,12 +13,10 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
-    harmony::{HarmonicDriver, HarmonyNavigator, RngCore},
     log,
-    params::{CurrentState, EngineParams, MusicalParams, SessionConfig, Style, TimeSignature},
-    sequencer::Sequencer,
+    params::{EngineParams, MusicalParams, SessionConfig, TimeSignature},
     theory::chord::{Chord, ChordType},
-    timeline::{GenerationContext, Measure, TimelineGenerator, Writehead},
+    timeline::Writehead,
     trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
     tuning::TuningParams,
 };
@@ -31,111 +29,6 @@ use crate::{
     playback::{TaggedMeasure, unpack},
 };
 
-/// Abstraction minimale de générateur de mesures choisie selon [`Style`] (D1).
-///
-/// Unifie `TimelineGenerator` (`Style::Legacy`) et `TradGenerator` (`Style::Profile`)
-/// derrière les 6 opérations utilisées par [`MusicComposer`] :
-/// `generate_measure`, `update_params`, `update_tuning`, `reset_to_initial`,
-/// `silent_advance` et `snap_current_state`.
-pub enum Generator {
-    /// Générateur procédural legacy (conservé jusqu'à P1-T6).
-    Legacy(Box<TimelineGenerator>),
-    /// Générateur de musique traditionnelle québécoise (`Style::Profile`).
-    Profile(TradGenerator),
-}
-
-impl Generator {
-    /// Style actif porté par cette variante du générateur.
-    #[must_use]
-    pub const fn style(&self) -> Style {
-        match self {
-            Self::Legacy(_) => Style::Legacy,
-            Self::Profile(_) => Style::Profile,
-        }
-    }
-
-    /// Génère la mesure `bar_index` avec le RNG injecté.
-    pub fn generate_measure(&mut self, bar_index: usize, rng: &mut dyn RngCore) -> Measure {
-        match self {
-            Self::Legacy(g) => g.generate_measure(bar_index, rng),
-            Self::Profile(g) => g.generate_measure(bar_index, rng),
-        }
-    }
-
-    /// Met à jour les paramètres musicaux courants.
-    pub fn update_params(&mut self, params: MusicalParams) {
-        match self {
-            Self::Legacy(g) => g.update_params(params),
-            Self::Profile(g) => g.update_params(params),
-        }
-    }
-
-    /// Met à jour les paramètres de tuning (`TuningParams`).
-    pub fn update_tuning(&mut self, tuning: TuningParams) {
-        match self {
-            Self::Legacy(g) => g.update_tuning(tuning),
-            Self::Profile(g) => g.update_tuning(tuning),
-        }
-    }
-
-    fn invalidate_future(&mut self, playing_bar: usize) {
-        if let Self::Profile(generator) = self {
-            generator.invalidate_future(playing_bar);
-        }
-    }
-
-    /// Réinitialise le générateur à son état initial pour le seek déterministe.
-    pub fn reset_to_initial(&mut self, ctx: &GenerationContext) {
-        match self {
-            Self::Legacy(g) => g.reset_to_initial(ctx),
-            Self::Profile(g) => g.reset_to_initial(ctx),
-        }
-    }
-
-    /// Avance silencieusement jusqu'à `target_bar` (exclus) en rejouant `1..target_bar`.
-    pub fn silent_advance(&mut self, target_bar: usize, rng: &mut dyn RngCore) {
-        match self {
-            Self::Legacy(g) => g.silent_advance(target_bar, rng),
-            Self::Profile(g) => g.silent_advance(target_bar, rng),
-        }
-    }
-
-    /// Aligne immédiatement l'état courant sur `MusicalParams` (sans effet en `Reel`
-    /// où les paramètres sont lus directement sans morphing).
-    pub fn snap_current_state(&mut self) {
-        match self {
-            Self::Legacy(g) => g.snap_current_state(),
-            Self::Profile(g) => g.snap_current_state(),
-        }
-    }
-
-    /// Réinitialise l'indice de grille / cache de tunes lors d'une régénération complète.
-    pub fn reset_chart_index(&mut self) {
-        match self {
-            Self::Legacy(g) => g.reset_chart_index(),
-            Self::Profile(g) => g.reset_chart_index(),
-        }
-    }
-
-    /// Référence aux paramètres de tuning actifs.
-    #[must_use]
-    pub fn tuning(&self) -> &TuningParams {
-        match self {
-            Self::Legacy(g) => &g.tuning,
-            Self::Profile(g) => &g.tuning,
-        }
-    }
-
-    /// En `Style::Profile`, retourne le `(TunePlan, BarRole)` de la mesure 1-based `bar_number`.
-    #[must_use]
-    pub fn profile_bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
-        match self {
-            Self::Legacy(_) => None,
-            Self::Profile(g) => g.bar_info(bar_number),
-        }
-    }
-}
-
 /// Main-thread music composer. Generates measures synchronously.
 ///
 /// This struct owns the generation pipeline: Generator, Writehead,
@@ -146,7 +39,7 @@ pub struct MusicComposer {
     pub config: SessionConfig,
 
     // Generation
-    generator: Generator,
+    generator: TradGenerator,
     writehead: Writehead,
     // Handoff: staged measures (composer → playback) and returned boxes
     // (playback → composer). The timeline is the source of truth; `published`
@@ -171,9 +64,6 @@ pub struct MusicComposer {
 
     // Seed + init params (for deterministic seek replay)
     session_seed: u64,
-    init_key: PitchSymbol,
-    init_scale: ScaleType,
-    init_key_pc: u8,
 
     // BPM override (user-set BPM persists through emotion changes)
     bpm_override: Option<f32>,
@@ -191,6 +81,8 @@ pub struct MusicComposer {
 
     // Pending measure snapshots for the frontend
     pending_measure_snapshots: Vec<harmonium_core::report::MeasureSnapshot>,
+    /// Mesures entendues, collectées exclusivement sur le thread principal.
+    score_recording: Option<(Vec<harmonium_core::timeline::Measure>, Option<usize>)>,
 
     // Shared transport position, packed (bar, step) — written by
     // PlaybackEngine, read here as the bar
@@ -263,12 +155,6 @@ impl MusicComposer {
             config.key, config.scale, bpm
         ));
 
-        let sequencer_primary = Sequencer::new(steps, initial_pulses, bpm);
-        let default_density = 0.4;
-        let secondary_pulses = std::cmp::min((default_density * 8.0) as usize + 1, 12);
-        let sequencer_secondary = Sequencer::new_with_rotation(12, secondary_pulses, bpm, 0);
-
-        let harmony = HarmonyNavigator::new(random_key, random_scale, 4);
         let key_pc = match random_key {
             PitchSymbol::C => 0,
             PitchSymbol::D => 2,
@@ -280,31 +166,21 @@ impl MusicComposer {
             _ => 0,
         };
         let tuning = TuningParams::default();
-        let harmonic_driver = Some(HarmonicDriver::new(key_pc, &tuning.harmony_driver));
 
         let mut musical_params = MusicalParams::default();
-        // The session key drives the relative→absolute conversion of every
-        // chord root (issue #26) — it must match the navigator/driver key
-        // from the very first bar, not default to C.
-        musical_params.key_root = key_pc;
-
-        let initial_state = CurrentState {
+        let meter = &tuning.profile.meter;
+        musical_params.bpm = meter.default_bpm;
+        musical_params.time_signature = meter.time_signature;
+        musical_params.pulse = Some(meter.pulse_spec());
+        musical_params.set_swing_ratio(meter.default_swing_ratio);
+        let bpm = musical_params.bpm;
+        let config = SessionConfig {
             bpm,
-            density: musical_params.rhythm_density,
-            tension: musical_params.rhythm_tension,
-            smoothness: musical_params.melody_smoothness,
-            ..CurrentState::default()
+            steps: meter.steps_per_bar,
+            pulses: usize::from(meter.pulse_spec().pulses_per_bar),
+            ..config
         };
-
-        let generator = Generator::Legacy(Box::new(TimelineGenerator::new(
-            sequencer_primary,
-            sequencer_secondary,
-            harmony,
-            harmonic_driver,
-            musical_params.clone(),
-            initial_state,
-            tuning,
-        )));
+        let generator = TradGenerator::new(musical_params.clone(), tuning);
 
         let writehead = Writehead::new(sample_rate, 4);
 
@@ -322,9 +198,6 @@ impl MusicComposer {
             rng,
             sample_rate,
             session_seed,
-            init_key: random_key,
-            init_scale: random_scale,
-            init_key_pc: key_pc,
             bpm_override: None,
             emotion_mapped_bpm: bpm,
             emotion_mapper: EmotionMapper::new(),
@@ -335,6 +208,7 @@ impl MusicComposer {
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
             pending_measure_snapshots: Vec::new(),
+            score_recording: None,
             transport_position,
             font_queue,
         }
@@ -383,7 +257,7 @@ impl MusicComposer {
             }
 
             let measure = self.generator.generate_measure(bar_idx, &mut self.rng);
-            if let Some((plan, _)) = self.generator.profile_bar_info(bar_idx) {
+            if let Some((plan, _)) = self.generator.bar_info(bar_idx) {
                 self.config.key = pitch_class_name(plan.key).to_string();
                 self.config.scale = format!("{:?}", plan.mode);
             }
@@ -403,6 +277,7 @@ impl MusicComposer {
                 staging_open = self.stage_bar(bar_idx);
             }
         }
+        self.capture_recording_bar();
     }
 
     /// Whether `bar` was staged in the current epoch (and not returned or
@@ -529,7 +404,6 @@ impl MusicComposer {
         // Sync generator with updated params and snap current_state
         // so new measures use the correct tempo/density immediately
         self.generator.update_params(self.musical_params.clone());
-        self.generator.snap_current_state();
     }
 
     /// Invalidate measures beyond a preview window, preserving N bars ahead of playhead.
@@ -559,7 +433,7 @@ impl MusicComposer {
         self.bpm_override = None;
         self.emotion_mapped_bpm = self.musical_params.bpm;
         self.writehead.reset();
-        self.set_style(Style::Legacy);
+        self.set_tuning(TuningParams::default());
         self.generator.update_params(self.musical_params.clone());
         self.clear_staged();
     }
@@ -568,7 +442,7 @@ impl MusicComposer {
     /// Use this when you want to regenerate from scratch with current settings.
     pub fn reset_timeline(&mut self) {
         self.writehead.reset();
-        self.generator.reset_chart_index();
+        self.generator.reset_to_initial();
         self.generator.update_params(self.musical_params.clone());
         self.clear_staged();
     }
@@ -599,13 +473,7 @@ impl MusicComposer {
         // 1. Re-seed RNG from session seed (past initial key/scale draws)
         let mut rng = Self::seeded_rng_past_init(self.session_seed);
         // 3. Reset generator to initial state
-        let ctx = GenerationContext {
-            session_seed: self.session_seed,
-            key: self.init_key,
-            scale: self.init_scale,
-            key_pc: self.init_key_pc,
-        };
-        self.generator.reset_to_initial(&ctx);
+        self.generator.reset_to_initial();
 
         // 4. Silent advance to target bar
         if target_bar > 1 {
@@ -633,65 +501,9 @@ impl MusicComposer {
         rng
     }
 
-    fn build_legacy_generator(&self, tuning: TuningParams) -> TimelineGenerator {
-        let bpm = 120.0f32;
-        let steps = 16usize;
-        let initial_pulses = 4usize;
-        let sequencer_primary = Sequencer::new(steps, initial_pulses, bpm);
-        let default_density = 0.4f32;
-        let secondary_pulses = std::cmp::min((default_density * 8.0) as usize + 1, 12);
-        let sequencer_secondary = Sequencer::new_with_rotation(12, secondary_pulses, bpm, 0);
-        let harmony = HarmonyNavigator::new(self.init_key, self.init_scale, 4);
-        let harmonic_driver = Some(HarmonicDriver::new(self.init_key_pc, &tuning.harmony_driver));
-        let initial_state = CurrentState {
-            bpm,
-            density: self.musical_params.rhythm_density,
-            tension: self.musical_params.rhythm_tension,
-            smoothness: self.musical_params.melody_smoothness,
-            ..CurrentState::default()
-        };
-        TimelineGenerator::new(
-            sequencer_primary,
-            sequencer_secondary,
-            harmony,
-            harmonic_driver,
-            self.musical_params.clone(),
-            initial_state,
-            tuning,
-        )
-    }
-
-    /// Re-derive init key/scale from a seed and update stored init params.
+    /// Fixe la graine utilisée au prochain rejeu déterministe.
     fn apply_seed(&mut self, seed: u64) {
-        use rand::Rng;
         self.session_seed = seed;
-        let mut init_rng = ChaCha8Rng::seed_from_u64(seed);
-        let keys = [
-            PitchSymbol::C,
-            PitchSymbol::D,
-            PitchSymbol::E,
-            PitchSymbol::F,
-            PitchSymbol::G,
-            PitchSymbol::A,
-            PitchSymbol::B,
-        ];
-        let scales = [ScaleType::PentatonicMinor, ScaleType::PentatonicMajor];
-        self.init_key = keys[init_rng.gen_range(0..keys.len())];
-        self.init_scale = scales[init_rng.gen_range(0..scales.len())];
-        self.init_key_pc = match self.init_key {
-            PitchSymbol::C => 0,
-            PitchSymbol::D => 2,
-            PitchSymbol::E => 4,
-            PitchSymbol::F => 5,
-            PitchSymbol::G => 7,
-            PitchSymbol::A => 9,
-            PitchSymbol::B => 11,
-            _ => 0,
-        };
-        // Keep the relative→absolute chord-root conversion on the new key
-        // (issue #26); the generator gets the fresh copy before regeneration.
-        self.musical_params.key_root = self.init_key_pc;
-        self.generator.update_params(self.musical_params.clone());
     }
 
     /// Generate a new melody with a fresh random seed.
@@ -748,57 +560,23 @@ impl MusicComposer {
         self.musical_params.set_swing_ratio(ratio);
     }
 
-    /// Sélectionne le générateur et applique ses défauts, depuis le profil actif.
-    pub fn set_style(&mut self, style: Style) {
-        let tuning = self.generator.tuning().clone();
-        let style_changed = self.generator.style() != style;
-        self.musical_params.set_style(style);
-
-        match style {
-            Style::Profile => {
-                let rf = &tuning.profile.meter;
-                self.musical_params.bpm = rf.default_bpm;
-                self.emotion_mapped_bpm = rf.default_bpm;
-                self.bpm_override = None;
-                self.musical_params.set_swing_ratio(rf.default_swing_ratio);
-                self.musical_params.time_signature = rf.time_signature;
-                self.musical_params.pulse = Some(rf.pulse_spec());
-                self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
-                self.musical_params.profile_instruments = tuning.profile.instruments;
-                self.config.bpm = self.musical_params.bpm;
-                if style_changed {
-                    self.rng = Self::seeded_rng_past_init(self.session_seed);
-                    self.generator =
-                        Generator::Profile(TradGenerator::new(self.musical_params.clone(), tuning));
-                } else {
-                    self.generator.update_params(self.musical_params.clone());
-                }
-            }
-            Style::Legacy => {
-                let defaults = MusicalParams::default();
-                self.musical_params.bpm = defaults.bpm;
-                self.emotion_mapped_bpm = defaults.bpm;
-                self.bpm_override = None;
-                self.musical_params.set_swing_ratio(defaults.swing_ratio);
-                self.musical_params.time_signature = defaults.time_signature;
-                self.musical_params.pulse = defaults.pulse;
-                self.config.bpm = self.musical_params.bpm;
-                self.config.key = format!("{}", self.init_key);
-                self.config.scale = format!("{:?}", self.init_scale);
-                if style_changed {
-                    self.rng = Self::seeded_rng_past_init(self.session_seed);
-                    let tgen = self.build_legacy_generator(tuning);
-                    self.generator = Generator::Legacy(Box::new(tgen));
-                } else {
-                    self.generator.update_params(self.musical_params.clone());
-                }
-            }
-        }
-
+    /// Applique les défauts du profil actif.
+    fn apply_profile_defaults(&mut self) {
+        let profile = &self.generator.tuning.profile;
+        let meter = &profile.meter;
+        self.musical_params.bpm = meter.default_bpm;
+        self.emotion_mapped_bpm = meter.default_bpm;
+        self.bpm_override = None;
+        self.musical_params.set_swing_ratio(meter.default_swing_ratio);
+        self.musical_params.time_signature = meter.time_signature;
+        self.musical_params.pulse = Some(meter.pulse_spec());
+        self.config.bpm = meter.default_bpm;
+        self.config.steps = meter.steps_per_bar;
+        self.config.pulses = usize::from(meter.pulse_spec().pulses_per_bar);
+        self.generator.update_params(self.musical_params.clone());
         self.pending_program_changes.clear();
         self.pending_program_changes.extend_from_slice(
-            &harmonium_audio::voice_manager::gm_programs_for_style(
-                style,
+            &harmonium_audio::voice_manager::gm_programs_for_profile(
                 &self.musical_params.profile_instruments,
             ),
         );
@@ -807,10 +585,9 @@ impl MusicComposer {
     /// Installe atomiquement un profil validé et sélectionne son générateur.
     pub fn set_profile(&mut self, profile: harmonium_core::StyleProfile) -> Result<(), String> {
         profile.validate().map_err(|e| e.to_string())?;
-        let mut tuning = self.generator.tuning().clone();
+        let mut tuning = self.generator.tuning.clone();
         tuning.profile = profile;
         self.set_tuning(tuning);
-        self.set_style(Style::Profile);
         self.invalidate_future();
         Ok(())
     }
@@ -829,6 +606,11 @@ impl MusicComposer {
         self.musical_params.set_intensity(intensity);
     }
 
+    /// Densité de texture appliquée par les courbes du profil.
+    pub fn set_rhythm_density(&mut self, density: f32) {
+        self.musical_params.rhythm_density = density.clamp(0.0, 1.0);
+    }
+
     pub fn enable_rhythm(&mut self, e: bool) {
         self.musical_params.enable_rhythm = e;
     }
@@ -838,141 +620,10 @@ impl MusicComposer {
     pub fn enable_melody(&mut self, e: bool) {
         self.musical_params.enable_melody = e;
     }
-    pub fn enable_voicing(&mut self, e: bool) {
-        self.musical_params.enable_voicing = e;
-    }
 
     /// Arrête la génération après le dernier tour de l'air courant (outro, P1-T11).
     pub fn set_end_after_tour(&mut self, e: bool) {
         self.musical_params.end_after_tour = e;
-    }
-
-    pub fn set_rhythm_mode(&mut self, m: harmonium_core::sequencer::RhythmMode) {
-        self.musical_params.rhythm_mode = m;
-    }
-    pub fn set_rhythm_steps(&mut self, s: usize) {
-        self.musical_params.rhythm_steps = s;
-    }
-    pub fn set_rhythm_pulses(&mut self, p: usize) {
-        self.musical_params.rhythm_pulses = p;
-    }
-    pub fn set_rhythm_rotation(&mut self, r: usize) {
-        self.musical_params.rhythm_rotation = r;
-    }
-    pub fn set_rhythm_density(&mut self, d: f32) {
-        self.musical_params.rhythm_density = d.clamp(0.0, 1.0);
-    }
-    pub fn set_rhythm_tension(&mut self, t: f32) {
-        self.musical_params.rhythm_tension = t.clamp(0.0, 1.0);
-    }
-    /// Override the rhythmic-cell variety knob (CORELIB-13).
-    /// Default is 0.5 from `VarietyParams::default()`. Set 0.0 to disable
-    /// clave/3+3+2 cells and gap=2 splits — useful for legacy/A-B comparison.
-    pub fn set_rhythmic_cell_variety(&mut self, v: f32) {
-        self.musical_params.variety.rhythmic_cell_variety = v.clamp(0.0, 1.0);
-    }
-    pub fn set_rhythm_secondary(&mut self, steps: usize, pulses: usize, rotation: usize) {
-        self.musical_params.rhythm_secondary_steps = steps;
-        self.musical_params.rhythm_secondary_pulses = pulses;
-        self.musical_params.rhythm_secondary_rotation = rotation;
-    }
-    pub fn set_fixed_kick(&mut self, f: bool) {
-        self.musical_params.fixed_kick = f;
-    }
-
-    pub fn set_harmony_mode(&mut self, m: harmonium_core::harmony::HarmonyMode) {
-        self.musical_params.harmony_mode = m;
-    }
-    pub fn set_harmony_strategy(&mut self, s: harmonium_core::params::HarmonyStrategy) {
-        self.musical_params.harmony_strategy = s;
-    }
-    pub fn set_chord_chart(&mut self, chart: Vec<arrayvec::ArrayString<16>>) {
-        self.musical_params.chord_chart = chart;
-    }
-    pub fn set_harmony_tension(&mut self, t: f32) {
-        self.musical_params.harmony_tension = t.clamp(0.0, 1.0);
-    }
-    pub fn set_harmony_valence(&mut self, v: f32) {
-        self.musical_params.harmony_valence = v.clamp(-1.0, 1.0);
-    }
-    pub fn set_harmony_measures_per_chord(&mut self, m: usize) {
-        self.musical_params.harmony_measures_per_chord = m;
-    }
-    pub fn set_key_root(&mut self, r: u8) {
-        // A key change is a session re-key: navigator scale, harmonic driver
-        // and key_root must move together or chord labels/audio desync
-        // (issue #26). Delegates to the same logic as the difficulty system.
-        let _ = self.set_session_key(r);
-    }
-
-    /// Re-key the procedural session to a concert pitch class (0–11), rebuilding
-    /// the scale navigator and re-rooting the harmonic driver so the next
-    /// regeneration is centred on the new key. Used by the difficulty system to
-    /// keep beginners in easy keys (the engine otherwise picks a random natural
-    /// key, which can be sharp-heavy — B, E, A). The caller must regenerate
-    /// afterwards (e.g. via `deterministic_seek(1)` / `reset_timeline`).
-    ///
-    /// Returns `true` if the key actually changed, `false` (no-op) if the
-    /// session was already in `key_pc` — letting the caller skip an
-    /// unnecessary timeline wipe + regeneration.
-    pub fn set_session_key(&mut self, key_pc: u8) -> bool {
-        let key_pc = key_pc % 12;
-        if key_pc == self.init_key_pc {
-            return false;
-        }
-        let symbol = harmonium_core::params::key_root_to_pitch_symbol(key_pc);
-        self.init_key = symbol;
-        self.init_key_pc = key_pc;
-        self.config.key = format!("{symbol}");
-        self.musical_params.key_root = key_pc;
-        if let Generator::Legacy(tgen) = &mut self.generator {
-            // Rebuild the scale navigator on the new tonic (keep the current scale).
-            tgen.harmony = HarmonyNavigator::new(symbol, self.init_scale, 4);
-            // Re-root the procedural harmonic driver so chords centre on the new key.
-            if let Some(driver) = tgen.harmonic_driver.as_mut() {
-                driver.set_key(key_pc);
-            }
-        }
-        // Push key_root into the generator's own params copy — it converts
-        self.generator.update_params(self.musical_params.clone());
-        log::info(&format!("Session re-keyed to {symbol} (pc {key_pc})"));
-        true
-    }
-
-    pub fn set_melody_smoothness(&mut self, s: f32) {
-        self.musical_params.melody_smoothness = s.clamp(0.0, 1.0);
-    }
-    pub fn set_melody_octave(&mut self, o: i32) {
-        self.musical_params.melody_octave = o.clamp(3, 6);
-    }
-    pub fn set_voicing_density(&mut self, d: f32) {
-        self.musical_params.voicing_density = d.clamp(0.0, 1.0);
-    }
-    pub fn set_voicing_tension(&mut self, t: f32) {
-        self.musical_params.voicing_tension = t.clamp(0.0, 1.0);
-    }
-
-    pub fn set_all_rhythm_params(
-        &mut self,
-        mode: harmonium_core::sequencer::RhythmMode,
-        steps: usize,
-        pulses: usize,
-        rotation: usize,
-        density: f32,
-        tension: f32,
-        secondary_steps: usize,
-        secondary_pulses: usize,
-        secondary_rotation: usize,
-    ) {
-        self.musical_params.rhythm_mode = mode;
-        self.musical_params.rhythm_steps = steps;
-        self.musical_params.rhythm_pulses = pulses;
-        self.musical_params.rhythm_rotation = rotation;
-        self.musical_params.rhythm_density = density.clamp(0.0, 1.0);
-        self.musical_params.rhythm_tension = tension.clamp(0.0, 1.0);
-        self.musical_params.rhythm_secondary_steps = secondary_steps;
-        self.musical_params.rhythm_secondary_pulses = secondary_pulses;
-        self.musical_params.rhythm_secondary_rotation = secondary_rotation;
     }
 
     // === Instrument config ===
@@ -1011,46 +662,13 @@ impl MusicComposer {
         self.cached_emotions.density = density;
         self.cached_emotions.tension = tension;
 
-        let mapped = match &self.generator {
-            Generator::Legacy(_) => self.emotion_mapper.map(&self.cached_emotions),
-            Generator::Profile(generator) => {
-                let mut params = self.musical_params.clone();
-                self.emotion_mapper.apply_dynamics(
-                    &self.cached_emotions,
-                    &generator.tuning.profile.dynamics,
-                    generator.tuning.profile.meter.default_bpm,
-                    &mut params,
-                );
-                params
-            }
-        };
-
-        // Preserve runtime state that shouldn't be overwritten by the mapper
-        let mut new_params = mapped;
-        new_params.rhythm_mode = self.musical_params.rhythm_mode;
-        new_params.style = self.musical_params.style;
-        new_params.feet_density = self.musical_params.feet_density;
-        new_params.swing_ratio = self.musical_params.swing_ratio;
-        new_params.time_signature = self.musical_params.time_signature;
-        new_params.pulse = self.musical_params.pulse;
-        new_params.end_after_tour = self.musical_params.end_after_tour;
-        new_params.enable_rhythm = self.musical_params.enable_rhythm;
-        new_params.enable_harmony = self.musical_params.enable_harmony;
-        new_params.enable_melody = self.musical_params.enable_melody;
-        new_params.enable_voicing = self.musical_params.enable_voicing;
-        new_params.record_wav = self.musical_params.record_wav;
-        new_params.record_midi = self.musical_params.record_midi;
-        new_params.record_musicxml = self.musical_params.record_musicxml;
-        new_params.muted_channels = self.musical_params.muted_channels.clone();
-        new_params.channel_routing = self.musical_params.channel_routing.clone();
-        new_params.gain_lead = self.musical_params.gain_lead;
-        new_params.gain_chords = self.musical_params.gain_chords;
-        new_params.gain_bass = self.musical_params.gain_bass;
-        new_params.gain_snare = self.musical_params.gain_snare;
-        new_params.gain_hat = self.musical_params.gain_hat;
-        new_params.instrument_lead = self.musical_params.instrument_lead;
-        new_params.instrument_bass = self.musical_params.instrument_bass;
-
+        let mut new_params = self.musical_params.clone();
+        self.emotion_mapper.apply_dynamics(
+            &self.cached_emotions,
+            &self.generator.tuning.profile.dynamics,
+            self.generator.tuning.profile.meter.default_bpm,
+            &mut new_params,
+        );
         // Store emotion-mapped BPM, then apply override if set
         self.emotion_mapped_bpm = new_params.bpm;
         if let Some(override_bpm) = self.bpm_override {
@@ -1061,16 +679,6 @@ impl MusicComposer {
         // The generator gets synced explicitly by invalidate_after_preview()
         // or invalidate_future() so that already-generated bars are preserved.
         self.musical_params = new_params;
-
-        log::info(&format!(
-            "Emotion mapped: arousal={:.2} valence={:.2} density={:.2} tension={:.2} → bpm={:.0} strategy={:?}",
-            arousal,
-            valence,
-            density,
-            tension,
-            self.musical_params.bpm,
-            self.musical_params.harmony_strategy
-        ));
     }
 
     // === Writehead controls ===
@@ -1079,27 +687,98 @@ impl MusicComposer {
         self.writehead.lookahead = n.max(4);
     }
 
+    fn capture_recording_bar(&mut self) {
+        let bar = self.playhead_bar();
+        if let Some((measures, last_bar)) = &mut self.score_recording {
+            if *last_bar != Some(bar) {
+                if let Some(measure) = self.writehead.timeline.get_measure(bar) {
+                    let mut measure = measure.clone();
+                    measure.index = measures.len() + 1;
+                    measures.push(measure);
+                    *last_bar = Some(bar);
+                }
+            }
+        }
+    }
+
+    /// Démarre la capture audio ou une partition de mesures complètes, hors callback.
+    pub fn start_recording(
+        &mut self,
+        format: harmonium_core::events::RecordFormat,
+        commands: &mut rtrb::Producer<crate::playback::PlaybackCommand>,
+    ) -> Result<(), String> {
+        use harmonium_core::events::{AudioRecordFormat, RecordFormat};
+        let audio = match format {
+            RecordFormat::Wav => AudioRecordFormat::Wav,
+            RecordFormat::Midi => AudioRecordFormat::Midi,
+            RecordFormat::MusicXml => {
+                self.score_recording = Some((Vec::new(), None));
+                return Ok(());
+            }
+        };
+        commands
+            .push(crate::playback::PlaybackCommand::StartRecording(audio))
+            .map_err(|_| "file de commandes audio pleine".to_string())
+    }
+
+    /// Termine la capture ; MusicXML utilise uniquement l'export canonique de timeline.
+    pub fn stop_recording(
+        &mut self,
+        format: harmonium_core::events::RecordFormat,
+        commands: &mut rtrb::Producer<crate::playback::PlaybackCommand>,
+        finished: &crate::FinishedRecordings,
+    ) -> Result<(), String> {
+        use harmonium_core::events::{AudioRecordFormat, RecordFormat};
+        let audio = match format {
+            RecordFormat::Wav => AudioRecordFormat::Wav,
+            RecordFormat::Midi => AudioRecordFormat::Midi,
+            RecordFormat::MusicXml => {
+                if let Some((measures, _)) = self.score_recording.take() {
+                    let mut score = harmonium_core::timeline::ScoreTimeline::new(measures.len());
+                    for measure in measures {
+                        score.push_measure(measure);
+                    }
+                    let xml = harmonium_core::timeline::timeline_to_musicxml_with_instruments(
+                        &score,
+                        "Harmonium Export",
+                        &self.musical_params.instrument_lead,
+                        &self.musical_params.instrument_bass,
+                    );
+                    finished
+                        .lock()
+                        .map_err(|e| e.to_string())?
+                        .push((RecordFormat::MusicXml, xml.into_bytes()));
+                }
+                return Ok(());
+            }
+        };
+        commands
+            .push(crate::playback::PlaybackCommand::StopRecording(audio))
+            .map_err(|_| "file de commandes audio pleine".to_string())
+    }
+
     /// Apply a TuningParams to the generator (for style profile loading).
     pub fn set_tuning(&mut self, tuning: harmonium_core::tuning::TuningParams) {
         self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
         self.musical_params.profile_instruments = tuning.profile.instruments;
         self.generator.update_tuning(tuning);
+        self.apply_profile_defaults();
     }
 
-    /// Profil actif, y compris lorsque le générateur Legacy est sélectionné.
+    /// Profil actif.
     pub fn profile(&self) -> &harmonium_core::StyleProfile {
-        &self.generator.tuning().profile
+        &self.generator.tuning.profile
     }
 
     /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
     #[must_use]
     pub fn tours_per_tune(&self) -> usize {
-        self.generator.tuning().profile.arrangement.tours_per_tune
+        self.generator.tuning.profile.arrangement.tours_per_tune
     }
 
     /// Force le nombre de tours par air (D11) ; refuse une valeur hors `1..=MAX_TOURS`.
     pub fn set_tours_per_tune(&mut self, tours: usize) -> Result<(), String> {
-        let mut tuning = self.generator.tuning().clone();
+        let mut tuning = self.generator.tuning.clone();
         tuning.profile.arrangement.tours_per_tune = tours;
         tuning.profile.arrangement.validate().map_err(|e| e.to_string())?;
         self.generator.update_tuning(tuning);
@@ -1157,10 +836,10 @@ impl MusicComposer {
         self.writehead.timeline.get_measure(bar)
     }
 
-    /// En `Style::Profile`, retourne le [`TunePlan`] et le [`BarRole`] de la mesure 1-based `bar`.
+    /// Retourne le plan et le rôle de la mesure 1-based `bar`.
     #[must_use]
     pub fn profile_bar_info(&self, bar: usize) -> Option<(TunePlan, BarRole)> {
-        self.generator.profile_bar_info(bar)
+        self.generator.bar_info(bar)
     }
     pub fn last_chord_name(&self) -> &ArrayString<64> {
         &self.last_chord_name

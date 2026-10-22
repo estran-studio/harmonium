@@ -1,321 +1,107 @@
 # Harmonium CLI
 
-Interactive command-line interface for the Harmonium generative music engine.
+REPL d'écoute et export offline du moteur Harmonium. Au démarrage, le profil
+embarqué `reel_quebecois` est actif : 230 BPM à la noire, signature 2/2,
+pulse dansée à la blanche et swing 0,56.
 
-## Overview
-
-The Harmonium CLI provides a REPL (Read-Eval-Print Loop) for testing and controlling the Harmonium engine. It validates the new command/report queue architecture before the frontend rebuild (Phase 3).
-
-## Features
-
-- ✅ **Interactive REPL** with command history and tab completion
-- ✅ **Smart autocomplete** - Tab completion for commands, parameters, and values
-- ✅ **Real-time state display** showing BPM, current chord, bar, beat
-- ✅ **All 40+ engine parameters** controllable via commands
-- ✅ **Emotion mode** - Control via arousal, valence, density, tension
-- ✅ **Relative adjustments** - Increment/decrement emotion values (e.g., `emotion a+0.1 t-0.2`)
-- ✅ **Direct mode** - Technical control of all parameters
-- ✅ **Live pattern visualization** - See Euclidean rhythm patterns
-- ✅ **Command help system** - Type `help` for available commands
-- ✅ **Colored output** - Easy to read terminal interface
-
-## Installation
+## Démarrage
 
 ```bash
-cd harmonium/harmonium_cli
-cargo build --release
+cargo build --release -p harmonium-cli
+cargo run -p harmonium-cli -- --style gigue_quebecoise
+cargo run -p harmonium-cli -- --profile profiles/mon_style
 ```
 
-The binary will be at `../../target/release/harmonium-cli`
+`--style <id>` sélectionne un profil embarqué ; `--profile <dossier>` charge un
+profil TOML validé avec ses banques. Les deux options sont exclusives.
+`--soundfont <fichier.sf2>` choisit la banque audio. La résolution par défaut
+cherche GeneralUser GS puis `assets/test.sf2` ; cette dernière ne permet pas
+une validation des timbres traditionnels. `make soundfont` installe la banque GM.
 
-## Usage
+## Commandes
 
-### Quick Start
+### Profils et dynamique
+
+```text
+style reel_quebecois
+style gigue_quebecoise
+style valse_quebecoise
+style profiles/mon_style
+feet 0|1|2
+intensity 0.8
+seed 42
+emotion
+emotion 0.9 0.5 0.7 0.6
+emotion a+0.1 v-0.2 d+0.05 t-0.1
+direct
+```
+
+Les émotions sont arousal, valence, densité et tension. Elles agissent via
+`[dynamics]` du profil actif, pas via des plages musicales codées dans le REPL.
+La grille, la forme, les cellules, le modèle harmonique et les instruments se
+règlent dans le profil. `reset` rétablit le profil embarqué par défaut.
+
+### Transport, tempo et mixage
+
+```text
+set bpm 230
+reset bpm
+swing 0.6
+tempo 200 8
+tempo off
+beat
+seek 4
+loop 4 8
+loop off
+set volume 0.8
+set gain 0 0.8
+set mute 3
+set unmute 3
+```
+
+`set bpm` modifie le tempo nominal des prochaines mesures ; `tempo` pilote
+le tempo audible à la prochaine pulse ou par rampe de N pulses (40–300 BPM).
+`reset bpm` retire la surcharge nominale. Le swing est borné à 0,5–0,75 et
+ignoré par la grille composée. `beat` lit `BeatInfo` ; Entrée, Échap, q ou
+Ctrl+C reviennent au REPL. Les pistes sont Melody=0, Chords=1, Bass=2,
+Heel=3 et Toe=4.
+
+### Enregistrement et état
+
+```text
+record wav
+record midi
+record musicxml
+stop
+stop musicxml
+state
+help
+help style
+quit
+```
+
+WAV et MIDI sont capturés au rendu. MusicXML est exporté depuis les mesures
+complètes observées par le compositeur pendant la capture : pas de reconstruction
+NoteOn/NoteOff, pas d'export de partition dans le callback audio. Les fichiers
+finalisés sont écrits dans le répertoire courant. `state` affiche le profil,
+la tonalité, la position dans la forme, le tempo audible, le swing et la pulse.
+Tab complète les commandes et profils ; l'historique est dans `~/.harmonium_history`.
+
+## Export offline
 
 ```bash
-# Using make (recommended)
-make run
+cargo run -p harmonium-cli --release -- --export --bars 64 --seed 1 \
+  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid \
+  --record-musicxml demos/reel_seed1.musicxml
 
-# Or directly
-harmonium-cli
+cargo run -p harmonium-cli --release -- --export --bars 64 \
+  --style valse_quebecoise --seed 1 --feet off
 ```
 
-### With SoundFont
-
-```bash
-harmonium-cli --soundfont path/to/soundfont.sf2
-```
-
-Without `--soundfont`, the CLI loads `assets/test.sf2` from the current directory if it exists; otherwise it runs without a SoundFont (silent) and prints a warning.
-
-### Keyboard Shortcuts
-
-- **Tab** - Autocomplete commands, parameters, and values
-- **Ctrl+C** - Quit immediately
-- **Ctrl+D** - Quit (EOF)
-- **↑/↓ arrows** - Navigate command history
-
-## Commands
-
-### Control Modes
-
-```bash
-emotion                          # Switch to emotion mode
-emotion 0.9 0.5 0.7 0.6         # Set emotional parameters (arousal valence density tension)
-emotion a+0.1 v-0.2 d+0.05      # Relative adjustments (a=arousal, v=valence, d=density, t=tension)
-direct                           # Switch to direct/technical mode
-```
-
-**Emotion Shortcuts:**
-- `a` = arousal (energy/activation)
-- `v` = valence (positive/negative)
-- `d` = density (rhythmic complexity)
-- `t` = tension (harmonic dissonance)
-
-**Examples:**
-```bash
-emotion a+0.1        # Increase arousal by 0.1
-emotion t-0.2        # Decrease tension by 0.2
-emotion a+0.1 d-0.05 # Multiple adjustments
-```
-
-### Global Parameters
-
-```bash
-set bpm 140                      # Set BPM (70-180)
-set volume 0.8                   # Set master volume (0-1)
-set time 4/4                     # Set time signature
-```
-
-### Rhythm Parameters
-
-```bash
-set rhythm_mode euclidean        # euclidean | perfect | classic
-set steps 16                     # Pattern steps (4-192)
-set pulses 4                     # Pattern pulses (1-16)
-set rotation 2                   # Pattern rotation (0-15)
-set density 0.7                  # Rhythmic density (0-1)
-set rhythm_tension 0.5           # Rhythmic tension (0-1)
-```
-
-### Harmony Parameters
-
-```bash
-set harmony_mode driver          # basic | driver
-set valence 0.5                  # Positive/negative emotion (-1 to 1)
-set harmony_tension 0.3          # Harmonic dissonance (0-1)
-```
-
-### Melody & Voicing
-
-```bash
-set smoothness 0.7               # Melodic smoothness (0-1)
-set octave 4                     # Melody octave (3-6)
-set voicing_density 0.5          # Chord voicing density (0-1)
-set voicing_tension 0.3          # Voicing tension (0-1)
-```
-
-### Module Toggles
-
-```bash
-enable rhythm                    # Enable rhythm module
-disable harmony                  # Disable harmony module
-enable melody                    # Enable melody module
-disable voicing                  # Disable voicing module
-```
-
-### Mixer
-
-```bash
-set gain 0 0.8                   # Set channel 0 (melody) gain to 0.8
-set mute 3                       # Mute channel 3 (heel/snare)
-set unmute 3                     # Unmute channel 3
-```
-
-### Recording
-
-```bash
-record wav                       # Start WAV recording
-record midi                      # Start MIDI recording
-record musicxml                  # Start MusicXML recording
-stop                             # Stop all recordings
-stop musicxml                    # Stop specific format
-```
-
-**Note**: Recordings are saved to the current directory when stopped.
-
-### Beat, Swing & Tempo (phase 0)
-
-```bash
-beat                             # Visual metronome from BeatInfo (Enter/Esc/q/Ctrl+C to exit)
-swing 0.6                        # Eighth-note swing 0.5-0.75 (takes effect at the next measure)
-tempo 200 8                      # Ramp the audible tempo to 200 BPM over 8 pulses
-tempo 200                        # Jump to 200 BPM at the next pulse
-tempo off                        # Back to the measures' tempo
-```
-
-`swing` out of range is clamped and reported. `tempo` drives the playback
-ahead of the measures (`set bpm` stays the nominal generated tempo); the
-engine clamps it to 40–300 BPM and `state` shows the audible BPM.
-
-
-### Profils de style (phase 2)
-
-```bash
-style reel_quebecois             # Profil embarqué (alias : reel) : 230 BPM, swing 0.56, 2/2
-style profiles/mon_style         # Profil externe : dossier contenant profile.toml
-style legacy                     # Générateur Legacy
-feet 1                           # Podorythmie : 0 (talon), 1 (standard), 2 (ornée)
-seed 1                           # Graine de session, redémarre à la mesure 1
-```
-
-`--style <id>` ou `--profile <dossier>` choisissent le profil au démarrage (voir `profiles/README.md`).
-`state` affiche le profil actif, la tonalité/mode courants et la position dans la forme (ex. `A2 m.5/8`).
-
-### Offline Batch Export (`--export`)
-
-```bash
-cargo run -p harmonium-cli --release -- --export --bars 64 --style reel_quebecois --seed 1 --feet 1 \
-  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid
-```
-
-Réglages d'export (mode `--export` seulement) :
-
-- `--swing <ratio>` (0,5 = droit) remplace le swing du style pour l'écoute à
-  armes égales. Hors plage 0,5–0,75 : borné et signalé.
-- `--feet off` exporte sans pieds (piste rythme désactivée) ; `0|1|2` règle
-  la densité de podorythmie. Les deux passent par `MusicalParams`, comme le
-  REPL (`swing`, `feet`).
-### Utility
-
-```bash
-state | show | status            # Show current engine state
-reset                            # Reset engine to defaults
-help                             # Show help message
-help set                         # Show help for specific command
-quit | exit                      # Exit the CLI
-```
-
-## Examples
-
-### Example Session
-
-```bash
-$ harmonium-cli
-
-╔════════════════════════════════════════════════════════╗
-║                                                        ║
-║     🎵  Harmonium CLI - Interactive Music Engine  🎵   ║
-║                                                        ║
-╚════════════════════════════════════════════════════════╝
-
-  Type help for available commands
-  Type quit or exit to exit
-
-harmonium 120bpm Imaj7 [bar:1] set bpm 140
-[OK] BPM set to 140
-
-harmonium 140bpm Imaj7 [bar:3] emotion 0.9 0.5 0.7 0.6
-[OK] Emotions set: A=0.90 V=0.50 D=0.70 T=0.60
-
-harmonium 169bpm Imaj7 [bar:5] emotion a+0.05 t-0.1
-[OK] Emotions set: A=0.95 V=0.50 D=0.70 T=0.60
-
-harmonium 169bpm Imaj7 [bar:7] set rhythm_mode per[TAB]
-harmonium 169bpm Imaj7 [bar:7] set rhythm_mode perfect
-[OK] Rhythm mode set to PerfectBalance
-
-harmonium 169bpm Imaj7 [bar:9] enable voicing
-[OK] Voicing enabled
-
-harmonium 169bpm Imaj7 [bar:10] show
-
-╔══════════════════════════════════════════════════════╗
-║              ENGINE STATE                            ║
-╚══════════════════════════════════════════════════════╝
-
-TIMING:
-  BPM: 169.0
-  Time Signature: 4/4
-  Bar: 10
-  Beat: 1
-  Step: 1
-
-HARMONY:
-  Mode: Driver
-  Current Chord: Imaj7
-  Progression: Happy Energy (4 chords)
-  Key: C PentatonicMajor
-
-RHYTHM:
-  Mode: PerfectBalance
-  Primary: 16 steps, 4 pulses, rotation 0
-  Secondary: 12 steps, 6 pulses, rotation 0
-  Pattern: ████·███·███·███|················
-
-MODULES:
-  Rhythm:  ON
-  Harmony: ON
-  Melody:  ON
-  Voicing: ON
-
-harmonium 169bpm Imaj7 [bar:12] quit
-Goodbye!
-```
-
-## Notes
-
-- **Emotion Mode**: The CLI includes a built-in EmotionMapper that translates emotional parameters (arousal, valence, density, tension) into musical parameters (BPM, rhythm patterns, harmony, etc.) in real-time.
-- **Logging**: Engine logs are automatically suppressed in CLI mode to keep the REPL clean. Only critical errors are shown.
-- **Exit**: Press Ctrl+C or Ctrl+D to exit gracefully.
-- **History**: Command history is saved to `~/.harmonium_history` and persists between sessions.
-
-## Architecture
-
-The REPL drives the host's decoupled engine directly:
-
-```
-┌─────────────┐  setters (Mutex<MusicComposer>)   ┌─────────────────┐
-│   REPL      ├──────────────────────────────────→│  MusicComposer  │ main thread: generates measures ahead
-│             │                                   └────────┬────────┘
-│             │  PlaybackCommand (SPSC 256)                │ Measure
-│             ├─────────────────────────────┐              ↓
-│             │  EngineReport (SPSC 256)    │     ┌─────────────────┐
-│             │←────────────────────────────┴─────┤  PlaybackEngine │ cpal callback: plays steps, publishes (bar, step)
-└─────────────┘                                   └─────────────────┘
-```
-
-- Structural parameters (tempo, emotions, harmony) take effect on the next generated measure.
-- Gains, mute, GM program changes and seek are immediate (ring buffer, processed at the top of the audio callback).
-- No allocation in the audio callback: `RTCheckAllocator` panics on violation in debug builds.
-
-## Development
-
-### Running Tests
-
-```bash
-cargo test -p harmonium-cli
-```
-
-### Building
-
-```bash
-cargo build -p harmonium-cli
-```
-
-## Status
-
-**Phase 2 Complete!** ✅
-
-The CLI successfully validates:
-- ✅ All 40+ parameters controllable
-- ✅ Emotion ↔ Direct mode switching
-- ✅ Real-time state updates
-- ✅ Command/report queue architecture
-- ✅ No audio dropouts
-
-Ready for **Phase 3: Frontend Rebuild**
-
-## License
-
-MIT
+- `--bars N` borne la durée en mesures ; `--duration N` la borne en secondes.
+- `--seed`, `--feet 0|1|2|off`, `--swing`, `--tours` et `--intensity` règlent le rendu.
+- `--automation <fichier.toml>` applique les courbes par mesure.
+- `--record-truth <fichier.json>` écrit les snapshots et métadonnées de rendu.
+
+La génération et le playback sont identiques au temps réel, sans ouvrir de
+périphérique audio. Voir `profiles/README.md` pour le format des profils.

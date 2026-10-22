@@ -29,21 +29,11 @@ pub struct RenderConfig {
     pub arousal: f32,
     /// Deterministic seed for reproducible output
     pub seed: u64,
-    /// Rhythmic-cell variety override (0.0-1.0). `None` = use default (0.5).
-    pub rhythmic_cell_variety: Option<f32>,
 }
 
 impl Default for RenderConfig {
     fn default() -> Self {
-        Self {
-            bpm: 120.0,
-            density: 0.5,
-            tension: 0.4,
-            valence: 0.3,
-            arousal: 0.5,
-            seed: 42,
-            rhythmic_cell_variety: None,
-        }
+        Self { bpm: 120.0, density: 0.5, tension: 0.4, valence: 0.3, arousal: 0.5, seed: 42 }
     }
 }
 
@@ -72,21 +62,15 @@ pub fn render_to_wav(
     composer.set_tuning(tuning.clone());
 
     // Set deterministic seed
-    composer.set_rng_seed(config.seed);
+    composer.set_seed(config.seed);
 
     // Set BPM
     composer.set_bpm(config.bpm);
 
-    // Set rhythm mode to ClassicGroove so our groove params take effect
-    composer.set_rhythm_mode(harmonium_core::sequencer::RhythmMode::ClassicGroove);
+    composer.use_emotion_mode();
 
     // Set emotion params (density, tension, valence drive the generator)
     composer.set_emotions(config.arousal, config.valence, config.density, config.tension);
-
-    // Optional variety override (CORELIB-13)
-    if let Some(v) = config.rhythmic_cell_variety {
-        composer.set_rhythmic_cell_variety(v);
-    }
 
     // Sync all params to generator before generating
     composer.sync_generator();
@@ -96,12 +80,18 @@ pub fn render_to_wav(
     composer.generate_bars(bars);
 
     // Start WAV + MIDI + MusicXML recording
-    let _ = cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Wav));
-    let _ = cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Midi));
-    let _ = cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::MusicXml));
+    let _ = cmd_tx
+        .push(PlaybackCommand::StartRecording(harmonium_core::events::AudioRecordFormat::Wav));
+    let _ = cmd_tx
+        .push(PlaybackCommand::StartRecording(harmonium_core::events::AudioRecordFormat::Midi));
+    composer.start_recording(RecordFormat::MusicXml, &mut cmd_tx).map_err(anyhow::Error::msg)?;
 
     // Calculate total samples needed
-    let seconds_per_bar = 4.0 * 60.0 / f64::from(config.bpm);
+    let params = composer.musical_params();
+    let signature = tuning.profile.meter.time_signature;
+    let tempo = tuning.profile.dynamics.tempo_for(params.bpm, params.intensity);
+    let seconds_per_bar =
+        signature.numerator as f64 * 4.0 / signature.denominator as f64 * 60.0 / f64::from(tempo);
     let total_samples = (SAMPLE_RATE * seconds_per_bar * bars as f64) as usize;
     let mut rendered_samples = 0usize;
     let mut buffer = vec![0.0f32; BUFFER_SIZE * CHANNELS];
@@ -125,9 +115,13 @@ pub fn render_to_wav(
     }
 
     // Stop recordings
-    let _ = cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Wav));
-    let _ = cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Midi));
-    let _ = cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::MusicXml));
+    let _ =
+        cmd_tx.push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Wav));
+    let _ = cmd_tx
+        .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Midi));
+    composer
+        .stop_recording(RecordFormat::MusicXml, &mut cmd_tx, &finished_recordings)
+        .map_err(anyhow::Error::msg)?;
     // Process stop commands
     let mut stop_buf = vec![0.0f32; BUFFER_SIZE * CHANNELS];
     playback.process_buffer(&mut stop_buf, CHANNELS, Instant::now());

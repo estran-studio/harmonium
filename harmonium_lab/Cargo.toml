@@ -2,7 +2,7 @@
 name = "harmonium_lab"
 version = "0.1.0"
 edition = "2024"
-description = "Musical DNA extraction, benchmarking, and LLM-assisted tuning for Harmonium"
+description = "Musical DNA extraction, benchmarking, and profile rendering for Harmonium"
 
 [lints]
 workspace = true
@@ -29,15 +29,6 @@ indicatif = "0.17"
 # File system
 walkdir = "2.5"
 zip = "9.0"
-
-# MusicXML parsing
-musicxml = "1.1"
-
-# HTTP client for Claude API
-reqwest = { version = "0.12", features = ["json", "blocking"] }
-
-# Async runtime
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 # Error handling
 thiserror = "2.0"

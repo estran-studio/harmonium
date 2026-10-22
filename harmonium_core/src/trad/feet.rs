@@ -14,7 +14,7 @@ use std::{collections::HashSet, fmt};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
-    harmony::RngCore,
+    algo::RngCore,
     timeline::{Articulation, TimelineNote, TrackId},
 };
 

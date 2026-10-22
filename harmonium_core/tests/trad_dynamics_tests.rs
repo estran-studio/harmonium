@@ -1,6 +1,6 @@
 //! Contrats musicaux du pilotage continu, observés sur les snapshots.
 use harmonium_core::{
-    params::{MusicalParams, Style},
+    params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
     trad::{
@@ -21,11 +21,7 @@ fn generator() -> (TradGenerator, ChaCha8Rng) {
         },
         ..Default::default()
     };
-    let params = MusicalParams {
-        style: Style::Profile,
-        bpm: tuning.profile.meter.default_bpm,
-        ..Default::default()
-    };
+    let params = MusicalParams { bpm: tuning.profile.meter.default_bpm, ..Default::default() };
     (TradGenerator::new(params, tuning), ChaCha8Rng::seed_from_u64(1))
 }
 fn stream(change: impl Fn(&mut MusicalParams)) -> Vec<MeasureSnapshot> {

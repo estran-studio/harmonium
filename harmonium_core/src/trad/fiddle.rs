@@ -9,7 +9,7 @@ use super::{
     plan::{ImposedRole, TunePlan},
 };
 use crate::{
-    harmony::RngCore,
+    algo::RngCore,
     theory::PitchClass,
     timeline::{Articulation, TimelineNote},
     tuning::{ReelFiddleParams, TuningParams},

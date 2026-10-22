@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use harmonium::{audio, harmony::HarmonyMode, log, playback::PlaybackCommand};
+use harmonium::{audio, log, playback::PlaybackCommand};
 use harmonium_core::events::RecordFormat;
 use rand::Rng;
 use rosc::{OscPacket, OscType};
@@ -17,6 +17,7 @@ use rosc::{OscPacket, OscType};
 fn perform_graceful_shutdown(
     playback_cmd_tx: &mut rtrb::Producer<PlaybackCommand>,
     finished_recordings: &harmonium::FinishedRecordings,
+    composer: &std::sync::Mutex<harmonium::composer::MusicComposer>,
     record_wav: &Option<String>,
     record_midi: &Option<String>,
     record_musicxml: &Option<String>,
@@ -46,13 +47,24 @@ fn perform_graceful_shutdown(
 
     // Step 4: Stop recordings
     if record_wav.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Wav));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Wav));
     }
     if record_midi.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::Midi));
+        let _ = playback_cmd_tx
+            .push(PlaybackCommand::StopRecording(harmonium_core::events::AudioRecordFormat::Midi));
     }
     if record_musicxml.is_some() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::StopRecording(RecordFormat::MusicXml));
+        if let Ok(mut composer) = composer.lock() {
+            if let Err(error) = composer.stop_recording(
+                RecordFormat::MusicXml,
+                playback_cmd_tx,
+                finished_recordings,
+            ) {
+                log::warn(&error);
+                return false;
+            }
+        }
     }
     log::info("Recording stop signal sent to audio thread");
 
@@ -129,9 +141,6 @@ fn main() {
     let mut use_osc = false;
     let mut simulate = false;
     let mut duration_secs = 0; // 0 = infinite
-    let mut harmony_mode = HarmonyMode::Driver;
-    let mut poly_steps: usize = 48;
-    let mut fixed_kick = false;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -167,43 +176,11 @@ fn main() {
             }
             "--osc" => use_osc = true,
             "--simulate" => simulate = true,
-            "--drum-kit" | "--fixed-kick" => fixed_kick = true,
-            "--harmony-mode" | "-m" => {
-                if i + 1 < args.len() {
-                    harmony_mode = match args[i + 1].to_lowercase().as_str() {
-                        "basic" => HarmonyMode::Basic,
-                        "driver" => HarmonyMode::Driver,
-                        "chart" => HarmonyMode::Chart,
-                        _ => {
-                            log::warn(&format!(
-                                "Unknown harmony mode '{}', using Driver",
-                                args[i + 1]
-                            ));
-                            HarmonyMode::Driver
-                        }
-                    };
-                    i += 1;
-                }
-            }
             "--duration" => {
                 if i + 1 < args.len()
                     && let Ok(d) = args[i + 1].parse::<u64>()
                 {
                     duration_secs = d;
-                    i += 1;
-                }
-            }
-            "--poly-steps" | "-p" => {
-                if i + 1 < args.len()
-                    && let Ok(s) = args[i + 1].parse::<usize>()
-                {
-                    let valid = (s / 4) * 4;
-                    poly_steps = valid.clamp(16, 384);
-                    if valid != s {
-                        log::warn(&format!(
-                            "Poly steps adjusted to {poly_steps} (must be multiple of 4)"
-                        ));
-                    }
                     i += 1;
                 }
             }
@@ -213,9 +190,6 @@ fn main() {
                 println!("Options:");
                 println!(
                     "  --soundfont, -s <PATH>     SoundFont file (.sf2) (default: assets/GeneralUser-GS.sf2)"
-                );
-                println!(
-                    "  --harmony-mode, -m <MODE>  Harmony engine: 'basic' or 'driver' (default: driver)"
                 );
                 println!("  --record-wav [PATH]        Record to WAV file (default: output.wav)");
                 println!("  --record-midi [PATH]       Record to MIDI file (default: output.mid)");
@@ -227,17 +201,8 @@ fn main() {
                 println!(
                     "  --duration <SECONDS>       Recording duration (0 = infinite, Ctrl+C to stop)"
                 );
-                println!(
-                    "  --poly-steps, -p <STEPS>   Polyrythm resolution: 48, 96, 192... (default: 48)"
-                );
-                println!(
-                    "  --drum-kit                 Fixed kick on C1 (for external drum samplers)"
-                );
                 println!("  --help, -h                 Show this help");
                 println!();
-                println!("Harmony Modes:");
-                println!("  basic   - Russell Circumplex quadrants (I-IV-vi-V progressions)");
-                println!("  driver  - Steedman Grammar + Neo-Riemannian PLR + LCC");
                 return;
             }
             arg => {
@@ -247,11 +212,6 @@ fn main() {
             }
         }
         i += 1;
-    }
-
-    log::info(&format!("Harmony Mode: {harmony_mode:?}"));
-    if fixed_kick {
-        log::info("Drum Kit Mode: ON (Kick fixed on C1)");
     }
 
     let sf2_data = match harmonium::load_soundfont(sf2_path.as_deref()) {
@@ -276,7 +236,6 @@ fn main() {
     });
 
     // === 1. Create Audio Stream (decoupled architecture) ===
-    log::info(&format!("Poly Steps: {poly_steps}"));
 
     let (
         _stream,
@@ -303,11 +262,6 @@ fn main() {
     {
         let mut c = composer.lock().unwrap();
         c.use_emotion_mode();
-        c.set_harmony_mode(harmony_mode);
-        c.set_rhythm_steps(poly_steps);
-        if fixed_kick {
-            c.set_fixed_kick(true);
-        }
         c.invalidate_future();
     }
 
@@ -323,13 +277,24 @@ fn main() {
     // === 3. Start Recording if requested ===
     if record_wav.is_some() || record_midi.is_some() || record_musicxml.is_some() {
         if record_wav.is_some() {
-            let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Wav));
+            let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(
+                harmonium_core::events::AudioRecordFormat::Wav,
+            ));
         }
         if record_midi.is_some() {
-            let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::Midi));
+            let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(
+                harmonium_core::events::AudioRecordFormat::Midi,
+            ));
         }
         if record_musicxml.is_some() {
-            let _ = playback_cmd_tx.push(PlaybackCommand::StartRecording(RecordFormat::MusicXml));
+            if let Ok(mut composer) = composer.lock() {
+                if let Err(error) =
+                    composer.start_recording(RecordFormat::MusicXml, &mut playback_cmd_tx)
+                {
+                    log::warn(&error);
+                    return;
+                }
+            }
         }
         log::info("Recording started...");
     }
@@ -481,6 +446,7 @@ fn main() {
             let success = perform_graceful_shutdown(
                 &mut playback_cmd_tx,
                 &finished_recordings,
+                &composer,
                 &record_wav,
                 &record_midi,
                 &record_musicxml,
@@ -498,6 +464,7 @@ fn main() {
             let success = perform_graceful_shutdown(
                 &mut playback_cmd_tx,
                 &finished_recordings,
+                &composer,
                 &record_wav,
                 &record_midi,
                 &record_musicxml,

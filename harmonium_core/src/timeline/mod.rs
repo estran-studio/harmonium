@@ -5,37 +5,19 @@
 //! - A **Playhead** (audio thread) reads measures and emits `AudioEvent`s
 //! - A **ScoreTimeline** stores the master copy with bounded sliding window
 //!
-//! The algorithms (Sequencer, HarmonicDriver, HarmonyNavigator, Voicer) stay
-//! identical to the legacy engine - only separated into composer and performer roles.
 
 pub mod export;
-pub mod generator;
 pub mod midi_export;
 mod pointers;
 
 use std::collections::HashMap;
 
 pub use export::{timeline_to_musicxml, timeline_to_musicxml_with_instruments};
-pub use generator::TimelineGenerator;
 pub use midi_export::{timeline_to_midi, write_midi};
 pub use pointers::{Playhead, Writehead};
-use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 use serde::{Deserialize, Serialize};
 
-use crate::params::{CurrentState, PulseSpec, TimeSignature};
-
-/// Context needed to deterministically reconstruct a generation session from scratch.
-///
-/// Stores the master seed and the derived key/scale that were randomly chosen
-/// at session start. Used by `TimelineGenerator::reset_to_initial()` to replay
-/// from bar 1 for deterministic seek.
-#[derive(Clone, Debug)]
-pub struct GenerationContext {
-    pub session_seed: u64,
-    pub key: PitchSymbol,
-    pub scale: ScaleType,
-    pub key_pc: u8,
-}
+use crate::params::{PulseSpec, TimeSignature};
 
 /// Unique identifier for each note in the timeline
 pub type NoteId = u64;
@@ -152,8 +134,7 @@ pub struct TimelineNote {
 
 /// Snapshot of the engine's morphed state at the time a measure was generated.
 ///
-/// Captures the `CurrentState` values that influenced generation decisions,
-/// allowing the Playhead to optionally apply velocity/articulation adjustments.
+/// Valeurs dynamiques ayant influencé la mesure publiée.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StateSnapshot {
     pub bpm: f32,
@@ -162,19 +143,6 @@ pub struct StateSnapshot {
     pub smoothness: f32,
     pub valence: f32,
     pub arousal: f32,
-}
-
-impl From<&CurrentState> for StateSnapshot {
-    fn from(state: &CurrentState) -> Self {
-        Self {
-            bpm: state.bpm,
-            density: state.density,
-            tension: state.tension,
-            smoothness: state.smoothness,
-            valence: state.valence,
-            arousal: state.arousal,
-        }
-    }
 }
 
 /// Chord context captured at generation time
@@ -539,20 +507,5 @@ mod tests {
         assert_eq!(id1, 1);
         assert_eq!(id2, 2);
         assert_eq!(id3, 3);
-    }
-
-    #[test]
-    fn test_state_snapshot_from_current_state() {
-        let state = CurrentState {
-            bpm: 120.0,
-            density: 0.5,
-            tension: 0.3,
-            smoothness: 0.7,
-            valence: 0.2,
-            arousal: 0.6,
-        };
-        let snapshot = StateSnapshot::from(&state);
-        assert!((snapshot.bpm - 120.0).abs() < f32::EPSILON);
-        assert!((snapshot.tension - 0.3).abs() < f32::EPSILON);
     }
 }

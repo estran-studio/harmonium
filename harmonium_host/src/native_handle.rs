@@ -227,31 +227,6 @@ impl NativeHandle {
         while self.report_rx.pop().is_ok() {}
     }
 
-    /// Re-key the procedural session to a concert pitch class (0–11) and
-    /// regenerate `bars` from bar 1. Keeps the cached session key in sync so
-    /// `session_config().key` reflects the new key. True no-op if already in
-    /// `key_pc` (the timeline is left untouched).
-    pub fn set_session_key(&mut self, key_pc: u8, bars: usize) {
-        let new_key = if let Ok(mut composer) = self.composer.lock() {
-            if !composer.set_session_key(key_pc) {
-                return;
-            }
-            composer.reset_timeline();
-            // Re-seed the RNG/generator for the new key so a later seek back to
-            // bar 1 reproduces these bars instead of morphing the melody.
-            composer.deterministic_seek(1);
-            Self::push_pending_drop(&mut composer, &mut self.playback_cmd_tx);
-            composer.generate_bars(bars);
-            composer.session_key_string()
-        } else {
-            return;
-        };
-        self.session_config.key = new_key;
-        self.measures_buffer.clear();
-        self.cached_state = None;
-        while self.report_rx.pop().is_ok() {}
-    }
-
     /// Read the current playhead bar (from the shared atomic).
     pub fn playhead_bar(&self) -> usize {
         if let Ok(composer) = self.composer.lock() { composer.playhead_bar() } else { 1 }
@@ -423,20 +398,6 @@ impl NativeHandle {
         }
     }
 
-    /// Change le style de génération (`Legacy` ou `Reel`), applique les défauts
-    /// du style depuis [`harmonium_core::tuning::TuningParams`], envoie les
-    /// changements de programmes GM (D10) et invalide les mesures futures.
-    pub fn set_style(&mut self, style: harmonium_core::params::Style) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_style(style);
-            c.invalidate_future();
-            Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
-            let _ = self
-                .playback_cmd_tx
-                .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())));
-        }
-    }
-
     pub fn set_profile(&mut self, profile: harmonium_core::StyleProfile) -> Result<(), String> {
         let mut c = self.composer.lock().map_err(|e| e.to_string())?;
         c.set_profile(profile)?;
@@ -467,7 +428,7 @@ impl NativeHandle {
         }
     }
 
-    /// En `Style::Profile`, retourne le `(TunePlan, BarRole)` de la mesure courante sous le playhead.
+    /// Retourne le plan et le rôle de la mesure courante sous le playhead.
     #[must_use]
     pub fn profile_bar_info(
         &self,
@@ -485,12 +446,6 @@ impl NativeHandle {
     pub fn set_rhythm_density(&self, density: f32) {
         if let Ok(mut c) = self.composer.lock() {
             c.set_rhythm_density(density);
-        }
-    }
-
-    pub fn set_rhythm_tension(&self, tension: f32) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_rhythm_tension(tension);
         }
     }
 
@@ -512,92 +467,10 @@ impl NativeHandle {
         }
     }
 
-    pub fn enable_voicing(&self, enabled: bool) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.enable_voicing(enabled);
-        }
-    }
-
-    pub fn set_melody_smoothness(&self, smoothness: f32) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_melody_smoothness(smoothness);
-        }
-    }
-
-    pub fn set_rhythm_steps(&self, steps: usize) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_rhythm_steps(steps);
-        }
-    }
-
-    pub fn set_rhythm_pulses(&self, pulses: usize) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_rhythm_pulses(pulses);
-        }
-    }
-
-    pub fn set_rhythm_rotation(&self, rotation: usize) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_rhythm_rotation(rotation);
-        }
-    }
-
-    pub fn set_harmony_tension(&self, tension: f32) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_harmony_tension(tension);
-        }
-    }
-
-    pub fn set_harmony_valence(&self, valence: f32) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_harmony_valence(valence);
-        }
-    }
-
     pub fn set_tuning(&self, tuning: harmonium_core::tuning::TuningParams) {
         if let Ok(mut c) = self.composer.lock() {
             c.set_tuning(tuning);
             c.sync_generator();
-        }
-    }
-
-    pub fn set_rhythm_mode(&self, mode: harmonium_core::sequencer::RhythmMode) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_rhythm_mode(mode);
-        }
-    }
-
-    pub fn set_harmony_mode(&self, mode: harmonium_core::harmony::HarmonyMode) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_harmony_mode(mode);
-        }
-    }
-
-    pub fn set_harmony_measures_per_chord(&self, measures: usize) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_harmony_measures_per_chord(measures);
-        }
-    }
-
-    pub fn set_key_root(&self, root: u8) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_key_root(root);
-        }
-    }
-
-    pub fn set_harmony_strategy(&self, strategy: harmonium_core::params::HarmonyStrategy) {
-        if let Ok(mut c) = self.composer.lock() {
-            c.set_harmony_strategy(strategy);
-        }
-    }
-
-    pub fn set_chord_chart(&self, chart: &[String]) {
-        if let Ok(mut c) = self.composer.lock() {
-            let chart_arr: Vec<arrayvec::ArrayString<16>> = chart
-                .iter()
-                .filter_map(|s| arrayvec::ArrayString::try_from(s.as_str()).ok())
-                .collect();
-            c.set_chord_chart(chart_arr);
         }
     }
 
@@ -730,12 +603,25 @@ impl NativeHandle {
         self.composer.lock().ok().map(|c| c.session_seed())
     }
 
-    pub fn start_recording(&mut self, format: harmonium_core::events::RecordFormat) {
-        let _ = self.playback_cmd_tx.push(PlaybackCommand::StartRecording(format));
+    pub fn start_recording(
+        &mut self,
+        format: harmonium_core::events::RecordFormat,
+    ) -> Result<(), String> {
+        self.composer
+            .lock()
+            .map_err(|e| e.to_string())?
+            .start_recording(format, &mut self.playback_cmd_tx)
     }
 
-    pub fn stop_recording(&mut self, format: harmonium_core::events::RecordFormat) {
-        let _ = self.playback_cmd_tx.push(PlaybackCommand::StopRecording(format));
+    pub fn stop_recording(
+        &mut self,
+        format: harmonium_core::events::RecordFormat,
+    ) -> Result<(), String> {
+        self.composer.lock().map_err(|e| e.to_string())?.stop_recording(
+            format,
+            &mut self.playback_cmd_tx,
+            &self.finished_recordings,
+        )
     }
 
     /// Send a GM Program Change to a logical channel.

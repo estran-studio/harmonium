@@ -12,9 +12,7 @@
 
 use harmonium_core::{
     events::AudioEvent,
-    harmony::parsimonious::TRQ,
     params::MusicalParams,
-    sequencer::RhythmMode,
     theory::{PitchClass, chord::Chord},
 };
 use serde::{Deserialize, Serialize};
@@ -127,10 +125,7 @@ impl Default for HarmonicFrame {
     }
 }
 
-/// Serializable version of TRQ (Tension/Release Quotient)
-///
-/// This wraps the core TRQ struct to add serialization support
-/// without modifying the original parsimonious.rs module.
+/// Mesure analytique tension/release d'une transition du corpus.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SerializableTRQ {
     /// Tension component (0.0 - 1.0): dissonance, instability
@@ -140,16 +135,16 @@ pub struct SerializableTRQ {
 }
 
 impl SerializableTRQ {
-    /// Create from core TRQ
+    /// Distance des voix et proportion de notes communes, indépendantes du générateur.
     #[must_use]
-    pub fn from_trq(trq: TRQ) -> Self {
-        Self { tension: trq.tension, release: trq.release }
-    }
-
-    /// Convert to core TRQ
-    #[must_use]
-    pub fn to_trq(self) -> TRQ {
-        TRQ::new(self.tension, self.release)
+    pub fn for_transition(from: &Chord, to: &Chord) -> Self {
+        let from_pcs = from.pitch_classes();
+        let to_pcs = to.pitch_classes();
+        let common = from_pcs.iter().filter(|pc| to_pcs.contains(pc)).count();
+        Self {
+            tension: (from.voice_leading_distance(to) as f32 / 6.0).clamp(0.0, 1.0),
+            release: (common as f32 / 3.0).clamp(0.0, 1.0),
+        }
     }
 
     /// Net tension (positive = tense, negative = relaxed)
@@ -162,12 +157,6 @@ impl SerializableTRQ {
 impl Default for SerializableTRQ {
     fn default() -> Self {
         Self { tension: 0.5, release: 0.5 }
-    }
-}
-
-impl From<TRQ> for SerializableTRQ {
-    fn from(trq: TRQ) -> Self {
-        Self::from_trq(trq)
     }
 }
 
@@ -193,7 +182,7 @@ pub struct RhythmicDNA {
 impl Default for RhythmicDNA {
     fn default() -> Self {
         Self {
-            mode: "Euclidean".to_string(),
+            mode: "profile".to_string(),
             polygons: Vec::new(),
             syncopation_score: 0.0,
             density_curve: Vec::new(),
@@ -202,20 +191,7 @@ impl Default for RhythmicDNA {
     }
 }
 
-impl RhythmicDNA {
-    /// Create from a RhythmMode
-    #[must_use]
-    pub fn from_mode(mode: RhythmMode) -> Self {
-        let mode_str = match mode {
-            RhythmMode::Euclidean => "Euclidean",
-            RhythmMode::PerfectBalance => "PerfectBalance",
-            RhythmMode::ClassicGroove => "ClassicGroove",
-        };
-        Self { mode: mode_str.to_string(), ..Default::default() }
-    }
-}
-
-/// Signature of a rhythmic polygon (from Perfect Balance algorithm)
+/// Signature d'onsets observés (nombre, intervalles et rotation).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolygonSignature {
     /// Layer name (e.g., "kick", "snare", "hat", "bass", "lead")
@@ -449,9 +425,9 @@ impl DNAExtractor {
 
             // Calculate TRQ and voice leading distance
             let (trq, vl_distance) = if let (Some(prev), Some(curr)) = (&prev_chord, &chord) {
-                let trq = TRQ::for_transition(prev, curr);
+                let trq = SerializableTRQ::for_transition(prev, curr);
                 let vl = prev.voice_leading_distance(curr);
-                (SerializableTRQ::from_trq(trq), vl)
+                (trq, vl)
             } else {
                 (SerializableTRQ::default(), 0)
             };
@@ -538,8 +514,6 @@ impl DNAExtractor {
         events: &[(f64, AudioEvent)],
         params: &harmonium_core::params::MusicalParams,
     ) -> RhythmicDNA {
-        let mode = RhythmicDNA::from_mode(params.rhythm_mode);
-
         // Extract onset patterns per channel
         let kick_onsets = self.extract_channel_onsets(events, CHANNEL_BASS);
         let snare_onsets = self.extract_channel_onsets(events, CHANNEL_SNARE);
@@ -568,7 +542,7 @@ impl DNAExtractor {
         let micro_timing_deviation = self.calculate_micro_timing_deviation(&kick_onsets);
 
         RhythmicDNA {
-            mode: mode.mode,
+            mode: params.profile_id.to_string(),
             polygons,
             syncopation_score,
             density_curve,
@@ -768,16 +742,6 @@ mod tests {
     use harmonium_core::params::MusicalParams;
 
     use super::*;
-
-    #[test]
-    fn test_serializable_trq_roundtrip() {
-        let trq = TRQ::new(0.7, 0.3);
-        let serializable = SerializableTRQ::from_trq(trq);
-        let back = serializable.to_trq();
-
-        assert!((back.tension - 0.7).abs() < 0.001);
-        assert!((back.release - 0.3).abs() < 0.001);
-    }
 
     #[test]
     fn test_global_metrics_calculation() {

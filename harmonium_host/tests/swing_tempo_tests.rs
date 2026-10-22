@@ -35,6 +35,14 @@ use harmonium_core::{
 
 const SAMPLE_RATE: f64 = 44100.0;
 const CHANNELS: usize = 2;
+
+fn quarter_profile() -> harmonium_core::StyleProfile {
+    let mut profile = harmonium_core::StyleProfile::builtin().clone();
+    profile.meter.time_signature = TimeSignature::new(4, 4);
+    profile.meter.steps_per_pulse = 4;
+    profile.meter.pulses_per_bar = 4;
+    profile
+}
 /// Acceptance (2) — the swing unit: at ratio 0.6, 120 BPM, 44100 Hz, the step
 /// durations are exactly [6615, 6615, 4410, 4410] (step starts 0, 13230,
 /// 22050) and the unit sums to the rounded quarter (22050).
@@ -59,7 +67,8 @@ fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
     let (mut composer, mut playback, _cmd_tx, _report_rx, mut clock_reader, _recordings) =
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
-    composer.set_time_signature(4, 4);
+    composer.set_profile(quarter_profile())?;
+    composer.set_bpm(120.0);
     composer.set_swing_ratio(0.6);
     composer.sync_generator();
     composer.set_writehead_lookahead(8);
@@ -113,7 +122,8 @@ fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
-    composer.set_time_signature(4, 4);
+    composer.set_profile(quarter_profile())?;
+    composer.set_swing_ratio(0.5);
     composer.set_bpm(120.0);
     composer.sync_generator();
     composer.set_writehead_lookahead(8);

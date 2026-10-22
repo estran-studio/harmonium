@@ -1,9 +1,9 @@
 //! Tests d'acceptation sur le flux de snapshots du moteur en `Style::Profile`
 //! via `create_offline_engine` (20 seeds, 64 mesures, critères 1–4 du plan + seek déterministe).
 
-use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
+use harmonium::audio::create_offline_engine;
 use harmonium_core::{
-    params::{PulseSpec, Style, TimeSignature},
+    params::PulseSpec,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
     trad::{ReelArrangement, TunePlan, is_same_or_relative_plan},
@@ -35,7 +35,7 @@ fn generate_offline_reel_stream(
         create_offline_engine(None, None, SAMPLE_RATE)?;
 
     composer.set_tuning(flat_tuning());
-    composer.set_style(Style::Profile);
+
     composer.set_feet_density(feet_density);
     composer.set_seed(seed);
     composer.set_writehead_lookahead(BARS_64 + 4);
@@ -229,7 +229,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, None, SAMPLE_RATE)?;
         composer.set_tuning(flat_tuning());
-        composer.set_style(Style::Profile);
+
         composer.set_seed(seed);
         composer.set_writehead_lookahead(BARS_64 + 4);
         composer.generate_bars(4);
@@ -247,41 +247,5 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
             &format!("seek déterministe en Reel vers la mesure {target_bar}"),
         );
     }
-    Ok(())
-}
-
-/// Changement de style : défauts issus de `TuningParams` et émission des programmes GM D10.
-#[test]
-fn set_style_applies_tuning_defaults_and_queues_gm_programs() -> Result<(), String> {
-    let (mut composer, mut playback, mut cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
-
-    composer.set_style(Style::Profile);
-    assert_eq!(composer.musical_params().style, Style::Profile);
-    assert!((composer.musical_params().bpm - 230.0).abs() < f32::EPSILON);
-    assert!((composer.musical_params().swing_ratio - 0.56).abs() < f32::EPSILON);
-    assert_eq!(composer.musical_params().time_signature, TimeSignature::new(2, 2));
-
-    let reel_progs = composer.take_pending_program_changes();
-    assert_eq!(reel_progs, vec![(0, 40), (1, 24), (2, 32)]);
-    for (channel, program) in reel_progs {
-        let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
-    }
-
-    composer.set_style(Style::Legacy);
-    assert_eq!(composer.musical_params().style, Style::Legacy);
-    assert!((composer.musical_params().bpm - 120.0).abs() < f32::EPSILON);
-    assert!((composer.musical_params().swing_ratio - 0.5).abs() < f32::EPSILON);
-    assert_eq!(composer.musical_params().time_signature, TimeSignature::new(4, 4));
-
-    let legacy_progs = composer.take_pending_program_changes();
-    assert_eq!(legacy_progs, vec![(0, 0), (1, 24), (2, 32)]);
-    for (channel, program) in legacy_progs {
-        let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
-    }
-
-    // Le PlaybackEngine traite les ProgramChange sans allocation ni erreur
-    let mut buf = [0.0f32; 512];
-    playback.process_buffer(&mut buf, 2, std::time::Instant::now());
     Ok(())
 }

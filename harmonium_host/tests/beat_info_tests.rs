@@ -31,6 +31,19 @@ fn samples_per_step(bpm: f64) -> usize {
     (SAMPLE_RATE * 60.0 / bpm / 4.0) as usize
 }
 
+fn profile_for_meter(signature: TimeSignature) -> harmonium_core::StyleProfile {
+    let mut profile = match (signature.numerator, signature.denominator) {
+        (6, 8) => harmonium_core::StyleProfile::named("gigue_quebecoise").unwrap(),
+        (3, 4) => harmonium_core::StyleProfile::named("valse_quebecoise").unwrap(),
+        _ => harmonium_core::StyleProfile::builtin().clone(),
+    };
+    let pulse = PulseSpec::from_time_signature(signature, TICKS_PER_BEAT);
+    profile.meter.time_signature = signature;
+    profile.meter.steps_per_pulse = usize::from(pulse.steps_per_pulse);
+    profile.meter.pulses_per_bar = usize::from(pulse.pulses_per_bar);
+    profile
+}
+
 /// Drive 64 bars of `time_sig` through the offline engine at `buffer_size`
 /// frames per `process_buffer`, with a BPM change between bars 1 and 2.
 ///
@@ -47,7 +60,7 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize, swing_ratio: f32)
         create_offline_engine(None, None, SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Bars 1..=32 at BPM1, then set_bpm + invalidation for bars 2..=64 at BPM2.
-    composer.set_time_signature(time_sig.numerator, time_sig.denominator);
+    composer.set_profile(profile_for_meter(time_sig)).expect("valid clock-test profile");
     composer.set_bpm(BPM1 as f32);
     composer.set_swing_ratio(swing_ratio);
     composer.sync_generator();
@@ -240,8 +253,9 @@ fn time_signature_transition_preserves_pulses_per_bar_consistency() {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
         create_offline_engine(None, None, SAMPLE_RATE).expect("create_offline_engine failed");
 
-    composer.set_time_signature(4, 4);
+    composer.set_profile(profile_for_meter(TimeSignature::new(4, 4))).unwrap();
     composer.set_bpm(120.0);
+    composer.set_swing_ratio(0.5);
     composer.sync_generator();
     composer.set_writehead_lookahead(8);
     composer.generate_bars(8);
@@ -261,7 +275,9 @@ fn time_signature_transition_preserves_pulses_per_bar_consistency() {
         let clock = clock_reader.read();
 
         if !transition_sent && clock.position.bar >= 2 {
-            composer.set_time_signature(2, 2);
+            composer.set_profile(profile_for_meter(TimeSignature::new(2, 2))).unwrap();
+            composer.set_bpm(120.0);
+            composer.set_swing_ratio(0.5);
             composer.invalidate_future();
             if let Some((bar, _)) = composer.take_pending_drop() {
                 let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });

@@ -12,8 +12,8 @@ pub use soundfont::{load_feet_soundfont, load_soundfont};
 pub mod clock;
 pub use clock::{BeatInfo, ClockReader, TransportClock};
 // Re-exports from workspace crates
-pub use harmonium_audio::{backend, realtime, voice_manager, voicing};
-pub use harmonium_core::{events, fractal, harmony, log, mapper, params, sequencer};
+pub use harmonium_audio::{backend, realtime, voice_manager};
+pub use harmonium_core::{events, log, mapper, params};
 
 // Real-time safety: Global allocator that panics on allocations in audio thread (debug builds only)
 // Uses fully qualified path to avoid local mod ambiguity
@@ -27,11 +27,7 @@ static GLOBAL: harmonium_audio::realtime::rt_check::RTCheckAllocator =
 pub mod audio;
 #[cfg(feature = "standalone")]
 pub mod native_handle;
-pub use harmonium_core::{
-    harmony::{HarmonyMode, basic as progression, melody as harmony_melody},
-    params::{ControlMode, MusicalParams},
-    sequencer::RhythmMode,
-};
+pub use harmonium_core::params::MusicalParams;
 #[cfg(feature = "standalone")]
 pub use native_handle::{LiveMidiSender, NativeHandle};
 

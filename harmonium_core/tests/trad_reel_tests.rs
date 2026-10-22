@@ -1,15 +1,14 @@
 //! Tests d'acceptation de `TradGenerator` sur 20 seeds × 64 mesures (D1, D3, D4, D6–D9).
 
 use harmonium_core::{
-    params::{MusicalParams, PulseSpec, Style},
+    params::{MusicalParams, PulseSpec},
     report::{MeasureSnapshot, NoteSnapshot},
-    timeline::{GenerationContext, TrackId},
+    timeline::TrackId,
     trad::{ReelArrangement, TradGenerator, TunePlan, is_same_or_relative_plan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
 const NUM_SEEDS: u64 = 20;
 const BARS_64: usize = 64;
@@ -32,7 +31,7 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
     let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
-    params.set_style(Style::Profile);
+
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;
@@ -227,13 +226,7 @@ fn trad_generator_silent_advance_matches_linear() {
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let mut sought = TradGenerator::new(reel_params(1), flat_tuning());
-    let ctx = GenerationContext {
-        session_seed: seed,
-        key: PitchSymbol::D,
-        scale: ScaleType::Diatonic,
-        key_pc: 2,
-    };
-    sought.reset_to_initial(&ctx);
+    sought.reset_to_initial();
     sought.silent_advance(40, &mut rng);
 
     for bar in 40..=BARS_64 {

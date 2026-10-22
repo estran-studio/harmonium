@@ -188,8 +188,8 @@ pub enum PlaybackCommand {
         end_bar: usize,
     },
     ClearLoop,
-    StartRecording(harmonium_core::events::RecordFormat),
-    StopRecording(harmonium_core::events::RecordFormat),
+    StartRecording(harmonium_core::events::AudioRecordFormat),
+    StopRecording(harmonium_core::events::AudioRecordFormat),
     MixerGains {
         lead: f32,
         chords: f32,
@@ -323,11 +323,6 @@ pub struct PlaybackEngine {
     // Loop region
     loop_region: Option<(usize, usize)>,
 
-    // Recording state
-    is_recording_wav: bool,
-    is_recording_midi: bool,
-    is_recording_musicxml: bool,
-
     // Mixer gains (cached for reporting)
     gain_lead: f32,
     gain_chords: f32,
@@ -427,9 +422,6 @@ impl PlaybackEngine {
             muted_channels: vec![false; 16],
             last_muted_channels: vec![false; 16],
             loop_region: None,
-            is_recording_wav: false,
-            is_recording_midi: false,
-            is_recording_musicxml: false,
             gain_lead: 1.0,
             gain_chords: 0.6,
             gain_bass: 0.6,
@@ -1138,28 +1130,9 @@ impl PlaybackEngine {
                     self.evict_behind();
                 }
                 PlaybackCommand::StartRecording(format) => {
-                    match format {
-                        harmonium_core::events::RecordFormat::Wav => self.is_recording_wav = true,
-                        harmonium_core::events::RecordFormat::Midi => self.is_recording_midi = true,
-                        harmonium_core::events::RecordFormat::MusicXml => {
-                            self.is_recording_musicxml = true;
-                            self.renderer.handle_event(AudioEvent::UpdateMusicalParams {
-                                params: Box::new(self.musical_params.clone()),
-                            });
-                        }
-                    }
                     self.renderer.handle_event(AudioEvent::StartRecording { format });
                 }
                 PlaybackCommand::StopRecording(format) => {
-                    match format {
-                        harmonium_core::events::RecordFormat::Wav => self.is_recording_wav = false,
-                        harmonium_core::events::RecordFormat::Midi => {
-                            self.is_recording_midi = false
-                        }
-                        harmonium_core::events::RecordFormat::MusicXml => {
-                            self.is_recording_musicxml = false
-                        }
-                    }
                     self.renderer.handle_event(AudioEvent::StopRecording { format });
                 }
                 PlaybackCommand::MixerGains { lead, chords, bass, snare, hat } => {
@@ -1232,13 +1205,6 @@ impl PlaybackEngine {
         report.current_chord = self.last_chord_name;
         report.chord_root_offset = self.last_chord_root_offset;
         report.chord_is_minor = self.last_chord_is_minor;
-        report.harmony_mode = self.musical_params.harmony_mode;
-
-        report.rhythm_mode = self.musical_params.rhythm_mode;
-        report.primary_steps = self.musical_params.rhythm_steps;
-        report.primary_pulses = self.musical_params.rhythm_pulses;
-        report.secondary_steps = self.musical_params.rhythm_secondary_steps;
-        report.secondary_pulses = self.musical_params.rhythm_secondary_pulses;
 
         report.musical_params = self.musical_params.clone();
         // The audible tempo (override/ramp) is the truth for the game, not the

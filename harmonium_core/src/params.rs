@@ -10,111 +10,7 @@
 //! [Debug] → MusicalParams → moteur (bypass émotionnel)
 //! ```
 
-use arrayvec::ArrayString;
-use rust_music_theory::note::PitchSymbol;
 use serde::{Deserialize, Serialize};
-
-use crate::{harmony::HarmonyMode, sequencer::RhythmMode};
-
-/// Controls for musical variety and anti-repetition.
-///
-/// Every field is tunable — by presets, UI sliders, or a future RL agent (CORELIB-13).
-/// Default values produce a balanced mix of structure and surprise.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct VarietyParams {
-    /// Phrase arc amplitude jitter ±range (0.0 = deterministic, 0.3 = very loose)
-    pub phrase_arc_jitter: f32,
-    /// Section arc offset jitter ±range (0.0 = fixed AABA, 0.15 = very varied)
-    pub section_arc_jitter: f32,
-    /// Random velocity jitter ±range in MIDI units (0 = deterministic, 15 = wild)
-    pub velocity_jitter: f32,
-    /// Bias toward new material vs motif replay (0.0 = all replay, 1.0 = all new)
-    pub motif_new_material_bias: f32,
-    /// Fractal GPS influence multiplier (1.0 = passive, 3.0 = dominant)
-    pub fractal_boost: f32,
-    /// Fractal target amplitude in scale degrees (10 = narrow, 30 = very wide)
-    pub fractal_range: f32,
-    /// Walking bass pitch variety (0.0 = root only, 1.0 = full palette)
-    pub walking_bass_variety: f32,
-    /// Rhythmic cell variety (0.0 = sustain only, 1.0 = max subdivision)
-    pub rhythmic_cell_variety: f32,
-    /// Rest probability scalar (0.0 = no rests, 2.0 = very sparse)
-    pub rest_probability: f32,
-}
-
-impl Default for VarietyParams {
-    fn default() -> Self {
-        Self {
-            phrase_arc_jitter: 0.20,
-            section_arc_jitter: 0.08,
-            velocity_jitter: 7.0,
-            motif_new_material_bias: 0.6,
-            fractal_boost: 1.8,
-            fractal_range: 22.0,
-            walking_bass_variety: 0.7,
-            rhythmic_cell_variety: 0.5,
-            rest_probability: 1.0,
-        }
-    }
-}
-
-/// Scale type for melody generation (CORELIB-22)
-///
-/// Controls the pitch-class vocabulary available to the melody generator.
-/// Pentatonic (5 notes) is safe/consonant, Diatonic (7 notes) adds variety,
-/// HarmonicMinor (7 notes) adds drama, Blues (6 notes) adds color.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum MelodyScaleType {
-    /// 5-note scale — safe, consonant, ambient (PCE max ~2.3)
-    Pentatonic,
-    /// 7-note major/minor scale — standard for most music (PCE max ~2.8)
-    #[default]
-    Diatonic,
-    /// 7-note harmonic minor — dramatic, cinematic
-    HarmonicMinor,
-    /// 6-note blues scale — jazzy color
-    Blues,
-}
-
-impl MelodyScaleType {
-    /// Convert to `rust_music_theory::ScaleType`
-    #[must_use]
-    pub fn to_rmt_scale_type(self, is_minor: bool) -> rust_music_theory::scale::ScaleType {
-        use rust_music_theory::scale::ScaleType;
-        match self {
-            Self::Pentatonic => {
-                if is_minor {
-                    ScaleType::PentatonicMinor
-                } else {
-                    ScaleType::PentatonicMajor
-                }
-            }
-            Self::Diatonic => ScaleType::Diatonic,
-            Self::HarmonicMinor => ScaleType::HarmonicMinor,
-            Self::Blues => ScaleType::Blues,
-        }
-    }
-}
-
-/// Convert a key_root (0=C, 1=C#, ..., 11=B) to `PitchSymbol`
-#[must_use]
-pub fn key_root_to_pitch_symbol(key_root: u8) -> PitchSymbol {
-    match key_root % 12 {
-        0 => PitchSymbol::C,
-        1 => PitchSymbol::Cs,
-        2 => PitchSymbol::D,
-        3 => PitchSymbol::Eb,
-        4 => PitchSymbol::E,
-        5 => PitchSymbol::F,
-        6 => PitchSymbol::Fs,
-        7 => PitchSymbol::G,
-        8 => PitchSymbol::Ab,
-        9 => PitchSymbol::A,
-        10 => PitchSymbol::Bb,
-        11 => PitchSymbol::B,
-        _ => PitchSymbol::C,
-    }
-}
 
 /// Signature rythmique (numérateur/dénominateur)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -359,149 +255,6 @@ impl InstrumentConfig {
     }
 }
 
-/// Tension state from TRQ (Tension-Rhythmic-Quality) Matrix
-/// Maps emotional input (arousal, valence, tension) to coherent
-/// harmonic and rhythmic tension combinations.
-///
-/// The four states represent different combinations of harmonic tension
-/// (LCC level) and rhythmic oddity:
-/// - **Stability**: Low LCC (1-3), Low Oddity (4-5) — Calm, consonant, predictable
-/// - **HarmonicSuspense**: High LCC (4-7), Low Oddity (4-5) — Dissonant harmony, stable rhythm
-/// - **RhythmicDrive**: Low LCC (1-3), High Oddity (6-7+) — Consonant harmony, syncopated rhythm
-/// - **PeakClimax**: High LCC (4-7), High Oddity (6-7+) — Maximum tension on both dimensions
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TensionState {
-    /// Low harmonic tension, low rhythmic oddity (calm, stable)
-    Stability,
-    /// High harmonic tension, low rhythmic oddity (suspenseful, dissonant)
-    HarmonicSuspense,
-    /// Low harmonic tension, high rhythmic oddity (driving, syncopated)
-    RhythmicDrive,
-    /// High harmonic tension, high rhythmic oddity (peak climax, chaotic)
-    PeakClimax,
-}
-
-impl Default for TensionState {
-    fn default() -> Self {
-        Self::Stability
-    }
-}
-
-/// État du mode de contrôle (émotion vs direct)
-/// Partagé entre VST et standalone builds
-#[derive(Clone, Debug)]
-pub struct ControlMode {
-    /// true = mode émotion (`EngineParams` → `EmotionMapper` → `MusicalParams`)
-    /// false = mode direct (`MusicalParams` directement)
-    pub use_emotion_mode: bool,
-    /// Paramètres musicaux directs (utilisés quand `use_emotion_mode` = false)
-    pub direct_params: MusicalParams,
-
-    // === GLOBAL ENABLE OVERRIDES ===
-    // Ces flags s'appliquent dans TOUS les modes (émotion ET direct)
-    /// Enable rhythm module (global override)
-    pub enable_rhythm: bool,
-    /// Enable harmony module (global override)
-    pub enable_harmony: bool,
-    /// Enable melody module (global override)
-    pub enable_melody: bool,
-    /// Enable voicing (harmonized chords) - global override
-    pub enable_voicing: bool,
-    /// Mode Drum Kit (kick fixe sur C1/36)
-    pub fixed_kick: bool,
-
-    // === WEBVIEW CONTROL FLAGS ===
-    /// When true, the webview is the source of truth for emotional params
-    /// and `sync_params_to_engine` should NOT overwrite `target_state`
-    pub webview_controls_emotions: bool,
-    /// When true, the webview controls the emotion/direct mode switch
-    pub webview_controls_mode: bool,
-    /// When true, the webview controls direct/technical params
-    pub webview_controls_direct: bool,
-
-    // === LIVE STATE FROM ENGINE ===
-    // Updated by the engine during processing for UI visualization
-    /// Current step in the sequencer (updated by engine)
-    pub current_step: u32,
-    /// Current measure number
-    pub current_measure: u32,
-    /// Current time signature
-    pub time_signature: TimeSignature,
-    /// Total number of bars in the current sequence/song
-    pub total_bars: usize,
-    /// Primary pattern (for visualization)
-    pub primary_pattern: Vec<bool>,
-    /// Secondary pattern (for visualization)
-    pub secondary_pattern: Vec<bool>,
-    /// Current chord name
-    pub current_chord: String,
-    /// Whether current chord is minor
-    pub is_minor_chord: bool,
-    /// Progression name
-    pub progression_name: String,
-    /// Session key (e.g., "C")
-    pub session_key: String,
-    /// Session scale (e.g., "major")
-    pub session_scale: String,
-}
-
-impl Default for ControlMode {
-    fn default() -> Self {
-        Self {
-            use_emotion_mode: true,
-            direct_params: MusicalParams::default(),
-            // All modules enabled by default
-            enable_rhythm: true,
-            enable_harmony: true,
-            enable_melody: true,
-            enable_voicing: false,
-            fixed_kick: false,
-            // Start with DAW params as source of truth
-            webview_controls_emotions: false,
-            webview_controls_mode: false,
-            webview_controls_direct: false,
-            // Live state
-            current_step: 0,
-            current_measure: 1,
-            time_signature: TimeSignature::default(),
-            total_bars: 4,
-            primary_pattern: vec![],
-            secondary_pattern: vec![],
-            current_chord: "I".to_string(),
-            is_minor_chord: false,
-            progression_name: String::new(),
-            session_key: "C".to_string(),
-            session_scale: "major".to_string(),
-        }
-    }
-}
-
-/// Stratégie harmonique explicite (pour le Driver)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum HarmonyStrategy {
-    /// Grammaire de Steedman (harmonie fonctionnelle: ii-V-I, etc.)
-    #[default]
-    Steedman,
-    /// Transformations Neo-Riemannian (P, L, R - triades uniquement)
-    NeoRiemannian,
-    /// Voice-leading parsimonieux (tous types d'accords)
-    Parsimonious,
-    /// Laisser le Driver décider automatiquement selon la tension
-    Auto,
-}
-
-/// Choix de générateur : Legacy ou moteur piloté par un profil de données.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Style {
-    /// Générateur procédural legacy (transitoire jusqu'à P1-T6).
-    #[default]
-    #[serde(alias = "Legacy")]
-    Legacy,
-    /// Générateur traditionnel piloté par `profile_id` et le profil du tuning.
-    Profile,
-}
-
 /// Paramètres purement techniques. Le moteur obéit à ça directement.
 /// Aucune interprétation émotionnelle - juste des valeurs musicales concrètes.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -532,9 +285,6 @@ pub struct MusicalParams {
     #[serde(default = "default_master_volume")]
     pub master_volume: f32,
 
-    /// Style de génération musicale (`Legacy` par défaut).
-    #[serde(default)]
-    pub style: Style,
     /// Identifiant du profil installé ; partagé sans allocation au clonage audio.
     #[serde(default = "default_profile_id")]
     pub profile_id: std::sync::Arc<str>,
@@ -565,11 +315,6 @@ pub struct MusicalParams {
     #[serde(default = "default_true")]
     pub enable_melody: bool,
 
-    /// Activer le voicing (accords harmonisés sur la mélodie)
-    /// Quand désactivé, seule la note mélodique joue
-    #[serde(default)]
-    pub enable_voicing: bool,
-
     /// Arrêter la génération après le dernier tour de l'air courant
     /// (utilisé pour l'outro en mode export avec `--bars`).
     #[serde(default)]
@@ -578,24 +323,7 @@ pub struct MusicalParams {
     // ═══════════════════════════════════════════════════════════════════
     // RYTHME
     // ═══════════════════════════════════════════════════════════════════
-    /// Mode rythmique (Euclidean classique ou `PerfectBalance` polyrythmique)
-    #[serde(default)]
-    pub rhythm_mode: RhythmMode,
-
-    /// Nombre de steps (16 pour Euclidean, 48/96/192 pour `PerfectBalance`)
-    #[serde(default = "default_rhythm_steps")]
-    pub rhythm_steps: usize,
-
-    /// Nombre de pulses primaires (kicks/accents principaux)
-    #[serde(default = "default_rhythm_pulses")]
-    pub rhythm_pulses: usize,
-
-    /// Rotation du pattern primaire (décalage de phase)
-    #[serde(default)]
-    pub rhythm_rotation: usize,
-
-    /// Densité rythmique pour `PerfectBalance` (0.0-1.0)
-    /// Contrôle la complexité du pattern de kicks
+    /// Densité de texture (0..1), interprétée par les courbes du profil.
     #[serde(default = "default_density")]
     pub rhythm_density: f32,
 
@@ -604,90 +332,13 @@ pub struct MusicalParams {
     #[serde(default = "default_tension")]
     pub rhythm_tension: f32,
 
-    /// Steps du séquenceur secondaire (polyrythme 4:3)
-    #[serde(default = "default_secondary_steps")]
-    pub rhythm_secondary_steps: usize,
-
-    /// Pulses du séquenceur secondaire
-    #[serde(default = "default_secondary_pulses")]
-    pub rhythm_secondary_pulses: usize,
-
-    /// Rotation du séquenceur secondaire
-    #[serde(default)]
-    pub rhythm_secondary_rotation: usize,
-
-    /// Mode du Kick : true = Note fixe 36 (Drum Kit), false = Harmonisé (Synth Bass)
-    /// - true: Idéal pour VST Drums, Samplers, Percussions
-    /// - false: Idéal pour Synthwave, Basses mélodiques
-    #[serde(default)]
-    pub fixed_kick: bool,
-
-    // ═══════════════════════════════════════════════════════════════════
-    // HARMONIE
-    // ═══════════════════════════════════════════════════════════════════
-    /// Mode harmonique (Basic quadrants ou Driver avancé)
-    #[serde(default)]
-    pub harmony_mode: HarmonyMode,
-
-    /// Stratégie harmonique explicite (pour Driver)
-    #[serde(default)]
-    pub harmony_strategy: HarmonyStrategy,
-
-    /// Tension harmonique (0.0-1.0)
-    /// Contrôle le niveau LCC (consonance → dissonance)
-    /// et la sélection de stratégie si Auto
+    /// Tension et valence transmises aux courbes du profil.
     #[serde(default = "default_tension")]
     pub harmony_tension: f32,
-
-    /// Valence harmonique (-1.0 à 1.0)
-    /// Contrôle la sélection majeur/mineur et les progressions
     #[serde(default)]
     pub harmony_valence: f32,
-
-    /// Mesures par accord (1 = changement rapide, 2 = normal)
-    #[serde(default = "default_measures_per_chord")]
-    pub harmony_measures_per_chord: usize,
-
-    /// Tonique globale (pitch class 0-11, 0 = C)
-    #[serde(default)]
-    pub key_root: u8,
-
-    /// Fixed chord chart (chord names like "Cmaj7", "Dm7", "G7").
-    /// When non-empty and `harmony_mode == Chart`, the generator cycles through
-    /// these chords instead of generating procedurally. Auto-loops at chart end.
-    #[serde(default)]
-    pub chord_chart: Vec<ArrayString<16>>,
-
-    // ═══════════════════════════════════════════════════════════════════
-    // MÉLODIE / VOICING
-    // ═══════════════════════════════════════════════════════════════════
-    /// Lissage mélodique (facteur de Hurst, 0.0-1.0)
-    /// 0.0 = erratique, 1.0 = très lisse
     #[serde(default = "default_smoothness")]
     pub melody_smoothness: f32,
-
-    /// Scale type for melody generation (CORELIB-22)
-    /// Default: Diatonic (7 notes, good pitch variety)
-    #[serde(default)]
-    pub melody_scale_type: MelodyScaleType,
-
-    /// Variety/anti-repetition controls (CORELIB-13 tunable)
-    #[serde(default)]
-    pub variety: VarietyParams,
-
-    /// Densité de voicing (0.0-1.0)
-    /// Contrôle la probabilité de jouer des accords vs notes seules
-    #[serde(default = "default_density")]
-    pub voicing_density: f32,
-
-    /// Tension de voicing (0.0-1.0)
-    /// Affecte le nombre de voix et les extensions
-    #[serde(default = "default_tension")]
-    pub voicing_tension: f32,
-
-    /// Octave de base pour la mélodie (3-6)
-    #[serde(default = "default_octave")]
-    pub melody_octave: i32,
 
     /// Instrument config for the lead/melody track
     #[serde(default)]
@@ -719,14 +370,6 @@ pub struct MusicalParams {
     /// Gain du hi-hat (0.0-1.0)
     #[serde(default = "default_gain_hat")]
     pub gain_hat: f32,
-
-    /// Vélocité de base pour la basse (0-127)
-    #[serde(default = "default_vel_bass")]
-    pub vel_base_bass: u8,
-
-    /// Vélocité de base pour le snare (0-127)
-    #[serde(default = "default_vel_snare")]
-    pub vel_base_snare: u8,
 
     // ═══════════════════════════════════════════════════════════════════
     // ROUTAGE & MUTING
@@ -771,18 +414,6 @@ pub const fn default_swing_ratio() -> f32 {
 const fn default_true() -> bool {
     true
 }
-const fn default_rhythm_steps() -> usize {
-    16
-}
-const fn default_rhythm_pulses() -> usize {
-    4
-}
-const fn default_secondary_steps() -> usize {
-    12
-}
-const fn default_secondary_pulses() -> usize {
-    3
-}
 const fn default_density() -> f32 {
     0.5
 }
@@ -791,12 +422,6 @@ const fn default_tension() -> f32 {
 }
 const fn default_smoothness() -> f32 {
     0.7
-}
-const fn default_measures_per_chord() -> usize {
-    2
-}
-const fn default_octave() -> i32 {
-    4
 }
 const fn default_gain_lead() -> f32 {
     1.0
@@ -812,12 +437,6 @@ const fn default_gain_snare() -> f32 {
 }
 const fn default_gain_hat() -> f32 {
     0.4
-}
-const fn default_vel_bass() -> u8 {
-    85
-}
-const fn default_vel_snare() -> u8 {
-    70
 }
 fn default_channel_routing() -> Vec<i32> {
     vec![-1; 16]
@@ -835,14 +454,14 @@ fn default_profile_instruments() -> crate::style_profile::ProfileInstruments {
 
 impl Default for MusicalParams {
     fn default() -> Self {
+        let profile = crate::StyleProfile::builtin();
         Self {
             // Global
-            bpm: 120.0,
-            time_signature: TimeSignature::default(),
-            swing_ratio: default_swing_ratio(),
-            pulse: None,
+            bpm: profile.meter.default_bpm,
+            time_signature: profile.meter.time_signature,
+            swing_ratio: profile.meter.default_swing_ratio,
+            pulse: Some(profile.meter.pulse_spec()),
             master_volume: default_master_volume(),
-            style: Style::default(),
             profile_id: default_profile_id(),
             profile_instruments: default_profile_instruments(),
             feet_density: default_feet_density(),
@@ -852,37 +471,14 @@ impl Default for MusicalParams {
             enable_rhythm: true,
             enable_harmony: true,
             enable_melody: true,
-            enable_voicing: false,
             end_after_tour: false,
 
             // Rythme
-            rhythm_mode: RhythmMode::Euclidean,
-            rhythm_steps: default_rhythm_steps(),
-            rhythm_pulses: default_rhythm_pulses(),
-            rhythm_rotation: 0,
             rhythm_density: default_density(),
             rhythm_tension: default_tension(),
-            rhythm_secondary_steps: default_secondary_steps(),
-            rhythm_secondary_pulses: default_secondary_pulses(),
-            rhythm_secondary_rotation: 0,
-            fixed_kick: false,
-
-            // Harmonie
-            harmony_mode: HarmonyMode::Driver,
-            harmony_strategy: HarmonyStrategy::Auto,
             harmony_tension: default_tension(),
             harmony_valence: 0.3,
-            harmony_measures_per_chord: default_measures_per_chord(),
-            key_root: 0, // C
-            chord_chart: Vec::new(),
-
-            // Mélodie / Voicing
             melody_smoothness: default_smoothness(),
-            melody_scale_type: MelodyScaleType::default(),
-            variety: VarietyParams::default(),
-            voicing_density: default_density(),
-            voicing_tension: default_tension(),
-            melody_octave: default_octave(),
             instrument_lead: InstrumentConfig::default(),
             instrument_bass: InstrumentConfig::default(),
 
@@ -892,8 +488,6 @@ impl Default for MusicalParams {
             gain_bass: default_gain_bass(),
             gain_snare: default_gain_snare(),
             gain_hat: default_gain_hat(),
-            vel_base_bass: default_vel_bass(),
-            vel_base_snare: default_vel_snare(),
 
             // Routage
             channel_routing: default_channel_routing(),
@@ -915,7 +509,6 @@ impl MusicalParams {
             enable_rhythm: false,
             enable_harmony: true,
             enable_melody: true,
-            voicing_density: 1.0, // Force 100% de notes
             ..Default::default()
         }
     }
@@ -950,11 +543,6 @@ impl MusicalParams {
         self.swing_ratio = ratio.clamp(0.5, 0.75);
     }
 
-    /// Définit le style de génération (`Legacy` ou `Reel`).
-    pub const fn set_style(&mut self, style: Style) {
-        self.style = style;
-    }
-
     /// Définit la densité de podorythmie, bornée à `0..=2`.
     pub fn set_feet_density(&mut self, density: u8) {
         self.feet_density = density.min(2);
@@ -972,27 +560,6 @@ impl MusicalParams {
         self
     }
 
-    /// Builder pattern: set harmony mode
-    #[must_use]
-    pub const fn harmony_mode(mut self, mode: HarmonyMode) -> Self {
-        self.harmony_mode = mode;
-        self
-    }
-
-    /// Builder pattern: set rhythm mode
-    #[must_use]
-    pub const fn rhythm_mode(mut self, mode: RhythmMode) -> Self {
-        self.rhythm_mode = mode;
-        self
-    }
-
-    /// Builder pattern: set chord chart
-    #[must_use]
-    pub fn chord_chart(mut self, chart: Vec<ArrayString<16>>) -> Self {
-        self.chord_chart = chart;
-        self
-    }
-
     /// Builder pattern: set lead instrument config
     #[must_use]
     pub const fn instrument_lead(mut self, config: InstrumentConfig) -> Self {
@@ -1004,13 +571,6 @@ impl MusicalParams {
     #[must_use]
     pub const fn instrument_bass(mut self, config: InstrumentConfig) -> Self {
         self.instrument_bass = config;
-        self
-    }
-
-    /// Builder pattern: set musical style
-    #[must_use]
-    pub const fn style(mut self, style: Style) -> Self {
-        self.style = style;
         self
     }
 
@@ -1027,28 +587,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_params() {
-        let params = MusicalParams::default();
-        assert!((params.bpm - 120.0).abs() < f32::EPSILON);
-        assert!(params.enable_rhythm);
-        assert!(params.enable_harmony);
-        assert!(params.enable_melody);
-    }
-
-    #[test]
     fn test_melody_only() {
         let params = MusicalParams::melody_only();
         assert!(!params.enable_rhythm);
         assert!(params.enable_melody);
-        assert!((params.voicing_density - 1.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn test_builder_pattern() {
-        let params = MusicalParams::default().bpm(140.0).harmony_mode(HarmonyMode::Basic);
-
-        assert!((params.bpm - 140.0).abs() < f32::EPSILON);
-        assert_eq!(params.harmony_mode, HarmonyMode::Basic);
     }
 
     #[test]
@@ -1161,12 +703,19 @@ mod tests {
     /// signature.
     #[test]
     fn test_effective_pulse_override() {
-        let params = MusicalParams::default();
+        let params = MusicalParams {
+            pulse: None,
+            time_signature: TimeSignature::new(4, 4),
+            ..Default::default()
+        };
         assert_eq!(params.effective_pulse(4), PulseSpec { steps_per_pulse: 4, pulses_per_bar: 4 });
 
         // 6/8 derives a dotted-quarter pulse (6 steps).
-        let compound =
-            MusicalParams { time_signature: TimeSignature::new(6, 8), ..MusicalParams::default() };
+        let compound = MusicalParams {
+            time_signature: TimeSignature::new(6, 8),
+            pulse: None,
+            ..MusicalParams::default()
+        };
         assert_eq!(compound.effective_pulse(4).steps_per_pulse, 6);
 
         // An explicit override wins over the derived pulse.
@@ -1183,8 +732,6 @@ mod tests {
 
     #[test]
     fn test_swing_ratio_default_and_bounds() {
-        assert!((MusicalParams::default().swing_ratio - 0.5).abs() < f32::EPSILON);
-
         let mut params = MusicalParams::default();
         params.set_swing_ratio(0.6);
         assert!((params.swing_ratio - 0.6).abs() < f32::EPSILON);
@@ -1199,13 +746,8 @@ mod tests {
     }
 
     #[test]
-    fn test_style_and_feet_density_defaults_and_bounds() {
+    fn test_feet_density_bounds() {
         let mut params = MusicalParams::default();
-        assert_eq!(params.style, Style::Legacy);
-        assert_eq!(params.feet_density, 1);
-
-        params.set_style(Style::Profile);
-        assert_eq!(params.style, Style::Profile);
 
         params.set_feet_density(0);
         assert_eq!(params.feet_density, 0);
@@ -1214,75 +756,9 @@ mod tests {
         params.set_feet_density(99);
         assert_eq!(params.feet_density, 2);
 
-        let built = MusicalParams::default().style(Style::Profile).feet_density(5);
-        assert_eq!(built.style, Style::Profile);
+        let built = MusicalParams::default().feet_density(5);
         assert_eq!(built.feet_density, 2);
     }
-}
-
-// =========================================================================================
-//  Structures moved from Engine (Data Contracts)
-// =========================================================================================
-
-#[derive(Clone, Debug)]
-pub struct VisualizationEvent {
-    pub note_midi: u8,
-    pub instrument: u8, // 0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe
-    pub step: usize,
-    pub bar: usize,
-    pub duration_samples: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct HarmonyState {
-    pub current_chord_index: usize,
-    pub chord_root_offset: i32,
-    pub chord_is_minor: bool,
-    pub chord_name: ArrayString<64>,
-    pub measure_number: usize,
-    pub cycle_number: usize,
-    pub current_step: usize,
-    pub progression_name: ArrayString<64>,
-    pub progression_length: usize,
-    pub harmony_mode: HarmonyMode,
-    pub primary_steps: usize,
-    pub primary_pulses: usize,
-    pub secondary_steps: usize,
-    pub secondary_pulses: usize,
-    pub primary_rotation: usize,
-    pub secondary_rotation: usize,
-    pub primary_pattern: [bool; 192],
-    pub secondary_pattern: [bool; 192],
-}
-
-impl Default for HarmonyState {
-    fn default() -> Self {
-        Self {
-            current_chord_index: 0,
-            chord_root_offset: 0,
-            chord_is_minor: false,
-            chord_name: ArrayString::from("I").unwrap_or_default(),
-            measure_number: 1,
-            cycle_number: 1,
-            current_step: 0,
-            progression_name: ArrayString::from("Folk Peaceful (I-IV-I-V)").unwrap_or_default(),
-            progression_length: 4,
-            harmony_mode: HarmonyMode::Driver,
-            primary_steps: 16,
-            primary_pulses: 4,
-            secondary_steps: 12,
-            secondary_pulses: 3,
-            primary_rotation: 0,
-            secondary_rotation: 0,
-            primary_pattern: [false; 192],
-            secondary_pattern: [false; 192],
-        }
-    }
-}
-
-// Helpers for Serde defaults
-const fn default_poly_steps() -> usize {
-    48
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1292,80 +768,11 @@ pub struct EngineParams {
     pub density: f32,
     pub tension: f32,
     pub smoothness: f32,
-    #[serde(default)]
-    pub algorithm: RhythmMode,
-    #[serde(default)]
-    pub channel_routing: Vec<i32>,
-    #[serde(default)]
-    pub muted_channels: Vec<bool>,
-    #[serde(default)]
-    pub harmony_mode: HarmonyMode,
-
-    // Recording Control
-    #[serde(default)]
-    pub record_wav: bool,
-    #[serde(default)]
-    pub record_midi: bool,
-    #[serde(default)]
-    pub record_musicxml: bool,
-
-    // Synthesis Morphing Control
-    #[serde(default = "default_true")]
-    pub enable_synthesis_morphing: bool,
-
-    // Mixer Gains (0.0 - 1.0)
-    #[serde(default = "default_gain_lead")]
-    pub gain_lead: f32,
-    #[serde(default = "default_gain_chords")]
-    pub gain_chords: f32,
-    #[serde(default = "default_gain_bass")]
-    pub gain_bass: f32,
-    #[serde(default = "default_gain_snare")]
-    pub gain_snare: f32,
-    #[serde(default = "default_gain_hat")]
-    pub gain_hat: f32,
-
-    // Velocity Base (MIDI 0-127)
-    #[serde(default = "default_vel_bass")]
-    pub vel_base_bass: u8,
-    #[serde(default = "default_vel_snare")]
-    pub vel_base_snare: u8,
-
-    // Polyrythm Steps (48, 96, 192...)
-    #[serde(default = "default_poly_steps")]
-    pub poly_steps: usize,
-
-    // Mode Drum Kit
-    #[serde(default)]
-    pub fixed_kick: bool,
 }
 
 impl Default for EngineParams {
     fn default() -> Self {
-        Self {
-            arousal: 0.5,
-            valence: 0.3,
-            density: 0.2,
-            tension: 0.4,
-            smoothness: 0.7,
-            algorithm: RhythmMode::Euclidean,
-            channel_routing: vec![-1; 16],
-            muted_channels: vec![false; 16],
-            harmony_mode: HarmonyMode::Driver,
-            record_wav: false,
-            record_midi: false,
-            record_musicxml: false,
-            enable_synthesis_morphing: true,
-            gain_lead: default_gain_lead(),
-            gain_chords: default_gain_chords(),
-            gain_bass: default_gain_bass(),
-            gain_snare: default_gain_snare(),
-            gain_hat: default_gain_hat(),
-            vel_base_bass: default_vel_bass(),
-            vel_base_snare: default_vel_snare(),
-            poly_steps: default_poly_steps(),
-            fixed_kick: false,
-        }
+        Self { arousal: 0.5, valence: 0.3, density: 0.2, tension: 0.4, smoothness: 0.7 }
     }
 }
 
@@ -1376,71 +783,4 @@ pub struct SessionConfig {
     pub scale: String,
     pub pulses: usize,
     pub steps: usize,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct CurrentState {
-    pub bpm: f32,
-    pub density: f32,
-    pub tension: f32,
-    pub smoothness: f32,
-    pub valence: f32,
-    pub arousal: f32,
-}
-
-/// Musical Conductor - Tracks the absolute musical time.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Conductor {
-    pub current_bar: usize,
-    pub current_beat: usize,
-    pub current_tick: usize,
-    pub time_signature: TimeSignature,
-    pub ticks_per_beat: usize,
-}
-
-impl Default for Conductor {
-    fn default() -> Self {
-        Self {
-            current_bar: 1,
-            current_beat: 1,
-            current_tick: 0,
-            time_signature: TimeSignature::default(),
-            ticks_per_beat: 4, // 16th notes resolution
-        }
-    }
-}
-
-impl Conductor {
-    /// Advance the conductor by one tick.
-    /// Returns true if a barline was crossed.
-    pub fn tick(&mut self) -> bool {
-        let mut bar_crossed = false;
-        self.current_tick += 1;
-
-        if self.current_tick >= self.ticks_per_beat {
-            self.current_tick = 0;
-            self.current_beat += 1;
-
-            if self.current_beat > self.time_signature.numerator {
-                self.current_beat = 1;
-                self.current_bar += 1;
-                bar_crossed = true;
-            }
-        }
-        bar_crossed
-    }
-
-    /// Reset the conductor to the beginning.
-    pub fn reset(&mut self) {
-        self.current_bar = 1;
-        self.current_beat = 1;
-        self.current_tick = 0;
-    }
-}
-
-impl EngineParams {
-    #[must_use]
-    pub fn compute_bpm(&self) -> f32 {
-        self.arousal.mul_add(110.0, 70.0)
-    }
 }

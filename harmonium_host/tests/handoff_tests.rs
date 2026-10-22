@@ -85,7 +85,7 @@ fn make_harness(seed: u64) -> Harness {
 
     let transport = Arc::new(AtomicU64::new(harmonium::playback::pack(1, 0)));
     let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let composer = MusicComposer::new_with_seed(
+    let mut composer = MusicComposer::new_with_seed(
         SAMPLE_RATE,
         measure_tx,
         return_rx,
@@ -93,6 +93,10 @@ fn make_harness(seed: u64) -> Harness {
         font_queue,
         seed,
     );
+    // Keep the exact fixed-frame grid while exercising the default profile.
+    composer.set_bpm(120.0);
+    composer.set_swing_ratio(0.5);
+    composer.sync_generator();
     let log = EventLog::default();
     let initial_clock = harmonium::TransportClock::initial(SAMPLE_RATE as u32);
     let (clock_tx, _clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();

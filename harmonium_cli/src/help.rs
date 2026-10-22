@@ -9,12 +9,18 @@ pub fn print_help() {
     println!("{}", "=".repeat(60).dimmed());
     println!();
 
-    print_section("CONTROL MODES", &[
-        ("emotion", "Switch to emotion mode (EmotionMapper translates to musical params)"),
-        ("emotion <a> <v> <d> <t>", "Set emotions: arousal valence density tension → BPM, patterns, etc."),
-        ("emotion a+0.1 v-0.2", "Relative: a=arousal→BPM, v=valence→major/minor, d=density→pulses, t=tension→strategy"),
-        ("direct", "Switch to direct mode (bypass EmotionMapper, set params directly)"),
-    ]);
+    print_section(
+        "CONTROL MODES",
+        &[
+            ("emotion", "Switch to emotion mode (EmotionMapper translates to musical params)"),
+            (
+                "emotion <a> <v> <d> <t>",
+                "Set emotions: arousal valence density tension → BPM, patterns, etc.",
+            ),
+            ("emotion a+0.1 v-0.2", "Réglage relatif des courbes [dynamics] du profil"),
+            ("direct", "Switch to direct mode (bypass EmotionMapper, set params directly)"),
+        ],
+    );
 
     print_section(
         "GLOBAL PARAMETERS",
@@ -39,57 +45,15 @@ pub fn print_help() {
     );
 
     print_section(
-        "TRAD / REEL (phase 1)",
+        "PROFILS",
         &[
-            (
-                "style <identifiant|dossier|legacy>",
-                "Charge un profil (reel_quebecois, alias reel) ou son dossier ; legacy conserve l’ancien moteur",
-            ),
+            ("style <identifiant|dossier>", "Charge un profil validé ; défaut reel_quebecois"),
             ("feet <0|1|2>", "Densité de podorythmie (0 = talon 0,8 ; 1 = standard ; 2 = ornée)"),
             (
                 "intensity <0..1>",
                 "Énergie, articulation, pieds et chop ; effet à la prochaine mesure",
             ),
             ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
-        ],
-    );
-
-    print_section(
-        "RHYTHM PARAMETERS",
-        &[
-            ("set rhythm_mode <mode>", "euclidean | perfect | classic"),
-            ("set steps <4-192>", "Number of steps in pattern"),
-            ("set pulses <1-16>", "Number of pulses (triggers)"),
-            ("set rotation <0-15>", "Pattern rotation offset"),
-            ("set density <0-1>", "Rhythmic density"),
-            ("set rhythm_tension <0-1>", "Rhythmic tension"),
-        ],
-    );
-
-    print_section(
-        "HARMONY PARAMETERS",
-        &[
-            ("set harmony_mode <mode>", "basic | driver"),
-            ("set valence <-1 to 1>", "Positive/negative emotion"),
-            ("set harmony_tension <0-1>", "Harmonic dissonance"),
-        ],
-    );
-
-    print_section(
-        "MELODY & VOICING",
-        &[
-            ("set smoothness <0-1>", "Melodic smoothness (Hurst)"),
-            ("set octave <-2 to 2>", "Melody octave shift"),
-            ("set voicing_density <0-1>", "Chord voicing density"),
-            ("set voicing_tension <0-1>", "Voicing tension"),
-        ],
-    );
-
-    print_section(
-        "MODULE TOGGLES",
-        &[
-            ("enable <module>", "Enable rhythm|harmony|melody|voicing"),
-            ("disable <module>", "Disable rhythm|harmony|melody|voicing"),
         ],
     );
 
@@ -144,8 +108,7 @@ pub fn print_help() {
     println!("  {}", "set bpm 140".green());
     println!("  {}", "emotion 0.9 0.5 0.7 0.6    # High arousal, neutral valence".green());
     println!("  {}", "emotion a+0.1 t-0.2        # Increase arousal, decrease tension".green());
-    println!("  {}", "set rhythm_mode perfect".green());
-    println!("  {}", "enable voicing".green());
+    println!("  {}", "style gigue_quebecoise".green());
     println!("  {}", "seek 4                         # Jump to bar 4".green());
     println!("  {}", "loop 4 8                       # Loop bars 4-8".green());
     println!("  {}", "record midi output.mid".green());
@@ -170,15 +133,6 @@ pub fn print_command_help(command: &str) {
             println!("  {}  - BPM (70-180)", "bpm".green());
             println!("  {}  - Master volume (0-1)", "volume".green());
             println!("  {}  - Time signature (e.g., 4/4)", "time".green());
-            println!("  {}  - euclidean|perfect|classic", "rhythm_mode".green());
-            println!("  {}  - Pattern steps (4-192)", "steps".green());
-            println!("  {}  - Pattern pulses (1-16)", "pulses".green());
-            println!("  {}  - Pattern rotation (0-15)", "rotation".green());
-            println!("  {}  - Rhythmic density (0-1)", "density".green());
-            println!("  {}  - basic|driver", "harmony_mode".green());
-            println!("  {}  - Emotion (-1 to 1)", "valence".green());
-            println!("  {}  - Melodic smoothness (0-1)", "smoothness".green());
-            println!("  {}  - Octave shift (-2 to 2)", "octave".green());
         }
 
         "intensity" => {
@@ -283,14 +237,11 @@ pub fn print_command_help(command: &str) {
             println!("{}", "STYLE".bold().cyan());
             println!("{}", "=".repeat(60).dimmed());
             println!();
-            println!("Choisit le générateur actif (`reel` trad québécois ou `legacy`).");
-            println!("En `reel`, applique les défauts de `TuningParams` : 230 BPM, swing 0.56,");
-            println!(
-                "signature 2/2 et programmes GM D10 (violon 40, guitare 24, basse 32, pieds ch 9)."
-            );
+            println!("Charge un profil embarqué ou un dossier validé.");
+            println!("La grille, la forme, les instruments et la dynamique viennent du profil.");
             println!();
             println!("{}", "SYNTAX:".bold());
-            println!("  style <identifiant|dossier|legacy>");
+            println!("  style <identifiant|dossier>");
         }
 
         "feet" => {

@@ -4,7 +4,7 @@ use std::{
 };
 
 use harmonium_core::{
-    events::{AudioEvent, RecordFormat},
+    events::{AudioEvent, AudioRecordFormat, RecordFormat},
     params::{MusicalParams, TimeSignature},
 };
 use hound::{WavSpec, WavWriter};
@@ -91,9 +91,7 @@ pub struct RecorderBackend {
     midi_active: Vec<(u8, u8)>,
     current_samples_per_step: usize,
     channel_programs: [u8; 16],
-    musicxml_events: Option<Vec<(f64, AudioEvent)>>, // Changed from Vec<(u64, AudioEvent)>
-    musicxml_steps_elapsed: f64,                     // Changed from musicxml_samples_elapsed: u64
-    musicxml_params: MusicalParams,
+    musical_params: MusicalParams,
 }
 
 impl RecorderBackend {
@@ -114,17 +112,14 @@ impl RecorderBackend {
             current_samples_per_step: 11025,
             channel_programs: {
                 let mut progs = [0u8; 16];
-                for (ch, prog) in crate::voice_manager::gm_programs_for_style(
-                    harmonium_core::params::Style::Legacy,
+                for (ch, prog) in crate::voice_manager::gm_programs_for_profile(
                     &harmonium_core::StyleProfile::builtin().instruments,
                 ) {
                     progs[ch as usize] = prog;
                 }
                 progs
             },
-            musicxml_events: None,
-            musicxml_steps_elapsed: 0.0, // Changed to f64
-            musicxml_params: MusicalParams::default(),
+            musical_params: MusicalParams::default(),
         }
     }
 
@@ -165,13 +160,13 @@ impl RecorderBackend {
     fn start_midi(&mut self) {
         // Real tempo from the musical params (convoyed by `UpdateMusicalParams`
         // before recording starts), falling back to 120 if unset.
-        let bpm = if self.musicxml_params.bpm > 0.0 { self.musicxml_params.bpm } else { 120.0 };
+        let bpm = if self.musical_params.bpm > 0.0 { self.musical_params.bpm } else { 120.0 };
         let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
         let mut track = vec![TrackEvent {
             delta: 0.into(),
             kind: TrackEventKind::Meta(MetaMessage::Tempo(microseconds_per_beat.into())),
         }];
-        track.push(time_signature_event(0, &self.musicxml_params.time_signature));
+        track.push(time_signature_event(0, &self.musical_params.time_signature));
 
         // Émet les programmes GM initiaux pour Melody (0), Chords (1) et Bass (2)
         for ch in 0..3u8 {
@@ -253,7 +248,7 @@ impl RecorderBackend {
 
     fn update_timing(&mut self, bpm: f32, signature: TimeSignature, swing_ratio: f32) {
         if self.midi_track.is_some() {
-            if (bpm - self.musicxml_params.bpm).abs() > 0.01 {
+            if (bpm - self.musical_params.bpm).abs() > 0.01 {
                 let bpm = if bpm > 0.0 { bpm } else { 120.0 };
                 let microseconds_per_beat = (60_000_000.0 / bpm) as u32;
                 let delta = self.steps_to_ticks(self.midi_steps_since_last);
@@ -267,7 +262,7 @@ impl RecorderBackend {
                     });
                 }
             }
-            if signature != self.musicxml_params.time_signature {
+            if signature != self.musical_params.time_signature {
                 let delta = self.steps_to_ticks(self.midi_steps_since_last);
                 if let Some(track) = &mut self.midi_track {
                     self.midi_steps_since_last = 0.0;
@@ -275,39 +270,9 @@ impl RecorderBackend {
                 }
             }
         }
-        self.musicxml_params.bpm = bpm;
-        self.musicxml_params.time_signature = signature;
-        self.musicxml_params.swing_ratio = swing_ratio;
-    }
-
-    fn start_musicxml(&mut self) {
-        self.musicxml_events = Some(Vec::new());
-        self.musicxml_steps_elapsed = 0.0; // Reset to f64
-    }
-
-    fn stop_musicxml(&mut self) {
-        if let Some(events) = self.musicxml_events.take() {
-            // Debug: Count captured events by type
-            let note_on_count =
-                events.iter().filter(|(_, e)| matches!(e, AudioEvent::NoteOn { .. })).count();
-            let note_off_count =
-                events.iter().filter(|(_, e)| matches!(e, AudioEvent::NoteOff { .. })).count();
-            eprintln!(
-                "MusicXML recorder: Captured {} NoteOn events, {} NoteOff events (total {} events)",
-                note_on_count,
-                note_off_count,
-                events.len()
-            );
-
-            let xml = harmonium_core::export::to_musicxml(
-                &events,
-                &self.musicxml_params,
-                1, // Dummy value - no longer used for conversion with step-based events
-            );
-            if let Ok(mut queue) = self.finished_recordings.lock() {
-                queue.push((RecordFormat::MusicXml, xml.into_bytes()));
-            }
-        }
+        self.musical_params.bpm = bpm;
+        self.musical_params.time_signature = signature;
+        self.musical_params.swing_ratio = swing_ratio;
     }
 
     fn steps_to_ticks(&self, steps: f64) -> u32 {
@@ -323,36 +288,27 @@ impl AudioRenderer for RecorderBackend {
         // Intercept recording commands
         match &event {
             AudioEvent::StartRecording { format } => match format {
-                RecordFormat::Wav => self.start_wav(),
-                RecordFormat::Midi => self.start_midi(),
-                RecordFormat::MusicXml => self.start_musicxml(),
+                AudioRecordFormat::Wav => self.start_wav(),
+                AudioRecordFormat::Midi => self.start_midi(),
             },
             AudioEvent::StopRecording { format } => match format {
-                RecordFormat::Wav => self.stop_wav(),
-                RecordFormat::Midi => self.stop_midi(),
-                RecordFormat::MusicXml => self.stop_musicxml(),
+                AudioRecordFormat::Wav => self.stop_wav(),
+                AudioRecordFormat::Midi => self.stop_midi(),
             },
             AudioEvent::TimingUpdate { samples_per_step } => {
                 self.current_samples_per_step = *samples_per_step;
             }
             AudioEvent::UpdateMusicalParams { params } => {
                 self.update_timing(params.bpm, params.time_signature, params.swing_ratio);
-                for (ch, prog) in crate::voice_manager::gm_programs_for_style(
-                    params.style,
-                    &params.profile_instruments,
-                ) {
+                for (ch, prog) in
+                    crate::voice_manager::gm_programs_for_profile(&params.profile_instruments)
+                {
                     self.channel_programs[ch as usize] = prog;
                 }
-                self.musicxml_params = *params.clone();
+                self.musical_params = *params.clone();
             }
             AudioEvent::MeasureTiming { bpm, time_signature, swing_ratio } => {
                 self.update_timing(*bpm, *time_signature, *swing_ratio);
-            }
-            AudioEvent::NoteOn { .. } | AudioEvent::NoteOff { .. } => {
-                // Capture MusicXML with step timestamp
-                if let Some(events) = &mut self.musicxml_events {
-                    events.push((self.musicxml_steps_elapsed, event.clone()));
-                }
             }
             _ => {}
         }
@@ -419,11 +375,6 @@ impl AudioRenderer for RecorderBackend {
             if self.midi_track.is_some() {
                 self.midi_steps_since_last += steps_in_buffer;
             }
-
-            // Advance MusicXML time (steps)
-            if self.musicxml_events.is_some() {
-                self.musicxml_steps_elapsed += steps_in_buffer;
-            }
         }
     }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -473,7 +424,7 @@ mod tests {
         rec.handle_event(AudioEvent::UpdateMusicalParams {
             params: Box::new(params_at(230.0, 2, 2)),
         });
-        rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
+        rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
         rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
         advance(&mut rec, 2.0);
         rec.handle_event(AudioEvent::NoteOff { note: 60, channel: 0 });
@@ -483,7 +434,7 @@ mod tests {
         rec.handle_event(AudioEvent::AllNotesOff { channel: 0 });
         // Truncated ring: no NoteOff before stop.
         rec.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3 });
-        rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
+        rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Midi });
 
         let queue = finished.lock().map_err(|e| e.to_string())?;
         assert_eq!(queue.len(), 1);
@@ -541,12 +492,12 @@ mod tests {
         rec.handle_event(AudioEvent::UpdateMusicalParams {
             params: Box::new(params_at(200.0, 2, 2)),
         });
-        rec.handle_event(AudioEvent::StartRecording { format: RecordFormat::Midi });
+        rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
         advance(&mut rec, 4.0);
         rec.handle_event(AudioEvent::UpdateMusicalParams {
             params: Box::new(params_at(240.0, 2, 2)),
         });
-        rec.handle_event(AudioEvent::StopRecording { format: RecordFormat::Midi });
+        rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Midi });
 
         let queue = finished.lock().map_err(|e| e.to_string())?;
         let smf = midly::Smf::parse(&queue[0].1).map_err(|e| e.to_string())?;

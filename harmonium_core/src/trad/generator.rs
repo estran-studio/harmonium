@@ -16,7 +16,7 @@ use super::{
     plan::{BarRole, ImposedRole, TunePlan},
 };
 use crate::{
-    harmony::RngCore,
+    algo::RngCore,
     models::{
         HarmonyPlan,
         jazz::{GrammarStyle, SteedmanGrammar},
@@ -24,8 +24,8 @@ use crate::{
     params::MusicalParams,
     theory::{PitchClass, chord::Chord, lydian_chromatic::LydianChromaticConcept},
     timeline::{
-        Articulation, ChordChange, ChordContext, GenerationContext, Measure, NoteId, StateSnapshot,
-        TimelineNote, TrackId,
+        Articulation, ChordChange, ChordContext, Measure, NoteId, StateSnapshot, TimelineNote,
+        TrackId,
     },
     tuning::{ReelFiddleParams, TuningParams},
 };
@@ -73,7 +73,7 @@ impl ActiveTune {
 // TradGenerator
 // ---------------------------------------------------------------------------
 
-/// Générateur de musique traditionnelle québécoise (`Style::Profile`, D1).
+/// Générateur de mesures piloté par le profil actif.
 #[derive(Clone, Debug)]
 pub struct TradGenerator {
     /// Paramètres musicaux courants (tempo, swing, densité des pieds, activations).
@@ -145,7 +145,7 @@ impl TradGenerator {
     /// Conserve `musical_params`, `tuning` et le compteur monotone `next_note_id`,
     /// et vide les tunes générés afin que le rejeu depuis la mesure 1 reproduise
     /// exactement la séquence de tirages sur le RNG.
-    pub fn reset_to_initial(&mut self, _ctx: &GenerationContext) {
+    pub fn reset_to_initial(&mut self) {
         self.tunes.clear();
         self.current_bar = 0;
     }
@@ -156,18 +156,6 @@ impl TradGenerator {
         for bar in 1..target_bar {
             let _ = self.generate_measure(bar, rng);
         }
-    }
-
-    /// Opération sans effet pour [`TradGenerator`] : le générateur trad n'effectue
-    /// pas de morphing progressif d'état émotionnel entre les pas (`MusicalParams`
-    /// est lu directement à chaque mesure).
-    pub const fn snap_current_state(&mut self) {}
-
-    /// Réinitialise l'indice de grille d'accords (sans objet en trad, exposé pour
-    /// symétrie avec [`crate::timeline::TimelineGenerator`]).
-    pub fn reset_chart_index(&mut self) {
-        self.tunes.clear();
-        self.current_bar = 0;
     }
 
     /// Retourne le tune actif correspondant à la mesure 1-based `bar_number`, s'il a été généré.
@@ -1378,14 +1366,13 @@ mod tests {
 
     use super::*;
     use crate::{
-        params::{PulseSpec, Style, TimeSignature},
+        params::{PulseSpec, TimeSignature},
         trad::{ReelArrangement, Section},
     };
 
     fn make_reel_params() -> MusicalParams {
         let rf = crate::StyleProfile::default().meter;
         let mut params = MusicalParams::default();
-        params.set_style(Style::Profile);
         params.bpm = rf.default_bpm;
         params.set_swing_ratio(rf.default_swing_ratio);
         params.time_signature = rf.time_signature;
