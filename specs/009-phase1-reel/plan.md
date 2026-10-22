@@ -330,6 +330,13 @@ chaque émotion a un effet audible et distinct en trad, un changement
 s'entend à la mesure suivante, la pulse `BeatInfo` ne saute jamais (tempo
 par rampe), automation d'export pour écouter un scénario de combat.
 
+Validé à l'oreille (2026-10-22, `demos/combat_seed1.wav`, après correction
+du mixage `2e4089a`) : « on sent une progression plus rapide et intense
+pendant que la musique joue ». Mixage retenu : le violon mène à toutes les
+intensités ; guitare 5 à 12 dB sous le violon, basse 1 à 4 dB sous.
+Reste ouvert : la valence ne change le mode qu'à l'air suivant (environ
+100 mesures avec 3 tours), donc le mineur n'arrive pas pendant un combat.
+
 ## Suite proposée (prochaine session)
 
 1. **Écoute ciblée, 30 min** : noter par élément ce qui sonne « pas trad »
