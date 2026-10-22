@@ -252,42 +252,44 @@ fn build_drum_track(measures: &[Measure]) -> Vec<TrackEvent<'static>> {
     for measure in measures {
         let base_tick = measure_start(measure);
 
-        // Heel / Snare
+        // Heel
         for note in measure.notes_for_track(TrackId::Heel) {
             let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
+            let key = if note.pitch != 0 { note.pitch } else { GM_SNARE };
             events.push((
                 on_tick,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
-                    message: MidiMessage::NoteOn { key: u7::new(GM_SNARE), vel: u7::new(vel) },
+                    message: MidiMessage::NoteOn { key: u7::new(key), vel: u7::new(vel) },
                 },
             ));
             events.push((
                 on_tick + TICKS_PER_STEP,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
-                    message: MidiMessage::NoteOff { key: u7::new(GM_SNARE), vel: u7::new(0) },
+                    message: MidiMessage::NoteOff { key: u7::new(key), vel: u7::new(0) },
                 },
             ));
         }
 
-        // Toe / Hi-hat
+        // Toe
         for note in measure.notes_for_track(TrackId::Toe) {
             let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
+            let key = if note.pitch != 0 { note.pitch } else { GM_HIHAT };
             events.push((
                 on_tick,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
-                    message: MidiMessage::NoteOn { key: u7::new(GM_HIHAT), vel: u7::new(vel) },
+                    message: MidiMessage::NoteOn { key: u7::new(key), vel: u7::new(vel) },
                 },
             ));
             events.push((
                 on_tick + TICKS_PER_STEP,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
-                    message: MidiMessage::NoteOff { key: u7::new(GM_HIHAT), vel: u7::new(0) },
+                    message: MidiMessage::NoteOff { key: u7::new(key), vel: u7::new(0) },
                 },
             ));
         }

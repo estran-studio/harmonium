@@ -267,8 +267,8 @@ impl StyleDynamics {
                 return Err("color: poids total nul".into());
             }
         }
-        if self.chop_patterns.is_empty()
-            || self.chop_patterns.iter().any(|p| p.is_empty() || p.windows(2).any(|s| s[0] >= s[1]))
+        if !self.chop_patterns.is_empty()
+            && self.chop_patterns.iter().any(|p| p.is_empty() || p.windows(2).any(|s| s[0] >= s[1]))
         {
             return Err("chop_patterns: motifs non vides, pas croissants requis".into());
         }

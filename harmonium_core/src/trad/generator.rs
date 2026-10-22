@@ -9,7 +9,7 @@ use super::{
     accomp::{Guitarist, bass_bar},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     cells::Cell,
-    feet::{draw_feet_humanize, feet_notes},
+    feet::{draw_feet_humanize, feet_notes, feet_notes_with_cadence},
     fiddle::{FiddleLine, same_cell_up_to_octave, tonic_midi_for_key},
     harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
     mode::Mode,
@@ -221,6 +221,9 @@ impl TradGenerator {
     /// joué l'intro de cet air) ET le drapeau `enable_*` du jeu le permet. Seul
     /// calcul de « piste active ».
     fn track_active(&self, track: TrackId, position: &TunePosition) -> bool {
+        if !self.tuning.profile.has_track(track) {
+            return false;
+        }
         let flag = match track {
             TrackId::Melody => self.musical_params.enable_melody,
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
@@ -248,6 +251,9 @@ impl TradGenerator {
 
     /// Vrai si `track` joue pendant une mesure d'intro selon la forme tirée.
     fn track_active_in_intro(&self, track: TrackId, intro_info: &IntroInfo) -> bool {
+        if !self.tuning.profile.has_track(track) {
+            return false;
+        }
         self.tuning.profile.dynamics.allows(track, self.musical_params.rhythm_density)
             && match track {
                 TrackId::Melody => intro_info.melody_active() && self.musical_params.enable_melody,
@@ -368,14 +374,11 @@ impl TradGenerator {
                 let melody: Vec<_> = (0..self.profile.form.unique_bars())
                     .map(|i| tune.fiddle.notes_for_bar(tune.plan.first_pass_bar(i)))
                     .collect();
-                tune.harmony = HarmonyPlan::TradFunctional(
-                    TuneHarmony::new(
-                        tune.plan.clone(),
-                        &melody,
-                        &self.tuning.profile.accompaniment,
-                    )
-                    .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}")),
-                );
+                if let Some(accompaniment) = &self.tuning.profile.accompaniment
+                    && let Ok(h) = TuneHarmony::new(tune.plan.clone(), &melody, accompaniment)
+                {
+                    tune.harmony = HarmonyPlan::TradFunctional(h);
+                }
             }
         }
         position.mode = mode;
@@ -408,16 +411,36 @@ impl TradGenerator {
         match intro.form {
             Some(IntroRole::Percussion) => {
                 // Décompte : les pistes de percussion jouent leur pattern seul.
-                if self.track_active_in_intro(TrackId::Heel, intro) {
-                    let (heel_notes, _) = feet_notes(
+                let default_intro_tracks = [TrackId::Heel];
+                let intro_tracks = tuning
+                    .profile
+                    .percussion
+                    .intro_tracks
+                    .as_deref()
+                    .unwrap_or(&default_intro_tracks);
+                let heel_wanted = intro_tracks.contains(&TrackId::Heel)
+                    && self.track_active_in_intro(TrackId::Heel, intro);
+                let toe_wanted = intro_tracks.contains(&TrackId::Toe)
+                    && self.track_active_in_intro(TrackId::Toe, intro);
+                if heel_wanted || toe_wanted {
+                    let zero_humanize = vec![0i8; steps];
+                    let (heel_notes, toe_notes) = feet_notes(
                         &tuning.profile.percussion,
                         self.feet_density(),
                         steps,
-                        &vec![0i8; steps],
+                        &zero_humanize,
                     );
-                    for mut note in heel_notes {
-                        note.id = self.alloc_note_id();
-                        measure.add_note(TrackId::Heel, note);
+                    if heel_wanted {
+                        for mut note in heel_notes {
+                            note.id = self.alloc_note_id();
+                            measure.add_note(TrackId::Heel, note);
+                        }
+                    }
+                    if toe_wanted {
+                        for mut note in toe_notes {
+                            note.id = self.alloc_note_id();
+                            measure.add_note(TrackId::Toe, note);
+                        }
                     }
                 }
             }
@@ -446,16 +469,18 @@ impl TradGenerator {
                         *next_note_id += 1;
                         id
                     };
-                    let mut guitarist = Guitarist::new();
-                    for note in guitarist.chop_bar(
-                        &chords,
-                        plan.key,
-                        plan.mode,
-                        &tuning.profile.accompaniment,
-                        self.profile.harmony.steps_per_chord,
-                        &mut next_id,
-                    ) {
-                        measure.add_note(TrackId::Chords, note);
+                    if let Some(accompaniment) = &tuning.profile.accompaniment {
+                        let mut guitarist = Guitarist::new();
+                        for note in guitarist.chop_bar(
+                            &chords,
+                            plan.key,
+                            plan.mode,
+                            accompaniment,
+                            self.profile.harmony.steps_per_chord,
+                            &mut next_id,
+                        ) {
+                            measure.add_note(TrackId::Chords, note);
+                        }
                     }
                 }
             }
@@ -517,6 +542,24 @@ impl TradGenerator {
             self.fill_percussion(tune, position, measure);
             return;
         }
+        if let HarmonyPlan::None = &tune.harmony {
+            let bar_in_tour = position.bar_in_tour();
+            let plan = &tune.plan;
+            measure.chord_context = ChordContext {
+                root_offset: 0,
+                is_minor: plan.mode.is_minor(),
+                chord_name: pitch_class_name(plan.key).to_string(),
+                scale_guidance: None,
+            };
+            if self.track_active(TrackId::Melody, position) {
+                for mut note in tune.fiddle.notes_for_bar(bar_in_tour) {
+                    note.id = self.alloc_note_id();
+                    measure.add_note(TrackId::Melody, note);
+                }
+            }
+            self.fill_percussion(tune, position, measure);
+            return;
+        }
         let bar_in_tour = position.bar_in_tour();
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
@@ -543,15 +586,17 @@ impl TradGenerator {
                 *next_note_id += 1;
                 id
             };
-            for note in bass_bar(
-                &chords,
-                plan.key,
-                plan.mode,
-                &self.tuning.profile.accompaniment,
-                self.profile.harmony.steps_per_chord,
-                &mut next_id,
-            ) {
-                measure.add_note(TrackId::Bass, note);
+            if let Some(accompaniment) = &self.tuning.profile.accompaniment {
+                for note in bass_bar(
+                    &chords,
+                    plan.key,
+                    plan.mode,
+                    accompaniment,
+                    self.profile.harmony.steps_per_chord,
+                    &mut next_id,
+                ) {
+                    measure.add_note(TrackId::Bass, note);
+                }
             }
         }
         self.fill_percussion(tune, position, measure);
@@ -591,7 +636,7 @@ impl TradGenerator {
                 measure.add_note(TrackId::Melody, note);
             }
         }
-        let accompaniment = &self.tuning.profile.accompaniment;
+        let Some(accompaniment) = &self.tuning.profile.accompaniment else { return };
         for track in [TrackId::Chords, TrackId::Bass] {
             if !self.track_active(track, position) {
                 continue;
@@ -702,11 +747,14 @@ impl TradGenerator {
             let slot =
                 self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
             let humanize = &tune.feet_humanize[slot];
-            let (heel_notes, toe_notes) = feet_notes(
+            let is_cadence = position.bar_in_strain == 4
+                || position.bar_in_strain == self.profile.form.parts[position.part.0].roles.len();
+            let (heel_notes, toe_notes) = feet_notes_with_cadence(
                 &self.tuning.profile.percussion,
                 self.feet_density(),
                 measure.steps,
                 humanize,
+                is_cadence,
             );
             if heel_active {
                 for mut note in heel_notes {
@@ -762,43 +810,47 @@ impl TradGenerator {
         // Accompagnement : tonique accentuée
         if self.musical_params.enable_harmony {
             let next_id = &mut self.next_note_id;
-            // Guitare : accord tonique accentué
-            measure.add_note(
-                TrackId::Chords,
-                TimelineNote {
-                    id: {
-                        let id = *next_id;
-                        *next_id += 1;
-                        id
+            if self.tuning.profile.has_track(TrackId::Chords) {
+                // Guitare : accord tonique accentué
+                measure.add_note(
+                    TrackId::Chords,
+                    TimelineNote {
+                        id: {
+                            let id = *next_id;
+                            *next_id += 1;
+                            id
+                        },
+                        pitch: tonic_midi,
+                        velocity: 110,
+                        start_step: 0,
+                        duration_steps: self.profile.meter.steps_per_pulse,
+                        articulation: Articulation::Normal,
                     },
-                    pitch: tonic_midi,
-                    velocity: 110,
-                    start_step: 0,
-                    duration_steps: self.profile.meter.steps_per_pulse,
-                    articulation: Articulation::Normal,
-                },
-            );
-            // Basse : fondamentale, deux octaves sous
-            let bass_pitch = tonic_midi.saturating_sub(24);
-            measure.add_note(
-                TrackId::Bass,
-                TimelineNote {
-                    id: {
-                        let id = *next_id;
-                        *next_id += 1;
-                        id
+                );
+            }
+            if self.tuning.profile.has_track(TrackId::Bass) {
+                // Basse : fondamentale, deux octaves sous
+                let bass_pitch = tonic_midi.saturating_sub(24);
+                measure.add_note(
+                    TrackId::Bass,
+                    TimelineNote {
+                        id: {
+                            let id = *next_id;
+                            *next_id += 1;
+                            id
+                        },
+                        pitch: bass_pitch,
+                        velocity: 110,
+                        start_step: 0,
+                        duration_steps: self.profile.meter.steps_per_pulse,
+                        articulation: Articulation::Normal,
                     },
-                    pitch: bass_pitch,
-                    velocity: 110,
-                    start_step: 0,
-                    duration_steps: self.profile.meter.steps_per_pulse,
-                    articulation: Articulation::Normal,
-                },
-            );
+                );
+            }
         }
 
         // Pieds : talon accentué
-        if self.musical_params.enable_rhythm {
+        if self.musical_params.enable_rhythm && self.tuning.profile.has_track(TrackId::Heel) {
             measure.add_note(
                 TrackId::Heel,
                 TimelineNote {
@@ -865,6 +917,8 @@ impl TradGenerator {
                     } else {
                         0.0
                     }
+                } else if track == TrackId::Toe || track == TrackId::Heel {
+                    if note.pitch == 40 { offbeat.max(0.0) } else { 0.0 }
                 } else {
                     0.0
                 };
@@ -933,7 +987,9 @@ impl TradGenerator {
     fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
         let strain_pass_start = bar_in_tour - offset;
-        let harmony = &self.tuning.profile.accompaniment;
+        let Some(harmony) = self.tuning.profile.accompaniment.as_ref() else {
+            return Vec::new();
+        };
         let d = &self.tuning.profile.dynamics;
         let chop_offset = d.chop_intensity.eval(self.musical_params.intensity)
             + d.density_chop.eval(self.musical_params.rhythm_density);
@@ -1091,18 +1147,18 @@ impl TradGenerator {
                 })
                 .collect();
             HarmonyPlan::JazzFunctional(bars)
-        } else {
+        } else if self.profile.harmony.model == "none" {
+            HarmonyPlan::None
+        } else if let Some(accompaniment) = &self.tuning.profile.accompaniment {
             let distinct_melody: Vec<_> = (0..self.profile.form.unique_bars())
                 .map(|i| fiddle.notes_for_bar(plan.first_pass_bar(i)))
                 .collect();
-            HarmonyPlan::TradFunctional(
-                TuneHarmony::new(
-                    plan.clone(),
-                    &distinct_melody,
-                    &self.tuning.profile.accompaniment,
-                )
-                .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}")),
-            )
+            match TuneHarmony::new(plan.clone(), &distinct_melody, accompaniment) {
+                Ok(h) => HarmonyPlan::TradFunctional(h),
+                Err(_) => HarmonyPlan::None,
+            }
+        } else {
+            HarmonyPlan::None
         };
         let feet_humanize = draw_feet_humanize(
             self.tuning.profile.percussion.velocity_humanize,

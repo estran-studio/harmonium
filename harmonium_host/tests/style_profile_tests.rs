@@ -16,11 +16,13 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
         profile.meter.steps_per_pulse = profile.meter.steps_per_bar / pulses_per_bar;
         profile.meter.default_swing_ratio = 0.5;
         profile.harmony.steps_per_chord *= 2;
-        profile.accompaniment.bass_steps.iter_mut().for_each(|s| *s *= 2);
-        profile.accompaniment.chop_steps.iter_mut().for_each(|s| *s *= 2);
-        profile.accompaniment.strong_steps.iter_mut().for_each(|s| *s *= 2);
-        profile.accompaniment.bass_duration_steps *= 2;
-        profile.accompaniment.chop_duration_steps *= 2;
+        if let Some(a) = &mut profile.accompaniment {
+            a.bass_steps.iter_mut().for_each(|s| *s *= 2);
+            a.chop_steps.iter_mut().for_each(|s| *s *= 2);
+            a.strong_steps.iter_mut().for_each(|s| *s *= 2);
+            a.bass_duration_steps *= 2;
+            a.chop_duration_steps *= 2;
+        }
         for hit in profile.percussion.patterns.iter_mut().flat_map(|p| &mut p.hits) {
             hit.step *= 2;
         }

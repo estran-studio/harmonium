@@ -37,14 +37,17 @@ pub const FEET_BANK_OFFSET: u32 = 1;
 
 /// Programmes des trois pistes mélodiques, résolus depuis le profil.
 #[must_use]
-pub const fn gm_programs_for_profile(
+pub fn gm_programs_for_profile(
     instruments: &harmonium_core::style_profile::ProfileInstruments,
-) -> [(u8, u8); 3] {
-    [
-        (0, instruments.melody_program),
-        (1, instruments.chords_program),
-        (2, instruments.bass_program),
-    ]
+) -> Vec<(u8, u8)> {
+    let mut progs = vec![(0, instruments.melody_program)];
+    if let Some(chords) = instruments.chords_program {
+        progs.push((1, chords));
+    }
+    if let Some(bass) = instruments.bass_program {
+        progs.push((2, bass));
+    }
+    progs
 }
 /// Détermine si une séquence de numéros de banques contient la banque 128 (kit de batterie GM).
 #[must_use]
