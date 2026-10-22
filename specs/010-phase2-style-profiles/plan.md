@@ -1,6 +1,22 @@
 # Phase 2 — Profils de style : un style = des données
 
-**Statut** : démarrée 2026-10-22 | **Dépend de** : phase 1 (reel validé pour la démo)
+**Statut** : T1–T5 mergées (2026-10-22) ; reste le critère 4 (écoute du propriétaire : kits
+`harmonium_lab/target/blindtest/{gigue-1,valse-1}`, démos `demos/{gigue,valse}_seed1.wav`) |
+**Dépend de** : phase 1 (reel validé pour la démo)
+
+Bilan :
+- P2-T1 : schéma de profil v2, `profiles/reel_quebecois/`, générateur piloté par le profil ; D2 prouvé
+  (22 558 notes identiques). `--check-cells` valide la longueur de cellule du profil choisi.
+- P2-T2 (labo) : formes, cellules de 6 croches, harmonie et tempos de gigue et valse.
+- P2-T3/T4 : `gigue_quebecoise` (6/8) et `valse_quebecoise` (3/4, oom-pah-pah) en données seulement.
+- P2-T5a/b/c : inventaire Legacy ; portage de la théorie (`theory`), de Bjorklund (`algo::euclidean`,
+  motifs de percussion euclidiens) et de la grammaire de Steedman (`models/jazz`,
+  `harmony.model = "jazz_functional"`, fixture `tests/fixtures/profiles/jazz_test/`) ; suppression du
+  chemin Legacy (−22 643 lignes, tag `pre-legacy-removal`). Le moteur ne tourne plus que sur profils.
+- Contrôle des kits d'écoute : réels restreints aux airs avec accords (sinon l'absence de basse
+  trahissait les vrais) ; aucune mesure simple ne sépare réels et générés.
+- Labo (écart connu, à corriger) : `trad-compare` compte ~1,5 changement d'accord par mesure pour le
+  moteur alors que ses snapshots en ont ~0,25 ; la mesure infère les accords depuis les voicings MIDI.
 
 ## But
 
