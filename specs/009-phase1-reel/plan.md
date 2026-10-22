@@ -1,6 +1,10 @@
 # Phase 1 — Un reel identifiable
 
-**Statut** : point d’arrêt — P1-T1..T5 mergées, P1-T6 en attente du verdict | **Date** : 2026-10-19 | **Dépend de** : phase 0 (horloge, swing, rampe)
+**Statut** : démo validée à l'oreille (2026-10-22) — P1-T1..T5, T7..T13, SF1, SK1/SK2 mergées ; P1-T6 (suppression Legacy) en attente | **Date** : 2026-10-22 | **Dépend de** : phase 0 (horloge, swing, rampe)
+
+Verdict du propriétaire : « pour notre démo, la musique générée fait bien l'affaire ». Réserve :
+les pieds sonnent encore peu réalistes (échantillons CC0 provisoires, à remplacer par ses
+propres enregistrements dans `harmonium_lab/samples/feet/own/`).
 
 ## But
 
