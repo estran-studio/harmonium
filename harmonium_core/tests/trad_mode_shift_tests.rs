@@ -178,3 +178,37 @@ fn invalid_mode_tables_are_rejected() {
         assert!(invalid.validate().is_err());
     }
 }
+
+#[test]
+fn parallel_mode_keeps_valid_diatonic_notes_at_the_midi_floor() {
+    let mut floor_notes = 0;
+    for seed in 1..=8 {
+        let mut params = MusicalParams::default();
+        params.harmony_valence = 0.4;
+        let mut table = tuning();
+        table.reel_intensity.color[0].key = 1;
+        table.reel_fiddle.tessitura_min = 0;
+        table.reel_fiddle.tessitura_max = 12;
+        table.reel_fiddle.tonic_midi_min = 1;
+        table.reel_fiddle.tonic_midi_max = 1;
+        table.reel_fiddle.melody_center_midi = 6;
+        let mut generator = TradGenerator::new(params.clone(), table);
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        for bar in 1..=32 {
+            if bar == 17 {
+                params.harmony_valence = -0.9;
+                generator.invalidate_future(16);
+                generator.update_params(params.clone());
+            }
+            let snapshot =
+                MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng));
+            let position = snapshot.position.unwrap();
+            for note in snapshot.notes.iter().filter(|n| n.track == TrackId::Melody.channel()) {
+                floor_notes += usize::from(bar <= 16 && note.pitch == 0);
+                assert!(note.pitch <= 127);
+                assert!(position.mode.contains_midi(position.key, note.pitch));
+            }
+        }
+    }
+    assert!(floor_notes > 0, "le scénario doit exercer les notes à MIDI 0");
+}

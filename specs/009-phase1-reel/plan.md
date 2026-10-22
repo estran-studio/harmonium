@@ -516,8 +516,9 @@ explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
   mémorisé pour l'air ; retour au mode clair d'origine, sur la même tonique.
   Un air né mineur utilise le mode clair de la première ligne correspondante.
 - Les mêmes cellules sont relues en conservant degré, octave et rythme de chaque
-  note déjà choisie. L'harmonie est revotée seulement au changement de mode ;
-  basse et chop utilisent ce mode, y compris les dominantes sous tension.
+  note déjà choisie (repli d'octave uniquement hors du domaine physique MIDI
+  0..127). L'harmonie est revotée seulement au changement de mode ; basse et
+  chop utilisent ce mode, y compris les dominantes sous tension.
 - `invalidate_future` conserve les décisions audibles et retire les décisions
   spéculatives futures ; aucune mutation de la mesure en cours ni de `BeatInfo`.
 - `MeasureSnapshot.position` publie toujours `key` et `mode` en trad, intro et
@@ -526,9 +527,9 @@ explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
   porte sur toutes les notes (piste, hauteur, début, durée, vélocité), pas sur
   les nouveaux octets des métadonnées. Aucun tirage ajouté au chemin neutre.
 - Régression reproduite avant correction : le degré 3 de la mesure 5 restait
-  majeur après valence −0.9 à la mesure 3. Les six tests de contrat
+  majeur après valence −0.9 à la mesure 3. Les sept tests de contrat
   `trad_mode_shift_tests` passent après correction (frontières, degrés/octaves,
-  hystérésis, notes d'accompagnement/ornements, invalidation et déterminisme).
+  hystérésis, accompagnement/ornements, limite MIDI, invalidation et déterminisme).
 
 ### Rendu combat observé (100 mesures, seed 1)
 
@@ -590,7 +591,7 @@ L'intro prend deux mesures : les phrases du premier air commencent en 3, 7, etc.
 
 ### Vérification
 
-- `cargo test --workspace` : **514 réussis, 33 ignorés** (dont six contrats
+- `cargo test --workspace` : **515 réussis, 33 ignorés** (dont sept contrats
   cœur P1-T13 et un contrat playback/horloge).
 - `cargo fmt --all`, puis `cargo fmt --all -- --check` : succès.
 - Clippy production : `cargo clippy --workspace --lib --bins

@@ -157,7 +157,9 @@ impl FiddleLine {
                     let index = usize::from(degree - 1);
                     let delta =
                         self.render_mode.intervals()[index] - self.plan.mode.intervals()[index];
-                    note.pitch = (i16::from(note.pitch) + i16::from(delta)) as u8;
+                    // Conserver l'octave, sauf hors du domaine physique MIDI.
+                    note.pitch =
+                        fold_midi_to_tessitura(i16::from(note.pitch) + i16::from(delta), 0, 127);
                 }
             }
         }
