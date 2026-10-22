@@ -129,7 +129,7 @@ pub fn run(
             mp.time_signature.numerator,
             mp.time_signature.denominator
         );
-        let bars_per_tune = harmonium_core::trad::BARS_PER_TOUR * composer.tours_per_tune();
+        let bars_per_tune = composer.profile().form.bars_per_tour() * composer.tours_per_tune();
         for tune_start_bar in (1..=initial_bars).step_by(bars_per_tune) {
             if let Some((plan, _)) = composer.reel_bar_info(tune_start_bar) {
                 println!(

@@ -233,7 +233,17 @@ impl StyleProfile {
                 }
             }
         }
-        let profile: Self = root.try_into().map_err(|e| ProfileError::new("profile.toml", e))?;
+        if let Some(intro) = root.as_table_mut().and_then(|table| table.remove("intro")) {
+            let arrangement = root
+                .get_mut("arrangement")
+                .and_then(toml::Value::as_table_mut)
+                .ok_or_else(|| ProfileError::new("intro", "section arrangement requise"))?;
+            if arrangement.insert("intro".into(), intro).is_some() {
+                return Err(ProfileError::new("intro", "déjà défini dans arrangement.intro"));
+            }
+        }
+        let profile: Self = serde_path_to_error::deserialize(root)
+            .map_err(|e| ProfileError::new(e.path().to_string(), e.inner()))?;
         profile.validate()?;
         Ok(profile)
     }
@@ -272,7 +282,9 @@ impl StyleProfile {
         )?;
         check(
             m.steps_per_pulse.checked_mul(m.pulses_per_bar) == Some(m.steps_per_bar)
-                && m.steps_per_pulse > 0,
+                && m.steps_per_pulse > 0
+                && m.steps_per_pulse <= 255
+                && m.pulses_per_bar <= 255,
             "meter.steps_per_pulse",
             "pulse × nombre de pulses doit égaler steps_per_bar",
         )?;
@@ -352,6 +364,31 @@ impl StyleProfile {
                 cell.notes.len() == self.melody.cell_units,
                 &format!("melody.cells[{i}].notes"),
                 "longueur différente de cell_units",
+            )?;
+        }
+        for role in crate::trad::CellRole::ALL {
+            let needed = self
+                .form
+                .parts
+                .iter()
+                .flat_map(|p| &p.roles)
+                .any(|r| r.forced_cell_role() == Some(role))
+                || matches!(
+                    role,
+                    crate::trad::CellRole::Run
+                        | crate::trad::CellRole::Arp
+                        | crate::trad::CellRole::Turn
+                );
+            check(
+                !needed
+                    || self
+                        .melody
+                        .cells
+                        .cells
+                        .iter()
+                        .any(|c| c.role == role && c.respects_cadence()),
+                &format!("melody.cells.{role:?}"),
+                "aucune cellule éligible pour ce rôle",
             )?;
         }
         check(
@@ -436,6 +473,12 @@ impl StyleProfile {
                 &format!("harmony.candidates[{i}]"),
                 "mode unique et accords non vides requis",
             )?;
+            check(
+                entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::I)
+                    && entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::V),
+                &format!("harmony.candidates[{i}].chords"),
+                "tonique I et dominante V requises",
+            )?;
         }
         check(
             Mode::ALL.iter().all(|mode| modes.contains(mode)),
@@ -443,6 +486,11 @@ impl StyleProfile {
             "accords requis pour les quatre modes (dynamique parallèle)",
         )?;
         let a = &self.accompaniment;
+        check(
+            a.strong_weight > 0 && a.weak_weight > 0,
+            "accompaniment.strong_weight",
+            "poids de vote positifs requis",
+        )?;
         for (name, steps, duration) in [
             ("bass_steps", &a.bass_steps, a.bass_duration_steps),
             ("chop_steps", &a.chop_steps, a.chop_duration_steps),
@@ -486,16 +534,72 @@ impl StyleProfile {
             "notes MIDI dans 0..127",
         )?;
         let i = &self.instruments;
+        for (name, program) in [
+            ("melody_program", i.melody_program),
+            ("chords_program", i.chords_program),
+            ("bass_program", i.bass_program),
+            ("percussion_program", i.percussion_program),
+        ] {
+            check(program <= 127, &format!("instruments.{name}"), "programme MIDI dans 0..127")?;
+        }
+        self.arrangement.validate().map_err(|error| {
+            use crate::trad::ArrangementError as E;
+            let field = match &error {
+                E::ToursPerTuneOutOfRange(_) => "arrangement.tours_per_tune".into(),
+                E::TourOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.tour"),
+                E::PassOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.pass"),
+                E::PickupEighthsOutOfRange(_) => "arrangement.intro.pickup_eighths".into(),
+                E::IntroBarsOutOfRange { role, .. } | E::IntroWeightZero { role } => {
+                    let index = self
+                        .arrangement
+                        .intro
+                        .forms
+                        .iter()
+                        .position(|f| f.role == *role)
+                        .unwrap_or(0);
+                    let field =
+                        if matches!(error, E::IntroWeightZero { .. }) { "weight" } else { "bars" };
+                    format!("arrangement.intro.forms[{index}].{field}")
+                }
+                _ => "arrangement".into(),
+            };
+            ProfileError::new(field, error)
+        })?;
+        for track in crate::timeline::TrackId::ALL {
+            let entry = self.arrangement.entry(track);
+            let path = format!("arrangement.entries.{track:?}");
+            check(
+                entry.part.0 < self.form.parts.len(),
+                &format!("{path}.part"),
+                "partie inconnue",
+            )?;
+            check(
+                entry.pass > 0
+                    && self.form.sequence.iter().filter(|&&part| part == entry.part.0).count()
+                        >= entry.pass,
+                &format!("{path}.pass"),
+                "passe absente du schéma joué",
+            )?;
+        }
         check(
-            i.melody_program <= 127
-                && i.chords_program <= 127
-                && i.bass_program <= 127
-                && i.percussion_program <= 127,
-            "instruments",
-            "programmes MIDI dans 0..127",
+            usize::from(self.arrangement.intro.pickup_eighths) <= self.melody.cell_units,
+            "arrangement.intro.pickup_eighths",
+            "la levée dépasse la mesure",
         )?;
-        self.arrangement.validate().map_err(|e| ProfileError::new("arrangement", e))?;
-        self.dynamics.validate().map_err(|e| ProfileError::new("dynamics", e))?;
+        for (i, pattern) in self.dynamics.chop_patterns.iter().enumerate() {
+            check(
+                pattern.iter().all(|&step| {
+                    step.checked_add(a.chop_duration_steps)
+                        .is_some_and(|end| step < m.steps_per_bar && end <= m.steps_per_bar)
+                }),
+                &format!("dynamics.chop_patterns[{i}]"),
+                "motif hors mesure",
+            )?;
+        }
+        self.dynamics.validate().map_err(|error| {
+            let field = error.split(':').next().unwrap_or("dynamics");
+            ProfileError::new(format!("dynamics.{field}"), &error)
+        })?;
         Ok(())
     }
 }

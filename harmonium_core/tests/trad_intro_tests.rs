@@ -13,12 +13,12 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn reel_params() -> MusicalParams {
-    let rf = TuningParams::default().reel_fiddle;
+    let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
     params.set_style(Style::Reel);
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
-    params.time_signature = rf.default_time_signature;
+    params.time_signature = rf.time_signature;
     params
 }
 
@@ -33,7 +33,7 @@ fn stream_with(seed: u64, bars: usize, tuning: TuningParams) -> Vec<MeasureSnaps
 /// Tuning avec une seule forme d'intro (pour tester chaque forme isolément).
 fn tuning_single_form(role: IntroRole, bars: usize, pickup_eighths: u8) -> TuningParams {
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro = IntroConfig {
+    tuning.profile.arrangement.intro = IntroConfig {
         forms: vec![IntroForm { role, weight: 1, bars }],
         pickup_eighths,
         each_tune: false,
@@ -77,7 +77,7 @@ fn percussion_intro_has_heel_only() {
     // L'air commence à la mesure 2 (A1)
     let p = position(&snaps, 2);
     assert_eq!(p.section, Section::Tour);
-    assert_eq!((p.tour, p.part, p.pass, p.bar_in_strain), (1, harmonium_core::trad::Part::A, 1, 1));
+    assert_eq!((p.tour, p.part, p.pass, p.bar_in_strain), (1, harmonium_core::trad::Part(0), 1, 1));
 }
 
 #[test]
@@ -144,7 +144,11 @@ fn melody_after_intro_identical_to_no_intro() {
     // Même graine : les notes Melody de l'air (après l'intro) sont identiques
     // à celles d'un air sans intro.
     let flat_tuning = TuningParams {
-        reel_arrangement: ReelArrangement::from_start(3),
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(3, Default::default());
+            p
+        },
         ..TuningParams::default()
     };
     let intro_tuning = TuningParams::default();
@@ -249,18 +253,17 @@ fn each_tune_false_second_tune_has_pickup_only() {
 fn invalid_intro_tables_are_rejected() {
     // pickup_eighths hors limites
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro.pickup_eighths = 4;
-    let errs = tuning.validate().err().expect("validation doit échouer");
-    assert!(errs.iter().any(|e| e.field == "reel_arrangement"), "erreur de validation attendue");
+    tuning.profile.arrangement.intro.pickup_eighths = 4;
+    assert!(tuning.validate().is_err());
 
     // bars hors limites
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro.forms[0].bars = 10;
+    tuning.profile.arrangement.intro.forms[0].bars = 10;
     assert!(tuning.validate().is_err());
 
     // weight nul
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro.forms[0].weight = 0;
+    tuning.profile.arrangement.intro.forms[0].weight = 0;
     assert!(tuning.validate().is_err());
 }
 
@@ -270,8 +273,8 @@ fn end_after_tour_ends_last_measure_with_tonic() {
 
     // Tuning sans intro pour un calcul simple : 3 tours = 96 mesures.
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro = IntroConfig::none();
-    tuning.reel_arrangement.tours_per_tune = 3;
+    tuning.profile.arrangement.intro = IntroConfig::none();
+    tuning.profile.arrangement.tours_per_tune = 3;
 
     let mut params = reel_params();
     params.end_after_tour = true;

@@ -12,9 +12,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::mode::{Mode, degree_to_diatonic_step};
 
-/// Nombre exact de croches dans une cellule de reel (D5).
-pub const NOTES_PER_CELL: usize = 8;
-
 /// Ambitus maximal autorisé dans une cellule en pas diatoniques (7 pas = 1 octave).
 pub const MAX_AMBITUS_STEPS: i8 = 7;
 
@@ -196,8 +193,8 @@ impl std::error::Error for CellBankError {}
 pub struct Cell {
     /// Rôle fonctionnel de la cellule dans la strain.
     pub role: CellRole,
-    /// Les 8 croches de la mesure.
-    pub notes: [CellNote; NOTES_PER_CELL],
+    /// Unités de la mesure ; longueur validée par le profil.
+    pub notes: Vec<CellNote>,
     /// Poids de tirage dans le rôle (fréquence au corpus pour les cellules minées, > 0).
     pub weight: u32,
 }
@@ -205,18 +202,14 @@ pub struct Cell {
 impl Cell {
     /// Parse la chaîne de 8 croches (ex. `"1 3 5 3 1 3 5 3"`, `"5 4 3 2 1 - 5, -"`)
     /// sans valider les contraintes d'ambitus/sauts.
-    pub fn parse_notes(notes_str: &str) -> Result<[CellNote; NOTES_PER_CELL], CellError> {
-        let tokens: Vec<&str> = notes_str.split_whitespace().collect();
-        if tokens.len() != NOTES_PER_CELL {
-            return Err(CellError::WrongNoteCount {
-                expected: NOTES_PER_CELL,
-                actual: tokens.len(),
-            });
-        }
-
-        let mut notes = [CellNote::Hold; NOTES_PER_CELL];
-        for (i, tok) in tokens.iter().enumerate() {
-            notes[i] = CellNote::parse_token(tok, i)?;
+    pub fn parse_notes(notes_str: &str) -> Result<Vec<CellNote>, CellError> {
+        let notes: Vec<_> = notes_str
+            .split_whitespace()
+            .enumerate()
+            .map(|(i, token)| CellNote::parse_token(token, i))
+            .collect::<Result<_, _>>()?;
+        if notes.is_empty() {
+            return Err(CellError::WrongNoteCount { expected: 1, actual: 0 });
         }
         Ok(notes)
     }
@@ -253,9 +246,9 @@ impl Cell {
 
     /// Premier degré attaqué de la cellule (toujours présent sur une cellule valide).
     #[must_use]
-    pub const fn first_degree(&self) -> Option<i8> {
-        match self.notes[0] {
-            CellNote::Degree(d) => Some(d),
+    pub fn first_degree(&self) -> Option<i8> {
+        match self.notes.first()? {
+            CellNote::Degree(d) => Some(*d),
             CellNote::Hold => None,
         }
     }
@@ -297,7 +290,7 @@ impl Cell {
                 if class(last_deg) == 0 {
                     return true;
                 }
-                last_idx >= NOTES_PER_CELL - 2
+                last_idx >= self.notes.len().saturating_sub(2)
                     && attacks.next_back().is_some_and(|(prev_idx, prev_deg)| {
                         last_idx - prev_idx >= 2 && class(prev_deg) == 0
                     })
@@ -313,6 +306,9 @@ impl Cell {
     /// 4. au plus un saut mélodique > quinte (> 4 pas diatoniques / > 7 demi-tons) ;
     /// 5. poids de tirage > 0.
     pub fn validate(&self) -> Result<(), CellError> {
+        if self.notes.is_empty() {
+            return Err(CellError::WrongNoteCount { expected: 1, actual: 0 });
+        }
         if self.weight == 0 {
             return Err(CellError::ZeroWeight);
         }
@@ -509,18 +505,6 @@ mod tests {
         assert_eq!(cad.first_degree(), Some(5));
         assert_eq!(cad.last_degree(), Some(-3));
         Ok(())
-    }
-
-    #[test]
-    fn parser_rejects_wrong_note_count() {
-        assert_eq!(
-            Cell::from_notation(CellRole::Run, "1 2 3 4"),
-            Err(CellError::WrongNoteCount { expected: 8, actual: 4 })
-        );
-        assert_eq!(
-            Cell::from_notation(CellRole::Run, "1 2 3 4 5 6 7 8 1"),
-            Err(CellError::WrongNoteCount { expected: 8, actual: 9 })
-        );
     }
 
     #[test]

@@ -45,21 +45,12 @@ key_modes = [
  { key = 2, mode = "mixolydian", weight = 1 },
 ]
 [melody.params]
-default_bpm = 230.0
-default_swing_ratio = 0.56
-default_time_signature = { numerator = 2, denominator = 2 }
-weight_d_ionian = 3
-weight_g_ionian = 3
-weight_a_ionian = 2
-weight_a_mixolydian = 1
-weight_d_mixolydian = 1
 weight_role_run = 4
 weight_role_arp = 3
 weight_role_turn = 3
 max_continuity_step_distance = 2
 continuity_max_retries = 16
 melody_center_midi = 71
-strain_b_lift_semitones = 2
 tonic_midi_min = 66
 tonic_midi_max = 77
 tessitura_min = 55

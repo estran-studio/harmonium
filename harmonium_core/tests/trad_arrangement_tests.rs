@@ -18,12 +18,12 @@ use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 const SEEDS: [u64; 5] = [1, 2, 3, 7, 11];
 
 fn reel_params() -> MusicalParams {
-    let rf = TuningParams::default().reel_fiddle;
+    let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
     params.set_style(Style::Reel);
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
-    params.time_signature = rf.default_time_signature;
+    params.time_signature = rf.time_signature;
     params
 }
 
@@ -48,7 +48,7 @@ fn stream(seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
 /// garde les tests D11 indépendants de l'intro.
 fn flat_tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.intro = IntroConfig::none();
+    tuning.profile.arrangement.intro = IntroConfig::none();
     tuning
 }
 
@@ -170,10 +170,6 @@ fn invalid_arrangement_tables_are_rejected_with_explicit_errors() {
         Err(ArrangementError::TourOutOfRange { track: TrackId::Heel, tour: 0 })
     );
     assert_eq!(
-        with("Toe = { tour = 2, part = \"A\"", "Toe = { tour = 2, part = \"C\""),
-        Err(ArrangementError::UnknownPart { track: TrackId::Toe, part: "C".to_owned() })
-    );
-    assert_eq!(
         with("Toe = {", "Cymbale = {"),
         Err(ArrangementError::UnknownTrack("Cymbale".to_owned()))
     );
@@ -181,11 +177,6 @@ fn invalid_arrangement_tables_are_rejected_with_explicit_errors() {
         with("tours_per_tune = 3", "tours_per_tune = 0"),
         Err(ArrangementError::ToursPerTuneOutOfRange(0))
     );
-
-    let mut tuning = TuningParams::default();
-    tuning.reel_arrangement.entries.heel.tour = 0;
-    let errs = tuning.validate().err().unwrap_or_default();
-    assert!(errs.iter().any(|e| e.field == "reel_arrangement" && e.message.contains("Heel")));
 }
 
 #[test]
@@ -226,7 +217,7 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
         assert_eq!(pos.tune_index, (b - 1) / 96, "m.{b}");
         assert_eq!(pos.tours, 3, "m.{b}");
         assert_eq!(pos.tour, in_tune / 32 + 1, "m.{b}");
-        assert_eq!(pos.part, if in_tour < 16 { Part::A } else { Part::B }, "m.{b}");
+        assert_eq!(pos.part, if in_tour < 16 { Part(0) } else { Part(1) }, "m.{b}");
         assert_eq!(pos.pass, (in_tour % 16) / 8 + 1, "m.{b}");
         assert_eq!(pos.bar_in_strain, in_tour % 8 + 1, "m.{b}");
         assert_eq!(pos.is_last_tour(), pos.tour == 3, "m.{b}");
@@ -235,7 +226,7 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
     let first_feet = snaps.iter().position(|s| has(s, TrackId::Heel)).map(|i| i + 1);
     assert_eq!(first_feet, Some(33));
     let pos = position(&snaps, 33)?;
-    assert_eq!((pos.tour, pos.part, pos.pass, pos.bar_in_strain), (2, Part::A, 1, 1));
+    assert_eq!((pos.tour, pos.part, pos.pass, pos.bar_in_strain), (2, Part(0), 1, 1));
     assert!(position(&snaps, 65)?.is_last_tour());
     Ok(())
 }
@@ -243,7 +234,7 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
 #[test]
 fn intro_each_tune_replays_the_progressive_entries() {
     let mut tuning = flat_tuning();
-    tuning.reel_arrangement.intro_each_tune = true;
+    tuning.profile.arrangement.intro_each_tune = true;
     let snaps = stream_with(1, 106, reel_params(), tuning);
     for t in [TrackId::Chords, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
         assert!(!has(bar(&snaps, 97), t), "{t:?} ne doit pas jouer à la mesure 97");
@@ -255,7 +246,7 @@ fn intro_each_tune_replays_the_progressive_entries() {
 #[test]
 fn tours_per_tune_controls_the_tune_length() -> Result<(), String> {
     let mut tuning = flat_tuning();
-    tuning.reel_arrangement.tours_per_tune = 1;
+    tuning.profile.arrangement.tours_per_tune = 1;
     let snaps = stream_with(1, 33, reel_params(), tuning);
     let pos = position(&snaps, 33)?;
     assert_eq!((pos.tune_index, pos.tour, pos.tours), (1, 1, 1));

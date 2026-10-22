@@ -16,7 +16,11 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
     composer.set_seed(1);
     composer.set_style(Style::Reel);
     composer.set_tuning(TuningParams {
-        reel_arrangement: ReelArrangement::from_start(3),
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(3, Default::default());
+            p
+        },
         ..Default::default()
     });
     composer.use_emotion_mode();

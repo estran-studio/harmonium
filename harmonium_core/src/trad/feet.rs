@@ -21,15 +21,6 @@ use crate::{
 /// Contenu brut de la table TOML embarquée de podorythmie pour le reel (D9).
 pub const REEL_FEET_TOML: &str = include_str!("../../../profiles/reel_quebecois/feet.toml");
 
-/// Nombre de pas par mesure dans un reel québécois en 2/2 (D9).
-pub const REEL_STEPS: usize = 16;
-
-/// Nombre de positions de mesure distinctes pour l'humanisation des pieds :
-/// 2 strains (A/B) × 8 mesures par strain (D4). Les reprises (A2, B2)
-/// réutilisent les décalages de leur première passe, garantissant des reprises
-/// identiques tout en variant les vélocités entre coups d'une même mesure.
-pub const FEET_HUMANIZE_SLOTS: usize = 16;
-
 /// Un coup de pied individuel dans une mesure de podorythmie (D9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FootHit {
@@ -276,8 +267,6 @@ pub enum FeetTableError {
     MissingDensity(u8),
     /// Une densité apparaît plus d'une fois dans la table.
     DuplicateDensity(u8),
-    /// Un pas est en dehors de `0..16`.
-    StepOutOfRange { density: u8, step: usize },
     /// Piste invalide (seules `TrackId::Heel` et `TrackId::Toe` sont permises).
     InvalidTrack { density: u8, step: usize, track: TrackId },
     /// La vélocité effective (`base + delta`) dépasse la plage MIDI `0..=127`.
@@ -302,9 +291,6 @@ impl fmt::Display for FeetTableError {
             }
             Self::DuplicateDensity(density) => {
                 write!(f, "densité dupliquée dans la table de podorythmie : {density}")
-            }
-            Self::StepOutOfRange { density, step } => {
-                write!(f, "pas {step} hors limite (attendu 0..16) à la densité {density}")
             }
             Self::InvalidTrack { density, step, track } => {
                 write!(
@@ -398,13 +384,6 @@ impl FeetTable {
             }
 
             for hit in &pattern.hits {
-                if hit.step >= REEL_STEPS {
-                    return Err(FeetTableError::StepOutOfRange {
-                        density: pattern.density,
-                        step: hit.step,
-                    });
-                }
-
                 let base_velocity = match hit.track {
                     TrackId::Heel => self.heel_velocity,
                     TrackId::Toe => self.toe_velocity,
@@ -456,31 +435,32 @@ impl FeetTable {
         &self,
         density: u8,
         steps: usize,
-        humanize: &[i8; REEL_STEPS],
+        humanize: &[i8],
     ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
         feet_notes(self, density, steps, humanize)
     }
 }
 
-/// Tire les décalages d'humanisation d'un tune : `FEET_HUMANIZE_SLOTS` positions
-/// de mesure (2 strains × 8 mesures) de `REEL_STEPS` pas chacune. Chaque
+/// Tire les décalages d'humanisation : une ligne par mesure distincte du
+/// profil, une colonne par pas. Chaque
 /// décalage est tiré uniformément dans `±humanize` via le RNG injecté
 /// (déterministe : même graine ⇒ mêmes décalages). `humanize == 0` ne
 /// consomme aucun tirage et produit des décalages tous nuls.
 #[must_use]
 pub fn draw_feet_humanize(
     humanize: u8,
+    slots: usize,
+    steps: usize,
     rng: &mut dyn RngCore,
-) -> [[i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS] {
-    let mut offsets = [[0i8; REEL_STEPS]; FEET_HUMANIZE_SLOTS];
+) -> Vec<Vec<i8>> {
+    let mut offsets = vec![vec![0i8; steps]; slots];
     let h = i32::from(humanize);
     if h == 0 {
         return offsets;
     }
     for slot in &mut offsets {
         for step in slot.iter_mut() {
-            let offset = rng.next_range_usize(0..(2 * h + 1) as usize) as i32 - h;
-            *step = offset as i8;
+            *step = (rng.next_range_usize(0..(2 * h + 1) as usize) as i32 - h) as i8;
         }
     }
     offsets
@@ -492,9 +472,7 @@ pub fn draw_feet_humanize(
 /// - `table` : table de podorythmie ([`FeetTable`]) portant les patterns et les vélocités de base.
 /// - `density` : niveau de densité souhaité (`0..=2`). Les valeurs supérieures
 ///   à 2 sont bornées à 2 via `density.min(2)`.
-/// - `steps` : nombre de pas dans la mesure. En phase 1, seul le reel en 2/2 (16 pas) est
-///   couvert. Si `steps != 16`, aucune note n'est produite et la fonction
-///   retourne `(Vec::new(), Vec::new())`.
+/// - `steps` : nombre de pas du profil ; `humanize` contient exactement ce nombre de valeurs.
 ///
 /// # Retour
 /// Tuple `(talon_notes, pointe_notes)` :
@@ -510,11 +488,9 @@ pub fn feet_notes(
     table: &FeetTable,
     density: u8,
     steps: usize,
-    humanize: &[i8; REEL_STEPS],
+    humanize: &[i8],
 ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
-    if steps != REEL_STEPS {
-        return (Vec::new(), Vec::new());
-    }
+    debug_assert_eq!(humanize.len(), steps);
 
     let clamped_density = density.min(2);
     let hits = table.hits_for_density(clamped_density);
@@ -658,46 +634,6 @@ mod tests {
                 expected_2.1.iter().map(|n| n.start_step).collect::<Vec<_>>()
             );
         }
-    }
-
-    #[test]
-    fn test_steps_not_16_returns_empty() {
-        let table = FeetTable::default();
-        for invalid_steps in [0, 1, 8, 12, 15, 17, 32] {
-            for density in [0, 1, 2, 5] {
-                let (heel, toe) = feet_notes(&table, density, invalid_steps, &[0; 16]);
-                assert!(
-                    heel.is_empty(),
-                    "talon non vide pour steps={invalid_steps}, density={density}"
-                );
-                assert!(
-                    toe.is_empty(),
-                    "pointe non vide pour steps={invalid_steps}, density={density}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_validation_step_out_of_range() {
-        let toml_str = r#"
-heel_note = 35
-toe_note = 37
-
-[[patterns]]
-density = 0
-hits = [{ step = 0, track = "Heel" }, { step = 16, track = "Heel" }]
-
-[[patterns]]
-density = 1
-hits = [{ step = 0, track = "Heel" }]
-
-[[patterns]]
-density = 2
-hits = [{ step = 0, track = "Heel" }]
-"#;
-        let err = FeetTable::from_toml(toml_str).unwrap_err();
-        assert_eq!(err, FeetTableError::StepOutOfRange { density: 0, step: 16 });
     }
 
     #[test]
@@ -852,7 +788,7 @@ hits = [{ step = 0, track = "Heel" }]
         use rand_chacha::ChaCha8Rng;
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         let table = FeetTable { velocity_humanize: 0, feet_gain: 1.0, ..FeetTable::default() };
-        let offsets = draw_feet_humanize(0, &mut rng);
+        let offsets = draw_feet_humanize(0, 16, 16, &mut rng);
         assert!(offsets.iter().flatten().all(|&o| o == 0));
 
         let (heel, toe) = feet_notes(&table, 1, 16, &offsets[0]);
@@ -868,8 +804,8 @@ hits = [{ step = 0, track = "Heel" }]
 
         let mut rng_a = ChaCha8Rng::seed_from_u64(42);
         let mut rng_b = ChaCha8Rng::seed_from_u64(42);
-        let offs_a = draw_feet_humanize(table.velocity_humanize, &mut rng_a);
-        let offs_b = draw_feet_humanize(table.velocity_humanize, &mut rng_b);
+        let offs_a = draw_feet_humanize(table.velocity_humanize, 16, 16, &mut rng_a);
+        let offs_b = draw_feet_humanize(table.velocity_humanize, 16, 16, &mut rng_b);
         assert_eq!(offs_a, offs_b, "même graine ⇒ mêmes décalages");
 
         for slot in &offs_a {

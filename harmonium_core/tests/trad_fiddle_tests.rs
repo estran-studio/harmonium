@@ -17,8 +17,8 @@ const NUM_SEEDS: u64 = 20;
 fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNote>>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let bank = CellBank::default();
-    let plan = TunePlan::draw(&mut rng, None);
-    let line = FiddleLine::new(plan, &bank, &mut rng);
+    let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(Default::default()));
+    let line = FiddleLine::new(plan.clone(), &bank, &mut rng);
     let tune = line.render_tune();
     (plan, line, tune)
 }
@@ -274,10 +274,10 @@ fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
 fn export_fiddle_tune_to_midi_for_listening() {
     let (plan, _, tune) = generate_fiddle_tune(42);
     let mut timeline = ScoreTimeline::new(64);
-    let time_sig = plan.kind.time_signature();
-    let steps = plan.kind.steps_per_bar();
-    let pulse = plan.kind.pulse_spec();
-    let swing = plan.kind.default_swing_ratio();
+    let time_sig = plan.profile.meter.time_signature;
+    let steps = plan.profile.meter.steps_per_bar;
+    let pulse = plan.profile.meter.pulse_spec();
+    let swing = plan.profile.meter.default_swing_ratio;
 
     for (bar_idx, notes) in tune.into_iter().enumerate() {
         let mut measure = Measure::new(bar_idx + 1, time_sig, 230.0, steps);

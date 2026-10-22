@@ -21,17 +21,24 @@ const BARS_32: usize = 32;
 /// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
 /// `trad_arrangement_tests`.
 fn flat_tuning() -> TuningParams {
-    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+    TuningParams {
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p
+        },
+        ..TuningParams::default()
+    }
 }
 
 fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
-    let rf = &tuning.reel_fiddle;
+    let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
     params.set_style(Style::Reel);
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
-    params.time_signature = rf.default_time_signature;
+    params.time_signature = rf.time_signature;
     params.set_feet_density(feet_density);
     params
 }
@@ -99,7 +106,7 @@ fn p1t7_distinct_openings_and_register_20_seeds() -> Result<(), String> {
 fn p1t7_feet_quiet_by_default() {
     // Avec l'humanisation (±velocity_humanize), le pied doit rester discret
     // face au violon (vélocité de base ~84) : plafond = base + humanisation.
-    let table = TuningParams::default().reel_feet;
+    let table = TuningParams::default().profile.percussion;
     let heel_ceiling = table.heel_velocity.saturating_add(table.velocity_humanize);
     let toe_ceiling = table.toe_velocity.saturating_add(table.velocity_humanize);
     assert!(heel_ceiling <= 84, "talon trop fort par défaut : plafond {heel_ceiling}");
@@ -138,7 +145,10 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
         let tune1 = trad_gen.tune_for_bar(1).ok_or("tune 1 absent".to_string())?;
         let tune2 = trad_gen.tune_for_bar(33).ok_or("tune 2 absent".to_string())?;
         assert!(
-            !same_cell_up_to_octave(&tune1.fiddle.cells_a()[0], &tune2.fiddle.cells_a()[0]),
+            !same_cell_up_to_octave(
+                &tune1.fiddle.cells_for_part(harmonium_core::trad::Part(0))[0],
+                &tune2.fiddle.cells_for_part(harmonium_core::trad::Part(0))[0]
+            ),
             "seed {seed}: tunes 1 et 2 commencent par la même cellule"
         );
     }

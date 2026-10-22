@@ -1,25 +1,12 @@
-//! Ligne de violon d'un reel traditionnel québécois (D4, D6).
-//!
-//! [`FiddleLine`] choisit les 16 cellules d'un tune (8 mesures pour la strain A,
-//! 8 mesures pour la strain B) dès la construction à partir d'un [`TunePlan`],
-//! d'une [`CellBank`] et des paramètres de style [`ReelFiddleParams`] :
-//! - rôles imposés par position (1 → `Open`, 4 → `CadHalf`, 5–6 → copies de 1–2,
-//!   8 → `CadFull`, autres → tirage pondéré `Run`/`Arp`/`Turn`) ;
-//! - continuité mélodique entre la dernière note d'une mesure et la première de
-//!   la suivante (écart ≤ une tierce avec transposition d'octave autorisée,
-//!   jusqu'à `N` essais puis repli sur la candidate la plus proche) ;
-//! - contour de strain en hauteurs absolues (strain A centrée sur
-//!   `melody_center_midi`, strain B sur `melody_center_midi +
-//!   strain_b_lift_semitones`, avec transposition d'octave par cellule pour
-//!   viser ces cibles, P1-T7) ;
-//! - rendu en [`TimelineNote`] dans la tessiture du violon (`G3` = 55 à `E6` = 88)
-//!   avec accentuation des temps forts (croches 1 et 5 : `+12`) et atténuation
-//!   des croches paires (`-10`).
+//! Ligne mélodique : sélection pondérée des cellules par rôles du profil,
+//! continuité diatonique et contours de registre par partie. Les reprises
+//! relisent les mêmes degrés, éventuellement dans un mode parallèle.
 
 use super::{
-    cells::{Cell, CellBank, CellNote, CellRole, FIFTH_DIATONIC_STEPS, NOTES_PER_CELL},
+    arrangement::Part,
+    cells::{Cell, CellBank, CellNote, CellRole, FIFTH_DIATONIC_STEPS},
     mode::{PitchClass, degree_to_diatonic_step, diatonic_step_to_degree},
-    plan::{ImposedRole, Strain, TunePlan},
+    plan::{ImposedRole, TunePlan},
 };
 use crate::{
     harmony::RngCore,
@@ -27,18 +14,11 @@ use crate::{
     tuning::{ReelFiddleParams, TuningParams},
 };
 
-/// Nombre de mesures dans une strain unique (8 mesures).
-pub const BARS_PER_STRAIN: usize = 8;
-
-/// Nombre total de cellules choisies à la création d'un tune (2 strains × 8 mesures).
-pub const CELLS_PER_TUNE: usize = 16;
-
 /// État d'une ligne de violon pour un tune en cours (D4, D6).
 #[derive(Clone, Debug, PartialEq)]
 pub struct FiddleLine {
     plan: TunePlan,
-    cells_a: [Cell; BARS_PER_STRAIN],
-    cells_b: [Cell; BARS_PER_STRAIN],
+    parts: Vec<Vec<Cell>>,
     params: ReelFiddleParams,
     tonic_midi: u8,
     render_mode: super::Mode,
@@ -56,7 +36,7 @@ impl FiddleLine {
     /// (utilise `tuning.reel_cells` et `tuning.reel_fiddle`).
     #[must_use]
     pub fn from_tuning(plan: TunePlan, tuning: &TuningParams, rng: &mut dyn RngCore) -> Self {
-        Self::with_params(plan, &tuning.reel_cells, &tuning.reel_fiddle, rng)
+        Self::with_params(plan, &tuning.profile.melody.cells, &tuning.profile.melody.params, rng)
     }
 
     /// Construit une [`FiddleLine`] avec des paramètres explicites [`ReelFiddleParams`].
@@ -78,32 +58,26 @@ impl FiddleLine {
         let tonic_midi = tonic_midi_for_key(plan.key, params.tonic_midi_min, params.tonic_midi_max);
 
         let mut prev_last_step: Option<i8> = None;
-        let cells_a = select_strain_cells(
-            Strain::A,
-            &plan,
-            tonic_midi,
-            active_bank,
-            params,
-            &mut prev_last_step,
-            rng,
-        );
-        let cells_b = select_strain_cells(
-            Strain::B,
-            &plan,
-            tonic_midi,
-            active_bank,
-            params,
-            &mut prev_last_step,
-            rng,
-        );
-
-        Self { plan, cells_a, cells_b, params: params.clone(), tonic_midi, render_mode: plan.mode }
+        let parts = (0..plan.profile.form.parts.len())
+            .map(|part| {
+                select_strain_cells(
+                    Part(part),
+                    &plan,
+                    tonic_midi,
+                    active_bank,
+                    params,
+                    &mut prev_last_step,
+                    rng,
+                )
+            })
+            .collect();
+        Self { render_mode: plan.mode, plan, parts, params: params.clone(), tonic_midi }
     }
 
     /// Plan structurel du tune associé à cette ligne de violon.
     #[must_use]
-    pub const fn plan(&self) -> TunePlan {
-        self.plan
+    pub fn plan(&self) -> TunePlan {
+        self.plan.clone()
     }
     /// Relit les cellules choisies dans un mode parallèle, sans nouveau tirage.
     pub(crate) fn set_mode(&mut self, mode: super::Mode) {
@@ -116,27 +90,16 @@ impl FiddleLine {
         self.tonic_midi
     }
 
-    /// Les 8 cellules choisies pour la strain A.
+    /// Cellules distinctes d'une partie du profil.
     #[must_use]
-    pub const fn cells_a(&self) -> &[Cell; BARS_PER_STRAIN] {
-        &self.cells_a
+    pub fn cells_for_part(&self, part: Part) -> &[Cell] {
+        &self.parts[part.0]
     }
 
-    /// Les 8 cellules choisies pour la strain B.
     #[must_use]
-    pub const fn cells_b(&self) -> &[Cell; BARS_PER_STRAIN] {
-        &self.cells_b
-    }
-
-    /// Retourne la cellule active pour la mesure `bar_in_tune` (0-based, repliée modulo 32).
-    #[must_use]
-    pub const fn cell_for_bar(&self, bar_in_tune: usize) -> &Cell {
+    pub fn cell_for_bar(&self, bar_in_tune: usize) -> &Cell {
         let role = self.plan.bar_role(bar_in_tune);
-        let idx = (role.bar_in_strain.saturating_sub(1) as usize) % BARS_PER_STRAIN;
-        match role.strain {
-            Strain::A => &self.cells_a[idx],
-            Strain::B => &self.cells_b[idx],
-        }
+        &self.parts[role.strain.0][usize::from(role.bar_in_strain) - 1]
     }
 
     /// Génère les [`TimelineNote`] d'une mesure du tune (`bar_in_tune` 0-based).
@@ -221,11 +184,15 @@ pub const fn fold_midi_to_tessitura(mut raw_midi: i16, min_midi: u8, max_midi: u
 /// - croches paires 2, 4, 6, 8 (indices impairs 1, 3, 5, 7) : `base_velocity + even_eighth_velocity_offset` (`-10`) ;
 /// - croches 3 et 7 (indices 2 et 6) : `base_velocity`.
 #[must_use]
-pub const fn eighth_velocity(eighth_index: usize, params: &ReelFiddleParams) -> u8 {
+pub fn unit_velocity(
+    eighth_index: usize,
+    params: &ReelFiddleParams,
+    melody: &crate::style_profile::ProfileMelody,
+) -> u8 {
     let base = params.base_velocity as i16;
-    let delta = if eighth_index == 0 || eighth_index == 4 {
+    let delta = if melody.strong_units.contains(&eighth_index) {
         params.strong_eighth_velocity_offset as i16
-    } else if eighth_index % 2 == 1 {
+    } else if melody.weak_units.contains(&eighth_index) {
         params.even_eighth_velocity_offset as i16
     } else {
         0
@@ -247,7 +214,7 @@ pub fn transpose_cell_octaves(cell: &Cell, octave_shift: i8) -> Cell {
         return cell.clone();
     }
     let step_offset = octave_shift.saturating_mul(7);
-    let mut notes = cell.notes;
+    let mut notes = cell.notes.clone();
     for note in &mut notes {
         if let CellNote::Degree(deg) = *note {
             let shifted_step = degree_to_diatonic_step(deg).saturating_add(step_offset);
@@ -264,7 +231,7 @@ fn render_cell_notes(
     tonic_midi: u8,
     params: &ReelFiddleParams,
 ) -> Vec<TimelineNote> {
-    let mut notes: Vec<TimelineNote> = Vec::with_capacity(NOTES_PER_CELL);
+    let mut notes: Vec<TimelineNote> = Vec::with_capacity(cell.notes.len());
 
     for (i, &cell_note) in cell.notes.iter().enumerate() {
         match cell_note {
@@ -273,20 +240,20 @@ fn render_cell_notes(
                     i16::from(tonic_midi) + i16::from(plan.mode.degree_to_semitones(deg));
                 let pitch =
                     fold_midi_to_tessitura(raw_midi, params.tessitura_min, params.tessitura_max);
-                let velocity = eighth_velocity(i, params);
+                let velocity = unit_velocity(i, params, &plan.profile.melody);
                 let id = notes.len() as u64;
                 notes.push(TimelineNote {
                     id,
                     pitch,
-                    start_step: 2 * i,
-                    duration_steps: 2,
+                    start_step: plan.profile.meter.steps_per_unit * i,
+                    duration_steps: plan.profile.meter.steps_per_unit,
                     velocity,
                     articulation: Articulation::Normal,
                 });
             }
             CellNote::Hold => {
                 if let Some(prev) = notes.last_mut() {
-                    prev.duration_steps += 2;
+                    prev.duration_steps += plan.profile.meter.steps_per_unit;
                 }
             }
         }
@@ -297,32 +264,22 @@ fn render_cell_notes(
 
 /// Choisit les 8 cellules d'une strain selon les règles D4 et D6.
 fn select_strain_cells(
-    strain: Strain,
+    strain: Part,
     plan: &TunePlan,
     tonic_midi: u8,
     bank: &CellBank,
     params: &ReelFiddleParams,
     prev_last_step: &mut Option<i8>,
     rng: &mut dyn RngCore,
-) -> [Cell; BARS_PER_STRAIN] {
-    let default_cell = bank.cells.first().cloned().unwrap_or(Cell {
-        role: CellRole::Open,
-        notes: [CellNote::Degree(1); NOTES_PER_CELL],
-        weight: 1,
-    });
-    let mut chosen: [Cell; BARS_PER_STRAIN] = std::array::from_fn(|_| default_cell.clone());
+) -> Vec<Cell> {
+    let mut chosen: Vec<Cell> = Vec::with_capacity(plan.profile.form.parts[strain.0].roles.len());
     let mut bar1_first_step: Option<i8> = None;
 
-    let base_bar = match strain {
-        Strain::A => 0,
-        Strain::B => 16,
-    };
-
-    for bar_idx in 0..BARS_PER_STRAIN {
-        let bar_role = plan.bar_role(base_bar + bar_idx);
-        let cell = match bar_role.role {
+    let roles = &plan.profile.form.parts[strain.0].roles;
+    for (bar_idx, &bar_role) in roles.iter().enumerate() {
+        let cell = match bar_role {
             ImposedRole::CopyOf(src_1based) => {
-                let src_idx = (src_1based.saturating_sub(1) as usize) % BARS_PER_STRAIN;
+                let src_idx = usize::from(src_1based) - 1;
                 chosen[src_idx].clone()
             }
             imposed => {
@@ -353,7 +310,7 @@ fn select_strain_cells(
         if let Some(last_deg) = cell.last_degree() {
             *prev_last_step = Some(degree_to_diatonic_step(last_deg));
         }
-        chosen[bar_idx] = cell;
+        chosen.push(cell);
     }
 
     chosen
@@ -406,7 +363,7 @@ impl EvaluatedCandidate {
 
 #[allow(clippy::too_many_arguments)]
 fn pick_cell_for_bar(
-    strain: Strain,
+    strain: Part,
     bar_idx: usize,
     imposed: ImposedRole,
     plan: &TunePlan,
@@ -418,8 +375,8 @@ fn pick_cell_for_bar(
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Cell {
-    let target_midi = strain_target_midi(strain, params);
-    let split_midi = register_split_midi(params);
+    let target_midi = strain_target_midi(strain, plan, params);
+    let split_midi = register_split_midi(plan, params);
     let max_retries = params.continuity_max_retries.max(1);
 
     let mut best: Option<EvaluatedCandidate> = None;
@@ -529,11 +486,7 @@ fn pick_cell_for_bar(
         return winner.cell;
     }
 
-    bank.cells.first().cloned().unwrap_or(Cell {
-        role: CellRole::Open,
-        notes: [CellNote::Degree(1); NOTES_PER_CELL],
-        weight: 1,
-    })
+    bank.cells[0].clone()
 }
 
 /// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`ReelFiddleParams`].
@@ -573,10 +526,13 @@ fn is_excluded_cell(candidate: &Cell, excluded_cell: Option<&Cell>) -> bool {
 /// Vérifie si deux cellules ont exactement les mêmes degrés (à un décalage d'octave constant près)
 /// et les mêmes tenues (`Hold`).
 #[must_use]
-pub const fn same_cell_up_to_octave(a: &Cell, b: &Cell) -> bool {
+pub fn same_cell_up_to_octave(a: &Cell, b: &Cell) -> bool {
+    if a.notes.len() != b.notes.len() {
+        return false;
+    }
     let mut step_diff: Option<i8> = None;
     let mut i = 0;
-    while i < NOTES_PER_CELL {
+    while i < a.notes.len() {
         match (a.notes[i], b.notes[i]) {
             (CellNote::Hold, CellNote::Hold) => {}
             (CellNote::Degree(da), CellNote::Degree(db)) => {
@@ -642,20 +598,18 @@ fn draw_weighted<'a>(
 
 /// Centre cible en hauteurs MIDI pour une strain (A : `melody_center_midi`,
 /// B : `melody_center_midi + strain_b_lift_semitones`, P1-T7).
-fn strain_target_midi(strain: Strain, params: &ReelFiddleParams) -> f32 {
-    let center = f32::from(params.melody_center_midi);
-    match strain {
-        Strain::A => center,
-        Strain::B => center + f32::from(params.strain_b_lift_semitones),
-    }
+fn strain_target_midi(strain: Part, plan: &TunePlan, params: &ReelFiddleParams) -> f32 {
+    f32::from(params.melody_center_midi)
+        + f32::from(plan.profile.form.parts[strain.0].melody_center_offset)
 }
 
 /// Frontière médiane en hauteurs MIDI séparant le registre de la strain A et
 /// celui de la strain B (`melody_center_midi + lift / 2`, P1-T7).
-fn register_split_midi(params: &ReelFiddleParams) -> f32 {
-    let a = strain_target_midi(Strain::A, params);
-    let b = strain_target_midi(Strain::B, params);
-    0.5 * (a + b)
+fn register_split_midi(plan: &TunePlan, params: &ReelFiddleParams) -> f32 {
+    let offsets = plan.profile.form.parts.iter().map(|p| p.melody_center_offset);
+    let lo = offsets.clone().min().unwrap_or(0);
+    let hi = offsets.max().unwrap_or(0);
+    f32::from(params.melody_center_midi) + 0.5 * (f32::from(lo) + f32::from(hi))
 }
 
 /// Décalages d'octave candidats pour viser la cible de strain en hauteurs
@@ -692,7 +646,7 @@ fn cell_mean_midi(cell: &Cell, plan: &TunePlan, tonic_midi: u8) -> f32 {
 fn evaluate_candidate(
     base_cell: &Cell,
     octave_shift: i8,
-    strain: Strain,
+    strain: Part,
     bar_idx: usize,
     target_midi: f32,
     split_midi: f32,
@@ -720,9 +674,10 @@ fn evaluate_candidate(
     // Tolérance autour de la frontière de registre : rejette les erreurs
     // d'octave sans forcer de transposition (le contour vise la cible, P1-T7).
     const REGISTER_TOLERANCE_MIDI: f32 = 6.0;
-    let in_register = match strain {
-        Strain::A => mean_midi <= split_midi + REGISTER_TOLERANCE_MIDI,
-        Strain::B => mean_midi >= split_midi - REGISTER_TOLERANCE_MIDI,
+    let in_register = if target_midi <= split_midi {
+        mean_midi <= split_midi + REGISTER_TOLERANCE_MIDI
+    } else {
+        mean_midi >= split_midi - REGISTER_TOLERANCE_MIDI
     };
     let register_penalty = u8::from(!in_register);
 
@@ -739,7 +694,9 @@ fn evaluate_candidate(
     // Les mesures 4 (index 3, avant la copie de la mesure 1 en mesure 5) et 8
     // (index 7, avant la reprise de la mesure 1 en passe 2) doivent aussi
     // rester à ≤ une quinte du premier degré de la mesure 1.
-    let loop_fifth_excess = if (bar_idx == 3 || bar_idx == 7)
+    let roles = &plan.profile.form.parts[strain.0].roles;
+    let loop_fifth_excess = if (bar_idx + 1 == roles.len()
+        || roles.get(bar_idx + 1) == Some(&ImposedRole::CopyOf(1)))
         && let Some(b1_first) = bar1_first_step
     {
         ((i16::from(last_step) - i16::from(b1_first)).abs() - fifth_steps).max(0)
@@ -829,31 +786,11 @@ mod tests {
     }
 
     #[test]
-    fn velocities_match_d6_accents() {
-        let params = ReelFiddleParams::default();
-        let at =
-            |offset: i32| u8::try_from(i32::from(params.base_velocity) + offset).unwrap_or(u8::MAX);
-        let strong = at(i32::from(params.strong_eighth_velocity_offset));
-        let even = at(i32::from(params.even_eighth_velocity_offset));
-        // Croche 1 (idx 0) et croche 5 (idx 4) : accent fort
-        assert_eq!(eighth_velocity(0, &params), strong);
-        assert_eq!(eighth_velocity(4, &params), strong);
-        // Croches paires (idx 1, 3, 5, 7) : allégées
-        assert_eq!(eighth_velocity(1, &params), even);
-        assert_eq!(eighth_velocity(3, &params), even);
-        assert_eq!(eighth_velocity(5, &params), even);
-        assert_eq!(eighth_velocity(7, &params), even);
-        // Croches 3 et 7 (idx 2, 6) : base
-        assert_eq!(eighth_velocity(2, &params), params.base_velocity);
-        assert_eq!(eighth_velocity(6, &params), params.base_velocity);
-    }
-
-    #[test]
     fn hold_extends_previous_note_duration_by_2_steps() {
         let parsed = Cell::from_notation(CellRole::CadFull, "5 4 3 2 1 - 5, -");
         assert!(parsed.is_ok());
         if let Ok(cell) = parsed {
-            let plan = TunePlan::reel(2, Mode::Ionian);
+            let plan = TunePlan::new(2, Mode::Ionian);
             let params = ReelFiddleParams::default();
             let notes = render_cell_notes(&cell, &plan, 62, &params);
 
@@ -873,8 +810,8 @@ mod tests {
     fn empty_bank_falls_back_without_failure() {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let empty_bank = CellBank { cells: Vec::new() };
-        let plan = TunePlan::draw(&mut rng, None);
-        let line = FiddleLine::new(plan, &empty_bank, &mut rng);
+        let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(Default::default()));
+        let line = FiddleLine::new(plan.clone(), &empty_bank, &mut rng);
         let tune = line.render_tune();
         assert_eq!(tune.len(), 32);
         assert!(tune.iter().all(|bar| !bar.is_empty()));
@@ -885,12 +822,12 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(42);
         let single_cell = Cell::from_notation(CellRole::Run, "5 4 3 2 1 2 3 4").unwrap_or(Cell {
             role: CellRole::Run,
-            notes: [CellNote::Degree(1); NOTES_PER_CELL],
+            notes: vec![CellNote::Degree(1); 8],
             weight: 1,
         });
         let single_bank = CellBank { cells: vec![single_cell] };
-        let plan = TunePlan::draw(&mut rng, None);
-        let line = FiddleLine::new(plan, &single_bank, &mut rng);
+        let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(Default::default()));
+        let line = FiddleLine::new(plan.clone(), &single_bank, &mut rng);
         assert_eq!(line.render_tune().len(), 32);
     }
 }

@@ -13,11 +13,17 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn generator() -> (TradGenerator, ChaCha8Rng) {
-    let tuning =
-        TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..Default::default() };
+    let tuning = TuningParams {
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p
+        },
+        ..Default::default()
+    };
     let params = MusicalParams {
         style: Style::Reel,
-        bpm: tuning.reel_fiddle.default_bpm,
+        bpm: tuning.profile.meter.default_bpm,
         ..Default::default()
     };
     (TradGenerator::new(params, tuning), ChaCha8Rng::seed_from_u64(1))
@@ -92,7 +98,7 @@ fn color_bias_is_a_majority_on_fifty_tunes_and_waits_for_the_next_tune() {
     for (valence, minor) in [(-1.0, true), (1.0, false)] {
         let (mut generator, mut rng) = generator();
         generator.generate_measure(1, &mut rng);
-        let original = generator.tune_for_bar(1).unwrap().plan;
+        let original = generator.tune_for_bar(1).unwrap().plan.clone();
         generator.musical_params.harmony_valence = valence;
         generator.generate_measure(2, &mut rng);
         assert_eq!(generator.tune_for_bar(2).unwrap().plan, original);

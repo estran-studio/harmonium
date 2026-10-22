@@ -34,7 +34,11 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         composer.set_seed(1);
         composer.set_style(Style::Reel);
         composer.set_tuning(TuningParams {
-            reel_arrangement: ReelArrangement::from_start(3),
+            profile: {
+                let mut p = TuningParams::default().profile;
+                p.arrangement = ReelArrangement::from_start(3, Default::default());
+                p
+            },
             ..Default::default()
         });
         composer.use_emotion_mode();
@@ -140,7 +144,7 @@ fn emotion_mapping_reads_style_tempo_data_and_preserves_runtime_contract() -> Re
         create_offline_engine(None, None, 44100.0)?;
     composer.set_style(Style::Reel);
     let mut tuning = TuningParams::default();
-    tuning.reel_fiddle.default_bpm = 250.0;
+    tuning.profile.meter.default_bpm = 250.0;
     composer.set_tuning(tuning);
     composer.set_swing_ratio(0.61);
     composer.set_feet_density(2);

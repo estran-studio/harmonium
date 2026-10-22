@@ -193,7 +193,11 @@ mod tests {
         );
         composer.set_style(Style::Reel);
         composer.set_tuning(TuningParams {
-            reel_arrangement: ReelArrangement::from_start(3),
+            profile: {
+                let mut p = TuningParams::default().profile;
+                p.arrangement = ReelArrangement::from_start(3, Default::default());
+                p
+            },
             ..Default::default()
         });
         let mut snapshots = Vec::new();

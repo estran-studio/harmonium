@@ -21,13 +21,13 @@ intro_each_tune = false
 
 [entries]
 # Le violon part seul et fait la première phrase.
-Melody = { tour = 1, part = "A", pass = 1 }
+Melody = { tour = 1, part = 0, pass = 1 }
 # Guitare et basse entrent à la reprise de A.
-Chords = { tour = 1, part = "A", pass = 2 }
-Bass = { tour = 1, part = "A", pass = 2 }
+Chords = { tour = 1, part = 0, pass = 2 }
+Bass = { tour = 1, part = 0, pass = 2 }
 # Les pieds entrent au deuxième tour.
-Heel = { tour = 2, part = "A", pass = 1 }
-Toe = { tour = 2, part = "A", pass = 1 }
+Heel = { tour = 2, part = 0, pass = 1 }
+Toe = { tour = 2, part = 0, pass = 1 }
 
 # ---------------------------------------------------------------------------
 # [intro] — Intros idiomatiques (P1-T11, constitution v3 V)

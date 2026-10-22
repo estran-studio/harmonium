@@ -16,7 +16,14 @@ const BARS_64: usize = 64;
 
 /// Un seul tour, tout le monde dès la mesure 1 : isole forme et accompagnement de D11.
 fn flat_tuning() -> TuningParams {
-    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+    TuningParams {
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p
+        },
+        ..TuningParams::default()
+    }
 }
 
 /// Génère 64 mesures de `Style::Reel` via `create_offline_engine` pour un seed et une densité donnés.

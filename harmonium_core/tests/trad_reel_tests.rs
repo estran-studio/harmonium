@@ -18,17 +18,24 @@ const BARS_64: usize = 64;
 /// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
 /// `trad_arrangement_tests`.
 fn flat_tuning() -> TuningParams {
-    TuningParams { reel_arrangement: ReelArrangement::from_start(1), ..TuningParams::default() }
+    TuningParams {
+        profile: {
+            let mut p = TuningParams::default().profile;
+            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p
+        },
+        ..TuningParams::default()
+    }
 }
 
 fn reel_params(feet_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
-    let rf = &tuning.reel_fiddle;
+    let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
     params.set_style(Style::Reel);
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
-    params.time_signature = rf.default_time_signature;
+    params.time_signature = rf.time_signature;
     params.set_feet_density(feet_density);
     params
 }

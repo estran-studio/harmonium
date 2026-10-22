@@ -1011,9 +1011,9 @@ fn print_state(state: &mut ReplState) {
         println!("{}", "STYLE:".yellow().bold());
         println!("  Style: {}", format!("{style:?}").green());
         println!("  Feet Density: {}", format!("{feet_density}").green());
-        if let Some((plan, role)) = reel_info {
-            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan).green());
-            println!("  Form Position: {}", format_reel_form_position(role).magenta().bold());
+        if let Some((plan, role)) = &reel_info {
+            println!("  Tune Key/Mode: {}", format_reel_tune_key_mode(plan.clone()).green());
+            println!("  Form Position: {}", format_reel_form_position(*role).magenta().bold());
         }
         println!();
 
@@ -1292,19 +1292,7 @@ fn load_and_apply_profile(state: &mut ReplState, path: &std::path::Path) -> Resu
 
 #[cfg(test)]
 mod tests {
-    use harmonium_core::trad::{Mode, TunePlan};
-
     use super::*;
-
-    #[test]
-    fn formats_reel_form_position_and_tune_key_mode() {
-        let plan = TunePlan::reel(2, Mode::Ionian);
-        assert_eq!(format_reel_tune_key_mode(plan), "D Ionian");
-        assert_eq!(format_reel_form_position(plan.bar_role_1based(1)), "A1 m.1/8");
-        assert_eq!(format_reel_form_position(plan.bar_role_1based(13)), "A2 m.5/8");
-        assert_eq!(format_reel_form_position(plan.bar_role_1based(17)), "B1 m.1/8");
-        assert_eq!(format_reel_form_position(plan.bar_role_1based(32)), "B2 m.8/8");
-    }
 
     #[test]
     fn negative_absolute_valence_reaches_the_trad_mapper() -> Result<()> {

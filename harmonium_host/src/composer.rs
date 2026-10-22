@@ -757,12 +757,12 @@ impl MusicComposer {
 
         match style {
             Style::Reel => {
-                let rf = &tuning.reel_fiddle;
+                let rf = &tuning.profile.meter;
                 self.musical_params.bpm = rf.default_bpm;
                 self.emotion_mapped_bpm = rf.default_bpm;
                 self.bpm_override = None;
                 self.musical_params.set_swing_ratio(rf.default_swing_ratio);
-                self.musical_params.time_signature = rf.default_time_signature;
+                self.musical_params.time_signature = rf.time_signature;
                 self.config.bpm = self.musical_params.bpm;
                 if style_changed {
                     self.rng = Self::seeded_rng_past_init(self.session_seed);
@@ -994,8 +994,8 @@ impl MusicComposer {
                 let mut params = self.musical_params.clone();
                 self.emotion_mapper.apply_dynamics(
                     &self.cached_emotions,
-                    &generator.tuning.reel_intensity,
-                    generator.tuning.reel_fiddle.default_bpm,
+                    &generator.tuning.profile.dynamics,
+                    generator.tuning.profile.meter.default_bpm,
                     &mut params,
                 );
                 params
@@ -1061,17 +1061,22 @@ impl MusicComposer {
         self.generator.update_tuning(tuning);
     }
 
+    /// Profil actif, y compris lorsque le générateur Legacy est sélectionné.
+    pub fn profile(&self) -> &harmonium_core::StyleProfile {
+        &self.generator.tuning().profile
+    }
+
     /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
     #[must_use]
     pub fn tours_per_tune(&self) -> usize {
-        self.generator.tuning().reel_arrangement.tours_per_tune
+        self.generator.tuning().profile.arrangement.tours_per_tune
     }
 
     /// Force le nombre de tours par air (D11) ; refuse une valeur hors `1..=MAX_TOURS`.
     pub fn set_tours_per_tune(&mut self, tours: usize) -> Result<(), String> {
         let mut tuning = self.generator.tuning().clone();
-        tuning.reel_arrangement.tours_per_tune = tours;
-        tuning.reel_arrangement.validate().map_err(|e| e.to_string())?;
+        tuning.profile.arrangement.tours_per_tune = tours;
+        tuning.profile.arrangement.validate().map_err(|e| e.to_string())?;
         self.generator.update_tuning(tuning);
         Ok(())
     }
