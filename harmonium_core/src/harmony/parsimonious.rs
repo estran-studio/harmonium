@@ -10,14 +10,12 @@
 
 use std::sync::Arc;
 
-use super::{
-    HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType,
-    lydian_chromatic::LydianChromaticConcept,
-};
+use super::{HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType};
 use crate::{
     theory::{
         PitchClass,
         chord::{Chord, ChordType},
+        lydian_chromatic::LydianChromaticConcept,
     },
     tuning::VoiceLeadingParams,
 };

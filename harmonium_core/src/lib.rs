@@ -6,6 +6,7 @@ pub mod fractal;
 pub mod harmony;
 pub mod log;
 pub mod mapper;
+pub mod models;
 pub mod params;
 pub mod report;
 pub mod sequencer;

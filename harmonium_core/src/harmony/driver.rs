@@ -11,16 +11,17 @@ use std::sync::Arc;
 
 use super::{
     HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType,
-    lydian_chromatic::LydianChromaticConcept,
     neo_riemannian::NeoRiemannianEngine,
     parsimonious::ParsimoniousDriver,
     pivot::{PivotDetector, PivotType},
-    steedman_grammar::{GrammarStyle, SteedmanGrammar},
+    steedman_grammar::SteedmanGrammar,
 };
 use crate::{
+    models::jazz::GrammarStyle,
     theory::{
         PitchClass,
         chord::{Chord, ChordType},
+        lydian_chromatic::LydianChromaticConcept,
     },
     tuning::HarmonyDriverParams,
 };

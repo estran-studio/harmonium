@@ -60,7 +60,10 @@ pub struct MeasureSnapshot {
     /// suggested scale + chord tones the improv-coach UI displays. `None` when
     /// the chord/key context was unavailable at generation time.
     #[serde(default)]
-    pub scale_guidance: Option<crate::harmony::ScaleGuidance>,
+    pub scale_guidance: Option<crate::theory::lydian_chromatic::ScaleGuidance>,
+    /// Changements harmoniques aux pas exacts ; vide pour les anciens modèles.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chord_changes: Vec<crate::timeline::ChordChange>,
     /// Swing ratio captured at generation time (0.5 = straight). Ignored in
     /// compound meter.
     #[serde(default = "crate::params::default_swing_ratio")]
@@ -107,6 +110,7 @@ impl MeasureSnapshot {
             // Default to measure tempo; overridden by composer with emotion-mapped BPM
             composition_bpm: measure.tempo,
             scale_guidance: measure.chord_context.scale_guidance.clone(),
+            chord_changes: measure.chord_changes.clone(),
             swing_ratio: measure.swing_ratio,
             pulse: measure.pulse,
             position: measure.position,

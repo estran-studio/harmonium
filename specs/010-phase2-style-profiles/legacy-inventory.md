@@ -170,3 +170,13 @@ graph TD
   Les motifs `percussion.patterns` acceptent `euclid = { pulses, steps, rotation }`
   et `track = "Heel" | "Toe"` (défaut Heel). Rotation positive vers la droite ;
   le chargeur développe les pas une seule fois, hors callback audio.
+- Harmonie : règles, réalisations et état Steedman → `models/jazz.rs`.
+  `models::HarmonyPlan` sélectionne `trad_functional` ou `jazz_functional`.
+  Les règles/poids, `max_recursion`, `steps_per_chord` et `scale_guidance`
+  viennent de `[harmony]`. L'instance du modèle n'a ni verrou ni état global ;
+  l'adaptateur `harmony/steedman_grammar.rs` reste propre à Legacy jusqu'à P2-T5c.
+- Lydian Chromatic : `harmony/lydian_chromatic.rs` → `theory/lydian_chromatic.rs`
+  (coût S). Option jazz `scale_guidance = true` ; chaque changement d'accord
+  publie son contexte et sa gamme dans `MeasureSnapshot.chord_changes`.
+  Les cellules fournissent rythme et contour ; la réalisation jazz rapproche
+  les hauteurs des accords/gammes publiés et coupe les tenues aux changements.

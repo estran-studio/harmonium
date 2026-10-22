@@ -3,7 +3,6 @@
 //! Ce module contient toute la logique harmonique:
 //! - `basic`: Système `BasicHarmony` (quadrants émotionnels Russell)
 //! - `melody`: `HarmonyNavigator` (génération mélodique Markov+Fractal)
-//! - `lydian_chromatic`: Lydian Chromatic Concept (12 niveaux)
 //! - `neo_riemannian`: Transformations P, L, R (triades uniquement)
 //! - `parsimonious`: Voice-leading parsimonieux (tous types d'accords)
 //! - `steedman_grammar`: Grammaire générative de progressions
@@ -12,7 +11,6 @@
 
 pub mod basic;
 pub mod driver;
-pub mod lydian_chromatic;
 pub mod melody;
 pub mod neo_riemannian;
 pub mod parsimonious;
@@ -22,7 +20,6 @@ pub mod steedman_grammar;
 // Types propres au générateur Legacy.
 pub use basic::{ChordQuality, ChordStep, Progression};
 pub use driver::HarmonicDriver;
-pub use lydian_chromatic::{LccLevel, LydianChromaticConcept, ScaleGuidance};
 pub use melody::HarmonyNavigator;
 pub use parsimonious::{Neighbor, ParsimoniousDriver, ParsimoniousTransform, TRQ};
 use rand::Rng;

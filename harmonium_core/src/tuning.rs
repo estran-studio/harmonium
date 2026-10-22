@@ -2,10 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    harmony::steedman_grammar::GrammarStyle, style_profile::StyleProfile,
-    trad::harmony::ChordDegree,
-};
+use crate::{models::jazz::GrammarStyle, style_profile::StyleProfile, trad::harmony::ChordDegree};
 
 /// Version du schéma et des constantes de `TuningParams` (constitution I).
 ///

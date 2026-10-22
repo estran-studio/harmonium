@@ -5,8 +5,10 @@
 
 use std::sync::Arc;
 
-use super::lydian_chromatic::LydianChromaticConcept;
-use crate::theory::chord::{Chord, ChordType};
+use crate::theory::{
+    chord::{Chord, ChordType},
+    lydian_chromatic::LydianChromaticConcept,
+};
 
 /// Seuil de tension pour basculer vers Steedman (en dessous)
 pub const STEEDMAN_THRESHOLD: f32 = 0.5;

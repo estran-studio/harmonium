@@ -19,12 +19,14 @@ use crate::{
         HarmonyMode, RngCore,
         basic::{ChordQuality, ChordStep, Progression},
         driver::HarmonicDriver,
-        lydian_chromatic::LydianChromaticConcept,
         melody::HarmonyNavigator,
     },
     params::{CurrentState, MusicalParams},
     sequencer::{RhythmMode, Sequencer, StepTrigger},
-    theory::chord::{Chord, ChordType},
+    theory::{
+        chord::{Chord, ChordType},
+        lydian_chromatic::LydianChromaticConcept,
+    },
     tuning::TuningParams,
 };
 

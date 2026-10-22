@@ -134,26 +134,25 @@ pub enum ChordType {
 impl ChordType {
     /// Retourne les intervalles (en demi-tons) depuis la fondamentale
     #[must_use]
-    pub fn intervals(&self) -> Vec<u8> {
+    pub const fn intervals(&self) -> &'static [u8] {
         match self {
-            Self::Major => vec![0, 4, 7],
-            Self::Minor => vec![0, 3, 7],
-            Self::Augmented => vec![0, 4, 8],
-            Self::Diminished => vec![0, 3, 6],
-            Self::Dominant7 => vec![0, 4, 7, 10],
-            Self::Major7 => vec![0, 4, 7, 11],
-            Self::Minor7 => vec![0, 3, 7, 10],
-            Self::HalfDiminished => vec![0, 3, 6, 10],
-            Self::Diminished7 => vec![0, 3, 6, 9],
-            Self::Sus2 => vec![0, 2, 7],
-            Self::Sus4 => vec![0, 5, 7],
-            // Nouveaux types V2
-            Self::MinorMajor7 => vec![0, 3, 7, 11],
-            Self::Augmented7 => vec![0, 4, 8, 10],
-            Self::Major6 => vec![0, 4, 7, 9],
-            Self::Minor6 => vec![0, 3, 7, 9],
-            Self::Dominant7Sus4 => vec![0, 5, 7, 10],
-            Self::Add9 => vec![0, 2, 4, 7],
+            Self::Major => &[0, 4, 7],
+            Self::Minor => &[0, 3, 7],
+            Self::Augmented => &[0, 4, 8],
+            Self::Diminished => &[0, 3, 6],
+            Self::Dominant7 => &[0, 4, 7, 10],
+            Self::Major7 => &[0, 4, 7, 11],
+            Self::Minor7 => &[0, 3, 7, 10],
+            Self::HalfDiminished => &[0, 3, 6, 10],
+            Self::Diminished7 => &[0, 3, 6, 9],
+            Self::Sus2 => &[0, 2, 7],
+            Self::Sus4 => &[0, 5, 7],
+            Self::MinorMajor7 => &[0, 3, 7, 11],
+            Self::Augmented7 => &[0, 4, 8, 10],
+            Self::Major6 => &[0, 4, 7, 9],
+            Self::Minor6 => &[0, 3, 7, 9],
+            Self::Dominant7Sus4 => &[0, 5, 7, 10],
+            Self::Add9 => &[0, 2, 4, 7],
         }
     }
 
