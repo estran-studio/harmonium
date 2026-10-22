@@ -1,119 +1,530 @@
-//! Style profile — metadata wrapper around a [`TuningOverlay`].
-//!
-//! A `StyleProfile` is loaded from JSON or TOML and applied onto
-//! [`TuningParams::default()`] to produce the final engine personality.
+//! Profils de style validés : grille, forme et banques, embarqués ou chargés d'un dossier.
+use std::{
+    collections::HashSet,
+    fmt,
+    path::{Component, Path},
+    sync::LazyLock,
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::tuning::{TuningOverlay, TuningParams};
+use crate::{
+    params::{PulseSpec, TimeSignature},
+    trad::{
+        Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
+        feet::FeetTable, plan::ImposedRole,
+    },
+    tuning::{ReelFiddleParams, TradHarmonyParams},
+};
 
-/// A named style profile with metadata and a partial tuning overlay.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct StyleProfile {
-    /// Human-readable style name (e.g. "Medium Bossa Nova").
+#[serde(deny_unknown_fields)]
+pub struct ProfileMeta {
+    pub id: String,
     pub name: String,
-    /// Free-text description of the style's musical characteristics.
-    pub description: String,
-    /// Suggested BPM range `(min, max)` for this style.
-    pub tempo_range: (f32, f32),
-    /// Searchable tags (e.g. `["latin", "jazz", "relaxed"]`).
+    pub tradition: String,
     pub tags: Vec<String>,
-    /// Partial tuning — only the parameters this style changes.
-    pub tuning: TuningOverlay,
+    pub corpus: String,
 }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileMeter {
+    pub time_signature: TimeSignature,
+    pub steps_per_bar: usize,
+    pub steps_per_unit: usize,
+    pub steps_per_pulse: usize,
+    pub pulses_per_bar: usize,
+    pub default_swing_ratio: f32,
+    pub default_bpm: f32,
+    pub min_bpm: f32,
+    pub max_bpm: f32,
+}
+impl ProfileMeter {
+    pub const fn pulse_spec(&self) -> PulseSpec {
+        PulseSpec {
+            steps_per_pulse: self.steps_per_pulse as u8,
+            pulses_per_bar: self.pulses_per_bar as u8,
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfilePart {
+    pub name: String,
+    pub roles: Vec<ImposedRole>,
+    pub melody_center_offset: i8,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileForm {
+    pub parts: Vec<ProfilePart>,
+    pub sequence: Vec<usize>,
+}
+impl ProfileForm {
+    pub fn bars_per_tour(&self) -> usize {
+        self.sequence.iter().map(|&p| self.parts[p].roles.len()).sum()
+    }
+    pub fn unique_bars(&self) -> usize {
+        self.parts.iter().map(|p| p.roles.len()).sum()
+    }
+    /// Partie, passe (1-based), mesure (0-based) pour une mesure de tour.
+    pub fn position(&self, bar: usize) -> (usize, usize, usize) {
+        let mut remaining = bar % self.bars_per_tour();
+        for (index, &part) in self.sequence.iter().enumerate() {
+            if remaining < self.parts[part].roles.len() {
+                let pass = self.sequence[..=index].iter().filter(|&&p| p == part).count();
+                return (part, pass, remaining);
+            }
+            remaining -= self.parts[part].roles.len();
+        }
+        unreachable!("validated nonempty form")
+    }
+    pub fn unique_offset(&self, part: usize) -> usize {
+        self.parts[..part].iter().map(|p| p.roles.len()).sum()
+    }
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KeyModeWeight {
+    pub key: u8,
+    pub mode: Mode,
+    pub weight: u32,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileMelody {
+    pub cell_units: usize,
+    pub cells: CellBank,
+    pub params: ReelFiddleParams,
+    pub key_modes: Vec<KeyModeWeight>,
+    pub strong_units: Vec<usize>,
+    pub weak_units: Vec<usize>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModeChords {
+    pub mode: Mode,
+    pub chords: Vec<TradChord>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileHarmony {
+    pub model: String,
+    pub steps_per_chord: usize,
+    pub candidates: Vec<ModeChords>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfileInstruments {
+    pub melody_program: u8,
+    pub chords_program: u8,
+    pub bass_program: u8,
+    pub percussion_bank: u16,
+    pub percussion_program: u8,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StyleProfile {
+    pub meta: ProfileMeta,
+    pub meter: ProfileMeter,
+    pub form: ProfileForm,
+    pub melody: ProfileMelody,
+    pub harmony: ProfileHarmony,
+    pub accompaniment: TradHarmonyParams,
+    pub percussion: FeetTable,
+    pub instruments: ProfileInstruments,
+    pub arrangement: ReelArrangement,
+    pub dynamics: StyleDynamics,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProfileError {
+    pub field: String,
+    pub message: String,
+}
+impl ProfileError {
+    fn new(field: impl Into<String>, message: impl ToString) -> Self {
+        Self { field: field.into(), message: message.to_string() }
+    }
+}
+impl fmt::Display for ProfileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.field, self.message)
+    }
+}
+impl std::error::Error for ProfileError {}
 
+const EMBEDDED: &str = include_str!("../../profiles/reel_quebecois/profile.toml");
+const BANKS: [(&str, &str, &str); 4] = [
+    ("cells", "melody.cells", include_str!("../../profiles/reel_quebecois/cells.toml")),
+    ("feet", "percussion", include_str!("../../profiles/reel_quebecois/feet.toml")),
+    ("arrangement", "arrangement", include_str!("../../profiles/reel_quebecois/arrangement.toml")),
+    ("dynamics", "dynamics", include_str!("../../profiles/reel_quebecois/dynamics.toml")),
+];
+impl Default for StyleProfile {
+    fn default() -> Self {
+        static DEFAULT: LazyLock<StyleProfile> =
+            LazyLock::new(|| match StyleProfile::decode(EMBEDDED, None, true) {
+                Ok(profile) => profile,
+                Err(error) => unreachable!("profil embarqué invalide : {error}"),
+            });
+        DEFAULT.clone()
+    }
+}
 impl StyleProfile {
-    /// Apply this profile's overlay onto `TuningParams::default()`.
-    pub fn to_tuning_params(&self) -> TuningParams {
-        TuningParams::default().with_overlay(&self.tuning)
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, ProfileError> {
+        let path = path.as_ref();
+        let file = if path.is_dir() { path.join("profile.toml") } else { path.to_path_buf() };
+        let text = std::fs::read_to_string(&file)
+            .map_err(|e| ProfileError::new(file.display().to_string(), e))?;
+        Self::decode(&text, file.parent(), false)
     }
-
-    /// Apply this profile's overlay onto a custom base.
-    pub fn apply_to(&self, base: &TuningParams) -> TuningParams {
-        base.with_overlay(&self.tuning)
+    /// Lecture d'un profil autonome (banques inline, sans accès au disque).
+    pub fn from_toml(text: &str) -> Result<Self, ProfileError> {
+        Self::decode(text, None, false)
     }
-
-    /// Deserialize from a JSON string.
-    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(json)
-    }
-
-    /// Serialize to a pretty-printed JSON string.
-    pub fn to_json(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string_pretty(self)
-    }
-
-    /// Deserialize from a TOML string.
-    pub fn from_toml(toml_str: &str) -> Result<Self, toml::de::Error> {
-        toml::from_str(toml_str)
-    }
-
-    /// Serialize to a TOML string.
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
         toml::to_string_pretty(self)
+    }
+    fn decode(text: &str, base: Option<&Path>, embedded: bool) -> Result<Self, ProfileError> {
+        let mut root: toml::Value =
+            toml::from_str(text).map_err(|e| ProfileError::new("profile.toml", e))?;
+        let files = root.as_table_mut().and_then(|t| t.remove("files"));
+        if let Some(files) = files {
+            let files =
+                files.as_table().ok_or_else(|| ProfileError::new("files", "table attendue"))?;
+            for (key, filename) in files {
+                let (_, target, builtin) = BANKS
+                    .iter()
+                    .find(|(k, _, _)| *k == key)
+                    .ok_or_else(|| ProfileError::new(format!("files.{key}"), "banque inconnue"))?;
+                let name = filename
+                    .as_str()
+                    .ok_or_else(|| ProfileError::new(format!("files.{key}"), "chemin attendu"))?;
+                let relative = Path::new(name);
+                if relative.components().any(|c| !matches!(c, Component::Normal(_))) {
+                    return Err(ProfileError::new(
+                        format!("files.{key}"),
+                        "chemin relatif sans .. requis",
+                    ));
+                }
+                let contents = if embedded {
+                    builtin.to_string()
+                } else {
+                    let base = base.ok_or_else(|| {
+                        ProfileError::new(
+                            format!("files.{key}"),
+                            "référence externe : utiliser load(dossier)",
+                        )
+                    })?;
+                    std::fs::read_to_string(base.join(relative))
+                        .map_err(|e| ProfileError::new(format!("files.{key}"), e))?
+                };
+                let value = toml::from_str(&contents)
+                    .map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
+                if *target == "melody.cells" {
+                    root.get_mut("melody")
+                        .and_then(toml::Value::as_table_mut)
+                        .ok_or_else(|| ProfileError::new("melody", "table requise"))?
+                        .insert("cells".into(), value);
+                } else {
+                    root.as_table_mut()
+                        .ok_or_else(|| ProfileError::new("profile.toml", "table requise"))?
+                        .insert(target.to_string(), value);
+                }
+            }
+        }
+        let profile: Self = root.try_into().map_err(|e| ProfileError::new("profile.toml", e))?;
+        profile.validate()?;
+        Ok(profile)
+    }
+    pub fn validate(&self) -> Result<(), ProfileError> {
+        let check = |ok: bool, field: &str, message: &str| {
+            if ok { Ok(()) } else { Err(ProfileError::new(field, message)) }
+        };
+        check(
+            !self.meta.id.is_empty()
+                && self
+                    .meta
+                    .id
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_'),
+            "meta.id",
+            "identifiant ASCII minuscule requis",
+        )?;
+        for (name, value) in [
+            ("name", &self.meta.name),
+            ("tradition", &self.meta.tradition),
+            ("corpus", &self.meta.corpus),
+        ] {
+            check(!value.trim().is_empty(), &format!("meta.{name}"), "texte non vide requis")?;
+        }
+        let m = &self.meter;
+        check(
+            m.time_signature.numerator > 0 && m.time_signature.denominator.is_power_of_two(),
+            "meter.time_signature",
+            "signature positive, dénominateur puissance de deux",
+        )?;
+        check((1..=4096).contains(&m.steps_per_bar), "meter.steps_per_bar", "attendu 1..4096")?;
+        check(
+            m.steps_per_unit > 0 && m.steps_per_unit <= m.steps_per_bar,
+            "meter.steps_per_unit",
+            "unité positive dans la mesure",
+        )?;
+        check(
+            m.steps_per_pulse.checked_mul(m.pulses_per_bar) == Some(m.steps_per_bar)
+                && m.steps_per_pulse > 0,
+            "meter.steps_per_pulse",
+            "pulse × nombre de pulses doit égaler steps_per_bar",
+        )?;
+        check(
+            m.default_swing_ratio.is_finite() && (0.5..=0.75).contains(&m.default_swing_ratio),
+            "meter.default_swing_ratio",
+            "attendu 0.5..0.75",
+        )?;
+        check(
+            m.min_bpm.is_finite()
+                && m.max_bpm.is_finite()
+                && (40.0..=300.0).contains(&m.min_bpm)
+                && m.min_bpm <= m.max_bpm
+                && m.max_bpm <= 300.0,
+            "meter.min_bpm",
+            "plage finie ordonnée dans 40..300",
+        )?;
+        check(
+            m.default_bpm.is_finite() && (m.min_bpm..=m.max_bpm).contains(&m.default_bpm),
+            "meter.default_bpm",
+            "tempo hors plage",
+        )?;
+        check(
+            !self.form.parts.is_empty() && self.form.parts.len() <= 32,
+            "form.parts",
+            "1..32 parties requises",
+        )?;
+        let mut names = HashSet::new();
+        for (i, part) in self.form.parts.iter().enumerate() {
+            let field = format!("form.parts[{i}]");
+            check(
+                !part.name.is_empty() && names.insert(&part.name),
+                &format!("{field}.name"),
+                "nom non vide et unique requis",
+            )?;
+            check(
+                !part.roles.is_empty() && part.roles.len() <= 255,
+                &format!("{field}.roles"),
+                "1..255 mesures requises",
+            )?;
+            check(
+                (-24..=24).contains(&part.melody_center_offset),
+                &format!("{field}.melody_center_offset"),
+                "attendu -24..24",
+            )?;
+            for (bar, role) in part.roles.iter().enumerate() {
+                if let ImposedRole::CopyOf(source) = role {
+                    check(
+                        *source > 0 && usize::from(*source) <= bar,
+                        &format!("{field}.roles[{bar}]"),
+                        "la copie doit viser une mesure précédente (1-based)",
+                    )?;
+                }
+            }
+        }
+        check(
+            !self.form.sequence.is_empty() && self.form.sequence.len() <= 256,
+            "form.sequence",
+            "1..256 passes requises",
+        )?;
+        for (i, &part) in self.form.sequence.iter().enumerate() {
+            check(part < self.form.parts.len(), &format!("form.sequence[{i}]"), "partie inconnue")?;
+        }
+        check(
+            (0..self.form.parts.len()).all(|p| self.form.sequence.contains(&p)),
+            "form.sequence",
+            "chaque partie doit être jouée",
+        )?;
+        check(
+            self.melody.cell_units.checked_mul(m.steps_per_unit) == Some(m.steps_per_bar),
+            "melody.cell_units",
+            "cell_units × steps_per_unit doit couvrir une mesure",
+        )?;
+        self.melody.cells.validate().map_err(|e| ProfileError::new("melody.cells", e))?;
+        for (i, cell) in self.melody.cells.cells.iter().enumerate() {
+            check(
+                cell.notes.len() == self.melody.cell_units,
+                &format!("melody.cells[{i}].notes"),
+                "longueur différente de cell_units",
+            )?;
+        }
+        check(
+            !self.melody.key_modes.is_empty() && self.melody.key_modes.iter().any(|k| k.weight > 0),
+            "melody.key_modes",
+            "distribution non vide et poids total positif requis",
+        )?;
+        check(
+            self.melody.key_modes.iter().map(|k| u64::from(k.weight)).sum::<u64>()
+                <= u64::from(u32::MAX),
+            "melody.key_modes",
+            "somme des poids trop grande",
+        )?;
+        for (i, key) in self.melody.key_modes.iter().enumerate() {
+            check(key.key < 12, &format!("melody.key_modes[{i}].key"), "attendu 0..11")?;
+        }
+        for (name, units) in
+            [("strong_units", &self.melody.strong_units), ("weak_units", &self.melody.weak_units)]
+        {
+            check(
+                units.iter().all(|&u| u < self.melody.cell_units),
+                &format!("melody.{name}"),
+                "indice hors cellule",
+            )?;
+        }
+        let p = &self.melody.params;
+        check(
+            p.tessitura_min <= p.tessitura_max
+                && p.tessitura_max <= 127
+                && p.tessitura_max - p.tessitura_min >= 12,
+            "melody.params.tessitura_min",
+            "tessiture MIDI d'au moins une octave requise",
+        )?;
+        check(
+            (p.tessitura_min..=p.tessitura_max).contains(&p.melody_center_midi),
+            "melody.params.melody_center_midi",
+            "centre hors tessiture",
+        )?;
+        check(
+            p.tonic_midi_min <= p.tonic_midi_max && p.tonic_midi_max <= 127,
+            "melody.params.tonic_midi_min",
+            "plage MIDI ordonnée requise",
+        )?;
+        check(
+            p.continuity_max_retries > 0 && p.continuity_max_retries <= 10000,
+            "melody.params.continuity_max_retries",
+            "attendu 1..10000",
+        )?;
+        check(
+            p.max_continuity_step_distance >= 0,
+            "melody.params.max_continuity_step_distance",
+            "distance positive requise",
+        )?;
+        check(
+            (1..=127).contains(&p.base_velocity),
+            "melody.params.base_velocity",
+            "attendu 1..127",
+        )?;
+        check(
+            u64::from(p.weight_role_run)
+                + u64::from(p.weight_role_arp)
+                + u64::from(p.weight_role_turn)
+                <= u64::from(u32::MAX)
+                && (p.weight_role_run > 0 || p.weight_role_arp > 0 || p.weight_role_turn > 0),
+            "melody.params.weight_role_run",
+            "poids libres : somme positive sans débordement",
+        )?;
+        check(
+            self.harmony.model == "trad_functional",
+            "harmony.model",
+            "modèle disponible : trad_functional",
+        )?;
+        check(
+            self.harmony.steps_per_chord > 0 && m.steps_per_bar % self.harmony.steps_per_chord == 0,
+            "harmony.steps_per_chord",
+            "doit diviser steps_per_bar",
+        )?;
+        let mut modes = HashSet::new();
+        for (i, entry) in self.harmony.candidates.iter().enumerate() {
+            check(
+                modes.insert(entry.mode) && !entry.chords.is_empty(),
+                &format!("harmony.candidates[{i}]"),
+                "mode unique et accords non vides requis",
+            )?;
+        }
+        check(
+            Mode::ALL.iter().all(|mode| modes.contains(mode)),
+            "harmony.candidates",
+            "accords requis pour les quatre modes (dynamique parallèle)",
+        )?;
+        let a = &self.accompaniment;
+        for (name, steps, duration) in [
+            ("bass_steps", &a.bass_steps, a.bass_duration_steps),
+            ("chop_steps", &a.chop_steps, a.chop_duration_steps),
+            ("strong_steps", &a.strong_steps, 0),
+        ] {
+            check(
+                steps.iter().all(|&s| {
+                    s.checked_add(duration)
+                        .is_some_and(|end| s < m.steps_per_bar && end <= m.steps_per_bar)
+                }),
+                &format!("accompaniment.{name}"),
+                "pas/durée hors mesure",
+            )?;
+        }
+        check(
+            a.bass_duration_steps > 0 && a.chop_duration_steps > 0,
+            "accompaniment.bass_duration_steps",
+            "durées positives requises",
+        )?;
+        check(
+            (1..=127).contains(&a.bass_velocity) && (1..=127).contains(&a.chop_velocity),
+            "accompaniment.bass_velocity",
+            "vélocités dans 1..127",
+        )?;
+        check(
+            a.bass_low <= a.bass_high && a.bass_high <= 127 && a.guitar_center <= 127,
+            "accompaniment.bass_low",
+            "registre MIDI invalide",
+        )?;
+        self.percussion.validate().map_err(|e| ProfileError::new("percussion", e))?;
+        for (i, pattern) in self.percussion.patterns.iter().enumerate() {
+            check(
+                pattern.hits.iter().all(|h| h.step < m.steps_per_bar),
+                &format!("percussion.patterns[{i}].hits"),
+                "pas hors mesure",
+            )?;
+        }
+        check(
+            self.percussion.heel_note <= 127 && self.percussion.toe_note <= 127,
+            "percussion.heel_note",
+            "notes MIDI dans 0..127",
+        )?;
+        let i = &self.instruments;
+        check(
+            i.melody_program <= 127
+                && i.chords_program <= 127
+                && i.bass_program <= 127
+                && i.percussion_program <= 127,
+            "instruments",
+            "programmes MIDI dans 0..127",
+        )?;
+        self.arrangement.validate().map_err(|e| ProfileError::new("arrangement", e))?;
+        self.dynamics.validate().map_err(|e| ProfileError::new("dynamics", e))?;
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tuning::ClassicGrooveOverlay;
-
-    fn sample_profile() -> StyleProfile {
-        StyleProfile {
-            name: "Test Bossa".into(),
-            description: "Straight 8ths, anticipated bass".into(),
-            tempo_range: (120.0, 160.0),
-            tags: vec!["latin".into(), "jazz".into()],
-            tuning: TuningOverlay {
-                classic_groove: Some(ClassicGrooveOverlay {
-                    ghost_note_velocity: Some(0.15),
-                    hat_on_beat_velocity: Some(0.5),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-        }
-    }
-
     #[test]
-    fn json_roundtrip() {
-        let profile = sample_profile();
-        let json = profile.to_json().expect("serialize");
-        let profile2 = StyleProfile::from_json(&json).expect("deserialize");
-        assert_eq!(profile, profile2);
+    fn embedded_and_external_profiles_match() -> Result<(), Box<dyn std::error::Error>> {
+        let embedded = StyleProfile::default();
+        let external =
+            StyleProfile::load(concat!(env!("CARGO_MANIFEST_DIR"), "/../profiles/reel_quebecois"))?;
+        assert_eq!(embedded, external);
+        assert_eq!(StyleProfile::from_toml(&embedded.to_toml()?)?, embedded);
+        Ok(())
     }
-
     #[test]
-    fn toml_roundtrip() {
-        let profile = sample_profile();
-        let toml_str = profile.to_toml().expect("serialize");
-        let profile2 = StyleProfile::from_toml(&toml_str).expect("deserialize");
-        assert_eq!(profile, profile2);
-    }
-
-    #[test]
-    fn to_tuning_params_applies_overlay() {
-        let profile = sample_profile();
-        let tp = profile.to_tuning_params();
-        assert_eq!(tp.classic_groove.ghost_note_velocity, 0.15);
-        assert_eq!(tp.classic_groove.hat_on_beat_velocity, 0.5);
-        // Unchanged fields keep defaults
-        assert_eq!(tp.classic_groove.kick_anticipation_velocity, 0.7);
-        assert_eq!(tp.melody, crate::tuning::MelodyParams::default());
-    }
-
-    #[test]
-    fn apply_to_custom_base() {
-        let mut base = TuningParams::default();
-        base.melody.default_hurst_factor = 0.9;
-
-        let profile = sample_profile();
-        let tp = profile.apply_to(&base);
-
-        // Base modification preserved
-        assert_eq!(tp.melody.default_hurst_factor, 0.9);
-        // Profile overlay applied
-        assert_eq!(tp.classic_groove.ghost_note_velocity, 0.15);
+    fn invalid_boundaries_name_the_field() {
+        let mut p = StyleProfile::default();
+        p.meter.steps_per_pulse = 0;
+        assert_eq!(p.validate().unwrap_err().field, "meter.steps_per_pulse");
+        p = StyleProfile::default();
+        p.form.parts[0].roles[0] = ImposedRole::CopyOf(1);
+        assert_eq!(p.validate().unwrap_err().field, "form.parts[0].roles[0]");
+        p = StyleProfile::default();
+        p.form.sequence.push(99);
+        assert_eq!(p.validate().unwrap_err().field, "form.sequence[4]");
+        p = StyleProfile::default();
+        p.harmony.steps_per_chord = 0;
+        assert_eq!(p.validate().unwrap_err().field, "harmony.steps_per_chord");
     }
 }

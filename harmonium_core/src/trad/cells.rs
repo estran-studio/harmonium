@@ -37,7 +37,7 @@ pub const DEFAULT_CELL_WEIGHT: u32 = 1;
 const CADENCE_HALF_CLASSES: [i8; 3] = [1, 4, 6];
 
 /// Contenu brut de la banque TOML embarquée du reel.
-pub const REEL_CELLS_TOML: &str = include_str!("reel_cells.toml");
+pub const REEL_CELLS_TOML: &str = include_str!("../../../profiles/reel_quebecois/cells.toml");
 
 /// Rôle fonctionnel d'une cellule mélodique dans une strain de 8 mesures (D5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

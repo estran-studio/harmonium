@@ -18,7 +18,8 @@ use super::fiddle::BARS_PER_STRAIN;
 use crate::timeline::TrackId;
 
 /// Contenu brut de la table TOML embarquée d'arrangement du reel (D11 + P1-T11).
-pub const REEL_ARRANGEMENT_TOML: &str = include_str!("reel_arrangement.toml");
+pub const REEL_ARRANGEMENT_TOML: &str =
+    include_str!("../../../profiles/reel_quebecois/arrangement.toml");
 
 /// Nombre de mesures d'un tour AABB complet (A1 + A2 + B1 + B2).
 pub const BARS_PER_TOUR: usize = 4 * BARS_PER_STRAIN;

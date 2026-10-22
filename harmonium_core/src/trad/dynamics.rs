@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::{Mode, TunePlan};
 use crate::{harmony::RngCore, timeline::TrackId};
 
-pub const REEL_INTENSITY_TOML: &str = include_str!("reel_intensity.toml");
+pub const REEL_INTENSITY_TOML: &str =
+    include_str!("../../../profiles/reel_quebecois/dynamics.toml");
 
 /// Courbe continue sur un axe normalisé, extrapolation constante aux extrémités.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

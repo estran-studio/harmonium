@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Contenu brut de la table TOML embarquée de podorythmie pour le reel (D9).
-pub const REEL_FEET_TOML: &str = include_str!("reel_feet.toml");
+pub const REEL_FEET_TOML: &str = include_str!("../../../profiles/reel_quebecois/feet.toml");
 
 /// Nombre de pas par mesure dans un reel québécois en 2/2 (D9).
 pub const REEL_STEPS: usize = 16;
