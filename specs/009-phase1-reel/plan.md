@@ -334,8 +334,8 @@ Validé à l'oreille (2026-10-22, `demos/combat_seed1.wav`, après correction
 du mixage `2e4089a`) : « on sent une progression plus rapide et intense
 pendant que la musique joue ». Mixage retenu : le violon mène à toutes les
 intensités ; guitare 5 à 12 dB sous le violon, basse 1 à 4 dB sous.
-Reste ouvert : la valence ne change le mode qu'à l'air suivant (environ
-100 mesures avec 3 tours), donc le mineur n'arrive pas pendant un combat.
+P1-T13 permet désormais le passage au mode parallèle pendant l'air, à la
+frontière de phrase suivante (voir ci-dessous).
 
 ## Suite proposée (prochaine session)
 
@@ -388,13 +388,13 @@ chaque lancement ; depuis 2026-10-20, OpenRouter (`deepseek-v4-pro` difficile,
 | Axe | Effet immédiat à la mesure suivante | Effet au prochain air |
 |---|---|---|
 | Arousal → intensity | Énergie/vélocités, tempo borné, coups de pieds, chop, notes plus courtes, accents forts | Poids run/arp/turn |
-| Valence (−1..1) | Brillance des accents | Mode/tonalité pondérés et centre de registre |
+| Valence (−1..1) | Brillance des accents ; mode parallèle à la prochaine phrase (P1-T13) | Tonalité pondérée et centre de registre |
 | Density (0..1) | Instruments actifs sous les plafonds du jeu et de l'arrangement, pieds, chop, notes de passage sur les tenues | Aucun changement du plan |
 | Tension (0..1) | Accents de contretemps, articulation sèche, dominantes plus fréquentes et tenues | Aucun changement du plan |
 
-- Le plan de l'air déjà audible est conservé ; seules les mesures futures et
-  les plans d'airs non encore entendus sont invalidés. AABB conserve les
-  hauteurs et positions du squelette mélodique sous automation d'intensité ;
+- Les cellules de l'air déjà audible sont conservées ; seules les mesures futures et
+  les plans d'airs non encore entendus sont invalidés. AABB conserve les degrés et
+  positions du squelette mélodique sous automation d'intensité/valence ;
   vélocités/durées et ornements de densité restent des paramètres de rendu.
 - Un changement de tempo d'une mesure trad utilise la rampe existante de
   `SetTempo`, sur le nombre de pulses d'une mesure (deux en reel). Un override
@@ -504,4 +504,101 @@ explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
   `cargo fmt --all -- --check` passe. Baseline `main` de la comparaison :
   `b1e4184066d90cdc5f8f2de33236229849267de6`. Un seul profil `target/debug`,
   archive de comparaison et probes supprimées après mesure.
+
+
+## P1-T13 — Mode parallèle pendant l'air
+
+- `reel_intensity.toml` : `mode_shift_boundary = "phrase"` (4 mesures) ou
+  `"part"` (8), `dark_below = -0.3`, `bright_above = 0.1`. Seuils stricts ;
+  entre les seuils, la dernière demande reste mémorisée jusqu'à la frontière.
+- Table pondérée `parallel_modes` : ionien → éolien (3) / dorien (1),
+  mixolydien → dorien (1). Tirage par le RNG injecté au premier passage sombre,
+  mémorisé pour l'air ; retour au mode clair d'origine, sur la même tonique.
+  Un air né mineur utilise le mode clair de la première ligne correspondante.
+- Les mêmes cellules sont relues en conservant degré, octave et rythme de chaque
+  note déjà choisie (repli d'octave uniquement hors du domaine physique MIDI
+  0..127). L'harmonie est revotée seulement au changement de mode ; basse et
+  chop utilisent ce mode, y compris les dominantes sous tension.
+- `invalidate_future` conserve les décisions audibles et retire les décisions
+  spéculatives futures ; aucune mutation de la mesure en cours ni de `BeatInfo`.
+- `MeasureSnapshot.position` publie toujours `key` et `mode` en trad, intro et
+  outro comprises. Décision du coordinateur : publication inconditionnelle,
+  rupture de snapshot assumée, `TUNING_VERSION` **6 → 7**. L'invariant neutre
+  porte sur toutes les notes (piste, hauteur, début, durée, vélocité), pas sur
+  les nouveaux octets des métadonnées. Aucun tirage ajouté au chemin neutre.
+- Régression reproduite avant correction : le degré 3 de la mesure 5 restait
+  majeur après valence −0.9 à la mesure 3. Les sept tests de contrat
+  `trad_mode_shift_tests` passent après correction (frontières, degrés/octaves,
+  hystérésis, accompagnement/ornements, limite MIDI, invalidation et déterminisme).
+
+### Rendu combat observé (100 mesures, seed 1)
+
+Commande : `cargo run -p harmonium-cli -- --export --style reel --bars 100
+--seed 1 --automation demos/automation_combat.toml --record-wav
+demos/combat_t13_seed1.wav --record-midi demos/combat_t13_seed1.mid
+--record-truth demos/combat_t13_seed1.json`.
+
+GeneralUser GS installé via `make soundfont` (32 319 396 octets), 44 100 Hz,
+102,50 secondes. Banque dédiée des pieds absente : kit GM, sans effet sur
+le mode ni l'horloge. Le scénario de combat existant n'a pas besoin de changer.
+L'intro prend deux mesures : les phrases du premier air commencent en 3, 7, etc.
+
+| Frontière (mesure) | Tonique | Mode actif | Valence appliquée |
+|---:|---|---|---:|
+| 3 | la | ionien | 0.4000 |
+| 7 | la | ionien | 0.4000 |
+| 11 | la | ionien | 0.4000 |
+| 15 | la | ionien | 0.4000 |
+| 19 | la | ionien | 0.2875 |
+| 23 | la | ionien | 0.1375 |
+| 27 | la | ionien | -0.0125 |
+| 31 | la | ionien | -0.1625 |
+| 35 | la | ionien | -0.2875 |
+| 39 | la | éolien | -0.4042 |
+| 43 | la | éolien | -0.5208 |
+| 47 | la | éolien | -0.6375 |
+| 51 | la | éolien | -0.7542 |
+| 55 | la | éolien | -0.8708 |
+| 59 | la | éolien | -0.9000 |
+| 63 | la | éolien | -0.9000 |
+| 67 | la | éolien | -0.5531 |
+| 71 | la | éolien | -0.0906 |
+| 75 | la | ionien | 0.3719 |
+| 79 | la | ionien | 0.8344 |
+| 83 | la | ionien | 0.9500 |
+| 87 | la | ionien | 0.9500 |
+| 91 | la | ionien | 0.9500 |
+| 95 | la | ionien | 0.9500 |
+| 100 | sol | ionien | 0.9500 |
+
+- Seuil sombre franchi à la mesure **36** (−0.3167), entendu à **39** :
+  **3 mesures**. Seuil clair franchi à **73** (+0.1406), entendu à **75** :
+  **2 mesures**. Valences interpolées par le TOML, échantillonnées à la mesure
+  comme le fait l'export. La tonique ne change qu'au nouvel air (mesure 100).
+- Deux rendus indépendants sont identiques bit à bit (SHA-256) :
+  WAV `bfbe1a14d038bee52fbba24dd27e8d4fa6ca4421e08492b4dab1c5693fc3c0a5`,
+  MIDI `7c8e35dd851a79134f8d2dbcda916b6ee9767b9d8b2a30e3e13e5147bb2a292a`,
+  JSON `9247f78d8a9802090eb2fef9e17a602d2189255a2f30c35f9d7bdcaa5577a772`.
+- Neutralité contre l'archive de `main` **aacc9aa** : **768 snapshots**
+  (seeds 1, 2, 3 × 256 mesures), toutes les notes identiques (piste, hauteur,
+  début, durée, vélocité). SHA-256 du JSON canonique des notes :
+  `f720deeffc3bb0d97ad747f54e423fe440c7fcd681b54f10a2e1f1b42a581991`.
+  Probes temporaires supprimées. Golden Legacy régénéré : octets inchangés
+  (`position = null`, donc aucune métadonnée trad à enrichir).
+- Contrat playback : appels pendant les mesures 3 et 7, passages à 5 et 9,
+  soit **2 mesures** chacun ; chaque pulse commence exactement à la fin de
+  la précédente, sans modifier la pulse en cours ni la mesure audible.
+
+### Vérification
+
+- `cargo test --workspace` : **515 réussis, 33 ignorés** (dont sept contrats
+  cœur P1-T13 et un contrat playback/horloge).
+- `cargo fmt --all`, puis `cargo fmt --all -- --check` : succès.
+- Clippy production : `cargo clippy --workspace --lib --bins
+  --message-format=json`, exécuté sur la branche et l'archive de `main`,
+  **187 diagnostics dans les deux cas, zéro nouveau** (comparaison par
+  chemin/code/message, sans numéros de ligne). La dette préexistante empêche
+  toujours `-D warnings` global ; aucun lint n'a été masqué.
+- Les **1 691 notes** de mélodie/accords/basse du vrai rendu combat
+  appartiennent toutes au mode publié à leur mesure.
 

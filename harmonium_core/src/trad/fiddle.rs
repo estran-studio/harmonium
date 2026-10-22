@@ -41,6 +41,7 @@ pub struct FiddleLine {
     cells_b: [Cell; BARS_PER_STRAIN],
     params: ReelFiddleParams,
     tonic_midi: u8,
+    render_mode: super::Mode,
 }
 
 impl FiddleLine {
@@ -96,13 +97,17 @@ impl FiddleLine {
             rng,
         );
 
-        Self { plan, cells_a, cells_b, params: params.clone(), tonic_midi }
+        Self { plan, cells_a, cells_b, params: params.clone(), tonic_midi, render_mode: plan.mode }
     }
 
     /// Plan structurel du tune associé à cette ligne de violon.
     #[must_use]
     pub const fn plan(&self) -> TunePlan {
         self.plan
+    }
+    /// Relit les cellules choisies dans un mode parallèle, sans nouveau tirage.
+    pub(crate) fn set_mode(&mut self, mode: super::Mode) {
+        self.render_mode = mode;
     }
 
     /// Note MIDI de la tonique dans l'octave de référence (`G4` = 67 à `D5` = 74 avec les défauts P1-T7).
@@ -144,7 +149,21 @@ impl FiddleLine {
     #[must_use]
     pub fn notes_for_bar(&self, bar_in_tune: usize) -> Vec<TimelineNote> {
         let cell = self.cell_for_bar(bar_in_tune);
-        render_cell_notes(cell, &self.plan, self.tonic_midi, &self.params)
+        let mut notes = render_cell_notes(cell, &self.plan, self.tonic_midi, &self.params);
+        if self.render_mode != self.plan.mode {
+            for note in &mut notes {
+                if let Some(degree) = self.plan.mode.scale_degree_of_midi(self.plan.key, note.pitch)
+                {
+                    let index = usize::from(degree - 1);
+                    let delta =
+                        self.render_mode.intervals()[index] - self.plan.mode.intervals()[index];
+                    // Conserver l'octave, sauf hors du domaine physique MIDI.
+                    note.pitch =
+                        fold_midi_to_tessitura(i16::from(note.pitch) + i16::from(delta), 0, 127);
+                }
+            }
+        }
+        notes
     }
 
     /// Rend les 32 mesures complètes du tune (fonction de commodité pour les tests).
