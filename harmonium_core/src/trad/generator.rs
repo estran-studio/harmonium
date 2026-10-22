@@ -5,7 +5,7 @@
 //! - au début de chaque air, tire une intro idiomatique (P1-T11) puis un
 //!   [`TunePlan`], construit la [`FiddleLine`] et la [`TuneHarmony`] ;
 //!   l'air est ensuite joué `tours_per_tune` tours AABB de 32 mesures, chaque
-//!   tour rejouant exactement la même ligne et la même harmonie ;
+//!   tour rejouant les mêmes degrés, relus dans le mode parallèle demandé ;
 //! - pour les tunes suivants, tire au seed soit la même tonalité, soit sa relative ;
 //! - pour chaque mesure : peuple `Melody` (violon), `Chords` (guitare chop) et
 //!   `Bass` (basse fondamentale/quinte), ainsi que `Heel` et `Toe` selon
@@ -290,9 +290,8 @@ impl TradGenerator {
         // position dépend du nombre de mesures d'intro (tirées au RNG).
         self.ensure_tunes_covering(bar_index, rng);
 
-        let position = self.position_of(bar_index);
-        self.update_parallel_mode(bar_index, &position, rng);
-        let position = self.position_of(bar_index);
+        let mut position = self.position_of(bar_index);
+        self.update_parallel_mode(bar_index, &mut position, rng);
 
         let kind = TuneKind::Reel;
         let time_sig = kind.time_signature();
@@ -340,7 +339,12 @@ impl TradGenerator {
         measure
     }
 
-    fn update_parallel_mode(&mut self, bar: usize, position: &TunePosition, rng: &mut dyn RngCore) {
+    fn update_parallel_mode(
+        &mut self,
+        bar: usize,
+        position: &mut TunePosition,
+        rng: &mut dyn RngCore,
+    ) {
         let dynamics = &self.tuning.reel_intensity;
         let Some(tune) = self.tunes.get_mut(&position.tune_index) else { return };
         let (mut mode, dark) = tune.color_at(bar);
@@ -361,7 +365,7 @@ impl TradGenerator {
             tune.mode_requests.insert(bar, target_dark);
         }
         if !position.is_intro()
-            && (position.bar_in_strain - 1) % dynamics.mode_shift_boundary.bars() == 0
+            && (position.bar_in_strain - 1).is_multiple_of(dynamics.mode_shift_boundary.bars())
             && target_dark != dark
         {
             mode = if target_dark {
@@ -383,6 +387,7 @@ impl TradGenerator {
             tune.harmony = TuneHarmony::new(tune.plan, &melody, &self.tuning.trad_harmony)
                 .unwrap_or_else(|_| fallback_tune_harmony(tune.plan));
         }
+        position.mode = mode;
     }
 
     /// Remplit une mesure d'intro selon la forme tirée et la levée.

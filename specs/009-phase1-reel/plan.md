@@ -530,3 +530,74 @@ explique qu'une vélocité moyenne de pieds puisse baisser malgré la montée.
   `trad_mode_shift_tests` passent après correction (frontières, degrés/octaves,
   hystérésis, notes d'accompagnement/ornements, invalidation et déterminisme).
 
+### Rendu combat observé (100 mesures, seed 1)
+
+Commande : `cargo run -p harmonium-cli -- --export --style reel --bars 100
+--seed 1 --automation demos/automation_combat.toml --record-wav
+demos/combat_t13_seed1.wav --record-midi demos/combat_t13_seed1.mid
+--record-truth demos/combat_t13_seed1.json`.
+
+GeneralUser GS installé via `make soundfont` (32 319 396 octets), 44 100 Hz,
+102,50 secondes. Banque dédiée des pieds absente : kit GM, sans effet sur
+le mode ni l'horloge. Le scénario de combat existant n'a pas besoin de changer.
+L'intro prend deux mesures : les phrases du premier air commencent en 3, 7, etc.
+
+| Frontière (mesure) | Tonique | Mode actif | Valence appliquée |
+|---:|---|---|---:|
+| 3 | la | ionien | 0.4000 |
+| 7 | la | ionien | 0.4000 |
+| 11 | la | ionien | 0.4000 |
+| 15 | la | ionien | 0.4000 |
+| 19 | la | ionien | 0.2875 |
+| 23 | la | ionien | 0.1375 |
+| 27 | la | ionien | -0.0125 |
+| 31 | la | ionien | -0.1625 |
+| 35 | la | ionien | -0.2875 |
+| 39 | la | éolien | -0.4042 |
+| 43 | la | éolien | -0.5208 |
+| 47 | la | éolien | -0.6375 |
+| 51 | la | éolien | -0.7542 |
+| 55 | la | éolien | -0.8708 |
+| 59 | la | éolien | -0.9000 |
+| 63 | la | éolien | -0.9000 |
+| 67 | la | éolien | -0.5531 |
+| 71 | la | éolien | -0.0906 |
+| 75 | la | ionien | 0.3719 |
+| 79 | la | ionien | 0.8344 |
+| 83 | la | ionien | 0.9500 |
+| 87 | la | ionien | 0.9500 |
+| 91 | la | ionien | 0.9500 |
+| 95 | la | ionien | 0.9500 |
+| 100 | sol | ionien | 0.9500 |
+
+- Seuil sombre franchi à la mesure **36** (−0.3167), entendu à **39** :
+  **3 mesures**. Seuil clair franchi à **73** (+0.1406), entendu à **75** :
+  **2 mesures**. Valences interpolées par le TOML, échantillonnées à la mesure
+  comme le fait l'export. La tonique ne change qu'au nouvel air (mesure 100).
+- Deux rendus indépendants sont identiques bit à bit (SHA-256) :
+  WAV `bfbe1a14d038bee52fbba24dd27e8d4fa6ca4421e08492b4dab1c5693fc3c0a5`,
+  MIDI `7c8e35dd851a79134f8d2dbcda916b6ee9767b9d8b2a30e3e13e5147bb2a292a`,
+  JSON `9247f78d8a9802090eb2fef9e17a602d2189255a2f30c35f9d7bdcaa5577a772`.
+- Neutralité contre l'archive de `main` **aacc9aa** : **768 snapshots**
+  (seeds 1, 2, 3 × 256 mesures), toutes les notes identiques (piste, hauteur,
+  début, durée, vélocité). SHA-256 du JSON canonique des notes :
+  `f720deeffc3bb0d97ad747f54e423fe440c7fcd681b54f10a2e1f1b42a581991`.
+  Probes temporaires supprimées. Golden Legacy régénéré : octets inchangés
+  (`position = null`, donc aucune métadonnée trad à enrichir).
+- Contrat playback : appels pendant les mesures 3 et 7, passages à 5 et 9,
+  soit **2 mesures** chacun ; chaque pulse commence exactement à la fin de
+  la précédente, sans modifier la pulse en cours ni la mesure audible.
+
+### Vérification
+
+- `cargo test --workspace` : **514 réussis, 33 ignorés** (dont six contrats
+  cœur P1-T13 et un contrat playback/horloge).
+- `cargo fmt --all`, puis `cargo fmt --all -- --check` : succès.
+- Clippy production : `cargo clippy --workspace --lib --bins
+  --message-format=json`, exécuté sur la branche et l'archive de `main`,
+  **187 diagnostics dans les deux cas, zéro nouveau** (comparaison par
+  chemin/code/message, sans numéros de ligne). La dette préexistante empêche
+  toujours `-D warnings` global ; aucun lint n'a été masqué.
+- Les **1 691 notes** de mélodie/accords/basse du vrai rendu combat
+  appartiennent toutes au mode publié à leur mesure.
+
