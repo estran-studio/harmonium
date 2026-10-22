@@ -49,7 +49,25 @@ pub struct TradHarmonyParams {
 }
 impl Default for TradHarmonyParams {
     fn default() -> Self {
-        StyleProfile::default().accompaniment
+        match StyleProfile::default().accompaniment {
+            Some(a) => a,
+            None => Self {
+                strong_steps: vec![0, 4, 8, 12],
+                strong_weight: 2,
+                weak_weight: 1,
+                tie_priority: Vec::new(),
+                bass_steps: vec![0, 8],
+                bass_duration_steps: 4,
+                bass_velocity: 80,
+                bass_low: 36,
+                bass_high: 59,
+                chop_steps: vec![4, 12],
+                chop_duration_steps: 2,
+                chop_velocity: 70,
+                guitar_center: 60,
+                guitar_max_drift: 6,
+            },
+        }
     }
 }
 

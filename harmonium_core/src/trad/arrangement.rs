@@ -322,10 +322,10 @@ impl EntryPoint {
 pub struct TrackEntries {
     #[serde(rename = "Melody")]
     pub melody: EntryPoint,
-    #[serde(rename = "Chords")]
-    pub chords: EntryPoint,
-    #[serde(rename = "Bass")]
-    pub bass: EntryPoint,
+    #[serde(rename = "Chords", skip_serializing_if = "Option::is_none")]
+    pub chords: Option<EntryPoint>,
+    #[serde(rename = "Bass", skip_serializing_if = "Option::is_none")]
+    pub bass: Option<EntryPoint>,
     #[serde(rename = "Heel")]
     pub heel: EntryPoint,
     #[serde(rename = "Toe")]
@@ -333,21 +333,23 @@ pub struct TrackEntries {
 }
 
 impl TrackEntries {
-    const fn get(&self, track: TrackId) -> EntryPoint {
+    pub const fn get(&self, track: TrackId) -> Option<EntryPoint> {
         match track {
-            TrackId::Melody => self.melody,
+            TrackId::Melody => Some(self.melody),
             TrackId::Chords => self.chords,
             TrackId::Bass => self.bass,
-            TrackId::Heel => self.heel,
-            TrackId::Toe => self.toe,
+            TrackId::Heel => Some(self.heel),
+            TrackId::Toe => Some(self.toe),
         }
     }
 
-    fn all(&self) -> [(TrackId, EntryPoint); 5] {
-        TrackId::ALL.map(|track| (track, self.get(track)))
+    pub fn all(&self) -> Vec<(TrackId, EntryPoint)> {
+        TrackId::ALL
+            .into_iter()
+            .filter_map(|track| self.get(track).map(|entry| (track, entry)))
+            .collect()
     }
 }
-
 // ---------------------------------------------------------------------------
 // ArrangementError
 // ---------------------------------------------------------------------------
@@ -473,7 +475,7 @@ impl TryFrom<RawArrangement> for ReelArrangement {
         let tours_per_tune = usize::try_from(raw.tours_per_tune)
             .map_err(|_| ArrangementError::ToursPerTuneOutOfRange(raw.tours_per_tune))?;
 
-        let mut take = |track: TrackId| -> Result<EntryPoint, ArrangementError> {
+        let mut take_required = |track: TrackId| -> Result<EntryPoint, ArrangementError> {
             let entry = raw
                 .entries
                 .remove(&format!("{track:?}"))
@@ -485,13 +487,24 @@ impl TryFrom<RawArrangement> for ReelArrangement {
                 .map_err(|_| ArrangementError::PassOutOfRange { track, pass: entry.pass })?;
             Ok(EntryPoint { tour, part, pass })
         };
-        let entries = TrackEntries {
-            melody: take(TrackId::Melody)?,
-            chords: take(TrackId::Chords)?,
-            bass: take(TrackId::Bass)?,
-            heel: take(TrackId::Heel)?,
-            toe: take(TrackId::Toe)?,
+        let melody = take_required(TrackId::Melody)?;
+        let heel = take_required(TrackId::Heel)?;
+        let toe = take_required(TrackId::Toe)?;
+
+        let mut take_optional = |track: TrackId| -> Result<Option<EntryPoint>, ArrangementError> {
+            let Some(entry) = raw.entries.remove(&format!("{track:?}")) else {
+                return Ok(None);
+            };
+            let part = Part(entry.part);
+            let tour = usize::try_from(entry.tour)
+                .map_err(|_| ArrangementError::TourOutOfRange { track, tour: entry.tour })?;
+            let pass = usize::try_from(entry.pass)
+                .map_err(|_| ArrangementError::PassOutOfRange { track, pass: entry.pass })?;
+            Ok(Some(EntryPoint { tour, part, pass }))
         };
+        let chords = take_optional(TrackId::Chords)?;
+        let bass = take_optional(TrackId::Bass)?;
+        let entries = TrackEntries { melody, chords, bass, heel, toe };
         let table = Self {
             tours_per_tune,
             intro_each_tune: raw.intro_each_tune,
@@ -523,8 +536,8 @@ impl ReelArrangement {
             intro_each_tune: false,
             entries: TrackEntries {
                 melody: start,
-                chords: start,
-                bass: start,
+                chords: Some(start),
+                bass: Some(start),
                 heel: start,
                 toe: start,
             },
@@ -569,7 +582,22 @@ impl ReelArrangement {
     /// Point d'entrée d'une piste.
     #[must_use]
     pub const fn entry(&self, track: TrackId) -> EntryPoint {
+        match self.entries.get(track) {
+            Some(e) => e,
+            None => EntryPoint::from_start(Part(0)),
+        }
+    }
+
+    /// Point d'entrée optionnel d'une piste (`None` si omise de l'arrangement).
+    #[must_use]
+    pub const fn entry_opt(&self, track: TrackId) -> Option<EntryPoint> {
         self.entries.get(track)
+    }
+
+    /// Vrai si l'arrangement déclare explicitement `track`.
+    #[must_use]
+    pub const fn has_track(&self, track: TrackId) -> bool {
+        self.entries.get(track).is_some()
     }
 
     /// Vrai si l'arrangement autorise `track` à jouer à `position`.
@@ -579,6 +607,9 @@ impl ReelArrangement {
     /// pendant l'intro selon [`IntroInfo::tracks_active_during_intro`].
     #[must_use]
     pub fn allows(&self, track: TrackId, position: &TunePosition, form: &ProfileForm) -> bool {
+        let Some(entry) = self.entry_opt(track) else {
+            return false;
+        };
         // Pendant l'intro, l'autorisation est gérée par le générateur
         // (seules certaines pistes jouent selon la forme).
         if position.is_intro() {
@@ -587,7 +618,6 @@ impl ReelArrangement {
         if position.tune_index > 0 && !self.intro_each_tune {
             return true;
         }
-        let entry = self.entry(track);
         let last_tour = self.tours_per_tune.max(1);
         let sequence = form
             .sequence

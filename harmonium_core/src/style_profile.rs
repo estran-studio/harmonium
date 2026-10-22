@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     params::{PulseSpec, TimeSignature},
+    timeline::TrackId,
     trad::{
         Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
         feet::FeetTable, plan::ImposedRole,
@@ -125,8 +126,10 @@ pub struct ProfileHarmony {
 #[serde(deny_unknown_fields)]
 pub struct ProfileInstruments {
     pub melody_program: u8,
-    pub chords_program: u8,
-    pub bass_program: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chords_program: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bass_program: Option<u8>,
     pub percussion_bank: u16,
     pub percussion_program: u8,
 }
@@ -138,11 +141,32 @@ pub struct StyleProfile {
     pub form: ProfileForm,
     pub melody: ProfileMelody,
     pub harmony: ProfileHarmony,
-    pub accompaniment: TradHarmonyParams,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accompaniment: Option<TradHarmonyParams>,
     pub percussion: FeetTable,
     pub instruments: ProfileInstruments,
     pub arrangement: ReelArrangement,
     pub dynamics: StyleDynamics,
+}
+impl StyleProfile {
+    /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
+    pub fn has_track(&self, track: TrackId) -> bool {
+        match track {
+            TrackId::Melody => true,
+            TrackId::Chords => {
+                self.harmony.model != "none"
+                    && self.instruments.chords_program.is_some()
+                    && self.arrangement.has_track(TrackId::Chords)
+            }
+            TrackId::Bass => {
+                self.harmony.model != "none"
+                    && self.instruments.bass_program.is_some()
+                    && self.arrangement.has_track(TrackId::Bass)
+            }
+            TrackId::Heel => self.arrangement.has_track(TrackId::Heel),
+            TrackId::Toe => self.arrangement.has_track(TrackId::Toe),
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProfileError {
@@ -500,9 +524,9 @@ impl StyleProfile {
             "poids libres : somme positive sans débordement",
         )?;
         check(
-            matches!(self.harmony.model.as_str(), "trad_functional" | "jazz_functional"),
+            matches!(self.harmony.model.as_str(), "trad_functional" | "jazz_functional" | "none"),
             "harmony.model",
-            "modèles disponibles : trad_functional, jazz_functional",
+            "modèles disponibles : trad_functional, jazz_functional, none",
         )?;
         check(
             self.harmony.steps_per_chord > 0
@@ -560,48 +584,61 @@ impl StyleProfile {
             "harmony.candidates",
             "accords requis pour les quatre modes (dynamique parallèle)",
         )?;
-        let a = &self.accompaniment;
-        check(
-            a.strong_weight > 0 && a.weak_weight > 0,
-            "accompaniment.strong_weight",
-            "poids de vote positifs requis",
-        )?;
-        for (name, steps, duration) in [
-            ("bass_steps", &a.bass_steps, a.bass_duration_steps),
-            ("chop_steps", &a.chop_steps, a.chop_duration_steps),
-            ("strong_steps", &a.strong_steps, 0),
-        ] {
+        if let Some(a) = &self.accompaniment {
             check(
-                steps.iter().all(|&s| {
-                    s.checked_add(duration)
-                        .is_some_and(|end| s < m.steps_per_bar && end <= m.steps_per_bar)
-                }),
-                &format!("accompaniment.{name}"),
-                "pas/durée hors mesure",
+                a.strong_weight > 0 && a.weak_weight > 0,
+                "accompaniment.strong_weight",
+                "poids de vote positifs requis",
+            )?;
+            for (name, steps, duration) in [
+                ("bass_steps", &a.bass_steps, a.bass_duration_steps),
+                ("chop_steps", &a.chop_steps, a.chop_duration_steps),
+                ("strong_steps", &a.strong_steps, 0),
+            ] {
+                check(
+                    steps.iter().all(|&s| {
+                        s.checked_add(duration)
+                            .is_some_and(|end| s < m.steps_per_bar && end <= m.steps_per_bar)
+                    }),
+                    &format!("accompaniment.{name}"),
+                    "pas/durée hors mesure",
+                )?;
+            }
+            check(
+                a.bass_duration_steps > 0 && a.chop_duration_steps > 0,
+                "accompaniment.bass_duration_steps",
+                "durées positives requises",
+            )?;
+            check(
+                (1..=127).contains(&a.bass_velocity) && (1..=127).contains(&a.chop_velocity),
+                "accompaniment.bass_velocity",
+                "vélocités dans 1..127",
+            )?;
+            check(
+                a.bass_low <= a.bass_high && a.bass_high <= 127 && a.guitar_center <= 127,
+                "accompaniment.bass_low",
+                "registre MIDI invalide",
+            )?;
+            check(
+                self.harmony.model != "jazz_functional" || a.bass_high - a.bass_low >= 11,
+                "accompaniment.bass_high",
+                "le registre jazz doit couvrir les douze classes de hauteur",
+            )?;
+        } else {
+            check(
+                self.harmony.model == "none",
+                "accompaniment",
+                "section accompaniment requise sauf pour le modèle d'harmonie none",
             )?;
         }
-        check(
-            a.bass_duration_steps > 0 && a.chop_duration_steps > 0,
-            "accompaniment.bass_duration_steps",
-            "durées positives requises",
-        )?;
-        check(
-            (1..=127).contains(&a.bass_velocity) && (1..=127).contains(&a.chop_velocity),
-            "accompaniment.bass_velocity",
-            "vélocités dans 1..127",
-        )?;
-        check(
-            a.bass_low <= a.bass_high && a.bass_high <= 127 && a.guitar_center <= 127,
-            "accompaniment.bass_low",
-            "registre MIDI invalide",
-        )?;
-        check(
-            self.harmony.model != "jazz_functional" || a.bass_high - a.bass_low >= 11,
-            "accompaniment.bass_high",
-            "le registre jazz doit couvrir les douze classes de hauteur",
-        )?;
         self.percussion.validate().map_err(|e| ProfileError::new("percussion", e))?;
-        for (i, pattern) in self.percussion.patterns.iter().enumerate() {
+        for (i, pattern) in self
+            .percussion
+            .patterns
+            .iter()
+            .chain(self.percussion.cadence_patterns.iter())
+            .enumerate()
+        {
             check(
                 pattern.euclidean_steps().is_none_or(|steps| steps == m.steps_per_bar),
                 &format!("percussion.patterns[{i}].euclid.steps"),
@@ -619,14 +656,18 @@ impl StyleProfile {
             "notes MIDI dans 0..127",
         )?;
         let i = &self.instruments;
-        for (name, program) in [
-            ("melody_program", i.melody_program),
-            ("chords_program", i.chords_program),
-            ("bass_program", i.bass_program),
-            ("percussion_program", i.percussion_program),
-        ] {
-            check(program <= 127, &format!("instruments.{name}"), "programme MIDI dans 0..127")?;
+        check(i.melody_program <= 127, "instruments.melody_program", "programme MIDI dans 0..127")?;
+        if let Some(chords) = i.chords_program {
+            check(chords <= 127, "instruments.chords_program", "programme MIDI dans 0..127")?;
         }
+        if let Some(bass) = i.bass_program {
+            check(bass <= 127, "instruments.bass_program", "programme MIDI dans 0..127")?;
+        }
+        check(
+            i.percussion_program <= 127,
+            "instruments.percussion_program",
+            "programme MIDI dans 0..127",
+        )?;
         check(i.percussion_bank <= 255, "instruments.percussion_bank", "banque SF2 dans 0..255")?;
         self.arrangement.validate().map_err(|error| {
             use crate::trad::ArrangementError as E;
@@ -652,35 +693,52 @@ impl StyleProfile {
             ProfileError::new(field, error)
         })?;
         for track in crate::timeline::TrackId::ALL {
-            let entry = self.arrangement.entry(track);
-            let path = format!("arrangement.entries.{track:?}");
-            check(
-                entry.part.0 < self.form.parts.len(),
-                &format!("{path}.part"),
-                "partie inconnue",
-            )?;
-            check(
-                entry.pass > 0
-                    && self.form.sequence.iter().filter(|&&part| part == entry.part.0).count()
-                        >= entry.pass,
-                &format!("{path}.pass"),
-                "passe absente du schéma joué",
-            )?;
+            if let Some(entry) = self.arrangement.entry_opt(track) {
+                let path = format!("arrangement.entries.{track:?}");
+                check(
+                    entry.part.0 < self.form.parts.len(),
+                    &format!("{path}.part"),
+                    "partie inconnue",
+                )?;
+                check(
+                    entry.pass > 0
+                        && self.form.sequence.iter().filter(|&&part| part == entry.part.0).count()
+                            >= entry.pass,
+                    &format!("{path}.pass"),
+                    "passe absente du schéma joué",
+                )?;
+            } else {
+                check(
+                    !self.has_track(track),
+                    &format!("arrangement.entries.{track:?}"),
+                    "piste obligatoire manquante dans l'arrangement",
+                )?;
+            }
         }
         check(
             usize::from(self.arrangement.intro.pickup_eighths) <= self.melody.cell_units,
             "arrangement.intro.pickup_eighths",
             "la levée dépasse la mesure",
         )?;
-        for (i, pattern) in self.dynamics.chop_patterns.iter().enumerate() {
+        if self.has_track(crate::timeline::TrackId::Chords) {
+            let a = self.accompaniment.as_ref().ok_or_else(|| {
+                ProfileError::new("accompaniment", "section accompaniment requise pour Chords")
+            })?;
             check(
-                pattern.iter().all(|&step| {
-                    step.checked_add(a.chop_duration_steps)
-                        .is_some_and(|end| step < m.steps_per_bar && end <= m.steps_per_bar)
-                }),
-                &format!("dynamics.chop_patterns[{i}]"),
-                "motif hors mesure",
+                !self.dynamics.chop_patterns.is_empty(),
+                "dynamics.chop_patterns",
+                "motifs de chop requis lorsque Chords est actif",
             )?;
+            for (i, pattern) in self.dynamics.chop_patterns.iter().enumerate() {
+                check(
+                    pattern.iter().all(|&step| {
+                        step.checked_add(a.chop_duration_steps)
+                            .is_some_and(|end| step < m.steps_per_bar && end <= m.steps_per_bar)
+                    }),
+                    &format!("dynamics.chop_patterns[{i}]"),
+                    "motif hors mesure",
+                )?;
+            }
         }
         self.dynamics.validate().map_err(|error| {
             let field = error.split(':').next().unwrap_or("dynamics");

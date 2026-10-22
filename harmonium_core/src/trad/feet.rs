@@ -22,7 +22,7 @@ use crate::{
 pub const REEL_FEET_TOML: &str = include_str!("../../../profiles/reel_quebecois/feet.toml");
 
 /// Un coup de pied individuel dans une mesure de podorythmie (D9).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FootHit {
     /// Pas dans la mesure (`0..16`, soit `0..=15`).
     pub step: usize,
@@ -30,43 +30,59 @@ pub struct FootHit {
     pub track: TrackId,
     /// Ajustement de vélocité relatif à la vélocité de base du membre.
     pub delta_velocity: i8,
+    /// Note MIDI explicite (optionnelle, surpasse le défaut de piste/voix).
+    pub note: Option<u8>,
+    /// Voix percussive ciblée (optionnelle).
+    pub voice: Option<String>,
 }
 
 impl FootHit {
     /// Crée un coup de pied avec pas, piste et delta de vélocité.
     #[must_use]
     pub const fn new(step: usize, track: TrackId, delta_velocity: i8) -> Self {
-        Self { step, track, delta_velocity }
+        Self { step, track, delta_velocity, note: None, voice: None }
     }
 
     /// Raccourci pour un coup de talon (delta de vélocité nul).
     #[must_use]
     pub const fn heel(step: usize) -> Self {
-        Self { step, track: TrackId::Heel, delta_velocity: 0 }
+        Self { step, track: TrackId::Heel, delta_velocity: 0, note: None, voice: None }
     }
 
     /// Raccourci pour un coup de pointe (delta de vélocité nul).
     #[must_use]
     pub const fn toe(step: usize) -> Self {
-        Self { step, track: TrackId::Toe, delta_velocity: 0 }
+        Self { step, track: TrackId::Toe, delta_velocity: 0, note: None, voice: None }
     }
 
     /// Raccourci pour un coup de pointe avec delta de vélocité explicite.
     #[must_use]
     pub const fn toe_with_delta(step: usize, delta_velocity: i8) -> Self {
-        Self { step, track: TrackId::Toe, delta_velocity }
+        Self { step, track: TrackId::Toe, delta_velocity, note: None, voice: None }
+    }
+
+    /// Coup avec note explicite.
+    #[must_use]
+    pub const fn with_note(step: usize, track: TrackId, note: u8, delta_velocity: i8) -> Self {
+        Self { step, track, delta_velocity, note: Some(note), voice: None }
+    }
+
+    /// Coup avec voix percussive nommée.
+    #[must_use]
+    pub fn with_voice(step: usize, voice: impl Into<String>, delta_velocity: i8) -> Self {
+        Self { step, track: TrackId::Toe, delta_velocity, note: None, voice: Some(voice.into()) }
     }
 }
 
 impl From<(usize, TrackId)> for FootHit {
     fn from((step, track): (usize, TrackId)) -> Self {
-        Self { step, track, delta_velocity: 0 }
+        Self { step, track, delta_velocity: 0, note: None, voice: None }
     }
 }
 
 impl From<(usize, TrackId, i8)> for FootHit {
     fn from((step, track, delta_velocity): (usize, TrackId, i8)) -> Self {
-        Self { step, track, delta_velocity }
+        Self { step, track, delta_velocity, note: None, voice: None }
     }
 }
 
@@ -90,13 +106,32 @@ where
     }
 }
 
+fn deserialize_optional_foot_track<'de, D>(deserializer: D) -> Result<Option<TrackId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    let Some(s) = opt else { return Ok(None) };
+    match s.to_ascii_lowercase().as_str() {
+        "heel" => Ok(Some(TrackId::Heel)),
+        "toe" => Ok(Some(TrackId::Toe)),
+        _ => Err(serde::de::Error::custom(format!(
+            "piste invalide pour la podorythmie : attendu 'Heel' ou 'Toe', reçu '{s}'"
+        ))),
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum RawFootHit {
     Struct {
         step: usize,
-        #[serde(deserialize_with = "deserialize_foot_track")]
-        track: TrackId,
+        #[serde(default, deserialize_with = "deserialize_optional_foot_track")]
+        track: Option<TrackId>,
+        #[serde(default)]
+        voice: Option<String>,
+        #[serde(default)]
+        note: Option<u8>,
         #[serde(default)]
         delta_velocity: i8,
     },
@@ -108,12 +143,19 @@ impl<'de> Deserialize<'de> for FootHit {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawFootHit::deserialize(deserializer)?;
         match raw {
-            RawFootHit::Struct { step, track, delta_velocity } => {
-                Ok(Self { step, track, delta_velocity })
+            RawFootHit::Struct { step, track, voice, note, delta_velocity } => {
+                let track = track.unwrap_or(if voice.as_deref() == Some("bass_drum") {
+                    TrackId::Heel
+                } else {
+                    TrackId::Toe
+                });
+                Ok(Self { step, track, delta_velocity, note, voice })
             }
-            RawFootHit::Tuple2(step, track) => Ok(Self { step, track, delta_velocity: 0 }),
+            RawFootHit::Tuple2(step, track) => {
+                Ok(Self { step, track, delta_velocity: 0, note: None, voice: None })
+            }
             RawFootHit::Tuple3(step, track, delta_velocity) => {
-                Ok(Self { step, track, delta_velocity })
+                Ok(Self { step, track, delta_velocity, note: None, voice: None })
             }
         }
     }
@@ -125,6 +167,10 @@ struct RawFootHitSerialize<'a> {
     track: &'a str,
     #[serde(skip_serializing_if = "is_zero_i8")]
     delta_velocity: i8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    note: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    voice: Option<&'a str>,
 }
 
 const fn is_zero_i8(v: &i8) -> bool {
@@ -142,6 +188,8 @@ impl Serialize for FootHit {
             step: self.step,
             track: track_str,
             delta_velocity: self.delta_velocity,
+            note: self.note,
+            voice: self.voice.as_deref(),
         };
         raw.serialize(serializer)
     }
@@ -261,6 +309,17 @@ const fn default_feet_gain() -> f32 {
     1.0
 }
 
+/// Voix percussive pour la batterie / percussion militaire ou podorythmie ornée.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PercussionVoice {
+    pub name: String,
+    pub note: u8,
+    pub velocity: u8,
+    #[serde(default)]
+    pub track: Option<TrackId>,
+}
+
 #[derive(Deserialize)]
 struct RawFeetTable {
     #[serde(default = "default_heel_note")]
@@ -276,9 +335,15 @@ struct RawFeetTable {
     #[serde(default = "default_velocity_humanize")]
     velocity_humanize: u8,
     #[serde(default)]
+    voices: Vec<PercussionVoice>,
+    #[serde(default)]
+    intro_tracks: Option<Vec<TrackId>>,
+    #[serde(default)]
     patterns: Vec<FeetPattern>,
     #[serde(default)]
     densities: Vec<FeetPattern>,
+    #[serde(default)]
+    cadence_patterns: Vec<FeetPattern>,
 }
 
 /// Table de podorythmie portée en données (D9, constitution V).
@@ -307,9 +372,18 @@ pub struct FeetTable {
     /// coup reçoit un décalage déterministe uniforme dans `±velocity_humanize`.
     #[serde(default = "default_velocity_humanize")]
     pub velocity_humanize: u8,
+    /// Voix percussives nommées (pour kit de batterie / tambour militaire).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub voices: Vec<PercussionVoice>,
+    /// Pistes actives lors du décompte d'intro percussion (défaut : [Heel]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intro_tracks: Option<Vec<TrackId>>,
     /// Patterns de coups par niveau de densité.
     #[serde(default)]
     pub patterns: Vec<FeetPattern>,
+    /// Patterns de coups optionnels pour les cadences / fins de phrase.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cadence_patterns: Vec<FeetPattern>,
 }
 
 impl<'de> Deserialize<'de> for FeetTable {
@@ -323,7 +397,10 @@ impl<'de> Deserialize<'de> for FeetTable {
             toe_velocity: raw.toe_velocity,
             feet_gain: raw.feet_gain,
             velocity_humanize: raw.velocity_humanize,
+            voices: raw.voices,
+            intro_tracks: raw.intro_tracks,
             patterns,
+            cadence_patterns: raw.cadence_patterns,
         })
     }
 }
@@ -349,6 +426,10 @@ pub enum FeetTableError {
     GainOutOfRange { gain: f32 },
     /// L'humanisation `velocity_humanize` est hors de la plage `0..=40`.
     VelocityHumanizeOutOfRange { humanize: u8 },
+    /// Voix percussive inconnue référencée par un coup.
+    UnknownVoice { density: u8, step: usize, voice: String },
+    /// Note MIDI hors limites (0..=127).
+    NoteOutOfRange { density: u8, step: usize, note: u8 },
 }
 
 impl fmt::Display for FeetTableError {
@@ -388,6 +469,15 @@ impl fmt::Display for FeetTableError {
             Self::VelocityHumanizeOutOfRange { humanize } => {
                 write!(f, "humanisation hors limites (0..=40) : velocity_humanize={humanize}")
             }
+            Self::UnknownVoice { density, step, voice } => {
+                write!(f, "voix inconnue '{voice}' à la densité {density}, pas {step}")
+            }
+            Self::NoteOutOfRange { density, step, note } => {
+                write!(
+                    f,
+                    "note MIDI {note} hors limites (0..=127) à la densité {density}, pas {step}"
+                )
+            }
         }
     }
 }
@@ -407,7 +497,10 @@ impl Default for FeetTable {
             toe_velocity: default_toe_velocity(),
             feet_gain: default_feet_gain(),
             velocity_humanize: default_velocity_humanize(),
+            voices: Vec::new(),
+            intro_tracks: None,
             patterns: Vec::new(),
+            cadence_patterns: Vec::new(),
         })
     }
 }
@@ -448,6 +541,64 @@ impl FeetTable {
             return Err(FeetTableError::EmptyTable);
         }
 
+        for voice in &self.voices {
+            if voice.note > 127 || voice.velocity > 127 || voice.name.is_empty() {
+                return Err(FeetTableError::BaseVelocityOutOfRange {
+                    heel: self.heel_velocity,
+                    toe: self.toe_velocity,
+                });
+            }
+        }
+
+        let validate_hit = |density: u8, hit: &FootHit| -> Result<(), FeetTableError> {
+            let (base_velocity, pitch) = if let Some(voice_name) = &hit.voice {
+                let Some(v) = self.voices.iter().find(|v| v.name == *voice_name) else {
+                    return Err(FeetTableError::UnknownVoice {
+                        density,
+                        step: hit.step,
+                        voice: voice_name.clone(),
+                    });
+                };
+                (v.velocity, hit.note.unwrap_or(v.note))
+            } else {
+                let base = match hit.track {
+                    TrackId::Heel => self.heel_velocity,
+                    TrackId::Toe => self.toe_velocity,
+                    other => {
+                        return Err(FeetTableError::InvalidTrack {
+                            density,
+                            step: hit.step,
+                            track: other,
+                        });
+                    }
+                };
+                let p = hit.note.unwrap_or(match hit.track {
+                    TrackId::Heel => self.heel_note,
+                    TrackId::Toe => self.toe_note,
+                    _ => 0,
+                });
+                (base, p)
+            };
+
+            if pitch > 127 {
+                return Err(FeetTableError::NoteOutOfRange {
+                    density,
+                    step: hit.step,
+                    note: pitch,
+                });
+            }
+
+            let effective_velocity = i16::from(base_velocity) + i16::from(hit.delta_velocity);
+            if !(0..=127).contains(&effective_velocity) {
+                return Err(FeetTableError::VelocityOutOfRange {
+                    density,
+                    step: hit.step,
+                    velocity: effective_velocity,
+                });
+            }
+            Ok(())
+        };
+
         let mut seen_densities = HashSet::new();
 
         for pattern in &self.patterns {
@@ -456,26 +607,17 @@ impl FeetTable {
             }
 
             for hit in &pattern.hits {
-                let base_velocity = match hit.track {
-                    TrackId::Heel => self.heel_velocity,
-                    TrackId::Toe => self.toe_velocity,
-                    other => {
-                        return Err(FeetTableError::InvalidTrack {
-                            density: pattern.density,
-                            step: hit.step,
-                            track: other,
-                        });
-                    }
-                };
+                validate_hit(pattern.density, hit)?;
+            }
+        }
 
-                let effective_velocity = i16::from(base_velocity) + i16::from(hit.delta_velocity);
-                if !(0..=127).contains(&effective_velocity) {
-                    return Err(FeetTableError::VelocityOutOfRange {
-                        density: pattern.density,
-                        step: hit.step,
-                        velocity: effective_velocity,
-                    });
-                }
+        let mut seen_cadence = HashSet::new();
+        for pattern in &self.cadence_patterns {
+            if !seen_cadence.insert(pattern.density) {
+                return Err(FeetTableError::DuplicateDensity(pattern.density));
+            }
+            for hit in &pattern.hits {
+                validate_hit(pattern.density, hit)?;
             }
         }
 
@@ -501,6 +643,15 @@ impl FeetTable {
         self.pattern(clamped).map_or(&[], |p| p.hits.as_slice())
     }
 
+    /// Retourne les coups pour une densité et un contexte de cadence éventuel.
+    #[must_use]
+    pub fn hits_for_density_and_role(&self, density: u8, is_cadence: bool) -> &[FootHit] {
+        let clamped = density.min(2);
+        if is_cadence && let Some(p) = self.cadence_patterns.iter().find(|p| p.density == clamped) {
+            return p.hits.as_slice();
+        }
+        self.hits_for_density(clamped)
+    }
     /// Raccourci vers [`feet_notes`].
     #[must_use]
     pub fn feet_notes(
@@ -556,24 +707,45 @@ pub fn draw_feet_humanize(
 /// `((base_velocity + delta_velocity) * feet_gain).round() + humanize[step]`,
 /// bornée à `1..=127`.
 #[must_use]
-pub fn feet_notes(
+pub fn feet_notes_with_cadence(
     table: &FeetTable,
     density: u8,
     steps: usize,
     humanize: &[i8],
+    is_cadence: bool,
 ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
     debug_assert_eq!(humanize.len(), steps);
 
-    let clamped_density = density.min(2);
-    let hits = table.hits_for_density(clamped_density);
+    let clamped = density.min(2);
+    let hits = table.hits_for_density_and_role(clamped, is_cadence);
 
     let mut heel_notes = Vec::new();
     let mut toe_notes = Vec::new();
 
     for hit in hits {
-        let (pitch, base_velocity, target_vec): (u8, u8, &mut Vec<TimelineNote>) = match hit.track {
-            TrackId::Heel => (table.heel_note, table.heel_velocity, &mut heel_notes),
-            TrackId::Toe => (table.toe_note, table.toe_velocity, &mut toe_notes),
+        let (track, base_velocity, pitch) = if let Some(voice_name) = &hit.voice {
+            if let Some(v) = table.voices.iter().find(|v| v.name == *voice_name) {
+                (v.track.unwrap_or(hit.track), v.velocity, hit.note.unwrap_or(v.note))
+            } else {
+                (hit.track, table.toe_velocity, hit.note.unwrap_or(table.toe_note))
+            }
+        } else {
+            let base = match hit.track {
+                TrackId::Heel => table.heel_velocity,
+                TrackId::Toe => table.toe_velocity,
+                _ => continue,
+            };
+            let p = hit.note.unwrap_or(match hit.track {
+                TrackId::Heel => table.heel_note,
+                TrackId::Toe => table.toe_note,
+                _ => continue,
+            });
+            (hit.track, base, p)
+        };
+
+        let target_vec = match track {
+            TrackId::Heel => &mut heel_notes,
+            TrackId::Toe => &mut toe_notes,
             _ => continue,
         };
 
@@ -595,6 +767,16 @@ pub fn feet_notes(
     toe_notes.sort_by_key(|n| n.start_step);
 
     (heel_notes, toe_notes)
+}
+
+#[must_use]
+pub fn feet_notes(
+    table: &FeetTable,
+    density: u8,
+    steps: usize,
+    humanize: &[i8],
+) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
+    feet_notes_with_cadence(table, density, steps, humanize, false)
 }
 
 #[cfg(test)]

@@ -8,4 +8,5 @@ use crate::{theory::chord::Chord, trad::TuneHarmony};
 pub enum HarmonyPlan {
     TradFunctional(TuneHarmony),
     JazzFunctional(Vec<Vec<Chord>>),
+    None,
 }

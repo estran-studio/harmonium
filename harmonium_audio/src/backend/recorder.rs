@@ -168,8 +168,10 @@ impl RecorderBackend {
         }];
         track.push(time_signature_event(0, &self.musical_params.time_signature));
 
-        // Émet les programmes GM initiaux pour Melody (0), Chords (1) et Bass (2)
-        for ch in 0..3u8 {
+        // Émet les programmes GM initiaux pour Melody (0) et éventuellement Chords (1) et Bass (2)
+        for (ch, _) in
+            crate::voice_manager::gm_programs_for_profile(&self.musical_params.profile_instruments)
+        {
             track.push(TrackEvent {
                 delta: 0.into(),
                 kind: TrackEventKind::Midi {

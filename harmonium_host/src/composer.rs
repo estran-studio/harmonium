@@ -575,8 +575,8 @@ impl MusicComposer {
         self.config.pulses = usize::from(meter.pulse_spec().pulses_per_bar);
         self.generator.update_params(self.musical_params.clone());
         self.pending_program_changes.clear();
-        self.pending_program_changes.extend_from_slice(
-            &harmonium_audio::voice_manager::gm_programs_for_profile(
+        self.pending_program_changes.extend(
+            harmonium_audio::voice_manager::gm_programs_for_profile(
                 &self.musical_params.profile_instruments,
             ),
         );
