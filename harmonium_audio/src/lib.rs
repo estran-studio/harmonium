@@ -1,7 +1,6 @@
 pub mod backend;
 pub mod realtime;
 pub mod voice_manager;
-pub mod voicing;
 
 use harmonium_core::events::AudioEvent;
 

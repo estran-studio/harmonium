@@ -27,10 +27,6 @@ graph TD
 
 `VoiceManager` owns the `oxisynth::Synth`, the logical→MIDI channel map (GM drums on MIDI 9 when a GM-sized SoundFont is loaded) and the per-channel bank routing (`ChannelRoute`; a negative bank id means bank 0).
 
-### `voicing`
-
-Jazz voicing algorithms: `BlockChordVoicer` (locked-hands block chords), `ShellVoicer` (root/3rd/7th shells), drop-2 spreading, comping patterns.
-
 ### `realtime`
 
 `RTCheckAllocator`: debug-build allocation tracker that panics on allocations inside the audio callback.
