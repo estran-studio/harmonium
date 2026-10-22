@@ -41,9 +41,11 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     p.form.parts.push(third);
     p.form.sequence = vec![2, 0, 1, 0, 2];
     p.harmony.steps_per_chord = 12;
-    p.accompaniment.bass_steps = vec![0, 6];
-    p.accompaniment.chop_steps = vec![3, 9];
-    p.accompaniment.strong_steps = vec![0, 6];
+    if let Some(a) = &mut p.accompaniment {
+        a.bass_steps = vec![0, 6];
+        a.chop_steps = vec![3, 9];
+        a.strong_steps = vec![0, 6];
+    }
     for pattern in &mut p.percussion.patterns {
         pattern.hits = vec![FootHit::heel(0), FootHit::toe(3), FootHit::heel(6), FootHit::toe(9)];
     }
@@ -331,5 +333,46 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     assert_eq!(tour_bars[24].part, Part(1));
     assert_eq!(tour_bars[24].pass, 2);
 
+    Ok(())
+}
+#[test]
+fn non_regression_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::error::Error>> {
+    for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
+        let profile = StyleProfile::named(style_id)?;
+        let tuning =
+            harmonium_core::TuningParams { profile: profile.clone(), ..Default::default() };
+        let mut params = MusicalParams::default();
+        params.bpm = profile.meter.default_bpm;
+        params.enable_melody = true;
+        params.enable_harmony = true;
+        params.enable_rhythm = false; // --feet off
+        let mut all_runs = serde_json::Map::new();
+        for seed in 1..=3 {
+            let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let bars: Vec<_> = (1..=64)
+                .map(|bar| {
+                    let m = generator.generate_measure(bar, &mut rng);
+                    let s = MeasureSnapshot::from_measure(&m);
+                    (bar, notes(&s))
+                })
+                .collect();
+            all_runs.insert(format!("seed_{seed}"), serde_json::to_value(bars)?);
+        }
+        let golden: serde_json::Value = match style_id {
+            "gigue_quebecoise" => {
+                serde_json::from_str(include_str!("fixtures/main_golden_gigue_quebecoise.json"))?
+            }
+            "valse_quebecoise" => {
+                serde_json::from_str(include_str!("fixtures/main_golden_valse_quebecoise.json"))?
+            }
+            _ => unreachable!(),
+        };
+        let actual = serde_json::Value::Object(all_runs);
+        assert_eq!(
+            actual, golden,
+            "notes de {style_id} différentes de main (graines 1..3, 64 mesures, feet off)"
+        );
+    }
     Ok(())
 }
