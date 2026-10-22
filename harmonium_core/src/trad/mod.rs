@@ -33,5 +33,5 @@ pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,
     harmonize_bar,
 };
-pub use mode::{Mode, PitchClass, degree_to_diatonic_step, diatonic_step_to_degree};
+pub use mode::{Mode, degree_to_diatonic_step, diatonic_step_to_degree};
 pub use plan::{BarRole, ImposedRole, TunePlan};

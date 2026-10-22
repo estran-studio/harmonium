@@ -157,3 +157,111 @@ graph TD
    - Supprimer `harmonium_core/tests/music_generation_tests.rs`, `key_space_probe.rs`, `barline_integration_tests.rs`.
 4. **Mise à jour de la documentation** :
    - Nettoyer les README de `harmonium_core`, `harmonium_cli`, `harmonium_audio`.
+
+## 6. Portages P2-T5b réalisés
+
+- Théorie neutre : `harmony/chord.rs` → `theory/chord.rs` et
+  `harmony/voice_leading.rs` → `theory/voice_leading.rs`.
+  Alias canonique unique : `theory::PitchClass` ; tous les consommateurs
+  (Legacy, profils, host, audio et labo) utilisent les nouveaux chemins.
+  La conversion vers la qualité Legacy reste dans `harmony/basic.rs`,
+  à supprimer avec ce module en P2-T5c.
+- Rythme : Bjorklund de `sequencer.rs` → `algo/euclidean.rs`.
+  Les motifs `percussion.patterns` acceptent `euclid = { pulses, steps, rotation }`
+  et `track = "Heel" | "Toe"` (défaut Heel). Rotation positive vers la droite ;
+  le chargeur développe les pas une seule fois, hors callback audio.
+- Harmonie : règles, réalisations et état Steedman → `models/jazz.rs`.
+  `models::HarmonyPlan` sélectionne `trad_functional` ou `jazz_functional`.
+  Les règles/poids, `max_recursion`, `steps_per_chord` et `scale_guidance`
+  viennent de `[harmony]`. L'instance du modèle n'a ni verrou ni état global ;
+  l'adaptateur `harmony/steedman_grammar.rs` reste propre à Legacy jusqu'à P2-T5c.
+- Lydian Chromatic : `harmony/lydian_chromatic.rs` → `theory/lydian_chromatic.rs`
+  (coût S). Option jazz `scale_guidance = true` ; chaque changement d'accord
+  publie son contexte et sa gamme dans `MeasureSnapshot.chord_changes`.
+  Les cellules fournissent rythme et contour ; la réalisation jazz rapproche
+  les hauteurs des accords/gammes publiés et coupe les tenues aux changements.
+
+### Voicing parcimonieux : report motivé
+
+`harmony/parsimonious.rs` n'est pas un voicer dépendant seulement de `theory` :
+`set_params` lit `tuning::VoiceLeadingParams` et l'implémentation de
+`HarmonyStrategy::next_chord` dépend du contexte/RNG Legacy. Surtout,
+`find_neighbors` et `find_path` **remplacent les accords** (voire leur
+cardinalité) ; ils ne réalisent pas les voix MIDI d'un accord fixé.
+Les brancher comme `[accompaniment] voicing = "parsimonious"` modifierait donc
+la progression choisie par Steedman, au lieu de seulement conduire ses voix.
+
+L'option `accompaniment.voicing` n'est pas introduite en P2-T5b, conformément
+à la condition de report. Un futur voicer devra conserver l'accord cible et
+optimiser ses renversements/octaves dans la tessiture. Les fonctions pures
+réutilisables sont déjà dans `theory/voice_leading.rs`. En P2-T5c, supprimer
+le driver `harmony/parsimonious.rs` avec Legacy ; aucune copie dormante n'est
+gardée, et le code historique reste accessible dans Git.
+
+### Fixture jazz synthétique (hors distribution)
+
+`tests/fixtures/profiles/jazz_test/` contient un exercice 4/4, swing 2:1,
+AABA de 32 mesures à 120 BPM, cellules artificielles et percussion euclidienne.
+Ce n'est pas un style jazz validé : aucun corpus ni validation d'écoute.
+Le test de snapshots `harmonium_core/tests/jazz_profile_tests.rs` couvre les
+graines 1..10 sur 64 mesures : reprises A identiques, accords valides,
+ii-V-I (relatif à la tonalité publiée), déterminisme, mélodie dans les
+accords/gammes publiés et onsets de percussion aux pas 1, 5, 9, 13.
+
+Smoke CLI exécuté avec `--export --profile tests/fixtures/profiles/jazz_test
+--seed 42 --bars 32` : 64 secondes de rendu, export MIDI de 5 619 octets.
+Premières huit mesures observées : `Am7 | Dm7 | G7 | C | Dm7 | G7 | C | F`.
+La banque locale `assets/test.sf2` ne fournit pas tous les programmes GM :
+preuve de génération/export, pas validation du timbre ni écoute de style.
+
+### Non-régression trad (D2)
+
+Comparaison effectuée avec une extraction isolée de `main`
+(`f81fd7bdaf7bf7d761a2f892ae4beae6fcb90084`), exécutée avec le même
+harnais jetable que la branche de portage. Comparaison JSON exacte des
+tuples `(piste, hauteur, début, durée, vélocité)`, par mesure et dans l'ordre
+de publication, mêmes paramètres et mêmes graines :
+
+| Profil | Graines | Mesures par graine | Résultat |
+|---|---|---|---|
+| reel_quebecois | 1, 2, 3 | 64 | Identique à main |
+| gigue_quebecoise | 1, 2, 3 | 64 | Identique à main |
+| valse_quebecoise | 1, 2, 3 | 64 | Identique à main |
+
+Le contrat existant `automation::tests::profile_d2_main_note_reference`
+est vert sans modification de `profile_d2_main.json`. Les goldens
+existants ne sont pas régénérés : les profils trad n'ont pas changé de notes
+et le nouveau champ `chord_changes` est omis quand il est vide.
+
+### P2-T5c : reste à supprimer, sans supprimer les briques portées
+
+- `Style::Legacy` et sa sélection dans host/CLI/audio, `timeline/generator.rs`,
+  `sequencer.rs` (le Bjorklund canonique est dans `algo`), ancien export
+  événementiel, mapper Legacy et `fractal.rs`.
+- Tout le driver `harmony` restant : `driver`, `pivot`, `basic`, `melody`,
+  `neo_riemannian`, `parsimonious` et l'adaptateur `steedman_grammar`.
+  Retirer aussi la conversion Legacy implémentée dans `basic.rs`.
+- Paramètres/commandes Legacy et tests/goldens devenus sans consommateurs.
+  Le labo importe encore le `TRQ` de `parsimonious` pour ses métriques :
+  migrer ou remplacer ces usages avant la suppression, sans conserver le driver.
+- **Conserver** `theory/*`, `algo/euclidean.rs`, `models/*`, les exports
+  MIDI/MusicXML de `timeline` et **l'actuel** `style_profile.rs` : ce dernier
+  est maintenant le chargeur v2, pas la vieille surcouche citée dans l'inventaire
+  historique. Les voicers audio restent en réserve active de bibliothèque ;
+  ils n'ont pas été branchés par cette tâche.
+
+### Vérification finale P2-T5b
+
+- `cargo fmt --all` puis `cargo fmt --all -- --check` : conformes.
+- `cargo test --workspace` : **512 passés**, 33 ignorés (suites existantes).
+  Legacy, D2 et contrats de profils inclus ; aucun golden régénéré.
+- `cargo clippy --workspace --all-targets` : code retour 0. Comparaison
+  structurée de `cargo clippy --workspace --message-format=json` avec main :
+  **aucun nouveau diagnostic hors tests** (189 avertissements préexistants
+  dans main, 188 dans la branche ; un ancien `needless_bool` supprimé).
+- Le chargeur CLI refuse avant initialisation audio un poids fini dont le
+  multiplicateur de catégorie ferait déborder la somme effective :
+  `harmony.rules: somme des poids effectifs finie positive` (code retour 1 attendu).
+- Harnais de comparaison et exemple de smoke jetables retirés du dépôt.
+  Aucun changement au callback audio ; export offline jazz exécuté en debug
+  sans déclenchement du contrôle d'allocations temps réel.

@@ -3,7 +3,7 @@
 //! Utilise l'algorithme euclidien pour créer des patterns de jeu syncopés
 //! plutôt que de jouer sur chaque beat.
 
-use harmonium_core::sequencer::generate_euclidean_bools;
+use harmonium_core::algo::euclidean::generate_euclidean_bools;
 
 /// Pattern de comping basé sur l'algorithme euclidien
 #[derive(Clone, Debug)]

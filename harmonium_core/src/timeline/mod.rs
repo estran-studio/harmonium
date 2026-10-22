@@ -190,7 +190,14 @@ pub struct ChordContext {
     /// `None` for measures generated before this field existed or when the
     /// chord/key context is unavailable.
     #[serde(default)]
-    pub scale_guidance: Option<crate::harmony::ScaleGuidance>,
+    pub scale_guidance: Option<crate::theory::lydian_chromatic::ScaleGuidance>,
+}
+
+/// Accord publié à son pas exact, notamment pour les changements intra-mesure.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChordChange {
+    pub start_step: usize,
+    pub context: ChordContext,
 }
 
 /// A complete measure of music across all tracks.
@@ -215,6 +222,8 @@ pub struct Measure {
     pub position: Option<crate::trad::TunePosition>,
     /// Chord context for this measure
     pub chord_context: ChordContext,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chord_changes: Vec<ChordChange>,
     /// State snapshot at generation time
     pub state_snapshot: StateSnapshot,
     /// Notes per track
@@ -246,6 +255,7 @@ impl Measure {
             pulse: PulseSpec::default(),
             position: None,
             chord_context: ChordContext::default(),
+            chord_changes: Vec::new(),
             state_snapshot: StateSnapshot::default(),
             tracks,
         }

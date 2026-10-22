@@ -12,14 +12,19 @@ use super::{
     feet::{draw_feet_humanize, feet_notes},
     fiddle::{FiddleLine, same_cell_up_to_octave, tonic_midi_for_key},
     harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
-    mode::{Mode, PitchClass},
+    mode::Mode,
     plan::{BarRole, ImposedRole, TunePlan},
 };
 use crate::{
     harmony::RngCore,
+    models::{
+        HarmonyPlan,
+        jazz::{GrammarStyle, SteedmanGrammar},
+    },
     params::MusicalParams,
+    theory::{PitchClass, chord::Chord, lydian_chromatic::LydianChromaticConcept},
     timeline::{
-        Articulation, ChordContext, GenerationContext, Measure, NoteId, StateSnapshot,
+        Articulation, ChordChange, ChordContext, GenerationContext, Measure, NoteId, StateSnapshot,
         TimelineNote, TrackId,
     },
     tuning::{ReelFiddleParams, TuningParams},
@@ -38,8 +43,8 @@ pub struct ActiveTune {
     pub plan: TunePlan,
     /// Ligne de violon des 32 mesures d'un tour.
     pub fiddle: FiddleLine,
-    /// Harmonie par demi-mesure des 32 mesures d'un tour.
-    pub harmony: TuneHarmony,
+    /// Modèle harmonique sélectionné par le profil, précalculé par mesure.
+    pub harmony: HarmonyPlan,
     /// Décalages d'humanisation des vélocités des pieds, par position de mesure
     /// (2 strains × 8 mesures) et par pas. Tirés une fois à la génération du
     /// tune pour garantir des reprises identiques (A1=A2, B1=B2, D4).
@@ -318,6 +323,7 @@ impl TradGenerator {
         }
 
         self.apply_dynamics(&mut measure);
+        self.fit_jazz_melody(&mut measure, &tune, &position);
 
         measure
     }
@@ -370,12 +376,19 @@ impl TradGenerator {
         if tune.plan.mode != mode {
             tune.plan.mode = mode;
             tune.fiddle.set_mode(mode);
-            let melody: Vec<_> = (0..self.profile.form.unique_bars())
-                .map(|i| tune.fiddle.notes_for_bar(tune.plan.first_pass_bar(i)))
-                .collect();
-            tune.harmony =
-                TuneHarmony::new(tune.plan.clone(), &melody, &self.tuning.profile.accompaniment)
-                    .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}"));
+            if matches!(tune.harmony, HarmonyPlan::TradFunctional(_)) {
+                let melody: Vec<_> = (0..self.profile.form.unique_bars())
+                    .map(|i| tune.fiddle.notes_for_bar(tune.plan.first_pass_bar(i)))
+                    .collect();
+                tune.harmony = HarmonyPlan::TradFunctional(
+                    TuneHarmony::new(
+                        tune.plan.clone(),
+                        &melody,
+                        &self.tuning.profile.accompaniment,
+                    )
+                    .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}")),
+                );
+            }
         }
         position.mode = mode;
     }
@@ -509,6 +522,13 @@ impl TradGenerator {
         position: &TunePosition,
         measure: &mut Measure,
     ) {
+        if let HarmonyPlan::JazzFunctional(bars) = &tune.harmony {
+            let slot =
+                self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
+            self.fill_jazz_measure(tune, position, &bars[slot], measure);
+            self.fill_percussion(tune, position, measure);
+            return;
+        }
         let bar_in_tour = position.bar_in_tour();
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
@@ -546,7 +566,147 @@ impl TradGenerator {
                 measure.add_note(TrackId::Bass, note);
             }
         }
+        self.fill_percussion(tune, position, measure);
+    }
 
+    fn fill_jazz_measure(
+        &mut self,
+        tune: &ActiveTune,
+        position: &TunePosition,
+        chords: &[Chord],
+        measure: &mut Measure,
+    ) {
+        let period = self.profile.harmony.steps_per_chord;
+        for (slot, chord) in chords.iter().enumerate() {
+            let name = chord.name();
+            let guidance = self.profile.harmony.scale_guidance.then(|| {
+                LydianChromaticConcept::new().scale_guidance(
+                    chord,
+                    name.clone(),
+                    self.musical_params.harmony_tension,
+                )
+            });
+            measure.chord_changes.push(ChordChange {
+                start_step: slot * period,
+                context: ChordContext {
+                    root_offset: (i32::from(chord.root) - i32::from(tune.plan.key)).rem_euclid(12),
+                    is_minor: chord.chord_type.is_minor(),
+                    chord_name: name,
+                    scale_guidance: guidance,
+                },
+            });
+        }
+        measure.chord_context = measure.chord_changes[0].context.clone();
+        if self.track_active(TrackId::Melody, position) {
+            for mut note in tune.fiddle.notes_for_bar(position.bar_in_tour()) {
+                note.id = self.alloc_note_id();
+                measure.add_note(TrackId::Melody, note);
+            }
+        }
+        let accompaniment = &self.tuning.profile.accompaniment;
+        for track in [TrackId::Chords, TrackId::Bass] {
+            if !self.track_active(track, position) {
+                continue;
+            }
+            let (steps, duration, velocity) = if track == TrackId::Chords {
+                (
+                    &accompaniment.chop_steps,
+                    accompaniment.chop_duration_steps,
+                    accompaniment.chop_velocity,
+                )
+            } else {
+                (
+                    &accompaniment.bass_steps,
+                    accompaniment.bass_duration_steps,
+                    accompaniment.bass_velocity,
+                )
+            };
+            for &step in steps {
+                let chord = &chords[step / period];
+                let intervals =
+                    if track == TrackId::Chords { chord.chord_type.intervals() } else { &[0] };
+                for &interval in intervals {
+                    let pc = (chord.root + interval) % 12;
+                    let (center, low, high) = if track == TrackId::Chords {
+                        (accompaniment.guitar_center, 0, 127)
+                    } else {
+                        (accompaniment.bass_low, accompaniment.bass_low, accompaniment.bass_high)
+                    };
+                    let pitch = nearest_pitch([pc], center, low, high);
+                    let note = TimelineNote {
+                        id: self.next_note_id,
+                        pitch,
+                        velocity,
+                        start_step: step,
+                        duration_steps: duration.min(period - step % period),
+                        articulation: Articulation::Normal,
+                    };
+                    self.next_note_id += 1;
+                    measure.add_note(track, note);
+                }
+            }
+        }
+    }
+
+    /// Les cellules restent la source du rythme et du contour ; seules les
+    /// hauteurs hors accord/gamme sont rapprochées du contexte publié.
+    fn fit_jazz_melody(
+        &mut self,
+        measure: &mut Measure,
+        tune: &ActiveTune,
+        position: &TunePosition,
+    ) {
+        let HarmonyPlan::JazzFunctional(bars) = &tune.harmony else { return };
+        if measure.chord_changes.is_empty() {
+            return;
+        }
+        let bar = self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
+        let chords = &bars[bar];
+        let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) else { return };
+        let source = std::mem::take(notes);
+        notes.reserve(source.len() + measure.chord_changes.len());
+        let params = &self.tuning.profile.melody.params;
+        for note in source {
+            let end = note.start_step + note.duration_steps;
+            let mut start = note.start_step;
+            while start < end {
+                let slot = start / self.profile.harmony.steps_per_chord;
+                let change = &measure.chord_changes[slot];
+                let next =
+                    measure.chord_changes.get(slot + 1).map_or(measure.steps, |c| c.start_step);
+                let chord = &chords[slot];
+                let scale = change
+                    .context
+                    .scale_guidance
+                    .as_ref()
+                    .map_or(&[][..], |guidance| guidance.scale_notes.as_slice());
+                let allowed = chord
+                    .chord_type
+                    .intervals()
+                    .iter()
+                    .map(|&interval| (chord.root + interval) % 12)
+                    .chain(scale.iter().copied());
+                let mut segment = note.clone();
+                segment.pitch =
+                    nearest_pitch(allowed, note.pitch, params.tessitura_min, params.tessitura_max);
+                segment.start_step = start;
+                segment.duration_steps = end.min(next) - start;
+                if start != note.start_step {
+                    segment.id = self.next_note_id;
+                    self.next_note_id += 1;
+                }
+                notes.push(segment);
+                start = end.min(next);
+            }
+        }
+    }
+
+    fn fill_percussion(
+        &mut self,
+        tune: &ActiveTune,
+        position: &TunePosition,
+        measure: &mut Measure,
+    ) {
         // 3. Podorythmie (talon + pointe, D9)
         let heel_active = self.track_active(TrackId::Heel, position);
         let toe_active = self.track_active(TrackId::Toe, position);
@@ -668,7 +828,10 @@ impl TradGenerator {
     /// Variation harmonique de l'accompagnement uniquement : cadences et
     /// squelette mélodique restent ceux de l'air.
     fn chords_for_bar<'a>(&self, tune: &'a ActiveTune, bar: usize) -> Cow<'a, [TradChord]> {
-        let mut chords = Cow::Borrowed(tune.harmony.chords_for_bar(bar));
+        let HarmonyPlan::TradFunctional(harmony) = &tune.harmony else {
+            unreachable!("traditional voicing requires traditional harmony")
+        };
+        let mut chords = Cow::Borrowed(harmony.chords_for_bar(bar));
         let threshold =
             self.tuning.profile.dynamics.tension_dominant.eval(self.musical_params.harmony_tension);
         let role = tune.plan.bar_role(bar);
@@ -922,12 +1085,37 @@ impl TradGenerator {
             }
         }
 
-        let distinct_melody: Vec<_> = (0..self.profile.form.unique_bars())
-            .map(|i| fiddle.notes_for_bar(plan.first_pass_bar(i)))
-            .collect();
-        let harmony =
-            TuneHarmony::new(plan.clone(), &distinct_melody, &self.tuning.profile.accompaniment)
-                .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}"));
+        let harmony = if self.profile.harmony.model == "jazz_functional" {
+            let mut model = SteedmanGrammar::new(
+                self.profile.harmony.rules.clone(),
+                self.profile.harmony.max_recursion,
+            );
+            let chords_per_bar =
+                self.profile.meter.steps_per_bar / self.profile.harmony.steps_per_chord;
+            let bars = (0..self.profile.form.unique_bars())
+                .map(|_| {
+                    (0..chords_per_bar)
+                        .map(|_| {
+                            let numeral = model.next_numeral(valence, &mut || rng.next_f32());
+                            SteedmanGrammar::realize(numeral, plan.key, valence, GrammarStyle::Jazz)
+                        })
+                        .collect()
+                })
+                .collect();
+            HarmonyPlan::JazzFunctional(bars)
+        } else {
+            let distinct_melody: Vec<_> = (0..self.profile.form.unique_bars())
+                .map(|i| fiddle.notes_for_bar(plan.first_pass_bar(i)))
+                .collect();
+            HarmonyPlan::TradFunctional(
+                TuneHarmony::new(
+                    plan.clone(),
+                    &distinct_melody,
+                    &self.tuning.profile.accompaniment,
+                )
+                .unwrap_or_else(|error| unreachable!("distinct melody matches form: {error}")),
+            )
+        };
         let feet_humanize = draw_feet_humanize(
             self.tuning.profile.percussion.velocity_humanize,
             self.profile.form.unique_bars(),
@@ -1173,6 +1361,16 @@ pub const fn is_tonic_chord(chord: TradChord) -> bool {
 // Tests
 // ---------------------------------------------------------------------------
 
+fn nearest_pitch(pcs: impl IntoIterator<Item = u8>, center: u8, low: u8, high: u8) -> u8 {
+    pcs.into_iter()
+        .flat_map(|pc| {
+            let octave = (i16::from(center) - i16::from(pc)).div_euclid(12);
+            [octave - 1, octave, octave + 1].map(move |o| o * 12 + i16::from(pc))
+        })
+        .filter(|&pitch| pitch >= i16::from(low) && pitch <= i16::from(high))
+        .min_by_key(|&pitch| (pitch - i16::from(center)).abs())
+        .map_or_else(|| unreachable!("validated register spans an octave"), |pitch| pitch as u8)
+}
 #[cfg(test)]
 mod tests {
     use rand::SeedableRng;

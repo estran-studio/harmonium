@@ -6,8 +6,7 @@
 //! - Extensions et basse séparée
 //! - Niveau LCC (Lydian Chromatic Concept)
 
-/// Pitch class (0-11, où 0=C, 1=C#/Db, 2=D, etc.)
-pub type PitchClass = u8;
+use super::PitchClass;
 
 /// Noms des notes pour affichage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -135,26 +134,25 @@ pub enum ChordType {
 impl ChordType {
     /// Retourne les intervalles (en demi-tons) depuis la fondamentale
     #[must_use]
-    pub fn intervals(&self) -> Vec<u8> {
+    pub const fn intervals(&self) -> &'static [u8] {
         match self {
-            Self::Major => vec![0, 4, 7],
-            Self::Minor => vec![0, 3, 7],
-            Self::Augmented => vec![0, 4, 8],
-            Self::Diminished => vec![0, 3, 6],
-            Self::Dominant7 => vec![0, 4, 7, 10],
-            Self::Major7 => vec![0, 4, 7, 11],
-            Self::Minor7 => vec![0, 3, 7, 10],
-            Self::HalfDiminished => vec![0, 3, 6, 10],
-            Self::Diminished7 => vec![0, 3, 6, 9],
-            Self::Sus2 => vec![0, 2, 7],
-            Self::Sus4 => vec![0, 5, 7],
-            // Nouveaux types V2
-            Self::MinorMajor7 => vec![0, 3, 7, 11],
-            Self::Augmented7 => vec![0, 4, 8, 10],
-            Self::Major6 => vec![0, 4, 7, 9],
-            Self::Minor6 => vec![0, 3, 7, 9],
-            Self::Dominant7Sus4 => vec![0, 5, 7, 10],
-            Self::Add9 => vec![0, 2, 4, 7],
+            Self::Major => &[0, 4, 7],
+            Self::Minor => &[0, 3, 7],
+            Self::Augmented => &[0, 4, 8],
+            Self::Diminished => &[0, 3, 6],
+            Self::Dominant7 => &[0, 4, 7, 10],
+            Self::Major7 => &[0, 4, 7, 11],
+            Self::Minor7 => &[0, 3, 7, 10],
+            Self::HalfDiminished => &[0, 3, 6, 10],
+            Self::Diminished7 => &[0, 3, 6, 9],
+            Self::Sus2 => &[0, 2, 7],
+            Self::Sus4 => &[0, 5, 7],
+            Self::MinorMajor7 => &[0, 3, 7, 11],
+            Self::Augmented7 => &[0, 4, 8, 10],
+            Self::Major6 => &[0, 4, 7, 9],
+            Self::Minor6 => &[0, 3, 7, 9],
+            Self::Dominant7Sus4 => &[0, 5, 7, 10],
+            Self::Add9 => &[0, 2, 4, 7],
         }
     }
 
@@ -512,31 +510,6 @@ impl Chord {
             .bass
             .map_or(String::new(), |b| format!("/{}", NoteName::from_pitch_class(b).as_str()));
         format!("{root_name}{suffix}{bass_str}")
-    }
-
-    /// Convertit vers le `ChordQuality` de l'ancien système (pour compatibilité)
-    #[must_use]
-    pub const fn to_basic_quality(&self) -> super::basic::ChordQuality {
-        match self.chord_type {
-            ChordType::Major
-            | ChordType::Major7
-            | ChordType::Augmented
-            | ChordType::Major6
-            | ChordType::Augmented7
-            | ChordType::Add9 => super::basic::ChordQuality::Major,
-            ChordType::Minor
-            | ChordType::Minor7
-            | ChordType::HalfDiminished
-            | ChordType::MinorMajor7
-            | ChordType::Minor6 => super::basic::ChordQuality::Minor,
-            ChordType::Diminished | ChordType::Diminished7 => {
-                super::basic::ChordQuality::Diminished
-            }
-            ChordType::Dominant7 | ChordType::Dominant7Sus4 => {
-                super::basic::ChordQuality::Dominant7
-            }
-            ChordType::Sus2 | ChordType::Sus4 => super::basic::ChordQuality::Sus2,
-        }
     }
 
     /// Identifie un accord à partir d'un ensemble de pitch classes.

@@ -148,20 +148,92 @@ impl Serialize for FootHit {
 }
 
 /// Pattern de coups de pieds pour un niveau de densité donné (D9).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FeetPattern {
     /// Niveau de densité (`0`, `1` ou `2`).
     pub density: u8,
     /// Liste des coups composant la mesure.
-    #[serde(default)]
     pub hits: Vec<FootHit>,
+    euclid: Option<(EuclideanPattern, TrackId)>,
 }
 
 impl FeetPattern {
     /// Crée un nouveau [`FeetPattern`].
     #[must_use]
     pub const fn new(density: u8, hits: Vec<FootHit>) -> Self {
-        Self { density, hits }
+        Self { density, hits, euclid: None }
+    }
+
+    pub(crate) fn euclidean_steps(&self) -> Option<usize> {
+        self.euclid.map(|(pattern, _)| pattern.steps)
+    }
+}
+
+/// Motif euclidien en pas ; rotation positive vers la droite.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EuclideanPattern {
+    pub pulses: usize,
+    pub steps: usize,
+    #[serde(default)]
+    pub rotation: i32,
+}
+
+impl<'de> Deserialize<'de> for FeetPattern {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Raw {
+            density: u8,
+            hits: Option<Vec<FootHit>>,
+            euclid: Option<EuclideanPattern>,
+            #[serde(default)]
+            track: Option<String>,
+        }
+        let raw = Raw::deserialize(deserializer)?;
+        let mut euclid = None;
+        let hits = match (raw.hits, raw.euclid) {
+            (Some(hits), None) if raw.track.is_none() => hits,
+            (None, Some(e)) => {
+                if !(1..=4096).contains(&e.steps) || e.pulses > e.steps {
+                    return Err(serde::de::Error::custom(
+                        "euclid : steps dans 1..4096 et pulses <= steps requis",
+                    ));
+                }
+                let track = match raw.track.as_deref().unwrap_or("Heel") {
+                    "Heel" | "heel" => TrackId::Heel,
+                    "Toe" | "toe" => TrackId::Toe,
+                    _ => return Err(serde::de::Error::custom("track : Heel ou Toe requis")),
+                };
+                euclid = Some((e, track));
+                let mut pattern =
+                    crate::algo::euclidean::generate_euclidean_bools(e.steps, e.pulses);
+                pattern.rotate_right(e.rotation.rem_euclid(e.steps as i32) as usize);
+                pattern
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(step, hit)| hit.then_some(FootHit::new(step, track, 0)))
+                    .collect()
+            }
+            (None, None) if raw.track.is_none() => Vec::new(),
+            _ => return Err(serde::de::Error::custom("choisir hits ou euclid, pas les deux")),
+        };
+        Ok(Self { density: raw.density, hits, euclid })
+    }
+}
+
+impl Serialize for FeetPattern {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("FeetPattern", 3)?;
+        state.serialize_field("density", &self.density)?;
+        if let Some((pattern, track)) = self.euclid {
+            state.serialize_field("euclid", &pattern)?;
+            state.serialize_field("track", if track == TrackId::Toe { "Toe" } else { "Heel" })?;
+        } else {
+            state.serialize_field("hits", &self.hits)?;
+        }
+        state.end()
     }
 }
 

@@ -11,14 +11,20 @@ use std::sync::Arc;
 
 use super::{
     HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType,
-    chord::{Chord, ChordType, PitchClass},
-    lydian_chromatic::LydianChromaticConcept,
     neo_riemannian::NeoRiemannianEngine,
     parsimonious::ParsimoniousDriver,
     pivot::{PivotDetector, PivotType},
-    steedman_grammar::{GrammarStyle, SteedmanGrammar},
+    steedman_grammar::SteedmanGrammar,
 };
-use crate::tuning::HarmonyDriverParams;
+use crate::{
+    models::jazz::GrammarStyle,
+    theory::{
+        PitchClass,
+        chord::{Chord, ChordType},
+        lydian_chromatic::LydianChromaticConcept,
+    },
+    tuning::HarmonyDriverParams,
+};
 
 /// Mode de stratégie actuel (version V2 avec Parsimonious)
 #[derive(Clone, Copy, Debug, PartialEq)]

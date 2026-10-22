@@ -958,10 +958,7 @@ mod tests {
         assert!(tp.classic_groove.ghost_note_velocity < 0.25, "Ghost notes should be subtle");
 
         // 5. Jazz grammar style
-        assert_eq!(
-            tp.grammar.grammar_style,
-            harmonium_core::harmony::steedman_grammar::GrammarStyle::Jazz
-        );
+        assert_eq!(tp.grammar.grammar_style, harmonium_core::models::jazz::GrammarStyle::Jazz);
 
         // 6. Lower crash velocity (not aggressive)
         assert!(tp.arrangement.crash_velocity < 110, "Bossa crashes should be gentle");

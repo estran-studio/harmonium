@@ -3,7 +3,7 @@
 //! Algorithmes pour minimiser le mouvement mélodique entre accords
 //! et assurer des transitions lisses.
 
-use super::chord::{Chord, PitchClass};
+use super::{PitchClass, chord::Chord};
 
 /// Calcule la distance minimale entre deux pitch classes sur le cercle chromatique
 #[must_use]
@@ -102,13 +102,13 @@ pub fn suggest_passing_chord(from: &Chord, to: &Chord) -> Option<Chord> {
     for &pc in &from_pcs {
         if to_pcs.contains(&pc) {
             // Construire un accord sus4 sur cette note
-            return Some(Chord::new(pc, super::chord::ChordType::Sus4));
+            return Some(Chord::new(pc, crate::theory::chord::ChordType::Sus4));
         }
     }
 
     // Pas de note commune: utiliser un accord diminué sur la moyenne
     let avg_root = u16::midpoint(u16::from(from.root), u16::from(to.root)) as u8 % 12;
-    Some(Chord::new(avg_root, super::chord::ChordType::Diminished))
+    Some(Chord::new(avg_root, crate::theory::chord::ChordType::Diminished))
 }
 
 /// Calcule le "smoothness" d'une progression (moyenne des distances)
@@ -129,7 +129,8 @@ pub fn progression_smoothness(chords: &[Chord]) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::chord::ChordType, *};
+    use super::*;
+    use crate::theory::chord::ChordType;
 
     #[test]
     fn test_pitch_class_distance() {

@@ -7,10 +7,13 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    mode::{Mode, PitchClass},
+    mode::Mode,
     plan::{BarRole, ImposedRole, TunePlan},
 };
-use crate::{style_profile::StyleProfile, timeline::TimelineNote, tuning::TradHarmonyParams};
+use crate::{
+    style_profile::StyleProfile, theory::PitchClass, timeline::TimelineNote,
+    tuning::TradHarmonyParams,
+};
 
 /// Degré de la fondamentale d'un accord, relatif à la tonique du mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

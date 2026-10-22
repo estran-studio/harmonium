@@ -13,10 +13,11 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
-    harmony::{Chord, ChordType, HarmonicDriver, HarmonyNavigator, RngCore},
+    harmony::{HarmonicDriver, HarmonyNavigator, RngCore},
     log,
     params::{CurrentState, EngineParams, MusicalParams, SessionConfig, Style, TimeSignature},
     sequencer::Sequencer,
+    theory::chord::{Chord, ChordType},
     timeline::{GenerationContext, Measure, TimelineGenerator, Writehead},
     trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
     tuning::TuningParams,

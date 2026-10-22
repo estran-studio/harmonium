@@ -111,7 +111,15 @@ pub struct ModeChords {
 pub struct ProfileHarmony {
     pub model: String,
     pub steps_per_chord: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<ModeChords>,
+    /// Règles et poids du modèle jazz ; les profils trad ne les consultent pas.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rules: Vec<crate::models::jazz::RewriteRule>,
+    #[serde(default)]
+    pub max_recursion: u8,
+    #[serde(default)]
+    pub scale_guidance: bool,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -492,9 +500,9 @@ impl StyleProfile {
             "poids libres : somme positive sans débordement",
         )?;
         check(
-            self.harmony.model == "trad_functional",
+            matches!(self.harmony.model.as_str(), "trad_functional" | "jazz_functional"),
             "harmony.model",
-            "modèle disponible : trad_functional",
+            "modèles disponibles : trad_functional, jazz_functional",
         )?;
         check(
             self.harmony.steps_per_chord > 0
@@ -502,6 +510,36 @@ impl StyleProfile {
             "harmony.steps_per_chord",
             "doit diviser steps_per_bar",
         )?;
+        if self.harmony.model == "jazz_functional" {
+            check(self.harmony.max_recursion <= 16, "harmony.max_recursion", "attendu 0..16")?;
+            check(
+                !self.harmony.rules.is_empty() && self.harmony.rules.len() <= 256,
+                "harmony.rules",
+                "1..256 règles requises pour jazz_functional",
+            )?;
+            let mut total = 0.0f32;
+            for (i, rule) in self.harmony.rules.iter().enumerate() {
+                check(
+                    rule.weight.is_finite()
+                        && rule.weight >= 0.0
+                        && !rule.rhs.is_empty()
+                        && rule.rhs.len() <= 64
+                        && rule.min_valence.is_finite()
+                        && rule.max_valence.is_finite()
+                        && (-1.0..=1.0).contains(&rule.min_valence)
+                        && (rule.min_valence..=1.0).contains(&rule.max_valence),
+                    &format!("harmony.rules[{i}]"),
+                    "poids fini positif ou nul, 1..64 symboles, valences ordonnées dans -1..1",
+                )?;
+                total += rule.weight
+                    * crate::models::jazz::GrammarStyle::Jazz.category_weight(rule.category);
+            }
+            check(
+                total.is_finite() && total > 0.0,
+                "harmony.rules",
+                "somme des poids effectifs finie positive",
+            )?;
+        }
         let mut modes = HashSet::new();
         for (i, entry) in self.harmony.candidates.iter().enumerate() {
             check(
@@ -517,7 +555,8 @@ impl StyleProfile {
             )?;
         }
         check(
-            Mode::ALL.iter().all(|mode| modes.contains(mode)),
+            self.harmony.model != "trad_functional"
+                || Mode::ALL.iter().all(|mode| modes.contains(mode)),
             "harmony.candidates",
             "accords requis pour les quatre modes (dynamique parallèle)",
         )?;
@@ -556,8 +595,18 @@ impl StyleProfile {
             "accompaniment.bass_low",
             "registre MIDI invalide",
         )?;
+        check(
+            self.harmony.model != "jazz_functional" || a.bass_high - a.bass_low >= 11,
+            "accompaniment.bass_high",
+            "le registre jazz doit couvrir les douze classes de hauteur",
+        )?;
         self.percussion.validate().map_err(|e| ProfileError::new("percussion", e))?;
         for (i, pattern) in self.percussion.patterns.iter().enumerate() {
+            check(
+                pattern.euclidean_steps().is_none_or(|steps| steps == m.steps_per_bar),
+                &format!("percussion.patterns[{i}].euclid.steps"),
+                "doit égaler meter.steps_per_bar",
+            )?;
             check(
                 pattern.hits.iter().all(|h| h.step < m.steps_per_bar),
                 &format!("percussion.patterns[{i}].hits"),

@@ -1,3 +1,4 @@
+pub mod algo;
 pub mod command;
 pub mod events;
 pub mod export;
@@ -5,10 +6,12 @@ pub mod fractal;
 pub mod harmony;
 pub mod log;
 pub mod mapper;
+pub mod models;
 pub mod params;
 pub mod report;
 pub mod sequencer;
 pub mod style_profile;
+pub mod theory;
 pub mod timeline;
 pub mod trad;
 pub mod tuning;

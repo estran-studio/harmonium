@@ -10,12 +10,15 @@
 
 use std::sync::Arc;
 
-use super::{
-    HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType,
-    chord::{Chord, ChordType, PitchClass},
-    lydian_chromatic::LydianChromaticConcept,
+use super::{HarmonyContext, HarmonyDecision, HarmonyStrategy, RngCore, TransitionType};
+use crate::{
+    theory::{
+        PitchClass,
+        chord::{Chord, ChordType},
+        lydian_chromatic::LydianChromaticConcept,
+    },
+    tuning::NeoRiemannianParams,
 };
-use crate::tuning::NeoRiemannianParams;
 
 /// Les trois opérations fondamentales Neo-Riemannian
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

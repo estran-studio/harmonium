@@ -99,7 +99,7 @@ impl Voicer for BlockChordVoicer {
 
 #[cfg(test)]
 mod tests {
-    use harmonium_core::harmony::chord::ChordType;
+    use harmonium_core::theory::chord::ChordType;
 
     use super::*;
 
