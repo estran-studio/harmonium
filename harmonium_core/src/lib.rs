@@ -3,6 +3,7 @@ pub mod command;
 pub mod events;
 pub mod log;
 pub mod mapper;
+pub mod mix;
 pub mod models;
 pub mod params;
 pub mod report;

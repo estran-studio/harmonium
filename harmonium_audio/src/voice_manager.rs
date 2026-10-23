@@ -1,7 +1,6 @@
 use std::io::Cursor;
 
 use harmonium_core::events::AudioEvent;
-use rand::Rng;
 
 /// Routing of a logical channel to a SoundFont bank.
 ///
@@ -291,8 +290,14 @@ impl VoiceManager {
         &mut self,
         instruments: &harmonium_core::style_profile::ProfileInstruments,
     ) {
-        for (ch, prog) in gm_programs_for_profile(instruments) {
-            self.set_channel_program(ch as usize, prog);
+        for (channel, program) in [
+            (0, Some(instruments.melody_program)),
+            (1, instruments.chords_program),
+            (2, instruments.bass_program),
+        ] {
+            if let Some(program) = program {
+                self.set_channel_program(channel, program);
+            }
         }
         let bank = self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
         for channel in [3, 4] {
@@ -341,21 +346,6 @@ impl VoiceManager {
         }
     }
 
-    /// Mixer gains for the five instrument channels (melody=0, chords=1,
-    /// bass=2, heel=3, toe=4), applied as MIDI Channel Volume (CC 7). In GM
-    /// mode heel and toe share MIDI channel 9, so the toe gain is applied last
-    /// and wins.
-    pub fn set_gains(&mut self, lead: f32, chords: f32, bass: f32, snare: f32, hat: f32) {
-        for (channel, gain) in [(0usize, lead), (1, chords), (2, bass), (3, snare), (4, hat)] {
-            let midi_ch = self.midi_channel_map[channel];
-            let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                channel: midi_ch,
-                ctrl: 7,
-                value: (gain.clamp(0.0, 1.0) * 127.0) as u8,
-            });
-        }
-    }
-
     pub fn process_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::NoteOn { note, velocity, channel } => {
@@ -393,41 +383,6 @@ impl VoiceManager {
                     ctrl,
                     value,
                 });
-
-                if ctrl == 1 {
-                    // Modulation / Tension: filter, resonance and pitch
-                    // instability on the five instrument channels.
-                    let val_norm = f32::from(value) / 127.0;
-                    let cutoff_val = ((30.0 + val_norm * 97.0) as i32).clamp(0, 127) as u8;
-                    let res_val = ((val_norm * 90.0) as i32).clamp(0, 127) as u8;
-                    for ch in 0..5 {
-                        let mapped_ch = self.midi_channel_map[ch];
-                        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                            channel: mapped_ch,
-                            ctrl: 74,
-                            value: cutoff_val,
-                        });
-                        let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                            channel: mapped_ch,
-                            ctrl: 71,
-                            value: res_val,
-                        });
-
-                        // Horror: Pitch Instability (Detune)
-                        let bend_val = if val_norm > 0.6 {
-                            let mut rng = rand::thread_rng();
-                            let wobble_amount = (val_norm - 0.6) * 2000.0;
-                            let random_bend = rng.gen_range(-0.5..0.5) * wobble_amount;
-                            (8192.0 + random_bend) as i32
-                        } else {
-                            8192
-                        };
-                        let _ = self.synth.send_event(oxisynth::MidiEvent::PitchBend {
-                            channel: mapped_ch,
-                            value: bend_val.clamp(0, 16383) as u16,
-                        });
-                    }
-                }
             }
             AudioEvent::ProgramChange { channel, program } => {
                 self.set_channel_program(channel as usize, program);
@@ -441,7 +396,7 @@ impl VoiceManager {
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
             | AudioEvent::StopRecording { .. }
-            | AudioEvent::SetMixerGains { .. } => {}
+            | AudioEvent::SetMix { .. } => {}
         }
     }
 

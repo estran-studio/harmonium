@@ -8,6 +8,8 @@ use crate::{
 /// SoundFont renderer backed by oxisynth.
 pub struct SynthBackend {
     voice_manager: VoiceManager,
+    mix: harmonium_core::mix::PreparedMix,
+    eq_state: [[[f32; 2]; 2]; 2],
 }
 
 impl SynthBackend {
@@ -63,7 +65,10 @@ impl SynthBackend {
 
         voice_manager.configure_gm_defaults(gm_compatible, feet_sf2_bytes.is_some());
 
-        Self { voice_manager }
+        let mix = harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate);
+        let mut backend = Self { voice_manager, mix, eq_state: [[[0.0; 2]; 2]; 2] };
+        backend.apply_mix(mix);
+        backend
     }
 
     pub fn add_font(&mut self, id: u32, bytes: &[u8]) {
@@ -74,8 +79,27 @@ impl SynthBackend {
         self.voice_manager.set_channel_route(channel, route);
     }
 
-    pub fn set_gains(&mut self, lead: f32, chords: f32, bass: f32, snare: f32, hat: f32) {
-        self.voice_manager.set_gains(lead, chords, bass, snare, hat);
+    fn apply_mix(&mut self, mix: harmonium_core::mix::PreparedMix) {
+        if self.mix.eq != mix.eq {
+            self.eq_state = [[[0.0; 2]; 2]; 2];
+        }
+        self.mix = mix;
+        self.voice_manager.synth.set_reverb_params(&oxisynth::ReverbParams {
+            roomsize: mix.room.room_size,
+            damp: mix.room.damping,
+            width: mix.room.width,
+            level: mix.room.level,
+        });
+        // En GM les pieds partagent le canal 9 : Toe est envoyé en dernier et gagne.
+        for (channel, track) in mix.tracks.into_iter().enumerate() {
+            for (ctrl, value) in track.controllers() {
+                self.voice_manager.process_event(AudioEvent::ControlChange {
+                    channel: channel as u8,
+                    ctrl,
+                    value,
+                });
+            }
+        }
     }
 }
 
@@ -89,12 +113,11 @@ impl AudioRenderer for SynthBackend {
                 self.voice_manager
                     .set_channel_route(channel as usize, ChannelRoute::from_bank_id(bank));
             }
-            AudioEvent::SetMixerGains { lead, chords, bass, snare, hat } => {
-                self.voice_manager.set_gains(lead, chords, bass, snare, hat);
+            AudioEvent::SetMix { mix } => self.apply_mix(mix),
+            AudioEvent::UpdateMusicalParams { params } => {
+                self.voice_manager.apply_profile_programs(&params.profile_instruments);
             }
-            AudioEvent::TimingUpdate { .. }
-            | AudioEvent::UpdateMusicalParams { .. }
-            | AudioEvent::MeasureTiming { .. } => {}
+            AudioEvent::TimingUpdate { .. } | AudioEvent::MeasureTiming { .. } => {}
             _ => self.voice_manager.process_event(event),
         }
     }
@@ -104,6 +127,20 @@ impl AudioRenderer for SynthBackend {
     fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         if channels == 2 {
             self.voice_manager.render(output);
+            let (frames, _) = output.as_chunks_mut::<2>();
+            for frame in frames {
+                for (channel, sample) in frame.iter_mut().enumerate() {
+                    let mut x = *sample;
+                    for (band, [b0, b1, b2, a1, a2]) in self.mix.eq.into_iter().enumerate() {
+                        let state = &mut self.eq_state[band][channel];
+                        let y = b0 * x + state[0];
+                        state[0] = b1 * x - a1 * y + state[1];
+                        state[1] = b2 * x - a2 * y;
+                        x = y;
+                    }
+                    *sample = x * self.mix.master_gain;
+                }
+            }
         } else {
             output.fill(0.0);
         }

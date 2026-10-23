@@ -291,6 +291,9 @@ pub struct MusicalParams {
     /// Instrumentarium résolu sur le thread principal pour le rendu et les exports.
     #[serde(default = "default_profile_instruments")]
     pub profile_instruments: crate::style_profile::ProfileInstruments,
+    /// Contrôleurs et coefficients préparés sur le thread principal au taux de l'hôte.
+    #[serde(default = "default_profile_mix")]
+    pub profile_mix: crate::mix::PreparedMix,
 
     /// Densité de podorythmie (0..=2, défaut 1 ; bornée via [`MusicalParams::set_feet_density`]).
     #[serde(default = "default_feet_density")]
@@ -349,29 +352,6 @@ pub struct MusicalParams {
     pub instrument_bass: InstrumentConfig,
 
     // ═══════════════════════════════════════════════════════════════════
-    // MIXER
-    // ═══════════════════════════════════════════════════════════════════
-    /// Gain du lead/mélodie (0.0-1.0)
-    #[serde(default = "default_gain_lead")]
-    pub gain_lead: f32,
-
-    /// Gain de l'accompagnement accords/guitare (0.0-1.0)
-    #[serde(default = "default_gain_chords")]
-    pub gain_chords: f32,
-
-    /// Gain de la basse/kick (0.0-1.0)
-    #[serde(default = "default_gain_bass")]
-    pub gain_bass: f32,
-
-    /// Gain du snare (0.0-1.0)
-    #[serde(default = "default_gain_snare")]
-    pub gain_snare: f32,
-
-    /// Gain du hi-hat (0.0-1.0)
-    #[serde(default = "default_gain_hat")]
-    pub gain_hat: f32,
-
-    // ═══════════════════════════════════════════════════════════════════
     // ROUTAGE & MUTING
     // ═══════════════════════════════════════════════════════════════════
     /// Routage des canaux MIDI (-1 = banque 0 par défaut, >=0 = banque oxisynth)
@@ -423,21 +403,6 @@ const fn default_tension() -> f32 {
 const fn default_smoothness() -> f32 {
     0.7
 }
-const fn default_gain_lead() -> f32 {
-    1.0
-}
-const fn default_gain_chords() -> f32 {
-    0.6
-}
-const fn default_gain_bass() -> f32 {
-    0.6
-}
-const fn default_gain_snare() -> f32 {
-    0.5
-}
-const fn default_gain_hat() -> f32 {
-    0.4
-}
 fn default_channel_routing() -> Vec<i32> {
     vec![-1; 16]
 }
@@ -450,6 +415,9 @@ fn default_profile_id() -> std::sync::Arc<str> {
 }
 fn default_profile_instruments() -> crate::style_profile::ProfileInstruments {
     crate::StyleProfile::builtin().instruments
+}
+fn default_profile_mix() -> crate::mix::PreparedMix {
+    crate::StyleProfile::builtin().mix.prepare(44100.0)
 }
 
 impl Default for MusicalParams {
@@ -464,6 +432,7 @@ impl Default for MusicalParams {
             master_volume: default_master_volume(),
             profile_id: default_profile_id(),
             profile_instruments: default_profile_instruments(),
+            profile_mix: default_profile_mix(),
             feet_density: default_feet_density(),
             intensity: default_density(),
 
@@ -481,13 +450,6 @@ impl Default for MusicalParams {
             melody_smoothness: default_smoothness(),
             instrument_lead: InstrumentConfig::default(),
             instrument_bass: InstrumentConfig::default(),
-
-            // Mixer
-            gain_lead: default_gain_lead(),
-            gain_chords: default_gain_chords(),
-            gain_bass: default_gain_bass(),
-            gain_snare: default_gain_snare(),
-            gain_hat: default_gain_hat(),
 
             // Routage
             channel_routing: default_channel_routing(),

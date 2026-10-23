@@ -372,3 +372,36 @@ chords_program = 24
 bass_program = 32
 percussion_bank = 128
 percussion_program = 0
+
+[mix]
+master_db = 15.5
+[mix.room]
+room_size = 0.35
+damping = 0.6
+width = 0.7
+level = 0.28
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.5
+presence_q = 0.8
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.04
+reverb_send = 0.16
+[mix.tracks.Chords]
+level_db = -5.0
+pan = -0.35
+reverb_send = 0.22
+[mix.tracks.Bass]
+level_db = -8.0
+pan = 0.0
+reverb_send = 0.08
+[mix.tracks.Heel]
+level_db = -6.0
+pan = -0.06
+reverb_send = 0.1
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.1

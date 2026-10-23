@@ -92,6 +92,7 @@ pub struct RecorderBackend {
     current_samples_per_step: usize,
     channel_programs: [u8; 16],
     musical_params: MusicalParams,
+    mix: harmonium_core::mix::PreparedMix,
 }
 
 impl RecorderBackend {
@@ -120,6 +121,7 @@ impl RecorderBackend {
                 progs
             },
             musical_params: MusicalParams::default(),
+            mix: harmonium_core::StyleProfile::builtin().mix.prepare(f64::from(sample_rate)),
         }
     }
 
@@ -186,6 +188,7 @@ impl RecorderBackend {
         self.midi_track = Some(track);
         self.midi_steps_since_last = 0.0;
         self.midi_active.clear();
+        self.record_mix();
     }
 
     fn stop_midi(&mut self) {
@@ -214,6 +217,18 @@ impl RecorderBackend {
                 && let Ok(mut queue) = self.finished_recordings.lock()
             {
                 queue.push((RecordFormat::Midi, buffer));
+            }
+        }
+    }
+
+    fn record_mix(&mut self) {
+        // Canonical logical order, like SynthBackend : Toe wins on shared GM ch9.
+        for (channel, track) in self.mix.tracks.into_iter().enumerate() {
+            for (controller, value) in track.controllers() {
+                self.push_midi_event(
+                    map_midi_channel(channel as u8),
+                    MidiMessage::Controller { controller: controller.into(), value: value.into() },
+                );
             }
         }
     }
@@ -297,6 +312,10 @@ impl AudioRenderer for RecorderBackend {
                 AudioRecordFormat::Wav => self.stop_wav(),
                 AudioRecordFormat::Midi => self.stop_midi(),
             },
+            AudioEvent::SetMix { mix } => {
+                self.mix = *mix;
+                self.record_mix();
+            }
             AudioEvent::TimingUpdate { samples_per_step } => {
                 self.current_samples_per_step = *samples_per_step;
             }

@@ -35,3 +35,8 @@ sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fin
 
 Effectifs faibles : ces poids décrivent ce corpus, pas une certitude sur
 l’ensemble de la tradition.
+
+## Espace et mixage V1
+
+Salle paroissiale plus ample : taille 0,58, amorti 0,45, largeur 0,85 et niveau 0,35 ; violon presque centré, guitare à gauche, basse et pieds resserrés.
+Guitare −5 dB, basse −8 dB, pieds −6 dB de canal et bus +14,5 dB gardent le violon devant avec une marge de crête ; hypothèse d'écoute, pas une reconstruction historique.

@@ -19,10 +19,81 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[arrangement]` | `tours_per_tune`, `intro_each_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités, fin accentuée. Consulter `reel_quebecois/arrangement.toml`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
+| `[mix]` | Gain de bus, salle, niveaux/placement/envois des cinq pistes et EQ stéréo ; schéma et bornes ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Mixage
+
+Le mixage ne change aucune note ni aucun tirage. Les sept profils déclarent
+tous leurs paramètres ; **section absente** : salle sèche (`level = 0`),
+pistes à 0 dB / centre / sans envoi, bus 0 dB, coupe-bas et présence neutres.
+Les paramètres d'une section explicite sont requis, pas remplis en secret.
+
+```toml
+[mix]
+master_db = 16.0
+[mix.room]
+room_size = 0.35
+damping = 0.6
+width = 0.7
+level = 0.28
+[mix.tracks]
+Melody = { level_db = 0.0, pan = 0.04, reverb_send = 0.16 }
+Chords = { level_db = -5.0, pan = -0.35, reverb_send = 0.22 }
+Bass = { level_db = -8.0, pan = 0.0, reverb_send = 0.08 }
+Heel = { level_db = -6.0, pan = -0.06, reverb_send = 0.10 }
+Toe = { level_db = -6.0, pan = 0.06, reverb_send = 0.10 }
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.5
+presence_q = 0.8
+```
+
+| Paramètre | Bornes (fini) | À l'oreille : sec / ample |
+|---|---|---|
+| `master_db` | −60..48 dB ; gain amplitude `10^(dB/20)` | 0 : unité ; augmenter rapproche la crête de 0 dBFS, sans limiteur ni saturation volontaire. Les valeurs distribuées sont calibrées sur les banques de référence, pas une garantie toutes banques/graines. |
+| `room.room_size` | 0..1 (`ReverbParams.roomsize`) | 0 : décroissance courte ; 0,6..1 : longue salle. |
+| `room.damping` | 0..1 (`damp`) | 0 : réverbération brillante ; 1 : absorption maximale des aigus. |
+| `room.width` | 0..1 | 0 : retour mono ; 1 : retour stéréo large. |
+| `room.level` | 0..1 | 0 : sec ; 0,3..0,9 : retour de salle croissant. |
+| `tracks.<piste>.level_db` | ≤0 dB, relativement à CC 7 = 127 | 0 : niveau maximal du canal ; négatif : accompagnement en retrait, jusqu'à la quantification à CC 7 = 0. |
+| `tracks.<piste>.pan` | −1..1 → CC 10 | −1 gauche, 0 centre (64), +1 droite ; au centre, l'EQ ne déplace pas la piste. |
+| `tracks.<piste>.reverb_send` | 0..1 → `round(127 × envoi)`, CC 91 | 0 : aucun envoi ajouté ; 1 : envoi maximal. Les envois intrinsèques SF2 peuvent s'y ajouter. |
+| `eq.highpass_hz` | 0 (bypass), ou 20..1000 Hz | Coupe-bas Butterworth 12 dB/octave, Q fixe `1/√2` ; enlève le sous-grave, ne rend pas le signal plus large. |
+| `eq.presence_hz` | 20..20000 Hz | Centre d'une bande en cloche (RBJ), p. ex. 2,8 kHz pour la lisibilité de l'archet. |
+| `eq.presence_db` | −12..12 dB | 0 : neutre ; positif : présence, négatif : adoucir. |
+| `eq.presence_q` | 0,1..10 | Petit Q : large bande ; grand Q : correction étroite. |
+
+Conversion SF2 du niveau : l'atténuation du modulateur CC 7 concave est
+`−40 log10(CC7 / 127)` dB ; donc **`CC7 = round(127 × 10^(level_db/40))`**,
+pas une conversion linéaire `127 × 10^(dB/20)`. Quantification à 7 bits
+(0 = silence, atteint aux très bas niveaux) et aux centibels du synthé.
+Le pan est arrondi avec 64 pas à gauche et 63 à droite : centre exactement
+64, extrêmes 0/127. Les coefficients des deux biquads et le gain master sont
+préparés sur le thread principal au taux de l'hôte ; fréquences limitées à
+0,45 × ce taux si Nyquist est inférieur au réglage demandé.
+
+Un seul état par piste dans la lecture : le profil initialise niveau/pan/envoi,
+`set gain` modifie le niveau (amplitude 0..1), `mute` filtre les attaques.
+Un nouvel air restaure les niveaux du profil sans lever les mutes, donc
+`--solo-track Melody` reste une sélection de rendu et ne change pas la génération.
+En GM, Heel et Toe partagent le canal 9 : **les réglages de Toe gagnent**,
+également dans le MIDI. La banque dédiée les sépare sur 3/4. Les profils ont
+les mêmes niveaux/envois aux deux pieds, mais leur léger écart de pan est
+réduit à celui de Toe dans le repli GM.
+
+Choix d'espace proposés (pas des mesures historiques) : cuisine amortie pour
+le reel québécois, petite salle pour sa gigue, salle communautaire pour le reel
+acadien, salle paroissiale plus large pour la valse ; salles de danse courtes
+pour gigue/hornpipe britanniques, plein air quasi sec pour fifre-et-tambour.
+La guitare est écartée, la basse centrale, les pieds resserrés ; la mélodie
+reste près du centre et au-dessus de chaque accompagnement mesuré.
+Les README individuels donnent les intentions ; les mesures avant/après et
+leurs limites sont dans [Mesures V1](../specs/012-vie-realisme/plan.md#mesures-v1).
 
 ## Règles de phrase
 

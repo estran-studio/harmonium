@@ -53,13 +53,9 @@ pub enum AudioEvent {
     StopRecording {
         format: AudioRecordFormat,
     },
-    /// Set mixer gains for each instrument (0.0-1.0)
-    SetMixerGains {
-        lead: f32,
-        chords: f32,
-        bass: f32,
-        snare: f32,
-        hat: f32,
+    /// Salle, bus et contrôleurs précalculés ; seul état de mixage rendu.
+    SetMix {
+        mix: crate::mix::PreparedMix,
     },
 }
 
