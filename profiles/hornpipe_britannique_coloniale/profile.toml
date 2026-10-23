@@ -286,3 +286,27 @@ reverb_send = 0.1
 level_db = -6.0
 pan = 0.05
 reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.015, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0]
+jitter = 0.015
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.08
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0, 4, 8, 12]
+accent = 2.0
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0

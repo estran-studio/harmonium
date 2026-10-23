@@ -48,6 +48,7 @@ fn stream(seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
 fn flat_tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement.intro = IntroConfig::none();
+    tuning.profile.performance = Default::default();
     tuning
 }
 

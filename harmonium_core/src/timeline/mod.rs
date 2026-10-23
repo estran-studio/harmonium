@@ -100,8 +100,12 @@ impl std::fmt::Display for MusicalPosition {
 pub enum Articulation {
     /// Normal sustain (play for full duration)
     Normal,
-    /// Staccato (short, detached - bass uses this)
-    Staccato,
+    /// Gate court, choisi par les règles du profil.
+    Detached,
+    /// Gate plein, sans chevauchement ajouté.
+    Linked,
+    /// Accent de vélocité appliqué avant publication.
+    Accent,
     /// Trigger only, no NoteOff needed (percussion)
     Trigger,
 }
@@ -130,6 +134,8 @@ pub struct TimelineNote {
     pub velocity: u8,
     /// Articulation hint for the playhead
     pub articulation: Articulation,
+    #[serde(default, skip_serializing_if = "crate::performance::NotePerformance::is_neutral")]
+    pub performance: crate::performance::NotePerformance,
 }
 
 /// Snapshot of the engine's morphed state at the time a measure was generated.
@@ -196,6 +202,9 @@ pub struct Measure {
     pub state_snapshot: StateSnapshot,
     /// Notes per track
     pub tracks: HashMap<TrackId, Vec<TimelineNote>>,
+    /// Cache de lecture préparé sur le thread principal, hors contrat sérialisé.
+    #[serde(skip)]
+    pub playback_events: Vec<pointers::PreparedEvent>,
 }
 
 impl Measure {
@@ -226,6 +235,7 @@ impl Measure {
             chord_changes: Vec::new(),
             state_snapshot: StateSnapshot::default(),
             tracks,
+            playback_events: Vec::new(),
         }
     }
 
@@ -434,7 +444,8 @@ mod tests {
                 start_step: 0,
                 duration_steps: 1,
                 velocity: 100,
-                articulation: Articulation::Staccato,
+                articulation: Articulation::Detached,
+                performance: Default::default(),
             },
         );
         assert_eq!(measure.total_notes(), 1);

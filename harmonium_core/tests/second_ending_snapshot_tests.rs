@@ -63,6 +63,7 @@ fn ending_weights(role: &ProfileRole) -> [f64; 3] {
 fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tunes() {
     for distributed in StyleProfile::distributed() {
         let mut profile = distributed.clone();
+        profile.performance = Default::default();
         profile.arrangement = ReelArrangement::from_start(2, Default::default());
         let mut counts = [[0usize; 3]; 2];
         for seed in 0..200 {
@@ -115,6 +116,7 @@ fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tun
 }
 fn forced_profile() -> StyleProfile {
     let mut profile = StyleProfile::default();
+    profile.performance = Default::default();
     profile.arrangement = ReelArrangement::from_start(1, Default::default());
     for part in &mut profile.form.parts {
         part.roles = vec![ImposedRole::Free.into(); 8];

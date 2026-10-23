@@ -186,7 +186,7 @@ percussion_bank = 128
 percussion_program = 0
 
 [mix]
-master_db = 15.5
+master_db = 13.5
 [mix.room]
 room_size = 0.38
 damping = 0.58
@@ -217,3 +217,91 @@ reverb_send = 0.1
 level_db = -6.0
 pan = 0.06
 reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.015, 0.0, 0.0075, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0, 0.0075, 0.0]
+jitter = 0.015
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.08
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0, 6]
+accent = 2.0
+# DS-T10b : 36 marques Linked / 557 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 6.909789
+steps = [0]
+min_duration = 3
+max_duration = 12
+context = "any"
+# DS-T10b : 3 marques Linked / 1213 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.247934
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+# DS-T10b : 2 marques Linked / 658 porteuses ; 10|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.304878
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 6 marques Linked / 748 porteuses ; 10|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.808625
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 1 marques Linked / 603 porteuses ; 2|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.166113
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 4 marques Linked / 559 porteuses ; 4|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.720721
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Linked / 694 porteuses ; 4|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.289017
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 3 marques Linked / 275 porteuses ; 6|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.102941
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0

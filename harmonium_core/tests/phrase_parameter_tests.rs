@@ -31,6 +31,7 @@ fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
 }
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
+    p.performance = Default::default();
     p.arrangement = ReelArrangement::from_start(2, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
@@ -194,6 +195,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
     ];
     for &(name, change) in controls {
         let mut p = StyleProfile::default();
+        p.performance = Default::default();
         p.arrangement = ReelArrangement::from_start(1, Default::default());
         let mut modified = p.clone();
         change(&mut modified);
@@ -209,6 +211,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
 #[test]
 fn phrase_grouping_controls_percussion_boundaries_and_arbitrary_lengths() {
     let mut p = StyleProfile::named("marche_britannique_coloniale").unwrap();
+    p.performance = Default::default();
     p.arrangement = ReelArrangement::from_start(1, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
@@ -253,6 +256,7 @@ fn invalid_structure_values_name_the_field() {
     ];
     for &(field, mutate) in bad {
         let mut p = StyleProfile::default();
+        p.performance = Default::default();
         mutate(&mut p);
         let error = p.validate().unwrap_err();
         assert_eq!(error.field, field);

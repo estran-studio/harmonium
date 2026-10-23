@@ -459,6 +459,8 @@ pub struct StyleProfile {
     pub dynamics: StyleDynamics,
     #[serde(default)]
     pub mix: crate::mix::ProfileMix,
+    #[serde(default)]
+    pub performance: crate::performance::Performance,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -486,7 +488,7 @@ pub struct ProfileError {
     pub message: String,
 }
 impl ProfileError {
-    fn new(field: impl Into<String>, message: impl ToString) -> Self {
+    pub(crate) fn new(field: impl Into<String>, message: impl ToString) -> Self {
         Self { field: field.into(), message: message.to_string() }
     }
 }
@@ -623,6 +625,7 @@ impl StyleProfile {
     }
     pub fn validate(&self) -> Result<(), ProfileError> {
         self.mix.validate()?;
+        self.performance.validate(self.meter.steps_per_bar)?;
         check(
             !self.meta.id.is_empty()
                 && self

@@ -199,49 +199,84 @@
         "pitch": 62,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -36,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": -3,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": 18,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -10,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -37,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": -2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -15,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -281,56 +316,96 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -42,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -8,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -10,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 15,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -31,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 96,
+        "performance": {
+          "offset": 16,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 0,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -370,56 +445,96 @@
         "pitch": 76,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 108,
+        "performance": {
+          "offset": -28,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": -8,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -3,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 73,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -43,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -3,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -459,35 +574,60 @@
         "pitch": 67,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -35,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 15,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": -5,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -8,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 8,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -21,
+          "gate": 970,
+          "breath": 640
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -527,49 +667,84 @@
         "pitch": 62,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -35,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": -18,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": 7,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 0,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -36,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": -14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -8,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -609,56 +784,96 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -44,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 10,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": 10,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 9,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -34,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": -1,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 96,
+        "performance": {
+          "offset": 12,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 10,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -698,56 +913,96 @@
         "pitch": 76,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 108,
+        "performance": {
+          "offset": -32,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": -2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 73,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": -20,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -49,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": -2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 16,
+          "gate": 970,
+          "breath": 0
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -787,28 +1042,48 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 6,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -39,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 3,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -50,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 12,
         "duration_steps": 4,
-        "velocity": 94
+        "velocity": 92,
+        "performance": {
+          "offset": -18,
+          "gate": 970,
+          "breath": 320
+        }
       }
     ],
     "composition_bpm": 230.0,
@@ -848,49 +1123,84 @@
         "pitch": 62,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -31,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": 4,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": -19,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -5,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -49,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 6,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -986,56 +1296,96 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -46,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 11,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -37,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 3,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 96,
+        "performance": {
+          "offset": -5,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": -4,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -1131,56 +1481,97 @@
         "pitch": 76,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 108,
+        "performance": {
+          "offset": -46,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -18,
+          "gate": 970,
+          "breath": 0
+        },
+        "articulation": "Linked"
       },
       {
         "track": 0,
         "pitch": 73,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 18,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": -6,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -1276,35 +1667,60 @@
         "pitch": 67,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -19,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": -6,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 12,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 8,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -35,
+          "gate": 970,
+          "breath": 640
+        }
       },
       {
         "track": 1,
@@ -1400,49 +1816,84 @@
         "pitch": 62,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -22,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": -11,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": 12,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -37,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": -16,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 7,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -1538,56 +1989,96 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -43,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -11,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -1,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": -4,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -49,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 0,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 96,
+        "performance": {
+          "offset": 4,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 0,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -1683,56 +2174,96 @@
         "pitch": 76,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 108,
+        "performance": {
+          "offset": -21,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 4,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -3,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 73,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -40,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 5,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 11,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 67,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 7,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -1828,35 +2359,60 @@
         "pitch": 67,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -29,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 6,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": 12,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 11,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 62,
         "start_step": 8,
         "duration_steps": 8,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -31,
+          "gate": 970,
+          "breath": 640
+        }
       },
       {
         "track": 1,
@@ -1952,56 +2508,96 @@
         "pitch": 69,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": -5,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": -8,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 76,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -15,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -47,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -2,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 76,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -21,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -2097,49 +2693,84 @@
         "pitch": 69,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -36,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": -19,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 76,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": 9,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 86,
         "start_step": 8,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -50,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 81,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 96,
+        "performance": {
+          "offset": 1,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 79,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -2235,56 +2866,96 @@
         "pitch": 69,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 108,
+        "performance": {
+          "offset": -14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 86,
+        "performance": {
+          "offset": -9,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 95,
+        "performance": {
+          "offset": 14,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 76,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 85,
+        "performance": {
+          "offset": -9,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 107,
+        "performance": {
+          "offset": -46,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 76,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 17,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": 6,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,
@@ -2380,21 +3051,36 @@
         "pitch": 74,
         "start_step": 0,
         "duration_steps": 4,
-        "velocity": 106
+        "velocity": 106,
+        "performance": {
+          "offset": -29,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 71,
         "start_step": 4,
         "duration_steps": 4,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": 16,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 8,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -32,
+          "gate": 970,
+          "breath": 640
+        }
       },
       {
         "track": 1,
@@ -2490,56 +3176,96 @@
         "pitch": 66,
         "start_step": 0,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 104,
+        "performance": {
+          "offset": -22,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 2,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 82,
+        "performance": {
+          "offset": -16,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 4,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 93,
+        "performance": {
+          "offset": -10,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 6,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": 0,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 66,
         "start_step": 8,
         "duration_steps": 2,
-        "velocity": 106
+        "velocity": 105,
+        "performance": {
+          "offset": -36,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 69,
         "start_step": 10,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 83,
+        "performance": {
+          "offset": -7,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 74,
         "start_step": 12,
         "duration_steps": 2,
-        "velocity": 94
+        "velocity": 94,
+        "performance": {
+          "offset": 13,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 0,
         "pitch": 78,
         "start_step": 14,
         "duration_steps": 2,
-        "velocity": 84
+        "velocity": 84,
+        "performance": {
+          "offset": -19,
+          "gate": 970,
+          "breath": 0
+        }
       },
       {
         "track": 1,

@@ -355,6 +355,249 @@ déterminisme avec la file bornée, sans contourner la garde pour les exports.
   durée relative, vélocité par position de phrase) ; snapshots déterministes ;
   bump `TUNING_VERSION`.
 
+### Décisions V2
+
+- `performance.tracks.<piste>` : décalages par pas, dispersion symétrique,
+  menu pondéré d'articulations filtré par position/durée/intervalle précédent,
+  courbe de phrase, bornes MIDI et respiration. Algorithmes génériques dans
+  `harmonium_core/src/performance.rs`, aucune sélection par nom de style.
+  Paramètres, mécanique/neutre et unités dans `profiles/README.md`.
+- **Fraction de pas**, plutôt que millisecondes : le geste suit le tempo,
+  le swing et les rampes. Le snapshot publie des millièmes de pas signés pour
+  l'attaque, un gate en millièmes de durée et la respiration en millièmes de
+  pas ; résolution de décision 0,001 pas, rendu arrondi à l'échantillon.
+  `start_step` ne bouge pas ; aucune position émotionnelle n'est réinjectée
+  dans `BeatInfo` ni le transport. Premier instant d'une lecture/seek :
+  attaque négative bornée à la frame 0 disponible, pas de pré-roll inventé.
+- Les événements note-on/note-off sont précalculés et triés sur le principal
+  à `MusicComposer::stage_bar`, après toute modification des notes. Le lecteur
+  emprunte les événements négatifs de la mesure suivante depuis sa fenêtre
+  préchargée : l'attaque du pas 0 peut réellement tomber dans le dernier pas
+  précédent. Gate/respiration peuvent finir entre deux pas, traverser une
+  barre, et suivent la durée gelée de chaque pas. Les buffers sont découpés
+  à chaque événement, pas seulement aux cases de grille.
+- Le nouveau chemin audio n'a ni RNG, ni allocation, ni verrou. Buffers
+  bornés préalloués à la construction ; tri non allouant des événements du
+  pas, anciennes mesures renvoyées au principal. Chaque insertion passe par
+  `push_capped` : au-delà de la capacité l'événement est abandonné (assertion
+  en debug), jamais de croissance ni de panique dans le callback. Le test debug
+  `performance_playback_tests` utilise `RTCheckAllocator` et une capture
+  atomique sans verrou ; il vérifie les frames 0, 900, 2125, 3625, 3750,
+  4750, 15800, 17400 et un retrigger traversant la barre. La dette RT
+  préexistante du point 1 et l'enregistreur ne sont pas modifiés.
+- `Normal`, `Detached`, `Linked`, `Accent` sont des **intentions déjà
+  réalisées** : aucun gate ni bonus de vélocité caché dans le renderer.
+  L'ancien variant `Staccato`, sans consommateur de production, est retiré.
+  `Trigger` reste une intention de sample, durée MIDI de référence un pas.
+  Le MIDI statique tient compte de l'attaque et de la fin réalisée
+  (quantification 480 PPQ) ; le MIDI enregistré suit les événements audio.
+  La vérité CLI contient désormais les snapshots complets également sans
+  fichier d'automation, avec `bar_start_frames` et les anciens reports.
+  `MusicalParams::arousal` brut remplace aussi le `state_snapshot.arousal`
+  autrefois dérivé du tempo : le snapshot publie l'axe réellement appliqué.
+- La phrase vient des `form.parts.phrase_ends` (frontières 1-based), ou des
+  rôles cadentiels si elles sont omises ; aucune hypothèse 4+4 dans le code.
+  La phase est évaluée à l'attaque, y compris à l'intérieur de la mesure.
+  Respiration sur toutes les notes de la dernière attaque, pas sur les
+  intros ; une intro conserve ses notes/levées d'arrangement.
+- Les quatre axes sont des coefficients de données. Tension : avance et
+  raccourcissement ; arousal brut : bonus des seuls accents (nouveau champ
+  `MusicalParams::arousal`, distinct de l'intensité issue arousal+tension).
+  Valence/densité : coefficients disponibles mais neutres faute de mesure
+  spécifique ; aucune corrélation ABC/émotion revendiquée.
+- **Chemin unique et frontières conservées** : les durées basse/guitare du
+  profil sont des durées **écrites** du motif, pas un staccato caché. Les
+  courbes P2 `fiddle_duration`, `tension_duration` et
+  `tension_chord_duration` restent des transformations de durée écrite,
+  publiées dans `duration_steps` (elles interviennent aussi avant la scission
+  d'une tenue par densité). Les remplacer par un gate changerait la partition
+  et casserait la neutralité demandée ; le gate V2 est une interprétation
+  fractionnaire de cette durée publiée. L'humanisation de vélocité des pieds,
+  tirée **une fois par air puis relue aux reprises**, reste une donnée du
+  motif de podorythmie ; V2 n'ajoute aucun second jitter de vélocité et aucun
+  réglage de performance aux pieds distribués. Le jitter V2 porte uniquement
+  sur le temps des attaques. Ces distinctions conservent D2/P2 sans deux
+  implémentations d'un même gate ou tirage.
+- **RNG par mesure** : le seek déterministe ne rejoue pas les mesures déjà en
+  mémoire (la timeline est conservée) ; un tirage d'interprétation pris sur le
+  flux courant dépendrait donc du nombre de mesures déjà générées (le test
+  `reel_determinism_set_seed_and_deterministic_seek` l'a montré). Une graine
+  `performance_seed` est tirée **une fois par air** à `build_tune`, comme
+  `feet_humanize`, sur le ChaCha8 du générateur, et seulement si
+  l'interprétation n'est pas neutre ; chaque mesure en dérive un `ChaCha8Rng`
+  (`seed_from_u64` + `set_stream(mesure)`). Les reprises et les tours ne
+  rejouent donc pas le même geste (un violoneux ne se répète pas), mais la
+  mesure `n` est identique quel que soit l'historique de génération.
+- Neutralité : toutes les pistes à zéro (`Performance::is_neutral`) ⇒ aucune
+  graine tirée, aucune étape d'interprétation : flux identique, y compris
+  l'air suivant. Une règle sans effet sur le gate ni la vélocité compte pour
+  zéro (son étiquette n'est pas publiée seule). Contrat de 100 mesures : profil
+  absent et champs explicitement nuls produisent le même flux complet. Le cas
+  `profile_d2_fixed.json` désactive explicitement la performance comme les
+  autres couches postérieures à sa référence historique, et reste identique
+  octet pour octet (non régénéré) ; seul `profile_d2_main.json` est régénéré.
+- `TUNING_VERSION = 14` : modification du contrat explicite, pas une variante
+  de transport. Les références courantes sont régénérées avec cette version ;
+  les références historiques restent celles du cas performance neutre.
+
+### Mesures V2
+
+Commande reproductible (Python du labo, `mido` ; binaire `--release`) :
+
+```sh
+for s in before after; do
+  harmonium_lab/.venv/bin/python specs/012-vie-realisme/measure_performance.py \
+    --binary target/release/harmonium-cli --stage $s
+done
+harmonium_lab/.venv/bin/python specs/012-vie-realisme/measure_performance.py --corpus-only
+```
+
+7 profils × 20 seeds × 5 scénarios d'automation constante (neutre : arousal
+0,5 / tension 0,4 ; tension 0 et 1 ; arousal 0 et 1), 34 mesures, 2 tours,
+MIDI + vérité JSON pour chacun des 700 exports par étape. **Avant** = le même
+binaire sur une copie des profils dont les sections `[performance]` sont
+retirées ; **après** = profils distribués. Mélodie seulement, mesures de tour
+seulement (les intros gardent leurs notes d'arrangement). Sorties hors dépôt :
+`/tmp/harmonium-perf/{before,after}/` (`measurements.json` : distributions par
+position, articulation, mesure de phrase) et `corpus-performance.json`.
+
+**Identité du neutre.** Binaire de `main` (`ad7ad58`) contre ce binaire, profils
+sans `[performance]`, seed 3, 34 mesures, banques GeneralUser GS + `harmonium_trad` :
+les WAV des **sept profils** ont le même SHA-256 (par ex. reel québécois
+`6afe4a58930a…`, gigue québécoise `56ecbc7910c2…`, valse `9b3fc461d160…`). Un tri
+des événements simultanés par hauteur (au lieu de l'ordre de création) avait
+changé les derniers bits du reel : l'ordre de création est donc la clé de tri.
+Même seed, mêmes profils ⇒ deux rendus aux octets identiques (reel, gigue et
+valse québécois, après ; le script compare les SHA-256 et échoue sinon).
+
+Neutre (tension 0,4, arousal 0,5), moyennes sur les notes de mélodie :
+
+| Profil | Notes | Écart d'attaque après, pas [p10 ; p90] | min ; max | Gate avant → après | Vélocité avant → après | Respirations |
+|---|---:|---|---|---|---|---|
+| reel_quebecois | 4409 | −0,015 [−0,041 ; +0,008] | −0,056 ; +0,014 | 1,000 → 0,960 | 95,4 → 95,4 | 160 × 19 ms |
+| gigue_quebecoise | 3307 | −0,017 [−0,038 ; +0,002] | −0,046 ; +0,006 | 1,000 → 0,960 | 95,4 → 95,3 | 160 × 22 ms |
+| valse_quebecoise | 2574 | −0,023 [−0,042 ; −0,002] | −0,046 ; +0,006 | 1,000 → 0,959 | 100,3 → 100,8 | 160 × 41 ms |
+| reel_acadien | 4458 | −0,014 [−0,049 ; +0,014] | −0,066 ; +0,021 | 1,000 → 0,960 | 95,4 → 95,4 | 160 × 21 ms |
+| marche_britannique_coloniale | 2658 | −0,018 [−0,032 ; −0,005] | −0,036 ; −0,001 | 1,000 → 0,960 | 100,1 → 100,2 | 160 × 81 ms |
+| gigue_britannique_coloniale | 3255 | −0,017 [−0,038 ; +0,001] | −0,046 ; +0,006 | 1,000 → 0,960 | 93,3 → 93,3 | 160 × 26 ms |
+| hornpipe_britannique_coloniale | 4079 | −0,022 [−0,041 ; −0,001] | −0,046 ; +0,006 | 1,000 → 0,960 | 97,7 → 97,8 | 160 × 52 ms |
+
+Avant : tous les écarts valent 0 et tous les gates 1. Le gate 0,960 est la part
+de `tension_detach` à tension 0,4 (0,10 × 0,4) ; les respirations sont les
+160 fins de phrase de 20 seeds (8 par seed), durée nominale hors swing. Les
+écarts sont petits par construction (≈ 1–3 ms) : ni la grille ni le groove
+existant ne changent.
+
+Écart d'attaque moyen par pas, reel québécois (après) : −0,035 aux deux
+pulses (pas 0 et 8), −0,005 à −0,007 aux autres pas pairs. Fraction de pas ;
+aux 230 BPM nominaux, −0,035 ≈ −2,3 ms.
+
+Tension 0 → 1 et arousal 0 → 1 (constants ; **avant** = même automation, sans
+`[performance]`) :
+
+| Profil | Attaque moyenne, tension 0 → 1 | Gate moyen, tension 0 → 1 | Vélocité moyenne, arousal 0 → 1, avant | après | Notes `Accent` à arousal 1 |
+|---|---|---|---|---|---:|
+| reel_quebecois | +0,001 → −0,039 | 1,000 → 0,900 | 68,1 → 122,7 | 68,1 → 122,3 | 50 |
+| gigue_quebecoise | −0,001 → −0,041 | 1,000 → 0,900 | 68,1 → 121,1 | 68,0 → 120,8 | 55 |
+| valse_quebecoise | −0,007 → −0,047 | 0,999 → 0,899 | 69,9 → 123,5 | 70,4 → 123,4 | 26 |
+| reel_acadien | +0,002 → −0,038 | 1,000 → 0,900 | 68,2 → 122,7 | 68,1 → 122,4 | 44 |
+| marche_britannique_coloniale | −0,002 → −0,042 | 1,000 → 0,900 | 74,1 → 124,3 | 74,1 → 124,0 | 42 |
+| gigue_britannique_coloniale | −0,001 → −0,041 | 1,000 → 0,900 | 69,2 → 115,0 | 69,1 → 114,7 | 41 |
+| hornpipe_britannique_coloniale | −0,006 → −0,046 | 1,000 → 0,900 | 71,8 → 119,2 | 71,8 → 118,8 | 97 |
+
+Le gros écart de vélocité entre arousal 0 et 1 **existe déjà avant** : c'est
+la courbe d'intensité (`dynamics.arousal_intensity`), pas V2. Le bonus d'accent
+(base 2, plus jusqu'à 4 à arousal 1 selon le profil) ne touche que 1–2 % des notes ; il se lit
+dans les maxima de phrase, pas dans la moyenne.
+
+Vélocité moyenne par mesure de phrase (neutre, avant → après ; courbe de
+phrase propre à chaque profil, interpolée sur quatre mesures) :
+
+| Profil | m.1 | m.2 | m.3 | m.4 |
+|---|---|---|---|---|
+| reel_quebecois | 95,1 → 94,2 | 95,3 → 96,4 | 95,2 → 96,1 | 96,3 → 95,0 |
+| gigue_quebecoise | 95,3 → 94,3 | 94,7 → 95,6 | 95,2 → 96,2 | 96,7 → 95,4 |
+| valse_quebecoise | 100,3 → 99,4 | 99,7 → 101,4 | 100,1 → 102,2 | 101,1 → 100,2 |
+| reel_acadien | 95,5 → 94,6 | 95,1 → 96,2 | 95,2 → 96,1 | 96,0 → 94,6 |
+| marche_britannique_coloniale | 100,7 → 99,7 | 99,7 → 100,8 | 99,6 → 100,7 | 100,7 → 99,5 |
+| gigue_britannique_coloniale | 93,0 → 91,9 | 92,8 → 93,7 | 92,9 → 93,9 | 94,9 → 93,6 |
+| hornpipe_britannique_coloniale | 97,5 → 96,7 | 97,3 → 98,5 | 97,1 → 98,0 | 99,3 → 98,1 |
+
+Répartition des articulations publiées (neutre, après ; le gate d'un `Detached`
+vaut 1 − (0,20 + 0,04) = 0,76, les autres 0,96) :
+
+| Profil | Répartition |
+|---|---|
+| reel_quebecois | Normal 98,1 % ; Accent 1,1 % ; Linked 0,6 % ; Detached 0,1 % |
+| gigue_quebecoise | Normal 98,2 % ; Accent 1,5 % ; Linked 0,3 % |
+| valse_quebecoise | Normal 96,9 % ; Linked 1,7 % ; Accent 0,7 % ; Detached 0,6 % |
+| reel_acadien | Normal 98,4 % ; Accent 1,0 % ; Linked 0,6 % ; Detached < 0,1 % |
+| marche_britannique_coloniale | Normal 95,9 % ; Linked 2,4 % ; Accent 1,7 % |
+| gigue_britannique_coloniale | Normal 98,4 % ; Accent 1,1 % ; Linked 0,5 % |
+| hornpipe_britannique_coloniale | Normal 97,7 % ; Accent 2,3 % |
+
+Ces fréquences reprennent celles des marques écrites du corpus (liaisons,
+ties, points) : ce sont des planchers, car l'ABC n'écrit pas tous les coups
+d'archet. Le hornpipe britannique n'a **aucune** articulation écrite
+(`references/ornaments/britannique_coloniale-hornpipe.json`) : il n'a que des
+accents métriques proposés, à valider à l'oreille.
+
+**Limite mesurée : dérive du MIDI enregistré.** Le MIDI statique
+(`timeline_to_midi`, test `performance_midi_tests`) place chaque attaque et
+chaque fin à 1/480 de noire. Le MIDI du **RecorderBackend** (celui de
+`--record-midi`) arrondit le delta de chaque événement en ticks
+(`push_midi_event` → `steps_to_ticks`, `recorder.rs`) et jette le reste : sur
+des événements sur la grille le reste est nul, sur des attaques décalées il
+s'accumule comme une marche aléatoire. Résidu MIDI − vérité (ms, médiane
+[p10 ; p90], neutre) :
+
+| Profil | Avant | Après |
+|---|---|---|
+| reel_quebecois | −0,1 [−18,6 ; +0,5] | −0,3 [−8,4 ; +5,2] |
+| gigue_quebecoise | +1,3 [+0,3 ; +2,3] | −9,9 [−19,8 ; −1,4] |
+| valse_quebecoise | +2,9 [+0,8 ; +5,1] | −7,3 [−18,9 ; −1,1] |
+| reel_acadien | +0,0 [−16,3 ; +1,5] | +0,7 [−2,9 ; +7,1] |
+| marche_britannique_coloniale | −0,0 [−0,1 ; −0,0] | −5,4 [−14,9 ; +0,7] |
+| gigue_britannique_coloniale | +3,1 [+0,9 ; +5,3] | −10,6 [−20,3 ; −1,3] |
+| hornpipe_britannique_coloniale | −0,7 [−1,2 ; −0,2] | +3,8 [−1,9 ; +15,4] |
+
+Sur une seed, le résidu part de 0 puis dérive jusqu'à −20 ms à la mesure 31
+(gigue québécoise) : le fichier reste lisible, mais ses attaques ne sont plus
+exactes. Le **rendu audio n'est pas touché** (les événements sont à la frame
+exacte) ; seule la trace MIDI enregistrée l'est. `recorder.rs` étant hors
+périmètre de V2, la correction (reporter le reste fractionnaire de ticks, ou
+mieux horodater les événements en frames depuis la file SPSC prévue dans la
+dette temps réel du point 1) est à faire avec cette tâche. Les queues
+« avant » du reel (p10 ≈ −18 ms) existent déjà sans `[performance]` : modèle
+de grille du script ou approximation du recorder, non investigué, hors V2.
+
+Rendus pour l'écoute, hors dépôt : `/tmp/harmonium-perf/before/` et
+`/tmp/harmonium-perf/after/`, `reel_quebecois-neutral-03.wav`,
+`gigue_quebecoise-neutral-03.wav`, `valse_quebecoise-neutral-03.wav`
+(banque GM + pieds `harmonium_trad`, seed 3, 34 mesures ; le fichier
+`-repeat.wav` prouve l'identité octet pour octet). Écoute attendue : attaques
+un peu plus souples aux temps forts, souffle bref en fin de phrase, légère
+enflure au milieu de la phrase — rien de spectaculaire : **à valider à l'oreille**
+avant toute augmentation des valeurs.
+
+#### Revue coordinateur V2
+
+- Repris sur Sonnet après la limite Codex (même worktree, travail conservé).
+- Contrôle : `cargo test --workspace` 405 réussis / 2 ignorés (45 suites ; 9 tests
+  unitaires internes du playhead remplacés par des contrats de flux couvrant
+  barre, durée écrite, relance de même hauteur et allocation), fmt OK, clippy
+  hors tests 163 → 162 sans nouvel avertissement. WAV identiques à seed égal
+  (7 profils, deux rendus).
+- Marge aux émotions maximales (5 seeds × 7 profils, 66 mesures, automation
+  constante à 1) : les accents poussaient la gigue québécoise à −0,00 dBFS et
+  la marche à −0,12 dBFS. Gains de bus abaissés : gigue québécoise 15,5 → 13,5,
+  marche 16,5 → 15 ; pire crête ensuite −2,0 et −1,6 dBFS (neutre −5,4…−4,5 et
+  −6,5…−6,0). Les cinq autres profils restent sous −1,5 dBFS.
+- Les effets sont volontairement petits (attaques ±1–3 ms, gate 0,96, 96–98 %
+  de notes `Normal`) : l'écoute dira s'il faut les augmenter.
+- La dérive du MIDI enregistré (jusqu'à −20 ms) fausse les mesures du labo
+  qui lisent `--record-midi` : à corriger dans la tâche RT1 (enregistreur).
+
 ## 3. Ornements idiomatiques
 
 - **Constat** : aucun ornement généré.

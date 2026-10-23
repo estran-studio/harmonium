@@ -9,6 +9,7 @@ use harmonium_core::{
 fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(), String> {
     for pulses_per_bar in [1, 2] {
         let mut profile = StyleProfile::default();
+        profile.performance = Default::default();
         profile.meta.id = "double_grid".into();
         profile.meter.steps_per_bar *= 2;
         profile.meter.steps_per_unit *= 2;

@@ -201,15 +201,9 @@ fn build_instrument_track(
     for measure in measures {
         let base_tick = measure_start(measure);
         for note in measure.notes_for_track(track_id) {
-            let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
+            let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
-            let dur_ticks = if note.duration_steps == 0 {
-                // Trigger: short duration
-                TICKS_PER_STEP / 2
-            } else {
-                (note.duration_steps as u32) * TICKS_PER_STEP
-            };
-            let off_tick = on_tick + dur_ticks;
+            // Même gate explicite que la lecture ; arrondi au tick MIDI.
 
             events.push((
                 on_tick,
@@ -279,7 +273,7 @@ fn build_drum_track(
 
         // Heel
         for note in measure.notes_for_track(TrackId::Heel) {
-            let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
+            let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_SNARE };
             events.push((
@@ -290,7 +284,7 @@ fn build_drum_track(
                 },
             ));
             events.push((
-                on_tick + TICKS_PER_STEP,
+                off_tick,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
                     message: MidiMessage::NoteOff { key: u7::new(key), vel: u7::new(0) },
@@ -300,7 +294,7 @@ fn build_drum_track(
 
         // Toe
         for note in measure.notes_for_track(TrackId::Toe) {
-            let on_tick = base_tick + (note.start_step as u32) * TICKS_PER_STEP;
+            let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_HIHAT };
             events.push((
@@ -311,7 +305,7 @@ fn build_drum_track(
                 },
             ));
             events.push((
-                on_tick + TICKS_PER_STEP,
+                off_tick,
                 TrackEventKind::Midi {
                     channel: u4::new(GM_DRUM_CHANNEL),
                     message: MidiMessage::NoteOff { key: u7::new(key), vel: u7::new(0) },
@@ -357,6 +351,16 @@ fn build_drum_track(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+fn note_ticks(base: u32, note: &super::TimelineNote) -> (u32, u32) {
+    let start = i64::from(base) * 1000
+        + (note.start_step as i64 * 1000 + i64::from(note.performance.offset))
+            * i64::from(TICKS_PER_STEP);
+    let end = start + note.performance.duration(note.duration_steps) * i64::from(TICKS_PER_STEP);
+    let on = ((start + 500) / 1000).max(0) as u32;
+    let off = (((end + 500) / 1000).max(0) as u32).max(on + 1);
+    (on, off)
+}
 
 /// Calculate the absolute MIDI tick for the start of a measure.
 ///
@@ -427,7 +431,8 @@ mod tests {
                 start_step: 0,
                 duration_steps: 1,
                 velocity: 96,
-                articulation: Articulation::Staccato,
+                articulation: Articulation::Detached,
+                performance: Default::default(),
             },
         );
         measure.add_note(
@@ -438,7 +443,8 @@ mod tests {
                 start_step: 8,
                 duration_steps: 1,
                 velocity: 96,
-                articulation: Articulation::Staccato,
+                articulation: Articulation::Detached,
+                performance: Default::default(),
             },
         );
 
@@ -453,6 +459,7 @@ mod tests {
                     duration_steps: 4,
                     velocity: 80,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 },
             );
         }
@@ -467,6 +474,7 @@ mod tests {
                 duration_steps: 0,
                 velocity: 100,
                 articulation: Articulation::Trigger,
+                performance: Default::default(),
             },
         );
         measure.add_note(
@@ -478,6 +486,7 @@ mod tests {
                 duration_steps: 0,
                 velocity: 100,
                 articulation: Articulation::Trigger,
+                performance: Default::default(),
             },
         );
 
@@ -492,6 +501,7 @@ mod tests {
                     duration_steps: 0,
                     velocity: 70,
                     articulation: Articulation::Trigger,
+                    performance: Default::default(),
                 },
             );
         }
@@ -612,6 +622,7 @@ mod tests {
                     duration_steps: 4,
                     velocity: 80,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 },
             );
             timeline.push_measure(measure);

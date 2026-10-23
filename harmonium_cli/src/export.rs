@@ -114,14 +114,12 @@ pub fn run(
     composer.set_writehead_lookahead(initial_bars + 16);
     composer.generate_bars(initial_bars);
     let mut automated_measures = Vec::new();
-    if automation.is_some() {
-        for snapshot in composer.take_snapshots() {
-            automated_measures.push(serde_json::json!({
-                "bar": snapshot.index,
-                "intensity": composer.musical_params().intensity,
-                "measure": snapshot,
-            }));
-        }
+    for snapshot in composer.take_snapshots() {
+        automated_measures.push(serde_json::json!({
+            "bar": snapshot.index,
+            "intensity": composer.musical_params().intensity,
+            "measure": snapshot,
+        }));
     }
     let mut prepared_after = 0usize;
     let mut bar_start_frames = std::collections::BTreeMap::new();
@@ -229,6 +227,13 @@ pub fn run(
             }
         } else {
             composer.generate_ahead();
+            for snapshot in composer.take_snapshots() {
+                automated_measures.push(serde_json::json!({
+                    "bar": snapshot.index,
+                    "intensity": composer.musical_params().intensity,
+                    "measure": snapshot,
+                }));
+            }
         }
 
         let chunk_samples =
@@ -320,19 +325,14 @@ pub fn run(
 
     // Save truth snapshots
     if let Some(truth_path) = record_truth {
-        let snapshot_count =
-            if automation.is_some() { automated_measures.len() } else { truth_snapshots.len() };
-        let truth = if automation.is_some() {
-            serde_json::json!({
-                "sample_rate": SAMPLE_RATE,
-                "rendered_frames": rendered_samples,
-                "bar_start_frames": bar_start_frames,
-                "measures": automated_measures,
-                "reports": truth_snapshots,
-            })
-        } else {
-            serde_json::Value::Array(truth_snapshots)
-        };
+        let snapshot_count = automated_measures.len();
+        let truth = serde_json::json!({
+            "sample_rate": SAMPLE_RATE,
+            "rendered_frames": rendered_samples,
+            "bar_start_frames": bar_start_frames,
+            "measures": automated_measures,
+            "reports": truth_snapshots,
+        });
         let truth_json = serde_json::to_string_pretty(&truth)?;
         std::fs::write(&truth_path, &truth_json)?;
         println!(

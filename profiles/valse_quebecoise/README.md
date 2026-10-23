@@ -40,3 +40,56 @@ l’ensemble de la tradition.
 
 Salle paroissiale plus ample : taille 0,58, amorti 0,45, largeur 0,85 et niveau 0,35 ; violon presque centré, guitare à gauche, basse et pieds resserrés.
 Guitare −5 dB, basse −8 dB, pieds −6 dB de canal et bus +14,5 dB gardent le violon devant avec une marge de crête ; hypothèse d'écoute, pas une reconstruction historique.
+
+## Interprétation V2
+
+Source : `harmonium_lab/references/ornaments/quebecoise-waltz.json`, DS-T10b
+(labo main `f8e0cbc`, corpus et droits dans ses manifestes).
+67 airs, 8183 attaques porteuses écrites ; reprises non multipliées.
+
+| Marque écrite | Occurrences | Par 100 notes |
+|---|---:|---:|
+| Liaison `(…)` | 53 | 0.647684 |
+| Tenue liée `-` | 104 | 1.270928 |
+| Détaché `.` | 30 | 0.366614 |
+| Accent explicite | 0 | 0.000000 |
+| Fermata `H` | 0 | 0.000000 |
+
+Les règles sont des conditionnelles **conjointes** position × durée ×
+intervalle précédent, pas un produit de marginales. Reproduction :
+`measure_performance.py --corpus-only` réutilise uniquement
+`harmonium_lab.trad.ornaments.extract_ornaments`, donc le parseur ABC commun.
+Positions/durées exactement représentables seulement, sans arrondir les
+triolets ni les changements de métrique ; notes de 1–2 pas ou 3–grille.
+Au pas 0, contexte regroupé (le moteur recommence le contexte par mesure) ;
+ailleurs, répétition/montée/descente. Cellules de moins de 30 porteuses
+écartées par prudence, sans prétendre à une indépendance statistique.
+Chaque commentaire de règle donne son effectif et son dénominateur.
+Avec `Normal = 100`, poids `100 × marques / (porteuses − toutes marques)` ;
+liaison/tie/tenuto → `Linked` plein, point → `Detached`, gate 0,80 avant
+émotion. Une liaison compte sa porteuse initiale, pas toutes ses notes :
+ces taux sont des planchers écrits et des **poids**, pas une garantie de
+fréquence jouée ni une simulation des groupes de coups d’archet.
+
+Aucun accent, tenuto `L` ni marcato écrit : le petit poids d’accent métrique
+4 face à Normal 100 est une **proposition**, non une mesure du corpus.
+`L` désigne tenuto dans ABC ; `H` est mesuré mais ne sert pas à déduire
+une durée de respiration ou à ralentir les fermatas.
+
+| Réglage proposé | Valeur / intention |
+|---|---|
+| Timing par pas | −0.015 aux pulses ; +0.0075 aux autres pas pairs ; 0 aux impairs |
+| Dispersion | ±0.015 pas, soit ±1.55 ms au tempo nominal avant swing |
+| Courbe de phrase | −2 → +3 → −3 unités MIDI ; bornes 30..127 |
+| Respiration | 12 % de la dernière durée avant chaque fin de phrase |
+| Tension 0 → 1 | jusqu’à −0,04 pas et −0,10 de gate |
+| Arousal 0 → 1 | accent de base +2, puis jusqu’à +4 unités supplémentaires |
+| Valence / densité | coefficients 0 : pas de corrélation déduite des ABC |
+
+Micro-timing, gates, accents, courbe et respiration : **à valider à l’oreille**.
+Ces petites valeurs ne sont pas des mesures de violoneux/fifre de cette tradition.
+Repères généraux : [discrimination temporelle, Friberg & Sundberg 1995](https://pubs.aip.org/asa/jasa/article/98/5/2524/798047/Time-discrimination-in-a-monotonic-isochronous)
+et [phrasé/articulation, système KTH 2006](https://doi.org/10.2478/v10053-008-0052-x).
+Sans `[performance]`, ou avec tous ses effets à zéro, le flux antérieur est
+conservé sans tirage supplémentaire ; basse, accords et pieds non retouchés.
+Schéma et unités : [Interprétation](../README.md#interprétation).

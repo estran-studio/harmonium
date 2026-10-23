@@ -760,6 +760,7 @@ pub fn feet_notes_with_cadence(
             duration_steps: 0,
             velocity,
             articulation: Articulation::Trigger,
+            performance: Default::default(),
         });
     }
 

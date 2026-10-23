@@ -35,9 +35,15 @@ fn render_reel(
     bars: usize,
     swing: Option<f32>,
     feet_off: bool,
+    mechanical: bool,
 ) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
         create_offline_engine(None, None, SAMPLE_RATE)?;
+    if mechanical {
+        let mut profile = composer.profile().clone();
+        profile.performance = Default::default();
+        composer.set_profile(profile)?;
+    }
 
     composer.set_seed(seed);
 
@@ -129,7 +135,7 @@ fn tempos(smf: &Smf) -> Vec<u32> {
 /// order: simulate the sounding set, which must drain exactly.
 #[test]
 fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
-    let export = render_reel(1, 8, None, false)?;
+    let export = render_reel(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let events = note_events(&smf)?;
     assert!(!events.is_empty(), "reel records notes");
@@ -161,7 +167,7 @@ fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
 /// duration matches the rendered WAV within one beat.
 #[test]
 fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
-    let export = render_reel(1, 8, None, false)?;
+    let export = render_reel(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
 
     let expected_uspq = (60_000_000.0 / REEL_BPM) as u32;
@@ -191,7 +197,7 @@ fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
 /// Feet off: no notes on the GM drum channel (9).
 #[test]
 fn midi_feet_off_records_no_drums() -> Result<(), String> {
-    let export = render_reel(1, 8, None, true)?;
+    let export = render_reel(1, 8, None, true, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let events = note_events(&smf)?;
     let drum: Vec<_> = events.iter().filter(|e| e.2 == 9).collect();
@@ -205,7 +211,7 @@ fn midi_feet_off_records_no_drums() -> Result<(), String> {
 /// multiples; the default reel swing bends eighths off that grid.
 #[test]
 fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
-    let export = render_reel(1, 8, Some(0.5), false)?;
+    let export = render_reel(1, 8, Some(0.5), false, true)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let melody: Vec<u32> =
         note_events(&smf)?.into_iter().filter(|e| e.1 && e.2 == 0).map(|e| e.0).collect();
@@ -215,7 +221,7 @@ fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
         assert!(gap > 0 && gap % 240 == 0, "unequal eighth interval: {gap} in {melody:?}");
     }
 
-    let export = render_reel(1, 8, None, false)?;
+    let export = render_reel(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let all: Vec<u32> = note_events(&smf)?.into_iter().filter(|e| e.1).map(|e| e.0).collect();
     let bent = all.windows(2).any(|pair| (pair[1] - pair[0]) % 240 != 0);

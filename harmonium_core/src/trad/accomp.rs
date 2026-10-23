@@ -51,6 +51,7 @@ pub fn bass_bar(
                 duration_steps: params.bass_duration_steps,
                 velocity: params.bass_velocity,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             }
         })
         .collect()
@@ -155,6 +156,7 @@ impl Guitarist {
                 duration_steps: params.chop_duration_steps,
                 velocity: params.chop_velocity,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             }));
         }
         notes
