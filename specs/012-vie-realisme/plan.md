@@ -173,6 +173,9 @@ export MIDI, `harmonium_cli` (REPL `gain`), `profiles/*/profile.toml`,
 - **À faire d'abord** : étude de faisabilité (turlutte, chansons à répondre,
   chansons de canot) : synthèse possible, corpus et droits. Rien d'autochtone
   sans consultation (principe VII).
+- **Fait** : [étude de faisabilité](voix-faisabilite.md). Premier pas retenu : turlutte en SoundFont de
+  syllabes doublant la mélodie du reel (sans amendement) ; chanson à répondre et chanson de canot ensuite,
+  en vocables ; aucune voix avec paroles dans le moteur.
 
 ## 9. Vrais pieds
 
