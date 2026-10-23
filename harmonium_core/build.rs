@@ -22,14 +22,20 @@ fn bundle_profiles() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    // Place reel_quebecois first as the engine's default, followed by others sorted by path.
+    // Place reel_quebecois first as the engine's default, followed by original
+    // Quebec profiles (for compound/triple meter default resolution), then others sorted by path.
     dirs.sort_by(|a, b| {
-        let a_default = a.file_name().and_then(|n| n.to_str()) == Some("reel_quebecois");
-        let b_default = b.file_name().and_then(|n| n.to_str()) == Some("reel_quebecois");
-        match (a_default, b_default) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
+        let a_name = a.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let b_name = b.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let rank = |name: &str| match name {
+            "reel_quebecois" => 0,
+            "gigue_quebecoise" => 1,
+            "valse_quebecoise" => 2,
+            _ => 3,
+        };
+        match rank(a_name).cmp(&rank(b_name)) {
+            std::cmp::Ordering::Equal => a.cmp(b),
+            other => other,
         }
     });
 
