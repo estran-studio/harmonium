@@ -316,3 +316,12 @@ rythme n'est ajouté pour faire monter une métrique.
 - Aucun `unwrap()`/`expect()` ajouté hors tests, aucun changement du callback
   audio ni du chemin RT ; tout le matériel de seconde fin est construit sur
   le thread principal. Aucun push ni fusion dans main.
+
+## Écoute du propriétaire (2026-10-23)
+
+Paires `demos/phrase_avant_apres/reel_seed{3,7}_{AVANT,APRES}.wav` : « ça sonne plus vrai comme
+air, et je ne trouve pas qu'on perde vraiment rien ». Couche phrase retenue.
+
+Exigence : **toute règle de structure doit être paramétrable** dans le profil (reprise de motif,
+variation aux reprises, etc.). Suite : P3-T3 (audit de ce qui reste codé en dur, rythme par
+position, guide des règles).
