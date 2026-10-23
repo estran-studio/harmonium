@@ -47,6 +47,8 @@ pub struct TunePlan {
     roles: Vec<Vec<ImposedRole>>,
     second_endings: Vec<Option<ImposedRole>>,
     roles_resolved: bool,
+    #[serde(default)]
+    pass_roles: Vec<ImposedRole>,
 }
 impl Default for TunePlan {
     fn default() -> Self {
@@ -72,7 +74,15 @@ impl TunePlan {
             .iter()
             .map(|part| part.second_ending.as_ref().and_then(|role| role.fixed()))
             .collect();
-        Self { key: key % 12, mode, profile, roles, second_endings, roles_resolved: false }
+        Self {
+            key: key % 12,
+            mode,
+            profile,
+            roles,
+            second_endings,
+            roles_resolved: false,
+            pass_roles: Vec::new(),
+        }
     }
     pub fn draw(
         rng: &mut dyn RngCore,
@@ -101,7 +111,7 @@ impl TunePlan {
         }
         unreachable!("validated positive weights")
     }
-    /// Un seul tirage structurel par air ; les reprises ne consomment aucun aléa.
+    /// Résout tout le matériel structurel de l'air selon la portée configurée.
     pub fn resolve_roles(&mut self, rng: &mut dyn RngCore) {
         if self.roles_resolved {
             return;
@@ -116,12 +126,46 @@ impl TunePlan {
                 configured.second_ending.as_ref().map(|role| role.draw(&self.profile.form, rng));
         }
         self.roles_resolved = true;
+        if self.profile.form.resolve == crate::style_profile::RoleResolution::PerPass {
+            for bar in 0..self.total_bars() * self.profile.arrangement.tours_per_tune {
+                let (part, pass, offset, ending) = self.position(bar);
+                let role = if bar < self.total_bars() && pass == 1 {
+                    self.roles[part][offset]
+                } else if ending {
+                    self.profile.form.parts[part]
+                        .second_ending
+                        .as_ref()
+                        .map_or(self.roles[part][offset], |r| r.draw(&self.profile.form, rng))
+                } else {
+                    self.profile.form.parts[part].roles[offset].draw(&self.profile.form, rng)
+                };
+                self.pass_roles.push(role);
+            }
+        }
     }
     pub fn roles_for_part(&self, part: usize) -> &[ImposedRole] {
         &self.roles[part]
     }
     pub(crate) fn second_ending_role(&self, part: usize) -> Option<ImposedRole> {
         self.second_endings[part]
+    }
+    pub(crate) fn selection_plan(&self, bar: usize) -> Self {
+        // Ne pas recopier le calendrier complet de tous les tours à chaque passe.
+        let mut plan = Self {
+            key: self.key,
+            mode: self.mode,
+            profile: self.profile.clone(),
+            roles: self.roles.clone(),
+            second_endings: self.second_endings.clone(),
+            roles_resolved: true,
+            pass_roles: Vec::new(),
+        };
+        let (part, _, _, _) = self.position(bar);
+        if !self.pass_roles.is_empty() {
+            let len = self.profile.form.parts[part].roles.len();
+            plan.roles[part].copy_from_slice(&self.pass_roles[bar..bar + len]);
+        }
+        plan
     }
     /// Partie, passe, décalage et variante, calculés en un seul parcours de forme.
     pub(crate) fn position(&self, bar: usize) -> (usize, usize, usize, bool) {
@@ -134,10 +178,16 @@ impl TunePlan {
     }
     /// Cellules distinctes, y compris les fins de reprise configurées.
     pub fn material_bars(&self) -> usize {
+        if self.profile.form.expanded_material() {
+            return self.total_bars() * self.profile.arrangement.tours_per_tune;
+        }
         self.profile.form.unique_bars()
             + self.profile.form.parts.iter().filter(|part| part.second_ending.is_some()).count()
     }
     pub fn material_index(&self, bar: usize) -> usize {
+        if self.profile.form.expanded_material() {
+            return bar % self.material_bars();
+        }
         let (part, _, offset, second_ending) = self.position(bar);
         if second_ending {
             self.profile.form.unique_bars()
@@ -159,7 +209,9 @@ impl TunePlan {
             bar_in_strain: (offset + 1) as u8,
             pass: pass as u8,
             is_repeat: pass > 1,
-            role: if second_ending {
+            role: if !self.pass_roles.is_empty() {
+                self.pass_roles[bar % self.pass_roles.len()]
+            } else if second_ending {
                 self.second_endings[part].unwrap_or(self.roles[part][offset])
             } else {
                 self.roles[part][offset]
@@ -171,6 +223,9 @@ impl TunePlan {
     }
     /// Mesure jouée représentant la cellule distincte `i` (fins comprises).
     pub fn representative_bar(&self, i: usize) -> usize {
+        if self.profile.form.expanded_material() {
+            return i;
+        }
         let form = &self.profile.form;
         let mut remaining = i;
         for (part, configured) in form.parts.iter().enumerate() {

@@ -270,6 +270,7 @@ mod tests {
                     let mut tuning = harmonium_core::TuningParams::default();
                     for part in &mut tuning.profile.form.parts {
                         part.second_ending = None;
+                        part.rhythm.clear();
                         part.roles =
                             [Open, Free, Free, CadHalf, CopyOf(1), CopyOf(2), Free, CadFull]
                                 .map(Into::into)
@@ -306,7 +307,7 @@ mod tests {
             }
         }
         let actual = serde_json::json!({
-            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0" } else { "TUNING_VERSION:12" },
+            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0".to_string() } else { format!("TUNING_VERSION:{}", harmonium_core::tuning::TUNING_VERSION) },
             "runs": runs
         });
         let filename = if fixed_roles { "profile_d2_fixed.json" } else { "profile_d2_main.json" };

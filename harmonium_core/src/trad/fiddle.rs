@@ -1,10 +1,9 @@
-//! Ligne mélodique : sélection pondérée des cellules par rôles du profil,
-//! continuité diatonique et contours de registre par partie. Les reprises
-//! relisent les mêmes degrés, éventuellement dans un mode parallèle.
+//! Ligne mélodique : cellules pondérées, continuité diatonique et contours
+//! de registre par partie ; reprises et tours selon les règles du profil.
 
 use super::{
     arrangement::Part,
-    cells::{Cell, CellBank, CellNote, CellRole, FIFTH_DIATONIC_STEPS},
+    cells::{Cell, CellBank, CellNote, CellRole},
     mode::{degree_to_diatonic_step, diatonic_step_to_degree},
     plan::{ImposedRole, TunePlan},
 };
@@ -21,14 +20,15 @@ pub struct FiddleLine {
     plan: TunePlan,
     parts: Vec<Vec<Cell>>,
     second_endings: Vec<Option<Cell>>,
+    performed: Vec<Cell>,
     params: ReelFiddleParams,
     tonic_midi: u8,
     render_mode: super::Mode,
 }
 
 impl FiddleLine {
-    /// Construit une nouvelle [`FiddleLine`] en choisissant immédiatement les
-    /// 16 cellules des deux strains selon D6 avec [`ReelFiddleParams::default`].
+    /// Choisit le matériel des parties et variantes configurées avec les
+    /// paramètres mélodiques par défaut.
     #[must_use]
     pub fn new(plan: TunePlan, bank: &CellBank, rng: &mut dyn RngCore) -> Self {
         Self::with_params(plan, bank, &ReelFiddleParams::default(), rng)
@@ -65,6 +65,7 @@ impl FiddleLine {
         while parts.len() < plan.profile.form.parts.len() {
             parts.push(select_strain_cells(
                 &plan,
+                Part(parts.len()),
                 tonic_midi,
                 active_bank,
                 params,
@@ -98,14 +99,19 @@ impl FiddleLine {
                 })
             })
             .collect();
-        Self {
+        let mut line = Self {
+            performed: Vec::new(),
             render_mode: plan.mode,
             plan,
             parts,
             second_endings,
             params: params.clone(),
             tonic_midi,
+        };
+        if line.plan.profile.form.expanded_material() {
+            line.build_performed(active_bank, rng);
         }
+        line
     }
 
     /// Plan structurel du tune associé à cette ligne de violon.
@@ -132,6 +138,9 @@ impl FiddleLine {
 
     #[must_use]
     pub fn cell_for_bar(&self, bar_in_tune: usize) -> &Cell {
+        if !self.performed.is_empty() {
+            return &self.performed[bar_in_tune % self.performed.len()];
+        }
         let (part, _, offset, second_ending) = self.plan.position(bar_in_tune);
         if second_ending {
             self.second_endings[part]
@@ -169,7 +178,7 @@ impl FiddleLine {
         notes
     }
 
-    /// Rend les 32 mesures complètes du tune (fonction de commodité pour les tests).
+    /// Rend les mesures du premier tour de la forme configurée.
     #[must_use]
     pub fn render_tune(&self) -> Vec<Vec<TimelineNote>> {
         let total = self.plan.total_bars();
@@ -178,6 +187,162 @@ impl FiddleLine {
             bars.push(self.notes_for_bar(bar));
         }
         bars
+    }
+}
+
+impl FiddleLine {
+    fn build_performed(&mut self, bank: &CellBank, rng: &mut dyn RngCore) {
+        let bars = self.plan.total_bars();
+        let mut played = Vec::with_capacity(self.plan.material_bars());
+        for start in (0..self.plan.material_bars()).filter(|&b| self.plan.position(b).2 == 0) {
+            let (part, pass, _, _) = self.plan.position(start);
+            let tour = start / bars;
+            let len = self.parts[part].len();
+            let mut cells = if self.plan.profile.form.resolve
+                == crate::style_profile::RoleResolution::PerPass
+                && (pass > 1 || tour > 0)
+            {
+                let selection = self.plan.selection_plan(start);
+                let mut previous = if selection.profile.form.parts[part].link_previous {
+                    played.last().and_then(|c: &Cell| c.last_degree()).map(degree_to_diatonic_step)
+                } else {
+                    None
+                };
+                select_strain_cells(
+                    &selection,
+                    Part(part),
+                    self.tonic_midi,
+                    bank,
+                    &self.params,
+                    &mut previous,
+                    &self.parts[..part],
+                    rng,
+                )
+            } else if tour > 0 {
+                played[start % bars..start % bars + len].to_vec()
+            } else {
+                let mut cells = self.parts[part].clone();
+                if self.plan.position(start + len - 1).3
+                    && let Some(ending) = &self.second_endings[part]
+                {
+                    cells[len - 1] = ending.clone();
+                }
+                cells
+            };
+            for (offset, cell) in cells.iter_mut().enumerate() {
+                let role = self.plan.bar_role(start + offset).role;
+                for probability in [
+                    if pass > 1 && tour == 0 {
+                        self.plan.profile.form.repeat_variation
+                    } else {
+                        0.0
+                    },
+                    if tour > 0 { self.plan.profile.form.tour_variation } else { 0.0 },
+                ] {
+                    if probability > 0.0 && (probability == 1.0 || rng.next_f32() < probability) {
+                        vary_cell(cell, role, bank, &self.plan, self.tonic_midi, &self.params, rng);
+                    }
+                }
+            }
+            played.extend(cells);
+        }
+        self.performed = played;
+    }
+}
+
+fn vary_cell(
+    cell: &mut Cell,
+    role: ImposedRole,
+    bank: &CellBank,
+    plan: &TunePlan,
+    tonic: u8,
+    params: &ReelFiddleParams,
+    rng: &mut dyn RngCore,
+) {
+    use crate::style_profile::VariationOperation;
+    let operations = &plan.profile.form.variation_operations;
+    let first = rng.next_range_usize(0..operations.len());
+    let pitch = |note: &CellNote| match note {
+        CellNote::Degree(degree) => Some(fold_midi_to_tessitura(
+            i16::from(tonic) + i16::from(plan.mode.degree_to_semitones(*degree)),
+            params.tessitura_min,
+            params.tessitura_max,
+        )),
+        CellNote::Hold => None,
+    };
+    for index in 0..operations.len() {
+        let candidate = match operations[(first + index) % operations.len()] {
+            VariationOperation::VariedEnd => {
+                if cell.notes.len() < 2 {
+                    continue;
+                }
+                let split = plan.profile.form.varied_end_split(cell.notes.len());
+                if !bank.cells.iter().any(|c| {
+                    matches!(c.notes[split], CellNote::Degree(_))
+                        && !same_degree_classes(&c.notes[split..], &cell.notes[split..])
+                }) {
+                    continue;
+                }
+                let mut candidate = varied_end_cell(cell, bank, plan, tonic, params, rng);
+                // CadFull protège aussi sa tonique tenue avant une levée finale.
+                if matches!(
+                    role,
+                    ImposedRole::CadHalf
+                        | ImposedRole::CadFull
+                        | ImposedRole::CadTonic
+                        | ImposedRole::CadOpen
+                        | ImposedRole::CadFifth
+                        | ImposedRole::CadOther
+                ) && let Some(last) =
+                    cell.notes.iter().rposition(|n| matches!(n, CellNote::Degree(degree)
+                        if role != ImposedRole::CadFull || degree_to_diatonic_step(*degree).rem_euclid(7) == 0))
+                {
+                    candidate.notes[last..].copy_from_slice(&cell.notes[last..]);
+                }
+                candidate
+            }
+            VariationOperation::RepeatedNotes => {
+                let last =
+                    cell.notes.iter().rposition(|n| matches!(n, CellNote::Degree(_))).unwrap_or(0);
+                let Some(i) = (1..last).find(|&i| {
+                    matches!(cell.notes[i], CellNote::Degree(_))
+                        && cell.notes[i] == cell.notes[i - 1]
+                }) else {
+                    continue;
+                };
+                let CellNote::Degree(degree) = cell.notes[i] else {
+                    continue;
+                };
+                let mut candidate = cell.clone();
+                candidate.notes[i] =
+                    CellNote::Degree(diatonic_step_to_degree(degree_to_diatonic_step(degree) + 1));
+                candidate
+            }
+            VariationOperation::Octave => {
+                let Some(octave) = [1, -1].into_iter().find(|&octave| {
+                    cell.notes.iter().all(|note| match note {
+                        CellNote::Degree(degree) => {
+                            let shifted = diatonic_step_to_degree(
+                                degree_to_diatonic_step(*degree).saturating_add(7 * octave),
+                            );
+                            (i16::from(params.tessitura_min)..=i16::from(params.tessitura_max))
+                                .contains(
+                                    &(i16::from(tonic)
+                                        + i16::from(plan.mode.degree_to_semitones(shifted))),
+                                )
+                        }
+                        CellNote::Hold => true,
+                    })
+                }) else {
+                    continue;
+                };
+                transpose_cell_octaves(cell, octave)
+            }
+        };
+        if candidate.notes.iter().map(&pitch).ne(cell.notes.iter().map(&pitch)) {
+            *cell = candidate;
+            return;
+        }
     }
 }
 
@@ -303,8 +468,10 @@ fn render_cell_notes(
 }
 
 /// Choisit une partie après les parties déjà construites (références validées).
+#[allow(clippy::too_many_arguments)]
 fn select_strain_cells(
     plan: &TunePlan,
+    strain: Part,
     tonic_midi: u8,
     bank: &CellBank,
     params: &ReelFiddleParams,
@@ -312,9 +479,11 @@ fn select_strain_cells(
     previous_parts: &[Vec<Cell>],
     rng: &mut dyn RngCore,
 ) -> Vec<Cell> {
-    let strain = Part(previous_parts.len());
     let mut chosen: Vec<Cell> = Vec::with_capacity(plan.profile.form.parts[strain.0].roles.len());
     let mut bar1_first_step: Option<i8> = None;
+    if !plan.profile.form.parts[strain.0].link_previous {
+        *prev_last_step = None;
+    }
 
     let roles = plan.roles_for_part(strain.0);
     for (bar_idx, &bar_role) in roles.iter().enumerate() {
@@ -370,7 +539,10 @@ fn select_bar_cell(
             varied_end_cell(&chosen[usize::from(bar) - 1], bank, plan, tonic_midi, params, rng)
         }
         imposed => {
-            let excluded_cell = if imposed == ImposedRole::Free && bar_idx > 0 {
+            let excluded_cell = if plan.profile.form.avoid_adjacent
+                && imposed == ImposedRole::Free
+                && bar_idx > 0
+            {
                 Some(&chosen[bar_idx - 1])
             } else {
                 None
@@ -392,14 +564,68 @@ fn select_bar_cell(
     };
     if matches!(
         bar_role,
+        ImposedRole::Open
+            | ImposedRole::Free
+            | ImposedRole::CadOpen
+            | ImposedRole::CadOther
+            | ImposedRole::CadHalf
+            | ImposedRole::CadFifth
+    ) && let Some(rhythm) =
+        plan.profile.form.parts[strain.0].rhythm.iter().find(|r| r.bar == bar_idx + 1)
+    {
+        apply_rhythm(&mut cell, rhythm, rng);
+    }
+    if matches!(
+        bar_role,
         ImposedRole::CadTonic
             | ImposedRole::CadOpen
             | ImposedRole::CadFifth
             | ImposedRole::CadOther
     ) {
-        shape_cadence(&mut cell, bar_role);
+        shape_cadence(&mut cell, bar_role, &plan.profile.form);
     }
     cell
+}
+
+fn apply_rhythm(
+    cell: &mut Cell,
+    rhythm: &crate::style_profile::PositionRhythm,
+    rng: &mut dyn RngCore,
+) {
+    let total: usize = rhythm.patterns.iter().map(|p| p.weight as usize).sum();
+    let mut pick = rng.next_range_usize(0..total);
+    let pattern = rhythm
+        .patterns
+        .iter()
+        .find(|p| {
+            if pick < p.weight as usize {
+                true
+            } else {
+                pick -= p.weight as usize;
+                false
+            }
+        })
+        .unwrap_or_else(|| unreachable!("validated rhythm weights"));
+    let source = cell.notes.clone();
+    let last = cell.last_degree().unwrap_or(1);
+    cell.notes.fill(CellNote::Hold);
+    let mut offset = 0;
+    for (index, &duration) in pattern.durations.iter().enumerate() {
+        let degree = if index + 1 == pattern.durations.len() {
+            last
+        } else {
+            source[..=offset]
+                .iter()
+                .rev()
+                .find_map(|n| match n {
+                    CellNote::Degree(d) => Some(*d),
+                    CellNote::Hold => None,
+                })
+                .unwrap_or(last)
+        };
+        cell.notes[offset] = CellNote::Degree(degree);
+        offset += duration;
+    }
 }
 
 /// Déplacement diatonique uniforme ; une octave commune préserve le contour.
@@ -465,7 +691,7 @@ fn varied_end_cell(
     params: &ReelFiddleParams,
     rng: &mut dyn RngCore,
 ) -> Cell {
-    let split = source.notes.len() / 2;
+    let split = plan.profile.form.varied_end_split(source.notes.len());
     let eligible = |cell: &&Cell| {
         matches!(cell.notes[split], CellNote::Degree(_))
             && !same_degree_classes(&cell.notes[split..], &source.notes[split..])
@@ -495,16 +721,18 @@ pub(crate) fn same_degree_classes(left: &[CellNote], right: &[CellNote]) -> bool
     })
 }
 
-fn shape_cadence(cell: &mut Cell, role: ImposedRole) {
+fn shape_cadence(cell: &mut Cell, role: ImposedRole, form: &crate::style_profile::ProfileForm) {
     if role == ImposedRole::CadTonic {
-        let start = (cell.notes.len() / 2..cell.notes.len().saturating_sub(1))
+        let minimum = form.cadence_min_units.min(cell.notes.len());
+        let search = (cell.notes.len() as f32 * form.cadence_search_from) as usize;
+        let start = (search..=cell.notes.len().saturating_sub(minimum))
             .rev()
             .find(|&index| {
                 matches!(cell.notes[index], CellNote::Degree(degree)
                 if degree_to_diatonic_step(degree).rem_euclid(7) == 0)
-                    && cell.notes[index + 1] == CellNote::Hold
+                    && cell.notes[index + 1..index + minimum].iter().all(|n| *n == CellNote::Hold)
             })
-            .unwrap_or_else(|| cell.notes.len().saturating_sub(2));
+            .unwrap_or_else(|| cell.notes.len().saturating_sub(minimum));
         let previous = cell.notes[..=start]
             .iter()
             .rev()
@@ -552,11 +780,6 @@ struct EvaluatedCandidate {
 }
 
 impl EvaluatedCandidate {
-    /// Fenêtre stricte du contour en dixièmes de demi-ton (`±4` demi-tons) :
-    /// sans elle, une chaîne verrouillée bas par la continuité ne remonte
-    /// jamais vers la cible de strain (P1-T7).
-    const STRICT_CONTOUR_WINDOW_TENTHS: i32 = 40;
-
     const fn score_key(&self) -> (u8, i16, u8, i16, i16, i32) {
         (
             self.tessitura_penalty,
@@ -568,12 +791,13 @@ impl EvaluatedCandidate {
         )
     }
 
-    const fn is_strict_match(&self) -> bool {
+    fn is_strict_match(&self, plan: &TunePlan) -> bool {
         self.tessitura_penalty == 0
             && self.fifth_excess == 0
             && self.register_penalty == 0
             && self.continuity_excess == 0
-            && self.contour_distance_tenths <= Self::STRICT_CONTOUR_WINDOW_TENTHS
+            && self.contour_distance_tenths
+                <= (plan.profile.form.contour_window_semitones * 10.0).round() as i32
     }
 }
 
@@ -620,7 +844,7 @@ fn pick_cell_for_bar(
                 prev_last_step,
                 bar1_first_step,
             );
-            if cand.is_strict_match() {
+            if cand.is_strict_match(plan) {
                 return cand.cell;
             }
             if best.as_ref().is_none_or(|b| cand.score_key() < b.score_key()) {
@@ -889,11 +1113,10 @@ fn evaluate_candidate(
 
     // Tolérance autour de la frontière de registre : rejette les erreurs
     // d'octave sans forcer de transposition (le contour vise la cible, P1-T7).
-    const REGISTER_TOLERANCE_MIDI: f32 = 6.0;
     let in_register = if target_midi <= split_midi {
-        mean_midi <= split_midi + REGISTER_TOLERANCE_MIDI
+        mean_midi <= split_midi + plan.profile.form.register_tolerance_semitones
     } else {
-        mean_midi >= split_midi - REGISTER_TOLERANCE_MIDI
+        mean_midi >= split_midi - plan.profile.form.register_tolerance_semitones
     };
     let register_penalty = u8::from(!in_register);
 
@@ -905,13 +1128,13 @@ fn evaluate_candidate(
     let max_cont = i16::from(params.max_continuity_step_distance);
     let continuity_excess = (continuity_distance - max_cont).max(0);
 
-    let fifth_steps = i16::from(FIFTH_DIATONIC_STEPS);
+    let fifth_steps = i16::from(plan.profile.form.max_leap_degrees);
     let entry_fifth_excess = (continuity_distance - fifth_steps).max(0);
     // Les mesures 4 (index 3, avant la copie de la mesure 1 en mesure 5) et 8
     // (index 7, avant la reprise de la mesure 1 en passe 2) doivent aussi
     // rester à ≤ une quinte du premier degré de la mesure 1.
     let roles = plan.roles_for_part(strain.0);
-    let loop_fifth_excess = if (bar_idx + 1 == roles.len()
+    let loop_fifth_excess = if ((plan.profile.form.close_part_loop && bar_idx + 1 == roles.len())
         || roles.get(bar_idx + 1) == Some(&ImposedRole::CopyOf(1)))
         && let Some(b1_first) = bar1_first_step
     {
