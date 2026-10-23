@@ -99,3 +99,8 @@ La variante s'applique à A2/B2 et reste identique à chaque tour ; les sept
 autres mesures ne changent pas entre passes. Les premières fins conservent
 les réglages DS-T9 ci-dessus. Les chiffres réels et les limites de mesure
 sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fins-de-reprise).
+
+## Espace et mixage V1
+
+Petite salle communautaire : taille 0,42, amorti 0,55, niveau 0,30 ; violon légèrement à gauche, guitare à droite, basse centrale et pieds resserrés.
+Guitare −5 dB, basse −8 dB, pieds −6 dB de canal et bus +16,5 dB gardent la ligne de violon devant ; espace proposé pour l'écoute, pas une estimation du corpus.

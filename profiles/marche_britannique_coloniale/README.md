@@ -74,3 +74,8 @@ sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fin
 
 Effectifs faibles : ces poids décrivent ce corpus, pas une certitude sur
 l’ensemble de la tradition.
+
+## Espace et mixage V1
+
+Plein air fifre-et-tambour : taille 0,12, amorti 0,80, niveau 0,10 et envoi 0,04 évitent une salle artificielle ; fifre et tambour près du centre.
+Tambour −6 dB de canal, bus +17,5 dB et présence +0,5 dB gardent le fifre lisible ; Chords/Bass/Toe restent absents, proposition de rendu et non mesure historique.

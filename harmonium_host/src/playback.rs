@@ -190,13 +190,6 @@ pub enum PlaybackCommand {
     ClearLoop,
     StartRecording(harmonium_core::events::AudioRecordFormat),
     StopRecording(harmonium_core::events::AudioRecordFormat),
-    MixerGains {
-        lead: f32,
-        chords: f32,
-        bass: f32,
-        snare: f32,
-        hat: f32,
-    },
     LoadFont {
         id: u32,
         bytes: Vec<u8>,
@@ -221,6 +214,12 @@ pub enum PlaybackCommand {
     },
     /// Revert to the measure tempo at the next pulse boundary.
     ClearTempo,
+}
+
+#[derive(Clone, Copy, Default)]
+struct TrackState {
+    mix: harmonium_core::mix::MidiTrackMix,
+    muted: bool,
 }
 
 /// PlaybackEngine runs on the audio thread inside the CPAL closure.
@@ -314,21 +313,14 @@ pub struct PlaybackEngine {
     // composer and lock-free readers read
     transport_position: Arc<AtomicU64>,
 
-    // Mute state
+    // One runtime state per logical track: REPL gain and mute edit these slots.
+    tracks: [TrackState; 16],
     output_muted: bool,
-    muted_channels: Vec<bool>,
-    #[allow(dead_code)]
-    last_muted_channels: Vec<bool>,
+    mix_tune: Option<usize>,
+    pending_mix_reset: bool,
 
     // Loop region
     loop_region: Option<(usize, usize)>,
-
-    // Mixer gains (cached for reporting)
-    gain_lead: f32,
-    gain_chords: f32,
-    gain_bass: f32,
-    gain_snare: f32,
-    gain_hat: f32,
 
     // Musical params snapshot for reports
     musical_params: MusicalParams,
@@ -385,6 +377,15 @@ impl PlaybackEngine {
         let bpm = 120.0;
         let samples_per_step = (sample_rate * 60.0 / (bpm as f64) / 4.0) as usize;
         renderer.handle_event(AudioEvent::TimingUpdate { samples_per_step });
+        let musical_params = MusicalParams {
+            profile_mix: harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate),
+            ..MusicalParams::default()
+        };
+        renderer.handle_event(AudioEvent::SetMix { mix: musical_params.profile_mix });
+        let mut tracks = [TrackState::default(); 16];
+        for (track, mix) in tracks.iter_mut().zip(musical_params.profile_mix.tracks) {
+            track.mix = mix;
+        }
 
         Self {
             playhead: Playhead::new(sample_rate, 4),
@@ -419,15 +420,11 @@ impl PlaybackEngine {
             report_tx,
             transport_position,
             output_muted: false,
-            muted_channels: vec![false; 16],
-            last_muted_channels: vec![false; 16],
+            tracks,
+            mix_tune: None,
+            pending_mix_reset: false,
             loop_region: None,
-            gain_lead: 1.0,
-            gain_chords: 0.6,
-            gain_bass: 0.6,
-            gain_snare: 0.5,
-            gain_hat: 0.4,
-            musical_params: MusicalParams::default(),
+            musical_params,
             measure_sig: TimeSignature::default(),
             // 0.0 BPM never matches a real measure: the first load relays once.
             reported_bpm: 0.0,
@@ -602,7 +599,7 @@ impl PlaybackEngine {
         // the `events` borrow of the playhead is released before the handoff.
         for event in events {
             if let AudioEvent::NoteOn { channel, .. } = &event {
-                if self.muted_channels.get(*channel as usize).copied().unwrap_or(false) {
+                if self.tracks.get(*channel as usize).is_some_and(|track| track.muted) {
                     continue;
                 }
             }
@@ -647,6 +644,10 @@ impl PlaybackEngine {
 
     /// Métadonnées de la pulse audible : payload Copy, sans Box ni clone.
     fn relay_measure_params(&mut self) {
+        if self.pending_mix_reset {
+            self.pending_mix_reset = false;
+            self.reset_profile_mix();
+        }
         if (self.audible_bpm - self.reported_bpm).abs() > 0.01
             || self.measure_sig != self.reported_signature
         {
@@ -894,6 +895,12 @@ impl PlaybackEngine {
             // function runs under `RtGuard`, where allocating (Box, clone)
             // would panic in debug builds.
             self.measure_bpm = slot.measure.tempo;
+            if let Some(position) = slot.measure.position
+                && self.mix_tune != Some(position.tune_index)
+            {
+                self.mix_tune = Some(position.tune_index);
+                self.pending_mix_reset = true;
+            }
             self.swing_ratio = slot.measure.swing_ratio;
             self.current_pulse = slot.measure.pulse;
             if !self.tempo_override_explicit {
@@ -1007,30 +1014,34 @@ impl PlaybackEngine {
         }
     }
 
+    fn emit_mix(&mut self) {
+        let mut mix = self.musical_params.profile_mix;
+        for (control, track) in mix.tracks.iter_mut().zip(&self.tracks) {
+            *control = track.mix;
+        }
+        self.renderer.handle_event(AudioEvent::SetMix { mix });
+    }
+
+    fn reset_profile_mix(&mut self) {
+        for (track, mix) in self.tracks.iter_mut().zip(self.musical_params.profile_mix.tracks) {
+            track.mix = mix;
+        }
+        self.emit_mix();
+    }
+
     fn process_commands(&mut self) {
         while let Ok(cmd) = self.cmd_rx.pop() {
             match cmd {
                 PlaybackCommand::SetChannelGain { channel, gain } => {
-                    let gain = gain.clamp(0.0, 1.0);
-                    match channel {
-                        0 => self.gain_lead = gain,
-                        1 => self.gain_chords = gain,
-                        2 => self.gain_bass = gain,
-                        3 => self.gain_snare = gain,
-                        4 => self.gain_hat = gain,
-                        _ => {}
+                    if let Some(track) = self.tracks.get_mut(channel as usize) {
+                        // gain is a linear amplitude, not a linear CC7 value.
+                        track.mix.volume = (127.0 * gain.clamp(0.0, 1.0).sqrt()).round() as u8;
+                        self.emit_mix();
                     }
-                    self.renderer.handle_event(AudioEvent::SetMixerGains {
-                        lead: self.gain_lead,
-                        chords: self.gain_chords,
-                        bass: self.gain_bass,
-                        snare: self.gain_snare,
-                        hat: self.gain_hat,
-                    });
                 }
                 PlaybackCommand::SetChannelMute { channel, muted } => {
-                    if (channel as usize) < self.muted_channels.len() {
-                        self.muted_channels[channel as usize] = muted;
+                    if let Some(track) = self.tracks.get_mut(channel as usize) {
+                        track.muted = muted;
                         if muted {
                             self.renderer.handle_event(AudioEvent::AllNotesOff { channel });
                         }
@@ -1135,20 +1146,6 @@ impl PlaybackEngine {
                 PlaybackCommand::StopRecording(format) => {
                     self.renderer.handle_event(AudioEvent::StopRecording { format });
                 }
-                PlaybackCommand::MixerGains { lead, chords, bass, snare, hat } => {
-                    self.gain_lead = lead;
-                    self.gain_chords = chords;
-                    self.gain_bass = bass;
-                    self.gain_snare = snare;
-                    self.gain_hat = hat;
-                    self.renderer.handle_event(AudioEvent::SetMixerGains {
-                        lead,
-                        chords,
-                        bass,
-                        snare,
-                        hat,
-                    });
-                }
                 PlaybackCommand::LoadFont { id, bytes } => {
                     self.renderer.handle_event(AudioEvent::LoadFont { id, bytes });
                 }
@@ -1156,13 +1153,13 @@ impl PlaybackEngine {
                     self.renderer.handle_event(AudioEvent::ProgramChange { channel, program });
                 }
                 PlaybackCommand::SetMutedChannels(channels) => {
-                    for (i, &muted) in channels.iter().enumerate() {
-                        if i < self.muted_channels.len() {
-                            if muted && !self.muted_channels[i] {
-                                self.renderer
-                                    .handle_event(AudioEvent::AllNotesOff { channel: i as u8 });
-                            }
-                            self.muted_channels[i] = muted;
+                    for (track, &muted) in self.tracks.iter_mut().zip(&channels) {
+                        track.muted = muted;
+                    }
+                    for (channel, track) in self.tracks.iter().enumerate() {
+                        if track.muted {
+                            self.renderer
+                                .handle_event(AudioEvent::AllNotesOff { channel: channel as u8 });
                         }
                     }
                 }
@@ -1170,11 +1167,16 @@ impl PlaybackEngine {
                     // Forwarded so recorders (MIDI tempo/signature metas,
                     // MusicXML) track the commanded params; the measure load
                     // path refines them to the sounding values on change.
+                    let mix_changed = self.musical_params.profile_id != params.profile_id
+                        || self.musical_params.profile_mix != params.profile_mix;
                     self.renderer
                         .handle_event(AudioEvent::UpdateMusicalParams { params: params.clone() });
                     self.reported_bpm = params.bpm;
                     self.reported_signature = params.time_signature;
                     self.musical_params = *params;
+                    if mix_changed {
+                        self.reset_profile_mix();
+                    }
                 }
                 PlaybackCommand::SetTempo { bpm, ramp_pulses } => {
                     // D4: the audible tempo advances at pulse boundaries only

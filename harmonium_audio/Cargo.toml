@@ -11,4 +11,3 @@ harmonium_core = { path = "../harmonium_core" }
 oxisynth = { version = "0.1.0", features = ["sf3"] }
 hound = "3.5.1"
 midly = "0.5.3"
-rand = "0.8.5"

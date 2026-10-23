@@ -29,6 +29,7 @@ pub fn run(
     feet_sf2_bytes: Option<&[u8]>,
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
+    solo_track: Option<String>,
     style: Option<Box<harmonium_core::StyleProfile>>,
     seed: Option<u64>,
     feet: Option<FeetOpt>,
@@ -98,6 +99,16 @@ pub fn run(
     }
     let _ = playback_cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())));
+    if let Some(track) = solo_track {
+        for id in harmonium_core::timeline::TrackId::ALL {
+            playback_cmd_tx
+                .push(PlaybackCommand::SetChannelMute {
+                    channel: id.channel(),
+                    muted: format!("{id:?}") != track,
+                })
+                .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
+        }
+    }
 
     let initial_bars = if automation.is_some() { 1 } else { target_bars.unwrap_or(32).max(32) };
     composer.set_writehead_lookahead(initial_bars + 16);

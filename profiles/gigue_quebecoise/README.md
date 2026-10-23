@@ -32,3 +32,8 @@ La variante s'applique à A2/B2 et reste identique à chaque tour ; les sept
 autres mesures ne changent pas entre passes. Les premières fins conservent
 les réglages DS-T9 ci-dessus. Les chiffres réels et les limites de mesure
 sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fins-de-reprise).
+
+## Espace et mixage V1
+
+Veillée en petite salle : taille 0,38, amorti 0,58, niveau 0,28 ; violon presque au centre, guitare à gauche, basse et pieds proches du centre.
+Guitare −5 dB, basse −8 dB, pieds −6 dB de canal et bus +16,5 dB préservent la danse et la priorité mélodique ; hypothèse sonore, non mesure historique.

@@ -806,7 +806,6 @@ dependencies = [
  "hound",
  "midly",
  "oxisynth",
- "rand",
 ]
 
 [[package]]

@@ -50,6 +50,10 @@ struct Args {
     #[arg(long)]
     bars: Option<usize>,
 
+    /// Render only this logical track, without changing generated notes (export only).
+    #[arg(long, requires = "export", value_parser = ["Melody", "Chords", "Bass", "Heel", "Toe"])]
+    solo_track: Option<String>,
+
     /// Courbes TOML par mesure (export seulement).
     #[arg(long, value_name = "FILE", requires = "export")]
     automation: Option<String>,
@@ -157,6 +161,7 @@ fn main() -> Result<()> {
             feet_sf2_bytes.as_deref(),
             args.duration,
             args.bars,
+            args.solo_track,
             parsed_style,
             args.seed,
             parsed_feet,

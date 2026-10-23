@@ -173,6 +173,7 @@ impl MusicComposer {
         musical_params.time_signature = meter.time_signature;
         musical_params.pulse = Some(meter.pulse_spec());
         musical_params.set_swing_ratio(meter.default_swing_ratio);
+        musical_params.profile_mix = tuning.profile.mix.prepare(sample_rate);
         let bpm = musical_params.bpm;
         let config = SessionConfig {
             bpm,
@@ -570,6 +571,7 @@ impl MusicComposer {
         self.musical_params.set_swing_ratio(meter.default_swing_ratio);
         self.musical_params.time_signature = meter.time_signature;
         self.musical_params.pulse = Some(meter.pulse_spec());
+        self.musical_params.profile_mix = profile.mix.prepare(self.sample_rate);
         self.config.bpm = meter.default_bpm;
         self.config.steps = meter.steps_per_bar;
         self.config.pulses = usize::from(meter.pulse_spec().pulses_per_bar);

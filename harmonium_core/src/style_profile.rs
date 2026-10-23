@@ -457,6 +457,8 @@ pub struct StyleProfile {
     pub instruments: ProfileInstruments,
     pub arrangement: ReelArrangement,
     pub dynamics: StyleDynamics,
+    #[serde(default)]
+    pub mix: crate::mix::ProfileMix,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -620,6 +622,7 @@ impl StyleProfile {
         Ok(profile)
     }
     pub fn validate(&self) -> Result<(), ProfileError> {
+        self.mix.validate()?;
         check(
             !self.meta.id.is_empty()
                 && self
