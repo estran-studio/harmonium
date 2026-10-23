@@ -230,7 +230,8 @@ impl MusicComposer {
     /// main thread) and republishes generated-but-unstaged bars — e.g. after
     /// a `DropFrom` eviction or ring backpressure. Staging stops at the first
     /// full ring and resumes on the next call; generation itself always runs
-    /// to the lookahead bound.
+    /// to the lookahead bound, itself capped at the timeline capacity (see
+    /// `Writehead::needs_generation`).
     pub fn generate_ahead(&mut self) {
         self.drain_returned();
         self.republish_missing();

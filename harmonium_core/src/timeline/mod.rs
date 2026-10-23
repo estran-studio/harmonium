@@ -329,6 +329,12 @@ impl ScoreTimeline {
         self.measures.len()
     }
 
+    /// Maximum number of measures retained before the oldest is dropped.
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.max_measures
+    }
+
     /// Whether the timeline is empty
     #[must_use]
     pub fn is_empty(&self) -> bool {

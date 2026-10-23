@@ -652,6 +652,39 @@ avant toute augmentation des valeurs.
 - **Vérifier** : enchaînements de tonalités comparés au corpus quand il les
   documente ; tempo et énergie mesurés sur un set complet.
 
+### BUG1 — export sans automation qui ne se termine pas (≥ 101 mesures)
+
+- **Symptôme** : `harmonium-cli --export --bars N` sans `--automation` ne se termine pas pour N ≥ 101
+  environ (`--bars 100` : 0,8 s ; `--bars 104`, `110`, `200` : bloqué), pour les sept profils, avec ou sans
+  banque SoundFont. Avec `--automation` : aucun blocage.
+- **Ce n'est pas** le deuxième air, la fenêtre d'anticipation de l'air suivant ni la fin d'export : la
+  coïncidence avec la mesure 97 était fortuite. L'étude V7a (`--tours 1`, graine 2, N ≥ 110) est le même cas.
+- **Cause** : sans automation, l'export prégénère `max(N, 32)` mesures puis fixe l'anticipation à `N + 16`
+  (`export.rs`). La timeline retient au plus 100 mesures (`ScoreTimeline::with_default_capacity`), l'anneau
+  vers le moteur de lecture 16 (`MEASURE_RING_CAP`) : les mesures 17+ sont générées mais pas encore envoyées,
+  `republish_missing` les enverra plus tard. Dès que la génération dépasse 100 mesures devant la tête de
+  lecture, `push_measure` évince les plus anciennes, dont des mesures **jamais jouées ni envoyées** (mesure 17
+  avec N = 104). La tête de lecture attend alors la mesure 17 indéfiniment : sonde `playhead_bar()` figée à 17
+  pendant que le rendu tourne (580 millions d'échantillons en 20 s, aucune mesure de plus).
+- **Correction** : `Writehead::needs_generation` borne la fenêtre à `min(lookahead, capacité de la timeline)`
+  (`ScoreTimeline::capacity`). Aucune mesure non jouée n'est plus évincée, quel que soit l'appelant ; la
+  génération reprend à mesure que la tête avance. La sortie ne change pas (même ordre de tirages sur le même
+  `ChaCha8Rng`) : `--bars 100` donne un MIDI identique octet pour octet. L'export n'énumère plus que les airs
+  déjà générés dans son en-tête (sinon la mesure 193 aurait affiché l'air 1).
+- **Test de contrat** : `harmonium_cli/tests/export_terminates.rs` exporte 200 mesures (graine 3) pour les
+  sept profils distribués, sans automation puis avec une automation constante, en parallèle, délai maximal de
+  120 s. Avant correction : les sept profils sans automation dépassent le délai ; après : 33 s au total en debug.
+
+### Valeurs britanniques DS-T9b
+
+Les extraits de `harmonium_lab/specs/001-trad-dataset/ds-t9b-profils-proposes.md` (références régénérées
+après correction du parseur ABC) sont appliqués tels quels aux `roles`, `second_ending` et `rhythm` des
+parties A et B de `gigue_britannique_coloniale` et `hornpipe_britannique_coloniale` ; la marche ne change pas
+(références et secondes fins identiques). Les banques `cells.toml` ne sont pas régénérées. Le flux de
+snapshots change pour ces deux profils à graine égale (MIDI différent aux graines 3 et 5, marche identique) :
+`TUNING_VERSION` passe à 15 et `profile_d2_main.json` est régénéré (seule la ligne `source` change) ;
+`profile_d2_fixed.json` reste identique. Provenance dans le README de chaque profil.
+
 ## 8. Voix
 
 - **À faire d'abord** : étude de faisabilité (turlutte, chansons à répondre,

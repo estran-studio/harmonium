@@ -140,7 +140,10 @@ pub fn run(
             mp.time_signature.denominator
         );
         let bars_per_tune = composer.profile().form.bars_per_tour() * composer.tours_per_tune();
-        for tune_start_bar in (1..=initial_bars).step_by(bars_per_tune) {
+        // La génération initiale est bornée par la timeline : ne lister que les
+        // airs dont la première mesure existe.
+        let generated_bars = automated_measures.len();
+        for tune_start_bar in (1..=generated_bars).step_by(bars_per_tune) {
             if let Some((plan, _)) = composer.profile_bar_info(tune_start_bar) {
                 println!(
                     "  Tune {} (bars {}..={}): {} {:?}",

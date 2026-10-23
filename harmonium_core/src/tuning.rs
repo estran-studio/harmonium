@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{style_profile::StyleProfile, trad::harmony::ChordDegree};
 
-/// Version du contrat : interprétation explicite (attaque, gate, respiration).
-pub const TUNING_VERSION: u32 = 14;
+/// Version du contrat : valeurs DS-T9b des profils britanniques (parseur ABC corrigé).
+pub const TUNING_VERSION: u32 = 15;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
