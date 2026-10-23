@@ -268,6 +268,7 @@ mod tests {
                 if fixed_roles {
                     use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                     let mut tuning = harmonium_core::TuningParams::default();
+                    tuning.profile.performance = Default::default();
                     for part in &mut tuning.profile.form.parts {
                         part.second_ending = None;
                         part.rhythm.clear();

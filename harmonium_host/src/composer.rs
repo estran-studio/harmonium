@@ -296,7 +296,9 @@ impl MusicComposer {
             return false;
         }
         let Some(measure) = self.writehead.timeline.get_measure(bar) else { return true };
-        let staged = TaggedMeasure { epoch: self.epoch, measure: Box::new(measure.clone()) };
+        let mut prepared = measure.clone();
+        prepared.prepare_playback();
+        let staged = TaggedMeasure { epoch: self.epoch, measure: Box::new(prepared) };
         match self.measure_tx.push(staged) {
             Ok(()) => {
                 self.published.insert(bar, self.epoch);

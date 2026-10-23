@@ -93,7 +93,11 @@ fn make_harness(seed: u64) -> Harness {
         font_queue,
         seed,
     );
-    // Keep the exact fixed-frame grid while exercising the default profile.
+    // Grille exacte : ce test vérifie les index de mesure, pas l'interprétation.
+    let mut profile = composer.profile().clone();
+    profile.performance = Default::default();
+    assert!(composer.set_profile(profile).is_ok());
+    let _ = composer.take_pending_drop();
     composer.set_bpm(120.0);
     composer.set_swing_ratio(0.5);
     composer.sync_generator();

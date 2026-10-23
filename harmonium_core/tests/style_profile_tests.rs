@@ -10,6 +10,7 @@ use rand_chacha::ChaCha8Rng;
 
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
+    p.performance = Default::default();
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -331,6 +332,7 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
 fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::error::Error>> {
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
+        profile.performance = Default::default();
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();

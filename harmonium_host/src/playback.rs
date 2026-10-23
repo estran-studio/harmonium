@@ -254,6 +254,7 @@ pub struct PlaybackEngine {
     // post-step publication timing. False while underflowing (free-run) or
     // right after a seek (the in-flight step is cut by the jump).
     step_open: bool,
+    event_index: usize,
     // The step being rendered (bar 1-based, step 0-based in bar), captured at
     // its entry: `clock.position` reports it, the packed atomic the upcoming
     // step. Updated before the playhead advances, published at completion.
@@ -393,6 +394,7 @@ impl PlaybackEngine {
             sample_rate,
             sample_counter: 0,
             samples_per_step,
+            event_index: 0,
             current_step_frames: samples_per_step,
             entered_bar: 1,
             entered_step: 0,
@@ -491,9 +493,26 @@ impl PlaybackEngine {
                 }
             }
             let remaining = total_samples - processed;
+            // Split at every scheduled attack/release, not only grid entries.
+            while let Some(event) = self.playhead.event(self.event_index) {
+                if self.event_frame(event.offset) > self.sample_counter {
+                    break;
+                }
+                if !matches!(&event.event, AudioEvent::NoteOn { channel, .. }
+                    if self.tracks.get(*channel as usize).is_some_and(|track| track.muted))
+                {
+                    self.renderer.handle_event(event.event.clone());
+                }
+                self.event_index += 1;
+            }
+            let until_event = self
+                .playhead
+                .event(self.event_index)
+                .map_or(self.current_step_frames, |event| self.event_frame(event.offset));
             let samples_until_entry = self.current_step_frames - self.sample_counter;
-
-            let chunk_size = std::cmp::min(remaining, samples_until_entry);
+            let chunk_size = remaining
+                .min(samples_until_entry)
+                .min(until_event.saturating_sub(self.sample_counter).max(1));
             let start_idx = processed * channels;
             let end_idx = (processed + chunk_size) * channels;
             let chunk = &mut output[start_idx..end_idx];
@@ -521,6 +540,13 @@ impl PlaybackEngine {
                 *sample = 0.0;
             }
         }
+    }
+
+    /// Frame, dans le pas gelé courant, d'un instant en millièmes de pas ;
+    /// arrondi à l'échantillon, jamais au-delà de la dernière frame du pas.
+    fn event_frame(&self, offset: u16) -> usize {
+        ((usize::from(offset) * self.current_step_frames + 500) / 1000)
+            .min(self.current_step_frames.saturating_sub(1))
     }
 
     /// Step entry: run the per-step bookkeeping for the step the playhead
@@ -591,20 +617,22 @@ impl PlaybackEngine {
         // Frozen duration of the entered step, from its pulse's fresh table.
         let duration = self.step_durations[self.step_index];
 
-        // Tick the playhead: emits the entered step, advances, and parks the
-        // finished measure when a barline is crossed.
-        let events = self.playhead.tick();
-
-        // Forward events to renderer, filtering muted channels. Done first so
-        // the `events` borrow of the playhead is released before the handoff.
-        for event in events {
-            if let AudioEvent::NoteOn { channel, .. } = &event {
-                if self.tracks.get(*channel as usize).is_some_and(|track| track.muted) {
-                    continue;
-                }
-            }
-            self.renderer.handle_event(event.clone());
+        // The next box is already prepared by the composer. Its early attacks
+        // belong to this bar's final step; ownership remains in the window.
+        let next_bar = self
+            .loop_region
+            .filter(|(_, end)| *end == self.entered_bar)
+            .map_or(self.entered_bar + 1, |(start, _)| start);
+        let next = self
+            .window
+            .iter()
+            .find(|slot| slot.measure.index == next_bar)
+            .map(|slot| slot.measure.as_ref());
+        {
+            let _rt = RtGuard::enter();
+            self.playhead.tick(next);
         }
+        self.event_index = 0;
 
         // Reclaim the finished measure, then load the next one — in that
         // order, so the epoch tags stay aligned. Runs under RtGuard.

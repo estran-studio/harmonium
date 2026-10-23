@@ -101,7 +101,10 @@ cargo run -p harmonium-cli --release -- --export --bars 64 \
 - `--bars N` borne la durée en mesures ; `--duration N` la borne en secondes.
 - `--seed`, `--feet 0|1|2|off`, `--swing`, `--tours` et `--intensity` règlent le rendu.
 - `--automation <fichier.toml>` applique les courbes par mesure.
-- `--record-truth <fichier.json>` écrit les snapshots et métadonnées de rendu.
+- `--record-truth <fichier.json>` écrit un objet `{sample_rate, rendered_frames,
+  bar_start_frames, measures, reports}` : `measures` porte les snapshots complets
+  (décalages, gates et respirations d'interprétation compris), avec ou sans
+  automation ; `reports` garde les rapports périodiques.
 
 La génération et le playback sont identiques au temps réel, sans ouvrir de
 périphérique audio. Voir `profiles/README.md` pour le format des profils.

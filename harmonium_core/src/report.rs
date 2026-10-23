@@ -21,6 +21,19 @@ pub struct NoteSnapshot {
     pub duration_steps: usize,
     /// MIDI velocity (0-127)
     pub velocity: u8,
+    #[serde(default, skip_serializing_if = "crate::performance::NotePerformance::is_neutral")]
+    pub performance: crate::performance::NotePerformance,
+    #[serde(default, skip_serializing_if = "is_normal")]
+    pub articulation: crate::timeline::Articulation,
+}
+
+fn is_normal(value: &crate::timeline::Articulation) -> bool {
+    !matches!(
+        value,
+        crate::timeline::Articulation::Detached
+            | crate::timeline::Articulation::Linked
+            | crate::timeline::Articulation::Accent
+    )
 }
 
 /// Lightweight snapshot of a generated measure for score rendering.
@@ -88,6 +101,8 @@ impl MeasureSnapshot {
                     start_step: note.start_step,
                     duration_steps: note.duration_steps,
                     velocity: note.velocity,
+                    performance: note.performance,
+                    articulation: note.articulation,
                 });
             }
         }

@@ -302,6 +302,9 @@ pub struct MusicalParams {
     /// Énergie du style (0..1), point neutre 0.5 : conserve le rendu historique.
     #[serde(default = "default_density")]
     pub intensity: f32,
+    /// Axe arousal brut ; distinct de l'intensité combinée avec la tension.
+    #[serde(default = "default_density")]
+    pub arousal: f32,
 
     // ═══════════════════════════════════════════════════════════════════
     // MODULES ON/OFF (pour debug/tests)
@@ -435,6 +438,7 @@ impl Default for MusicalParams {
             profile_mix: default_profile_mix(),
             feet_density: default_feet_density(),
             intensity: default_density(),
+            arousal: default_density(),
 
             // Modules
             enable_rhythm: true,

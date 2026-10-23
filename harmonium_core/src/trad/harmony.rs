@@ -274,6 +274,7 @@ mod tests {
                 duration_steps: 2,
                 velocity: 90,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             })
             .collect()
     }

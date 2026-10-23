@@ -19,6 +19,7 @@ impl EmotionMapper {
         params: &mut MusicalParams,
     ) {
         params.bpm = nominal_bpm;
+        params.arousal = emotions.arousal;
         params.intensity = dynamics.intensity_from_emotions(emotions.arousal, emotions.tension);
         params.rhythm_density = emotions.density;
         params.rhythm_tension = emotions.tension;

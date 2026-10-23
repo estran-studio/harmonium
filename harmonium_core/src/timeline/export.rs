@@ -466,6 +466,7 @@ mod tests {
                 duration_steps: 4,
                 velocity: 100,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             },
         );
         measure.add_note(
@@ -477,6 +478,7 @@ mod tests {
                 duration_steps: 8,
                 velocity: 80,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             },
         );
         timeline.push_measure(measure);
@@ -503,6 +505,7 @@ mod tests {
                 duration_steps: 4,
                 velocity: 80,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             },
         );
         timeline.push_measure(measure);
@@ -543,6 +546,7 @@ mod tests {
                 duration_steps: 4,
                 velocity: 80,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             },
         );
         timeline.push_measure(measure);
@@ -576,6 +580,7 @@ mod tests {
                 duration_steps: 4,
                 velocity: 80,
                 articulation: Articulation::Normal,
+                performance: Default::default(),
             },
         );
         timeline.push_measure(measure);

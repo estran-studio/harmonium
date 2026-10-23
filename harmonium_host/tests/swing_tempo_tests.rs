@@ -249,9 +249,11 @@ fn make_note_harness() -> NoteHarness {
                     duration_steps: 1,
                     velocity: 90,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 },
             );
         }
+        measure.prepare_playback();
         assert!(
             measure_tx.push(TaggedMeasure { epoch: 0, measure: Box::new(measure) }).is_ok(),
             "staging bar {i} must fit the ring"

@@ -5,6 +5,9 @@
 
 use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
 use super::{
     accomp::{Guitarist, bass_bar},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
@@ -48,6 +51,9 @@ pub struct ActiveTune {
     /// Décalages d'humanisation des vélocités des pieds, par position de mesure
     /// de chaque partie et par pas. Tirés une fois par air, relus aux reprises.
     pub feet_humanize: Vec<Vec<i8>>,
+    /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
+    /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
+    pub performance_seed: u64,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
@@ -295,7 +301,7 @@ impl TradGenerator {
             tension: self.musical_params.harmony_tension,
             smoothness: self.musical_params.melody_smoothness,
             valence: self.musical_params.harmony_valence,
-            arousal: (tempo - 70.0) / 110.0,
+            arousal: self.musical_params.arousal,
         };
 
         let Some(tune) = self.tunes.get(&position.tune_index).cloned() else {
@@ -318,8 +324,49 @@ impl TradGenerator {
 
         self.apply_dynamics(&mut measure);
         self.fit_jazz_melody(&mut measure, &tune, &position);
+        if !is_intro && !self.profile.performance.is_neutral() {
+            let offset = position.bar_in_strain - 1;
+            let (start, end) = self.phrase_window(&tune, &position);
+            let span = (end - start).max(1) as f32;
+            // Flux propre à la mesure : la mesure `n` se joue pareil après un
+            // seek, que les mesures voisines aient été générées ou relues.
+            let mut performance_rng = ChaCha8Rng::seed_from_u64(tune.performance_seed);
+            performance_rng.set_stream(bar_index as u64);
+            self.profile.performance.apply(
+                &mut measure,
+                (offset - start) as f32 / span,
+                span,
+                offset + 1 == end,
+                [
+                    self.musical_params.arousal,
+                    self.musical_params.harmony_valence,
+                    self.musical_params.rhythm_density,
+                    self.musical_params.harmony_tension,
+                ],
+                &mut performance_rng,
+            );
+        }
 
         measure
+    }
+
+    /// Mesures `[début, fin)` (0-based dans la partie) de la phrase qui contient
+    /// la mesure de `position` : bornes `phrase_ends` du profil, sinon rôles
+    /// cadentiels ; la partie entière à défaut de frontière.
+    fn phrase_window(&self, tune: &ActiveTune, position: &TunePosition) -> (usize, usize) {
+        let offset = position.bar_in_strain - 1;
+        let base = self.performed_bar(position) - offset;
+        let length = self.profile.form.parts[position.part.0].roles.len();
+        let mut start = 0;
+        for i in 0..length {
+            if self.profile.form.phrase_end(position.part.0, i, tune.plan.bar_role(base + i).role) {
+                if i >= offset {
+                    return (start, i + 1);
+                }
+                start = i + 1;
+            }
+        }
+        (start, length)
     }
 
     fn update_parallel_mode(
@@ -517,6 +564,7 @@ impl TradGenerator {
                     start_step,
                     duration_steps: eighth_steps,
                     articulation: Articulation::default(),
+                    performance: Default::default(),
                 };
                 measure.add_note(TrackId::Melody, note);
             }
@@ -689,6 +737,7 @@ impl TradGenerator {
                         start_step: step,
                         duration_steps: duration.min(period - step % period),
                         articulation: Articulation::Normal,
+                        performance: Default::default(),
                     };
                     self.next_note_id += 1;
                     measure.add_note(track, note);
@@ -822,6 +871,7 @@ impl TradGenerator {
                     start_step: 0,
                     duration_steps: self.profile.meter.steps_per_pulse,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 },
             );
         }
@@ -844,6 +894,7 @@ impl TradGenerator {
                         start_step: 0,
                         duration_steps: self.profile.meter.steps_per_pulse,
                         articulation: Articulation::Normal,
+                        performance: Default::default(),
                     },
                 );
             }
@@ -863,6 +914,7 @@ impl TradGenerator {
                         start_step: 0,
                         duration_steps: self.profile.meter.steps_per_pulse,
                         articulation: Articulation::Normal,
+                        performance: Default::default(),
                     },
                 );
             }
@@ -879,6 +931,7 @@ impl TradGenerator {
                     start_step: 0,
                     duration_steps: self.profile.meter.steps_per_unit,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 },
             );
         }
@@ -1191,6 +1244,12 @@ impl TradGenerator {
             self.profile.meter.steps_per_bar,
             rng,
         );
+        let performance_seed = if self.profile.performance.is_neutral() {
+            0
+        } else {
+            let high = rng.next_range_usize(0..1 << 32) as u64;
+            (high << 32) | rng.next_range_usize(0..1 << 32) as u64
+        };
 
         // Tirer l'intro (P1-T11)
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
@@ -1206,6 +1265,7 @@ impl TradGenerator {
             fiddle,
             harmony,
             feet_humanize,
+            performance_seed,
             intro_info,
             initial_mode: plan.mode,
             initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,

@@ -6,6 +6,7 @@ pub mod mapper;
 pub mod mix;
 pub mod models;
 pub mod params;
+pub mod performance;
 pub mod report;
 pub mod style_profile;
 pub mod theory;

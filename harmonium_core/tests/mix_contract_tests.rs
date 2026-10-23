@@ -93,6 +93,7 @@ fn timeline_midi_writes_profile_controllers_before_instrument_notes() {
             duration_steps: 4,
             velocity: 80,
             articulation: Articulation::Normal,
+            performance: Default::default(),
         },
     );
     score.push_measure(measure);

@@ -454,6 +454,7 @@ fn render_cell_notes(
                     duration_steps: plan.profile.meter.steps_per_unit,
                     velocity,
                     articulation: Articulation::Normal,
+                    performance: Default::default(),
                 });
             }
             CellNote::Hold => {

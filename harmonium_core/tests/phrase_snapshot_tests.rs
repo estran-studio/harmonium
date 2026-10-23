@@ -30,6 +30,7 @@ fn choice(roles: &[(ImposedRole, u32)]) -> ProfileRole {
 }
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
+    p.performance = Default::default();
     p.arrangement = ReelArrangement::from_start(2, Default::default());
     p.melody.key_modes = vec![KeyModeWeight { key: 2, mode: Mode::Dorian, weight: 1 }];
     p.melody.cells = CellBank {
@@ -175,6 +176,7 @@ fn weighted_operations_cadences_repeats_and_determinism_on_200_tunes() {
 fn distributed_copy_and_tonic_weights_reach_snapshots_on_200_tunes() {
     for profile in StyleProfile::distributed() {
         let mut profile = profile.clone();
+        profile.performance = Default::default();
         profile.arrangement = ReelArrangement::from_start(1, Default::default());
         let mut copies = [0usize; 2];
         let mut tonics = [0usize; 2];
