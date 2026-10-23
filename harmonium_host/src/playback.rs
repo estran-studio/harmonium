@@ -14,9 +14,8 @@ use std::{
 use arrayvec::{ArrayString, ArrayVec};
 use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{
-    events::AudioEvent,
-    log,
-    params::{MusicalParams, PulseSpec, TimeSignature},
+    events::{AudioEvent, MIDI_TICKS_PER_STEP},
+    params::{PlaybackParams, PulseSpec, TimeSignature},
     timeline::{Measure, Playhead},
 };
 
@@ -199,9 +198,11 @@ pub enum PlaybackCommand {
         program: u8,
     },
     /// Update the muted channels mask from the composer's musical params
-    SetMutedChannels(Vec<bool>),
-    /// Update musical params snapshot for recording/reporting
-    UpdateMusicalParams(Box<MusicalParams>),
+    /// (one flag per logical channel; fixed size, nothing to free on the audio thread).
+    SetMutedChannels([bool; 16]),
+    /// Update musical params snapshot for recording/reporting. `Copy`,
+    /// prepared on the main thread with `MusicalParams::playback_params`.
+    UpdateMusicalParams(PlaybackParams),
     /// Start (or ramp to) an audible tempo override (D4).
     ///
     /// `ramp_pulses == 0` jumps to `bpm` at the next pulse boundary;
@@ -228,10 +229,14 @@ struct TrackState {
 /// ordered prefetch window, ticks the playhead, and renders audio.
 /// Generation is NOT done here — that's MusicComposer's job.
 ///
-/// Real-time contract: the handoff (ring pop/push, window insert/remove, box
-/// moves) performs no allocation, no deallocation and takes no lock. Played
-/// boxes travel back through the return ring so only the main thread drops
-/// them. A box is only ever loaded when its index equals the playhead bar;
+/// Real-time contract: the whole of [`PlaybackEngine::process_buffer`] runs
+/// under the debug `RTCheckAllocator` guard — commands, profile updates,
+/// reports, rendering and recording start/stop included. The handoff (ring
+/// pop/push, window insert/remove, box moves) performs no allocation, no
+/// deallocation and takes no lock. Played boxes travel back through the
+/// return ring so only the main thread drops them; commands and reports carry
+/// `Copy` payloads. Documented exceptions (SoundFont loading, oxisynth's
+/// per-note `Vec`) live in `harmonium_audio` under `allow_allocation`. A box is only ever loaded when its index equals the playhead bar;
 /// otherwise the engine underflows (silence), exactly like a missing page
 /// before.
 pub struct PlaybackEngine {
@@ -268,6 +273,8 @@ pub struct PlaybackEngine {
     // invariant), `step_index` the step currently being rendered.
     step_durations: [usize; u8::MAX as usize],
     steps_per_quarter: f64,
+    // MIDI ticks per frame last announced to the renderer (`MidiClock`).
+    midi_ticks_per_frame: f64,
     step_count: usize,
     step_index: usize,
     // Swing ratio of the measure under the playhead (0.5 = straight).
@@ -323,8 +330,8 @@ pub struct PlaybackEngine {
     // Loop region
     loop_region: Option<(usize, usize)>,
 
-    // Musical params snapshot for reports
-    musical_params: MusicalParams,
+    // Musical params snapshot for reports (Copy: replacing it frees nothing)
+    musical_params: PlaybackParams,
     // Signature of the measure under the playhead, captured at load.
     measure_sig: TimeSignature,
     // Tempo and signature last relayed to the renderer (MIDI file metas).
@@ -378,13 +385,15 @@ impl PlaybackEngine {
         let bpm = 120.0;
         let samples_per_step = (sample_rate * 60.0 / (bpm as f64) / 4.0) as usize;
         renderer.handle_event(AudioEvent::TimingUpdate { samples_per_step });
-        let musical_params = MusicalParams {
-            profile_mix: harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate),
-            ..MusicalParams::default()
+        let midi_ticks_per_frame = MIDI_TICKS_PER_STEP as f64 / samples_per_step as f64;
+        renderer.handle_event(AudioEvent::MidiClock { ticks_per_frame: midi_ticks_per_frame });
+        let musical_params = PlaybackParams {
+            mix: harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate),
+            ..PlaybackParams::default()
         };
-        renderer.handle_event(AudioEvent::SetMix { mix: musical_params.profile_mix });
+        renderer.handle_event(AudioEvent::SetMix { mix: musical_params.mix });
         let mut tracks = [TrackState::default(); 16];
-        for (track, mix) in tracks.iter_mut().zip(musical_params.profile_mix.tracks) {
+        for (track, mix) in tracks.iter_mut().zip(musical_params.mix.tracks) {
             track.mix = mix;
         }
 
@@ -402,6 +411,7 @@ impl PlaybackEngine {
             frame_counter: 0,
             step_durations: [samples_per_step; u8::MAX as usize],
             steps_per_quarter: 4.0,
+            midi_ticks_per_frame,
             step_count: 4,
             step_index: 0,
             swing_ratio: 0.5,
@@ -444,13 +454,16 @@ impl PlaybackEngine {
     /// buffer's first frame — computed by the cpal path from the
     /// `OutputCallbackInfo` timestamps (fallback `Instant::now()`), or just
     /// `Instant::now()` for offline rendering.
+    ///
+    /// The whole call runs under the real-time guard (see the type docs).
     pub fn process_buffer(
         &mut self,
         output: &mut [f32],
         channels: usize,
         buffer_start_instant: Instant,
     ) {
-        // Process commands first (outside rt context)
+        let _rt = RtGuard::enter();
+        // Process commands first
         self.process_commands();
         // Voice any notes the player pressed on their MIDI controller.
         self.process_live_midi();
@@ -753,12 +766,20 @@ impl PlaybackEngine {
         let quarter = (self.sample_rate * 60.0 / f64::from(self.audible_bpm)).round() as usize;
 
         let quarter_steps = self.steps_per_quarter as usize;
-        if rounded
+        let on_quarter_grid = rounded
             && quarter_steps > 0
             && quarter_steps.is_multiple_of(2)
             && self.steps_per_quarter == quarter_steps as f64
-            && steps_per_pulse.is_multiple_of(quarter_steps)
-        {
+            && steps_per_pulse.is_multiple_of(quarter_steps);
+        // MIDI cadence of this pulse: a rounded quarter spans exactly
+        // `quarter_steps × 120` ticks (swung steps keep their audible length);
+        // a truncated straight step spans exactly 120.
+        let ticks_per_frame = if on_quarter_grid {
+            (MIDI_TICKS_PER_STEP as usize * quarter_steps) as f64 / quarter as f64
+        } else {
+            f64::from(MIDI_TICKS_PER_STEP) / truncated_step as f64
+        };
+        if on_quarter_grid {
             let half = quarter_steps / 2;
             let first =
                 (f64::from(self.swing_ratio) * quarter as f64 / half as f64).round() as usize;
@@ -787,6 +808,12 @@ impl PlaybackEngine {
             self.samples_per_step = truncated_step;
             self.renderer
                 .handle_event(AudioEvent::TimingUpdate { samples_per_step: truncated_step });
+        }
+        // The recorder converts frames to ticks with this cadence: announced
+        // at the exact frame the pulse opens, whatever the swing or tempo ramp.
+        if ticks_per_frame != self.midi_ticks_per_frame {
+            self.midi_ticks_per_frame = ticks_per_frame;
+            self.renderer.handle_event(AudioEvent::MidiClock { ticks_per_frame });
         }
     }
 
@@ -1043,7 +1070,7 @@ impl PlaybackEngine {
     }
 
     fn emit_mix(&mut self) {
-        let mut mix = self.musical_params.profile_mix;
+        let mut mix = self.musical_params.mix;
         for (control, track) in mix.tracks.iter_mut().zip(&self.tracks) {
             *control = track.mix;
         }
@@ -1051,7 +1078,7 @@ impl PlaybackEngine {
     }
 
     fn reset_profile_mix(&mut self) {
-        for (track, mix) in self.tracks.iter_mut().zip(self.musical_params.profile_mix.tracks) {
+        for (track, mix) in self.tracks.iter_mut().zip(self.musical_params.mix.tracks) {
             track.mix = mix;
         }
         self.emit_mix();
@@ -1097,7 +1124,6 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::Seek(bar) => {
                     let target_bar = bar.max(1);
-                    log::info(&format!("Seeking to bar {target_bar}"));
                     for ch in 0..5u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
@@ -1115,7 +1141,6 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
-                    log::info(&format!("SeekPlayhead to bar {target_bar}"));
                     for ch in 0..5u8 {
                         self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
                     }
@@ -1151,7 +1176,6 @@ impl PlaybackEngine {
                 PlaybackCommand::SetLoop { start_bar, end_bar } => {
                     let start = start_bar.max(1);
                     let end = end_bar.max(start);
-                    log::info(&format!("Loop set: bars {start}-{end}"));
                     self.loop_region = Some((start, end));
                     // Loops longer than the window are refused on the main
                     // thread; shed prefetch behind the playhead that the new
@@ -1160,7 +1184,6 @@ impl PlaybackEngine {
                     self.evict_behind();
                 }
                 PlaybackCommand::ClearLoop => {
-                    log::info("Loop cleared");
                     self.loop_region = None;
                     // Former loop boxes behind the playhead will never play
                     // again: hand them back now instead of occupying the window.
@@ -1181,7 +1204,7 @@ impl PlaybackEngine {
                     self.renderer.handle_event(AudioEvent::ProgramChange { channel, program });
                 }
                 PlaybackCommand::SetMutedChannels(channels) => {
-                    for (track, &muted) in self.tracks.iter_mut().zip(&channels) {
+                    for (track, &muted) in self.tracks.iter_mut().zip(channels.iter()) {
                         track.muted = muted;
                     }
                     for (channel, track) in self.tracks.iter().enumerate() {
@@ -1196,12 +1219,11 @@ impl PlaybackEngine {
                     // MusicXML) track the commanded params; the measure load
                     // path refines them to the sounding values on change.
                     let mix_changed = self.musical_params.profile_id != params.profile_id
-                        || self.musical_params.profile_mix != params.profile_mix;
-                    self.renderer
-                        .handle_event(AudioEvent::UpdateMusicalParams { params: params.clone() });
+                        || self.musical_params.mix != params.mix;
+                    self.renderer.handle_event(AudioEvent::UpdateMusicalParams { params });
                     self.reported_bpm = params.bpm;
                     self.reported_signature = params.time_signature;
-                    self.musical_params = *params;
+                    self.musical_params = params;
                     if mix_changed {
                         self.reset_profile_mix();
                     }
@@ -1225,7 +1247,8 @@ impl PlaybackEngine {
     fn send_report(&mut self) {
         use harmonium_core::EngineReport;
 
-        let mut report = EngineReport::new();
+        // Fixed-size snapshot: no Vec, no Box, no clone of heap data.
+        let mut report = EngineReport::realtime(self.musical_params);
 
         report.current_bar = self.playhead.current_bar();
         report.current_beat = self.playhead.position.beat;
@@ -1236,7 +1259,6 @@ impl PlaybackEngine {
         report.chord_root_offset = self.last_chord_root_offset;
         report.chord_is_minor = self.last_chord_is_minor;
 
-        report.musical_params = self.musical_params.clone();
         // The audible tempo (override/ramp) is the truth for the game, not the
         // measure's nominal tempo.
         report.musical_params.bpm = self.audible_bpm;

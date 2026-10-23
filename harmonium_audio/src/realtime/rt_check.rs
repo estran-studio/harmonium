@@ -28,22 +28,28 @@ use std::cell::Cell;
 
 #[cfg(debug_assertions)]
 thread_local! {
-    // Thread-local flag indicating whether we're currently in an audio processing context
+    // Thread-local nesting depth of audio processing contexts: > 0 means "in the audio callback".
+    // A depth (not a flag) lets the whole callback and its inner sections each hold a guard.
     // Using thread_local! ensures tests don't interfere with each other
-    static IN_AUDIO_THREAD: Cell<bool> = const { Cell::new(false) };
+    static AUDIO_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+#[cfg(debug_assertions)]
+fn in_audio_context() -> bool {
+    AUDIO_DEPTH.with(Cell::get) > 0
 }
 
 /// Custom allocator that checks for real-time violations
 ///
 /// This allocator wraps the system allocator and panics if any allocation or
-/// deallocation occurs while `IN_AUDIO_THREAD` is true.
+/// deallocation occurs while an audio context is entered.
 #[cfg(debug_assertions)]
 pub struct RTCheckAllocator;
 
 #[cfg(debug_assertions)]
 unsafe impl GlobalAlloc for RTCheckAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let in_audio = IN_AUDIO_THREAD.with(std::cell::Cell::get);
+        let in_audio = in_audio_context();
         assert!(
             !in_audio,
             "REAL-TIME VIOLATION: Allocation in audio thread! size={} bytes, align={}",
@@ -55,7 +61,7 @@ unsafe impl GlobalAlloc for RTCheckAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        let in_audio = IN_AUDIO_THREAD.with(std::cell::Cell::get);
+        let in_audio = in_audio_context();
         assert!(
             !in_audio,
             "REAL-TIME VIOLATION: Deallocation in audio thread! size={} bytes, align={}",
@@ -67,7 +73,7 @@ unsafe impl GlobalAlloc for RTCheckAllocator {
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        let in_audio = IN_AUDIO_THREAD.with(std::cell::Cell::get);
+        let in_audio = in_audio_context();
         assert!(
             !in_audio,
             "REAL-TIME VIOLATION: Zero allocation in audio thread! size={} bytes, align={}",
@@ -79,7 +85,7 @@ unsafe impl GlobalAlloc for RTCheckAllocator {
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        let in_audio = IN_AUDIO_THREAD.with(std::cell::Cell::get);
+        let in_audio = in_audio_context();
         assert!(
             !in_audio,
             "REAL-TIME VIOLATION: Reallocation in audio thread! old_size={} bytes, new_size={} bytes",
@@ -94,21 +100,53 @@ unsafe impl GlobalAlloc for RTCheckAllocator {
 /// Mark the beginning of an audio processing context
 ///
 /// Call this at the start of your audio callback. Any allocations after this
-/// point will cause a panic in debug builds.
+/// point will cause a panic in debug builds. Contexts nest: each
+/// `enter_audio_context` needs its own `exit_audio_context`.
 #[cfg(debug_assertions)]
 #[inline]
 pub fn enter_audio_context() {
-    IN_AUDIO_THREAD.with(|flag| flag.set(true));
+    AUDIO_DEPTH.with(|depth| depth.set(depth.get() + 1));
 }
 
 /// Mark the end of an audio processing context
 ///
-/// Call this at the end of your audio callback. Allocations after this point
-/// will be allowed again.
+/// Call this at the end of your audio callback. Allocations are allowed
+/// again once every entered context has exited.
 #[cfg(debug_assertions)]
 #[inline]
 pub fn exit_audio_context() {
-    IN_AUDIO_THREAD.with(|flag| flag.set(false));
+    AUDIO_DEPTH.with(|depth| depth.set(depth.get().saturating_sub(1)));
+}
+
+/// Scope in which allocation is explicitly allowed again, inside an audio
+/// context (see [`allow_allocation`]). Restores the previous depth on drop.
+#[must_use = "the exemption ends when this guard is dropped"]
+pub struct AllocationAllowed {
+    #[cfg(debug_assertions)]
+    saved_depth: u32,
+}
+
+/// Lift the real-time check for the lifetime of the returned guard.
+///
+/// Reserved for the few one-off operations that cannot be made allocation-free
+/// (loading a SoundFont). Every use is a documented real-time debt; nothing on
+/// the steady-state audio path may use it.
+#[cfg(debug_assertions)]
+pub fn allow_allocation() -> AllocationAllowed {
+    AllocationAllowed { saved_depth: AUDIO_DEPTH.with(|depth| depth.replace(0)) }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for AllocationAllowed {
+    fn drop(&mut self) {
+        AUDIO_DEPTH.with(|depth| depth.set(self.saved_depth));
+    }
+}
+
+/// No-op in release builds
+#[cfg(not(debug_assertions))]
+pub fn allow_allocation() -> AllocationAllowed {
+    AllocationAllowed {}
 }
 
 /// No-op in release builds

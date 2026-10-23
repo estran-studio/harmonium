@@ -20,7 +20,10 @@ graph TD
 ### `backend`
 
 * **`SynthBackend`** — `SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &initial_routing)` ; synthèse oxisynth puis deux biquads stéréo et gain de bus. `SetMix` installe la salle, les CC 7/10/91 et les coefficients préparés par le compositeur au taux de l'hôte. État et DSP à taille fixe : aucune allocation ni aucun verrou ajoutés au callback. `LoadFont`, `SetChannelRoute`, `ProgramChange`, `AllNotesOff` et les CC MIDI ordinaires restent pris en charge.
-* **`RecorderBackend`** — capture WAV (après EQ et master) et MIDI. Le MIDI initialise CC 7/10/91 pour les cinq pistes logiques et les réémet à chaque `SetMix`, dont les changements de profil/air et `set gain`. MusicXML est exporté par le compositeur depuis les mesures.
+* **`RecorderBackend`** — capture WAV (après EQ et master) et MIDI, **sans allocation, verrou ni E/S dans le callback**. Le callback copie des blocs PCM préalloués (recyclés) et des événements MIDI `Copy` horodatés en frames dans une file SPSC `rtrb` bornée ; un thread d'enregistrement, créé dans `RecorderBackend::new`, encode WAV (`hound`) et MIDI (`midly`), gère la croissance mémoire et publie les fichiers dans `finished_recordings`. Le MIDI initialise CC 7/10/91 pour les cinq pistes logiques et les réémet à chaque `SetMix`. MusicXML est exporté par le compositeur depuis les mesures.
+  * **Débordement explicite** : `OverflowPolicy::DropAndCount` (défaut, temps réel) refuse ce qui ne tient pas et le compte dans `RecorderBackend::stats()` (`dropped_pcm_samples`, `dropped_midi_events`, `lost_commands`) ; le WAV garde sa durée (silence à la place des blocs perdus), un `Stop` entre toujours. `OverflowPolicy::Block` (`RecorderBackend::with_policy`, rendu hors ligne) attend le thread : rien n'est perdu et la fin d'une prise rend la main une fois le fichier publié.
+  * **MIDI exact** : `PlaybackEngine` annonce la cadence audible (`AudioEvent::MidiClock`, ticks par frame) à chaque pulse ; le thread convertit les frames en ticks **cumulés** et n'arrondit que la position absolue (swing et rampes de tempo compris) : résidu ≤ 0,5 tick par rapport aux positions écrites, sans dérive.
+  * `AudioEvent::UpdateMusicalParams` porte un `PlaybackParams` (`Copy`, préparé sur le thread principal), jamais un `Box<MusicalParams>`.
 
 ### `voice_manager`
 
@@ -50,13 +53,17 @@ Il retourne les erreurs d'encodage à l'appelant.
 
 ### `realtime`
 
-`RTCheckAllocator`: debug-build allocation tracker that panics on allocations inside the audio callback.
+`RTCheckAllocator`: debug-build allocation tracker that panics on allocations and deallocations inside the audio callback. Contexts nest (`enter_audio_context` / `exit_audio_context` form a depth counter); `PlaybackEngine::process_buffer` holds one for the whole call.
+
+`allow_allocation()` lifts the check for the lifetime of its guard. It marks the documented real-time debt and nothing else: SoundFont loading (`LoadFont`) and the `Vec` that `oxisynth` allocates on every NoteOn (`VoiceManager::process_event`). New code must not use it.
 
 ## Dependencies
 
 * **`oxisynth`** — SoundFont 2/3 synthesizer.
-* **`hound`** — WAV encoding.
-* **`midly`** — MIDI encoding.
+* **`hound`** — WAV encoding (recorder thread only).
+* **`midly`** — MIDI encoding (recorder thread only).
+* **`rtrb`** — SPSC queues between the callback and the recorder thread.
+* **`arrayvec`** — stack-allocated programme lists.
 
 ## Usage
 

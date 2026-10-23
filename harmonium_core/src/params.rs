@@ -423,6 +423,74 @@ fn default_profile_mix() -> crate::mix::PreparedMix {
     crate::StyleProfile::builtin().mix.prepare(44100.0)
 }
 
+/// Longueur maximale d'un identifiant de profil porté par [`PlaybackParams`].
+pub const PROFILE_ID_CAP: usize = 64;
+
+/// Vue `Copy` de [`MusicalParams`] pour le thread audio, les rapports et
+/// l'enregistreur : tout ce que le callback lit, sans `Vec`, `Box` ni `Arc`.
+///
+/// Préparée sur le thread principal ([`MusicalParams::playback_params`]),
+/// comme `PreparedMix` : la déplacer ou la remplacer dans le callback ne
+/// libère rien. Un identifiant de profil plus long que [`PROFILE_ID_CAP`]
+/// octets est tronqué à une frontière de caractère (les profils livrés
+/// font moins de 32 octets).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlaybackParams {
+    pub bpm: f32,
+    pub time_signature: TimeSignature,
+    pub swing_ratio: f32,
+    pub pulse: Option<PulseSpec>,
+    pub profile_id: arrayvec::ArrayString<PROFILE_ID_CAP>,
+    pub instruments: crate::style_profile::ProfileInstruments,
+    pub mix: crate::mix::PreparedMix,
+    pub feet_density: u8,
+    pub enable_rhythm: bool,
+    pub enable_harmony: bool,
+    pub enable_melody: bool,
+}
+
+impl PlaybackParams {
+    /// Dance pulse effective : le remplacement explicite, sinon celui de la
+    /// signature (même règle que [`MusicalParams::effective_pulse`]).
+    #[must_use]
+    pub fn effective_pulse(&self, ticks_per_beat: usize) -> PulseSpec {
+        self.pulse
+            .unwrap_or_else(|| PulseSpec::from_time_signature(self.time_signature, ticks_per_beat))
+    }
+}
+
+impl Default for PlaybackParams {
+    fn default() -> Self {
+        MusicalParams::default().playback_params()
+    }
+}
+
+impl MusicalParams {
+    /// Vue `Copy` pour le callback audio, les rapports et l'enregistreur.
+    #[must_use]
+    pub fn playback_params(&self) -> PlaybackParams {
+        let mut profile_id = arrayvec::ArrayString::new();
+        for ch in self.profile_id.chars() {
+            if profile_id.try_push(ch).is_err() {
+                break;
+            }
+        }
+        PlaybackParams {
+            bpm: self.bpm,
+            time_signature: self.time_signature,
+            swing_ratio: self.swing_ratio,
+            pulse: self.pulse,
+            profile_id,
+            instruments: self.profile_instruments,
+            mix: self.profile_mix,
+            feet_density: self.feet_density,
+            enable_rhythm: self.enable_rhythm,
+            enable_harmony: self.enable_harmony,
+            enable_melody: self.enable_melody,
+        }
+    }
+}
+
 impl Default for MusicalParams {
     fn default() -> Self {
         let profile = crate::StyleProfile::builtin();

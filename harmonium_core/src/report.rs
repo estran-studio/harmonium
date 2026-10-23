@@ -6,7 +6,7 @@
 use arrayvec::ArrayString;
 use serde::{Deserialize, Serialize};
 
-use crate::params::{MusicalParams, PulseSpec, TimeSignature};
+use crate::params::{PlaybackParams, PulseSpec, TimeSignature};
 
 /// Lightweight snapshot of a note for score rendering (e.g., VexFlow).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -191,8 +191,8 @@ pub struct EngineReport {
     pub new_measures: Vec<MeasureSnapshot>,
 
     // === CURRENT PARAMS (echoed back) ===
-    /// Current musical parameters
-    pub musical_params: MusicalParams,
+    /// Current musical parameters (`Copy` view: no heap in the audio thread)
+    pub musical_params: PlaybackParams,
 
     // === SESSION INFO ===
     /// Session key (e.g., "C")
@@ -202,8 +202,12 @@ pub struct EngineReport {
     pub session_scale: ArrayString<32>,
 }
 
-impl Default for EngineReport {
-    fn default() -> Self {
+impl EngineReport {
+    /// Rapport sans tampon : aucun `Vec` n'alloue, aucune charge propriétaire.
+    /// C'est ce que construit le callback audio ; `notes` et `new_measures`
+    /// restent vides (leur capacité est 0).
+    #[must_use]
+    pub fn realtime(musical_params: PlaybackParams) -> Self {
         Self {
             current_bar: 1,
             current_beat: 0,
@@ -214,13 +218,19 @@ impl Default for EngineReport {
             chord_is_minor: false,
             progression_name: ArrayString::new(),
             progression_length: 0,
-            notes: Vec::with_capacity(16), // Pre-allocated
+            notes: Vec::new(),
             sample_offset: 0,
             new_measures: Vec::new(),
-            musical_params: MusicalParams::default(),
+            musical_params,
             session_key: ArrayString::new(),
             session_scale: ArrayString::new(),
         }
+    }
+}
+
+impl Default for EngineReport {
+    fn default() -> Self {
+        Self { notes: Vec::with_capacity(16), ..Self::realtime(PlaybackParams::default()) }
     }
 }
 

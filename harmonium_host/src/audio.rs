@@ -5,7 +5,9 @@ use std::{
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use harmonium_audio::backend::{
-    AudioRenderer, recorder::RecorderBackend, synth_backend::SynthBackend,
+    AudioRenderer,
+    recorder::{OverflowPolicy, RecorderBackend},
+    synth_backend::SynthBackend,
 };
 use harmonium_core::{log, params::SessionConfig};
 
@@ -202,10 +204,13 @@ pub fn create_offline_engine(
         Box::new(SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
-    let recorder_backend = Box::new(RecorderBackend::new(
+    // Offline there is no deadline: block rather than drop, so recordings are
+    // complete and published when the stop command returns.
+    let recorder_backend = Box::new(RecorderBackend::with_policy(
         inner_backend,
         finished_recordings.clone(),
         sample_rate as u32,
+        OverflowPolicy::Block,
     ));
 
     let composer = MusicComposer::new(

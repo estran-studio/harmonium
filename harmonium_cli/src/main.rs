@@ -213,9 +213,9 @@ fn main() -> Result<()> {
                     .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
             }
             playback_cmd_tx
-                .push(harmonium::playback::PlaybackCommand::UpdateMusicalParams(Box::new(
-                    c.musical_params().clone(),
-                )))
+                .push(harmonium::playback::PlaybackCommand::UpdateMusicalParams(
+                    c.musical_params().playback_params(),
+                ))
                 .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
         }
 

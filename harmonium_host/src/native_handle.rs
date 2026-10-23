@@ -403,7 +403,7 @@ impl NativeHandle {
         c.set_profile(profile)?;
         Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
         self.playback_cmd_tx
-            .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())))
+            .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()))
             .map_err(|_| "file de commandes audio pleine".to_string())
     }
 
@@ -415,7 +415,7 @@ impl NativeHandle {
             Self::push_pending_drop(&mut c, &mut self.playback_cmd_tx);
             let _ = self
                 .playback_cmd_tx
-                .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())));
+                .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()));
         }
     }
 

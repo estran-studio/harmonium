@@ -315,32 +315,67 @@ autres (fifre continu) : à juger à l'oreille lors d'un changement de style.
 Les pieds sont à ≥ 20 dB RMS sous la mélodie (≈ 14–16 dB avant V1) : risque
 de pieds trop discrets, à écouter avant de figer.
 
-### Dette temps réel préexistante (hors V1)
+### Dette temps réel préexistante (hors V1) — soldée par RT1
 
-Périmètre confirmé par le coordinateur : le critère RT de V1 porte sur
-**l'application `SetMix` et le DSP du mixage**, prouvés sous l'allocateur de
-contrôle ; ne pas refondre `RecorderBackend` ni `UpdateMusicalParams` dans V1.
-Le callback complet n'est donc **pas** déclaré sans allocation/verrou.
-`harmonium_host/src/playback.rs:452` appelle `process_commands` hors garde ;
-le rendu/enregistrement passe également hors de la garde du handoff.
+V1 prouvait `SetMix` et le DSP du mixage sous l'allocateur de contrôle ; le
+callback complet restait hors garde (`RecorderBackend`, `UpdateMusicalParams`,
+rapport périodique, `process_commands`). RT1 solde ce tableau : **tout
+`PlaybackEngine::process_buffer` s'exécute désormais sous `RTCheckAllocator`**
+(garde imbriquable, `RtGuard` en tête de fonction), commandes, profil,
+rapports et début/fin d'enregistrement compris.
 
-Emplacements dans le code livré (numéros après `cargo fmt`) :
-
-| Chemin préexistant dans le callback | Allocation/verrou identifié | Correction nécessaire hors V1 |
+| Chemin préexistant | Problème | État (RT1) |
 |---|---|---|
-| `harmonium_audio/src/backend/recorder.rs:43`, `:140-142` | Début WAV : `Vec::with_capacity(1 MiB)`, `Arc` et `WavWriter` construits depuis la commande audio. | Créer writer, buffers et ressources sur un thread d'enregistrement ; ne transférer que des identifiants/commandes Copy. |
-| `harmonium_audio/src/backend/recorder.rs:384` → `:49`, `:53` ; `:56`, `:66` | Chaque écriture WAV passe par `SharedWriter` et son `Mutex` ; `Cursor<Vec<u8>>::write` peut réallouer au-delà de 1 MiB. `flush` et `seek` verrouillent aussi, notamment à la finalisation `:149`. | Callback → blocs PCM préalloués via SPSC ; encodage/écriture/finalisation et croissance de stockage entièrement hors callback. Recycler les blocs, définir explicitement l'overrun. |
-| `harmonium_audio/src/backend/recorder.rs:156-157` | Fin WAV : verrou de `finished_recordings`, `Vec::push` potentiellement réallouant et libération des ressources writer/Arc. | Publier le résultat depuis le thread d'enregistrement ; le callback ne détient ni ne détruit ces ressources. |
-| `harmonium_audio/src/backend/recorder.rs:167`, `:171`, `:175`, `:177` | Début MIDI : `vec!`, croissance du track, liste temporaire de `gm_programs_for_profile`. | Préparer les métadonnées hors callback ; transporter les événements MIDI horodatés à taille fixe vers le thread d'enregistrement. |
-| `harmonium_audio/src/backend/recorder.rs:242`, `:274`, `:286`, `:355` | Pendant MIDI : `Vec::push` des événements/metas et des notes actives peut réallouer ; `SetMix` enregistré emprunte ce même append préexistant. | Capture MIDI via SPSC bornée ; construire le track et tenir les notes actives côté enregistreur, sans collection extensible dans le callback. |
-| `harmonium_audio/src/backend/recorder.rs:197-219` | Fin MIDI : destruction du Vec de notes actives, append EndOfTrack, Vec des pistes SMF, croissance du buffer d'encodage, `finished_recordings.lock()` puis `push`. | Fermer les notes, sérialiser et publier le fichier côté enregistreur ; transmettre uniquement une borne temporelle de fin depuis l'audio. |
-| `harmonium_host/src/playback.rs:1173`, `:1176` ; `harmonium_audio/src/backend/recorder.rs:325`, `:329` | `params.clone()` clone le `Box` et les Vec de `MusicalParams` ; le recorder répète ce clone et alloue la liste de programmes. Remplacer les anciens paramètres/détruire les payloads libère aussi de la mémoire sur ce thread. | Métadonnées audio/recorder/report Copy préparées sur le thread principal, comme `PreparedMix` ; retourner les éventuels payloads propriétaires par anneau de recyclage au thread principal plutôt que les cloner/détruire dans le callback. |
-| `harmonium_host/src/playback.rs:1211` | Publication périodique du rapport : clone de `MusicalParams` et donc de ses Vec, même sans enregistrement. | Snapshot de rapport de taille fixe (tableaux/identifiants), ou slots préalloués rendus au producteur ; pas de clone de Vec sur le thread audio. |
+| `recorder.rs` début WAV (`Vec` 1 MiB, `Arc`, `WavWriter`) | Ressources créées depuis la commande audio. | **Fait.** Le thread d'enregistrement (créé dans `RecorderBackend::new`, hors callback) crée l'écrivain ; le callback envoie `WavStart`. |
+| `recorder.rs` écriture WAV (`SharedWriter` + `Mutex`, `Cursor<Vec>`) | Verrou et réallocation à chaque échantillon. | **Fait.** Le callback copie dans des blocs PCM préalloués (8192 échantillons × 48, recyclés par un second anneau SPSC) ; le thread encode avec `hound`, sans verrou partagé (`Rc<RefCell>` local au thread). |
+| `recorder.rs` fin WAV / fin MIDI (`finished_recordings.lock()`, `push`, SMF) | Verrou, `Vec`, sérialisation dans le callback. | **Fait.** Le callback envoie `WavStop` / `MidiStop` ; le thread sérialise et publie dans `finished_recordings`. |
+| `recorder.rs` début/pendant MIDI (`vec!`, `push`, `midi_active`) | Croissance de collections dans le callback. | **Fait.** Événements `Copy` horodatés en **frames** dans une file SPSC de 4096 messages ; piste, notes actives et delta-times vivent côté thread. |
+| `playback.rs` `UpdateMusicalParams` (`Box<MusicalParams>`, `clone`) et `recorder.rs` (`params.clone()`, liste de programmes) | Clone de `Vec`/`Box`, destruction de l'ancien snapshot dans le callback. | **Fait.** `PlaybackParams` (`Copy`, `MusicalParams::playback_params()`, préparé sur le thread principal comme `PreparedMix`) traverse commande, événement et rapport. Aucune charge propriétaire ne transite : l'anneau de recyclage envisagé n'est pas nécessaire. `gm_programs_for_profile` rend un `ArrayVec`. |
+| `playback.rs` rapport périodique (`musical_params.clone()`, `Vec::with_capacity(16)`) | Clone de `MusicalParams`, allocation du tampon de notes. | **Fait.** `EngineReport::realtime(PlaybackParams)` : champs de taille fixe, `Vec` vides (capacité 0). `EngineReport.musical_params` devient `PlaybackParams`. |
+| `playback.rs` `process_commands` hors garde | Aucune garde ; `log::info(&format!(…))` (alloc + verrou + E/S) sur `Seek`, `SeekPlayhead`, `SetLoop`, `ClearLoop` ; `SetMutedChannels(Vec<bool>)` libéré dans le callback. | **Fait.** Garde globale ; journaux retirés du callback ; `SetMutedChannels([bool; 16])`. |
 
-Une correction globale devra ensuite garder **tout** `process_buffer` sous
-`RTCheckAllocator` en debug, y compris commandes de profil, rapports et
-début/fin d'enregistrement ; vérifier continuité PCM, horodatage MIDI et
-déterminisme avec la file bornée, sans contourner la garde pour les exports.
+**Débordement (explicite et testé).** `OverflowPolicy::DropAndCount` (temps
+réel, défaut de `RecorderBackend::new`) refuse ce qui ne tient pas et le
+compte dans `RecorderStats` (`dropped_pcm_samples`, `dropped_midi_events`,
+`lost_commands`, lisibles via `RecorderBackend::stats()`) ; le WAV remplace
+les blocs perdus par du silence (durée exacte) et le thread journalise un
+avertissement. Les données ne prennent jamais les 8 dernières places de la
+file : un `Stop` entre toujours. `OverflowPolicy::Block` (rendu hors ligne,
+`create_offline_engine`) attend le thread : rien n'est perdu, et la fin d'une
+prise rend la main une fois le fichier publié (les exports CLI/labo lisent
+`finished_recordings` juste après le dernier `process_buffer`). Tests :
+`wav_overflow_is_counted_and_padded_with_silence` et
+`midi_overflow_is_counted_and_stop_still_delivered` (sans thread, pool épuisé
+puis file saturée), `wav_is_byte_identical_to_direct_encoding`.
+
+**Preuve.** `harmonium_host/tests/realtime_callback_tests.rs` : moteur réel,
+synthé `test.sf2`, deux prises WAV + MIDI avec SetMix, rampe de tempo, mute,
+boucle, seek, rapports ; `harmonium_audio/tests/recorder_realtime_tests.rs` :
+l'enregistreur seul, SetMix et changement de tempo en cours de prise. Toute
+allocation ou libération du callback fait paniquer ces tests (vérifié en
+injectant un `vec!` dans `RecorderBackend::process_buffer`). L'absence de
+verrou tient à la construction (files `rtrb`, atomiques) : l'allocateur ne
+peut pas la détecter. Les `AudioRenderer` de test (`handoff_tests`,
+`swing_tempo_tests`) ont des journaux préalloués et prennent leur verrou une
+première fois hors garde (sur macOS cette prise alloue).
+
+**Reste (documenté, en dehors du régime permanent).**
+
+- `LoadFont` : analyser et insérer une SoundFont alloue (oxisynth) et journalise
+  (verrou + E/S). Exemption `allow_allocation()` dans `SynthBackend`, sur cette
+  commande seulement. Piste : analyse sur le thread principal, et insertion sans
+  allocation côté oxisynth (hors dépôt).
+- `oxisynth::core::midi::inner_noteon` alloue puis libère un `Vec` de 64
+  pointeurs à chaque NoteOn (bibliothèque tierce). Exemption ciblée
+  `allow_allocation()` autour de ce seul `send_event(NoteOn)` dans
+  `VoiceManager::process_event` ; rendu (`write`), NoteOff, CC, programmes et le
+  code du dépôt restent gardés. Constaté avec `assets/test.sf2` ; une banque
+  SF3 ou des zones plus riches n'ont pas été mesurées.
+- Politique `DropAndCount` : la marge est de ≈ 4,5 s de stéréo à 44,1 kHz
+  (48 blocs) devant le thread d'enregistrement ; un thread bloqué plus
+  longtemps perd du PCM (compté, silence dans le WAV).
+- Un hôte qui lit `finished_recordings` en temps réel voit désormais un fichier
+  quelques millisecondes après la commande d'arrêt, plus au retour du callback.
 
 ## 2. Interprétation — `[performance]` par profil
 
@@ -542,7 +577,7 @@ d'archet. Le hornpipe britannique n'a **aucune** articulation écrite
 (`references/ornaments/britannique_coloniale-hornpipe.json`) : il n'a que des
 accents métriques proposés, à valider à l'oreille.
 
-**Limite mesurée : dérive du MIDI enregistré.** Le MIDI statique
+**Limite mesurée : dérive du MIDI enregistré (corrigée par RT1, voir plus bas).** Le MIDI statique
 (`timeline_to_midi`, test `performance_midi_tests`) place chaque attaque et
 chaque fin à 1/480 de noire. Le MIDI du **RecorderBackend** (celui de
 `--record-midi`) arrondit le delta de chaque événement en ticks
@@ -596,7 +631,44 @@ avant toute augmentation des valeurs.
 - Les effets sont volontairement petits (attaques ±1–3 ms, gate 0,96, 96–98 %
   de notes `Normal`) : l'écoute dira s'il faut les augmenter.
 - La dérive du MIDI enregistré (jusqu'à −20 ms) fausse les mesures du labo
-  qui lisent `--record-midi` : à corriger dans la tâche RT1 (enregistreur).
+  qui lisent `--record-midi` : corrigée par RT1 (enregistreur), voir ci-dessous.
+
+#### Correction RT1 : MIDI enregistré exact
+
+Cause : `push_midi_event` arrondissait chaque delta en ticks et jetait le reste.
+Correction : l'horodatage est en **frames** ; `PlaybackEngine` annonce à chaque
+pulse la cadence audible (`AudioEvent::MidiClock { ticks_per_frame }` : un pas
+droit tronqué = 120 ticks, un quart arrondi de swing ou de rampe =
+`120 × pas_par_quart` ticks, donc le swing audible reste dans le fichier et la
+grille n'accumule aucun reste) ; le thread d'enregistrement convertit chaque
+événement en ticks **cumulés** (ancre fractionnaire à chaque changement de
+cadence) et n'arrondit que la position absolue. Le tempo variable (rampes
+D4) ne change que la cadence, jamais les positions.
+
+Mesure : `harmonium_host/tests/recorded_midi_exact_tests.rs` rend 30 mesures
+(20 graines × reel/gigue/valse québécois × tensions 0,4 et 1, `--record-midi` du
+moteur hors ligne, comme l'export CLI), apparie chaque attaque Melody/Chords/Bass
+à sa position écrite (pas + décalage V2 en millièmes de pas, grille de swing
+audible) et exprime le résidu en ticks (480 par noire ; 1 tick ≈ 1 ms à
+120 BPM). Résidu enregistré − vérité, médiane [p10 ; p90], max |r| :
+
+| Profil, tension | Avant | Après |
+|---|---|---|
+| reel_quebecois 0,4 | −0,2 [−13,8 ; +8,9], 20,8 | +0,0 [−0,4 ; +0,4], 0,5 |
+| reel_quebecois 1 | −3,7 [−13,4 ; +1,5], 39,5 | +0,0 [−0,3 ; +0,4], 0,5 |
+| gigue_quebecoise 0,4 | −14,2 [−28,0 ; −1,9], 40,0 | +0,0 [−0,4 ; +0,4], 0,5 |
+| gigue_quebecoise 1 | −0,5 [−4,4 ; +2,2], 12,0 | +0,0 [−0,4 ; +0,4], 0,5 |
+| valse_quebecoise 0,4 | −10,7 [−24,4 ; −1,3], 40,6 | +0,0 [−0,4 ; +0,4], 0,5 |
+| valse_quebecoise 1 | +0,7 [−1,0 ; +4,9], 10,5 | +0,0 [−0,4 ; +0,4], 0,5 |
+
+Le reste (≤ 0,5 tick) est l'arrondi à l'entier de la position absolue. Le
+même test avec swing 0,62 et une rampe de tempo (`SetTempo` 150 BPM sur 8
+pulses) donnait 11,3 ticks avant, ≤ 1 après. Les mêmes seeds exportées avant
+et après (reel, gigue, valse québécois, marche britannique ; seeds 1 et 7 ;
+12 mesures ; `assets/test.sf2`) : **WAV identiques octet pour octet**,
+MIDI avec les mêmes événements dans le même ordre et des ticks décalés de 1 à
+14 au plus (la dérive corrigée). `TUNING_VERSION` et les goldens de snapshots
+sont inchangés.
 
 ## 3. Ornements idiomatiques
 

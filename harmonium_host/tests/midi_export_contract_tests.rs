@@ -62,7 +62,7 @@ fn render_reel(
         let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
     }
     let _ = cmd_tx
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())));
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()));
 
     composer.set_writehead_lookahead(bars + 16);
     composer.generate_bars(bars);

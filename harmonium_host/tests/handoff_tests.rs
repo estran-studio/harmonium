@@ -34,17 +34,27 @@ const SAMPLES_PER_STEP: usize = 5512;
 const STEPS_PER_BAR: usize = 16;
 
 /// Shared event log: the renderer records every event it receives; the test
-/// drains it after each step and attributes notes to (bar, step).
-#[derive(Clone, Default)]
+/// drains it after each step and attributes notes to (bar, step). The log is
+/// pre-sized and keeps its capacity when drained: the audio thread never
+/// allocates, the whole `process_buffer` runs under `RTCheckAllocator`.
+#[derive(Clone)]
 struct EventLog(Arc<Mutex<Vec<AudioEvent>>>);
+
+impl Default for EventLog {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(Vec::with_capacity(1 << 16))))
+    }
+}
 
 impl EventLog {
     fn drain(&self) -> Vec<AudioEvent> {
-        if let Ok(mut guard) = self.0.lock() { std::mem::take(&mut guard) } else { Vec::new() }
+        if let Ok(mut guard) = self.0.lock() { guard.drain(..).collect() } else { Vec::new() }
     }
 
     fn push(&self, event: AudioEvent) {
-        if let Ok(mut guard) = self.0.lock() {
+        if let Ok(mut guard) = self.0.lock()
+            && guard.len() < guard.capacity()
+        {
             guard.push(event);
         }
     }

@@ -107,7 +107,12 @@ impl AudioRenderer for SynthBackend {
     fn handle_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::LoadFont { id, bytes } => {
+                // Dette temps réel assumée : analyser et insérer une SoundFont
+                // alloue (oxisynth) ; c'est une opération rare, hors régime
+                // permanent. Le tampon est libéré dans la même portée.
+                let _allowed = crate::realtime::rt_check::allow_allocation();
                 self.voice_manager.add_font(id, &bytes);
+                drop(bytes);
             }
             AudioEvent::SetChannelRoute { channel, bank } => {
                 self.voice_manager
@@ -115,9 +120,11 @@ impl AudioRenderer for SynthBackend {
             }
             AudioEvent::SetMix { mix } => self.apply_mix(mix),
             AudioEvent::UpdateMusicalParams { params } => {
-                self.voice_manager.apply_profile_programs(&params.profile_instruments);
+                self.voice_manager.apply_profile_programs(&params.instruments);
             }
-            AudioEvent::TimingUpdate { .. } | AudioEvent::MeasureTiming { .. } => {}
+            AudioEvent::TimingUpdate { .. }
+            | AudioEvent::MidiClock { .. }
+            | AudioEvent::MeasureTiming { .. } => {}
             _ => self.voice_manager.process_event(event),
         }
     }

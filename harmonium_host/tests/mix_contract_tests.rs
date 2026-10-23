@@ -21,7 +21,7 @@ fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<
     profile.mix.tracks.toe = TrackMix { level_db: -6.0, pan: 0.5, reverb_send: 0.75 };
     composer.set_profile(profile.clone())?;
     commands
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
         .map_err(|_| "commands full")?;
     commands
         .push(PlaybackCommand::StartRecording(AudioRecordFormat::Midi))
@@ -36,7 +36,7 @@ fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<
     profile.mix.tracks.melody = TrackMix { level_db: 0.0, pan: 1.0, reverb_send: 0.0 };
     composer.set_profile(profile)?;
     commands
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
         .map_err(|_| "commands full")?;
     playback.process_buffer(&mut buffer, 2, Instant::now());
     commands
