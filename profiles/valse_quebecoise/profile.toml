@@ -10,6 +10,7 @@ name = "Valse québécoise"
 tradition = "Québec / Canada français, répertoire traditionnel de violon"
 tags = ["valse", "waltz", "quebec", "violon"]
 corpus = "harmonium_lab: corpus 2026-10-19+764, 67 valses; provenance dans le manifeste du labo"
+aliases = ["valse", "waltz"]
 
 [meter]
 time_signature = { numerator = 3, denominator = 4 }

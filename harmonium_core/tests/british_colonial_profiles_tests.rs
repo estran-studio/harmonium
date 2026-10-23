@@ -214,9 +214,9 @@ fn test_load_hornpipe_directly_and_by_name() -> Result<(), Box<dyn std::error::E
     assert_eq!(named.meta.id, "hornpipe_britannique_coloniale");
     assert_eq!(direct, named);
 
-    // Résolution par préfixe / tag "hornpipe"
-    let by_prefix = StyleProfile::named("hornpipe")?;
-    assert_eq!(by_prefix.meta.id, "hornpipe_britannique_coloniale");
+    // Alias déclaré dans [meta] aliases
+    let by_alias = StyleProfile::named("hornpipe")?;
+    assert_eq!(by_alias.meta.id, "hornpipe_britannique_coloniale");
     Ok(())
 }
 

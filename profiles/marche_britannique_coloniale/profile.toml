@@ -10,6 +10,7 @@ name = "Marche britannique coloniale"
 tradition = "Musique militaire britannique, régiments et garnisons d'Amérique du Nord, c. 1760–1840"
 tags = ["marche", "march", "britannique", "coloniale", "fifre", "tambour", "1837", "garnison"]
 corpus = "Nottingham Music Database, John Chambers AmRev, Cahusac 1809 (25 airs de marche du corpus bascanada/harmonium_lab)"
+aliases = ["marche", "march"]
 
 [meter]
 time_signature = { numerator = 2, denominator = 2 }

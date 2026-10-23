@@ -10,6 +10,7 @@ name = "Hornpipe britannique colonial"
 tradition = "Musique britannique coloniale, régiments et ports d'Amérique du Nord, c. 1760–1840"
 tags = ["hornpipe", "britannique", "coloniale", "violon", "1837", "garnison", "danse"]
 corpus = "Nottingham Music Database, John Chambers AmRev, Cahusac 1809 (78 airs de hornpipe du corpus bascanada/harmonium_lab)"
+aliases = ["hornpipe"]
 
 [meter]
 time_signature = { numerator = 4, denominator = 4 }

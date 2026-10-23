@@ -26,6 +26,10 @@ pub struct ProfileMeta {
     pub tradition: String,
     pub tags: Vec<String>,
     pub corpus: String,
+    /// Noms courts acceptés par `--style` / `style` (ex. `reel`, `gigue`). Uniques parmi les
+    /// profils distribués : un nom court désigne toujours un seul style.
+    #[serde(default)]
+    pub aliases: Vec<String>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -218,24 +222,21 @@ impl StyleProfile {
     pub fn builtin() -> &'static Self {
         &Self::distributed()[0]
     }
-    /// Résolution des identifiants distribués avec le moteur (alias CLI inclus).
+    /// Résolution d'un profil distribué par identifiant exact, puis par alias déclaré dans
+    /// `[meta] aliases`. Pas de déduction par préfixe ni par tag : avec plusieurs traditions,
+    /// un nom court comme `gigue` serait ambigu.
     pub fn named(id: &str) -> Result<Self, ProfileError> {
-        if let Some(p) = Self::distributed().iter().find(|p| p.meta.id.eq_ignore_ascii_case(id)) {
-            return Ok(p.clone());
-        }
-        if let Some(p) = Self::distributed().iter().find(|p| {
-            p.meta.id.split('_').next().is_some_and(|prefix| prefix.eq_ignore_ascii_case(id))
-        }) {
-            return Ok(p.clone());
-        }
-        let matching: Vec<_> = Self::distributed()
+        let distributed = Self::distributed();
+        distributed
             .iter()
-            .filter(|p| p.meta.tags.iter().any(|t| t.eq_ignore_ascii_case(id)))
-            .collect();
-        if matching.len() == 1 {
-            return Ok(matching[0].clone());
-        }
-        Err(ProfileError::new("meta.id", format!("profil inconnu : {id}")))
+            .find(|p| p.meta.id.eq_ignore_ascii_case(id))
+            .or_else(|| {
+                distributed
+                    .iter()
+                    .find(|p| p.meta.aliases.iter().any(|a| a.eq_ignore_ascii_case(id)))
+            })
+            .cloned()
+            .ok_or_else(|| ProfileError::new("meta.id", format!("profil inconnu : {id}")))
     }
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ProfileError> {
         let path = path.as_ref();

@@ -125,19 +125,10 @@ fn cross_section_bounds_reject_before_generation() -> Result<(), Box<dyn std::er
 
 #[test]
 fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error::Error>> {
-    let profile = StyleProfile::distributed()
-        .iter()
-        .find(|p| p.meter.time_signature == TimeSignature::new(6, 8))
-        .expect("profil 6/8 distribué");
-
-    assert_eq!(&StyleProfile::named(&profile.meta.id)?, profile);
-    let prefix = profile.meta.id.split('_').next().unwrap();
-    assert_eq!(&StyleProfile::named(prefix)?, profile);
-    for tag in &profile.meta.tags {
-        if StyleProfile::distributed().iter().filter(|p| p.meta.tags.contains(tag)).count() == 1 {
-            assert_eq!(&StyleProfile::named(tag)?, profile);
-        }
-    }
+    let profile = &StyleProfile::named("gigue_quebecoise")?;
+    assert_eq!(profile.meter.time_signature, TimeSignature::new(6, 8));
+    assert_eq!(&StyleProfile::named("gigue")?, profile);
+    assert_eq!(&StyleProfile::named("jig")?, profile);
 
     assert_eq!(profile.meter.steps_per_bar, 12);
     assert_eq!(profile.meter.steps_per_unit, 2);
@@ -231,19 +222,10 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
 
 #[test]
 fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error::Error>> {
-    let profile = StyleProfile::distributed()
-        .iter()
-        .find(|p| p.meter.time_signature == TimeSignature::new(3, 4))
-        .expect("profil 3/4 distribué");
-
-    assert_eq!(&StyleProfile::named(&profile.meta.id)?, profile);
-    let prefix = profile.meta.id.split('_').next().unwrap();
-    assert_eq!(&StyleProfile::named(prefix)?, profile);
-    for tag in &profile.meta.tags {
-        if StyleProfile::distributed().iter().filter(|p| p.meta.tags.contains(tag)).count() == 1 {
-            assert_eq!(&StyleProfile::named(tag)?, profile);
-        }
-    }
+    let profile = &StyleProfile::named("valse_quebecoise")?;
+    assert_eq!(profile.meter.time_signature, TimeSignature::new(3, 4));
+    assert_eq!(&StyleProfile::named("valse")?, profile);
+    assert_eq!(&StyleProfile::named("waltz")?, profile);
 
     assert_eq!(profile.meter.steps_per_bar, 12);
     assert_eq!(profile.meter.steps_per_unit, 2);
@@ -375,4 +357,35 @@ fn non_regression_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn st
         );
     }
     Ok(())
+}
+
+/// Chaque dossier de `profiles/` est distribué : un profil invalide ne doit pas disparaître en
+/// silence du moteur (le chargeur embarqué ignore ce qu'il ne sait pas décoder).
+#[test]
+fn every_profile_directory_is_distributed() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../profiles");
+    let mut on_disk: Vec<String> = std::fs::read_dir(&dir)?
+        .flatten()
+        .filter(|e| e.path().join("profile.toml").is_file())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    on_disk.sort();
+    let mut distributed: Vec<String> =
+        StyleProfile::distributed().iter().map(|p| p.meta.id.clone()).collect();
+    distributed.sort();
+    assert_eq!(distributed, on_disk);
+    Ok(())
+}
+
+/// Un identifiant ou un alias désigne un seul style : sinon `--style gigue` dépendrait de l'ordre
+/// d'embarquement des profils.
+#[test]
+fn ids_and_aliases_are_unique_across_distributed_profiles() {
+    let mut seen = std::collections::HashMap::new();
+    for profile in StyleProfile::distributed() {
+        for name in std::iter::once(&profile.meta.id).chain(&profile.meta.aliases) {
+            let previous = seen.insert(name.to_lowercase(), profile.meta.id.clone());
+            assert!(previous.is_none(), "« {name} » désigne {previous:?} et {}", profile.meta.id);
+        }
+    }
 }

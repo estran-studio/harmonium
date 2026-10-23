@@ -10,6 +10,7 @@ name = "Gigue québécoise"
 tradition = "Québec / Canada français, répertoire traditionnel de violon"
 tags = ["gigue", "jig", "quebec", "violon", "podorythmie"]
 corpus = "harmonium_lab: corpus 2026-10-19+764, 88 gigues; provenance dans le manifeste du labo"
+aliases = ["gigue", "jig"]
 
 [meter]
 time_signature = { numerator = 6, denominator = 8 }

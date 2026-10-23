@@ -10,6 +10,7 @@ name = "Reel québécois"
 tradition = "Québec / Canada français, répertoire traditionnel de violon"
 tags = ["reel", "quebec", "violon", "podorythmie"]
 corpus = "harmonium_lab: corpus 2026-10-19+764, 507 reels; provenance dans le manifeste du labo"
+aliases = ["reel"]
 
 [meter]
 time_signature = { numerator = 2, denominator = 2 }
