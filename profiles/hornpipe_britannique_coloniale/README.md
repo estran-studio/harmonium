@@ -1,0 +1,66 @@
+# Profil de style : Hornpipe britannique colonial (violon et rythme pointé)
+
+Danse emblématique du monde maritime et des garnisons britanniques (vers 1760–1840), le **hornpipe** se distingue par sa mesure à 4 temps (4/4), son **rythme pointé caractéristique** (« croches pointées » avec fort swing), son tempo modéré et sa **cadence finale typique en trois noires accentuées**.
+
+Conformément au principe V de la constitution, ce profil est défini **exclusivement en données** (aucun fichier `.rs` modifié).
+
+---
+
+## 1. Tradition et sources (Constitution V et VII)
+
+- **Tradition** : Musique britannique coloniale, matelots, régiments côtiers et bals de garnison en Amérique du Nord britannique (Québec, Halifax, Boston/AmRev), c. 1760–1840.
+- **Corpus de référence** : 78 airs de hornpipe du corpus `bascanada/harmonium_lab` (`corpus/britannique_coloniale/tunes/hornpipe/`, identifiant `2026-10-22+1025`) issus de :
+  - *Nottingham Music Database* (NMD)
+  - *John Chambers AmRev* (AmRev, trillian)
+  - *24 Country Dances for the Year 1809* (Cahusac, Londres)
+- **Métrique retenue** : 4/4 (73 airs sur 77 dans le corpus), 16 pas sur la grille de double-croches (8 unités de croche par mesure), pulse à la noire (4 temps par mesure : pas 0, 4, 8, 12).
+- **Tempo** : 92.0 BPM à la noire (plage 80–104 BPM). Nettement plus lent qu'un reel (230 BPM à la noire, soit 115 à la blanche), permettant l'articulation soignée des croches pointées et des sauts d'archet.
+
+---
+
+## 2. Rythme pointé (Swing) et justification musicale
+
+- **Swing ratio** : `default_swing_ratio = 0.65` (dans la plage 0.62–0.67 documentée).
+- **Justification** :
+  - Dans la tradition britannique et irlandaise, le hornpipe n'est pas joué en croches égales (« straight », swing 0.50), mais en **croches pointées** (notes inégales).
+  - Un ratio de **0.65** établit un rapport de durée d'environ **1.86:1** entre la croche impaire (sur le temps) et la croche paire (en l'air), se situant idéalement entre le swing ternaire jazz / shuffle (2:1, soit ~0.667) et la notation formelle croche pointée / double-croche (3:1, soit 0.75).
+  - Ce swing prononcé confère au hornpipe son rebond caractéristique (« lilt » / « bounce »), bien plus marqué que le swing fluide du reel acadien (0.56) ou la rigueur métronomique de la marche (0.50).
+
+---
+
+## 3. Cadence finale typique : les trois noires accentuées
+
+Le corpus de référence confirme sans ambiguïté la formule de conclusion traditionnelle du hornpipe :
+- Sur la 8ᵉ mesure (cadence complète `CadFull`), les airs de hornpipe terminent typiquement par **trois noires accentuées** sur les temps 1, 2 et 3 (unités 0, 2 et 4 de la mesure), suivies d'une tenue ou d'une levée vers la reprise.
+- Exemples observés directement dans le corpus :
+  - `8 - 10 - 8 - 5 -` (octave, tierce supérieure, octave, dominante)
+  - `1 - 1 - 1 - 5, -` (trois toniques martelées puis levée sur la quinte grave)
+  - `1 - 3 - 1 - 5 -` (tonique, tierce, tonique)
+  - `3 - 1 - 1 - 5 -` (tierce, tonique, tonique)
+  - `8 - 10 - 8 - 7 8` (trois noires puis résolution conjointe)
+  - `8 - 10 - 8 - - -` (trois noires puis suspension du 4ᵉ temps)
+- La banque `cells.toml` retient en priorité ces cellules cadentielles idiomatiques validées par le moteur.
+
+---
+
+## 4. Tableau comparatif : Hornpipe britannique vs Reel (traditionnel)
+
+| Dimension / Champ | Reel québécois (`reel_quebecois`) | Hornpipe britannique (`hornpipe_britannique_coloniale`) | Justification et source des données |
+|---|---|---|---|
+| **Métrique et pulse** | 2/2 (Alla Breve), pulse à la blanche (2 temps de 8 pas) | **4/4**, pulse à la noire (**4 temps de 4 pas**) | 73 airs sur 77 sont notés en 4/4 dans le corpus de hornpipes britanniques. |
+| **Swing (rythme pointé)** | Swing léger (0.56, quasi-égal) | **Fort swing pointé : 0.65** (~1.86:1) | Caractéristique fondamentale du hornpipe britannique (« dotted hornpipe »). |
+| **Tempo à la noire** | 230.0 BPM (vif et continu) | **92.0 BPM** (plage 80–104) | Tempo de danse beaucoup plus lent, indispensable pour articuler le rythme pointé. |
+| **Cadence finale (m.8)** | Résolution en croches continues vers la tonique | **Trois noires accentuées** (temps 1, 2, 3) | Formule de cadence emblématique universelle du hornpipe dans le corpus. |
+| **Levée d'intro** (`pickup_eighths`) | 2 croches (1 temps de blanche/demi-mesure en 2/2) | **2 croches = 1 noire** (71 airs sur 77 ont une anacrouse d'une noire) | `pickups_eighths` du labo : 92.2 % des hornpipes démarrent sur le 4ᵉ temps. |
+| **Accompagnement** | Chop guitare percussif (durée 1) sur contretemps 4 et 12 | **Accords simples soutenus** (durée 4) sur temps 1 et 3 (0 et 8) | Accompagnement mesuré sans contretemps syncopé. |
+| **Podorythmie** | Podorythmie québécoise omniprésente | **Aucune podorythmie** | Pratique absente des danses militaires et maritimes d'officiers britanniques. |
+| **Tonalités reines** | Ré majeur (40 %), Sol majeur (33 %) | **Sol majeur (44 %)**, Ré majeur (36 %), La majeur (13 %) | Sol majeur (G) domine nettement le répertoire de hornpipe pour violon. |
+
+---
+
+## 5. Instrumentation
+
+- **Violon** (Melody, canal 0) : Programme GM 40 (Violin), tessiture 55–88 (Sol grave G3 à Mi aigu E6), centre mélodique à 72.
+- **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), accords tenus de noire (durée 4 pas) sur les temps 0 et 8.
+- **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les temps 0 et 8.
+- **Percussion** : Pistes Heel et Toe désactivées dans l'arrangement (pas de podorythmie).
