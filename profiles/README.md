@@ -95,6 +95,94 @@ reste près du centre et au-dessus de chaque accompagnement mesuré.
 Les README individuels donnent les intentions ; les mesures avant/après et
 leurs limites sont dans [Mesures V1](../specs/012-vie-realisme/plan.md#mesures-v1).
 
+## Interprétation
+
+`[performance.tracks.<piste>]` fonctionne pour `Melody`, `Chords`, `Bass`,
+`Heel` et `Toe`. Les profils distribués n'ajoutent d'interprétation qu'à la
+mélodie ; les durées écrites de basse/guitare et les samples de pieds restent
+ceux des banques. **Section absente ou tous les réglages à zéro : aucun
+tirage supplémentaire**, mêmes hauteurs, vélocités et durées qu'avant V2.
+Les champs omis sont neutres ; `velocity_min = velocity_max = 0` désactive
+le bornage supplémentaire.
+
+L'unité de timing est la **fraction de pas**, pas la milliseconde : elle suit
+le tempo, le swing et les rampes sans réécrire la grille. À 230 BPM et quatre
+pas/noire, `0.02` vaut environ 1,3 ms avant swing. Les décisions sont publiées
+dans chaque note : `performance.offset` en millièmes de pas signés,
+`performance.gate` en millièmes de durée (1000 = plein),
+`performance.breath` en millièmes de pas soustraits **après** le gate.
+La résolution de décision est donc 0,001 pas ; la lecture arrondit ensuite
+chaque événement à la frame la plus proche dans le pas effectivement gelé.
+`start_step`, `BeatInfo` et le transport restent sur la grille.
+
+```toml
+[performance.tracks.Melody]
+offsets = [-0.02, 0.0, 0.01, 0.0, -0.02, 0.0, 0.01, 0.0,
+           -0.02, 0.0, 0.01, 0.0, -0.02, 0.0, 0.01, 0.0]
+jitter = 0.02
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 120
+breath = 0.08
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 90.0
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 10.0
+steps = [0, 4, 8, 12]
+min_duration = 1
+max_duration = 4
+context = "repeated"
+shorten = 0.2
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0
+```
+
+Exemple de syntaxe, **pas une estimation de taux traditionnel**. Les README
+individuels citent les comptages utilisés et les choix non mesurables.
+
+| Paramètre | Bornes / effet audible | Mécanique | Vivant, point de départ |
+|---|---|---|---|
+| `offsets` | Vide ou exactement un nombre fini par pas, chacun −0,2..0,2 ; négatif = en avant, positif = en arrière. | `[]` ou zéros | ±0,01..0,025 pas |
+| `jitter` | 0..0,1 pas ; uniforme symétrique bornée. Tirée par un `ChaCha8Rng` dérivé d'une graine tirée **une fois par air** sur le ChaCha8 du générateur (uniquement si l'interprétation n'est pas neutre), un flux par mesure : la mesure `n` se joue pareil après un seek, sans horloge. | `0` | 0,01..0,025 |
+| `rules[].articulation` | `Normal`, `Detached`, `Linked`, `Accent` ; l'étiquette est publiée, jamais interprétée secrètement dans l'audio. | Aucune règle positive | Détaché : gate court ; lié : gate plein, aucun chevauchement ajouté ; accent : vélocité |
+| `rules[].weight` | Poids fini 0..1 000 000 ; tirage parmi **toutes** les règles applicables, addition des poids, pas de priorité implicite. Aucun poids positif : note inchangée. | `0` | Poids de marques écrites conditionnés par position/durée/contexte |
+| `rules[].steps` | Positions 0-based dans la mesure ; vide = toutes. | `[]` | Positions de temps/demi-temps du corpus, ramenées à la grille du profil |
+| `rules[].min_duration`, `max_duration` | Durée écrite en pas, bornes inclusives ; minimum omis = 0, maximum omis = sans plafond. | `0`, omis | Réserver une règle liée aux tenues, détachée aux notes courtes |
+| `rules[].context` | `any`, `repeated`, `ascending`, `descending` ; intervalle avec l'attaque précédente de la même piste **dans la mesure**, première attaque = `any`. | `any` | Poids conditionnels sur répétitions ou contour |
+| `rules[].shorten` | Fraction 0..0,8 retranchée à la durée ; pas de gate caché dans l'articulation. | `0` | Détaché : 0,15..0,25 ; lié : 0 |
+| `rules[].accent` | Ajout de vélocité 0..20 unités MIDI, après la dynamique existante. | `0` | 2..4 pour `Accent` |
+| `phrase` | Points `[phase 0..1, delta −20..20]`, phases strictement croissantes ; interpolation linéaire, extrémités constantes. Phase calculée à l'attaque sur la phrase configurée, pas sur tout l'air. | `[]` ou deltas nuls | −2 → +2 → −3 |
+| `velocity_min`, `velocity_max` | Bornes MIDI ordonnées 0..127, appliquées après phrase/accent ; 0/0 = pas de bornage ajouté, vélocité toujours 1..127. | `0`, `0` | 30, 120 |
+| `breath` | Fraction 0..0,5 de la durée de la dernière attaque avant chaque frontière `phrase_ends` ; en leur absence, frontières cadentielles du plan. Sans étirer la mesure ni déplacer les suivantes. | `0` | 0,08..0,12 |
+| `emotions.tension_advance` | 0..0,2 pas soustraits proportionnellement à la tension ; borne finale de l'attaque ±0,49 pas. | `0` | 0,04 |
+| `emotions.tension_detach` | 0..0,4 ajoutés au raccourcissement ; gate final ≥0,1 avant respiration. | `0` | 0,10 |
+| `emotions.arousal_accent` | 0..20 unités MIDI ajoutées aux seules notes `Accent` à arousal 1 ; axe brut, distinct de l'intensité combinée. | `0` | 4 |
+| `emotions.valence_velocity` | −10..10 unités multipliées par la valence signée. | `0` | 0 si aucune justification d'écoute |
+| `emotions.density_detach` | 0..0,3 ajoutés au raccourcissement à densité 1. | `0` | 0 si aucune justification d'écoute |
+
+La durée jouée vaut `max(0.001 pas, durée × gate / 1000 − breath / 1000)`.
+Les triggers de durée écrite zéro ont une durée MIDI de référence d'un pas.
+Les attaques négatives à la barre sont jouées dans le pas précédent depuis la
+mesure préchargée ; au début de lecture/seek ou après sous-alimentation, elles
+sont bornées au premier échantillon disponible, pas perdues. Une répétition de
+la même hauteur ferme d'abord la note active ; son ancienne fin ne coupe pas
+la nouvelle note. Les notes ne sont jamais déplacées dans la partition.
+
+Les ABC donnent des **marques écrites**, pas des gates mesurés ni des timings
+de violoneux : absence de marque ≠ absence de jeu expressif. Micro-timing,
+gates, courbe de phrase et émotions restent **à valider à l'oreille**. Repères
+généraux, non preuves historiques des sept traditions :
+[Friberg & Sundberg, 1995, discrimination temporelle](https://pubs.aip.org/asa/jasa/article/98/5/2524/798047/Time-discrimination-in-a-monotonic-isochronous),
+[Friberg, Bresin & Sundberg, 2006, règles KTH de phrasé/articulation](https://doi.org/10.2478/v10053-008-0052-x).
+Mesures reproductibles : `specs/012-vie-realisme/measure_performance.py`,
+MIDI + vérité pour 20 seeds/profil, tension et arousal à 0/1.
+
 ## Règles de phrase
 
 Le profil décide des répétitions ; le moteur ne suppose ni huit mesures, ni
