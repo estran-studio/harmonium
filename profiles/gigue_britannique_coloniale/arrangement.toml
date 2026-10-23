@@ -1,0 +1,25 @@
+# Arrangement de la gigue britannique coloniale : violon et accompagnement léger, sans percussion.
+
+tours_per_tune = 3
+intro_each_tune = false
+
+[entries]
+Melody = { tour = 1, part = 0, pass = 1 }
+Chords = { tour = 1, part = 0, pass = 2 }
+Bass = { tour = 1, part = 0, pass = 2 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+pickup_eighths = 1
+each_tune = false
+
+[[intro.forms]]
+role = "tail"
+weight = 2
+bars = 2
+
+[[intro.forms]]
+role = "vamp"
+weight = 1
+bars = 2
