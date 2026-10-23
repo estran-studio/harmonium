@@ -98,7 +98,7 @@ pub fn run(
         let _ = playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
     }
     let _ = playback_cmd_tx
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())));
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()));
     if let Some(track) = solo_track {
         for id in harmonium_core::timeline::TrackId::ALL {
             playback_cmd_tx

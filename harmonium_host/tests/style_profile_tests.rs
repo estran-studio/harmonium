@@ -41,7 +41,7 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
         composer.set_seed(1);
         composer.generate_bars(3);
         commands
-            .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+            .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
             .map_err(|_| "file pleine")?;
         let mut buffer = [0.0f32; 128];
         let mut last_step = 0;
@@ -80,7 +80,7 @@ fn compound_meter_beat_info_contract() -> Result<(), String> {
     composer.set_seed(1);
     composer.generate_bars(4);
     commands
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
         .map_err(|_| "file pleine")?;
     let mut buffer = [0.0f32; 128];
     let mut saw_downbeat = false;
@@ -123,7 +123,7 @@ fn triple_meter_beat_info_contract() -> Result<(), String> {
     composer.set_seed(1);
     composer.generate_bars(4);
     commands
-        .push(PlaybackCommand::UpdateMusicalParams(Box::new(composer.musical_params().clone())))
+        .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
         .map_err(|_| "file pleine")?;
     let mut buffer = [0.0f32; 128];
     let mut saw_downbeat = false;

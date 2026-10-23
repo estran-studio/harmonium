@@ -1,4 +1,7 @@
-use crate::params::MusicalParams;
+use crate::params::PlaybackParams;
+
+/// Ticks MIDI par pas de grille (480 par noire, 4 pas par noire).
+pub const MIDI_TICKS_PER_STEP: u32 = 120;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum AudioEvent {
@@ -37,9 +40,17 @@ pub enum AudioEvent {
     TimingUpdate {
         samples_per_step: usize,
     },
-    /// Send musical parameters (key, time signature, etc.) to recorder
+    /// Paramètres `Copy` (tempo, signature, instruments…) pour le synthé et
+    /// l'enregistreur, préparés sur le thread principal.
     UpdateMusicalParams {
-        params: Box<MusicalParams>,
+        params: PlaybackParams,
+    },
+    /// Cadence de l'horloge MIDI : ticks (480 par noire, 120 par pas) par frame
+    /// audio, valable jusqu'au prochain changement. Émise à chaque pulse dont
+    /// la cadence change ; l'enregistreur en déduit les ticks cumulés de chaque
+    /// événement (swing et rampes de tempo compris), sans arrondir de delta.
+    MidiClock {
+        ticks_per_frame: f64,
     },
     /// Métadonnées de la pulse audible, sans allocation sur le chemin audio.
     MeasureTiming {

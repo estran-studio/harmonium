@@ -5,7 +5,7 @@ pub mod recorder;
 pub mod synth_backend;
 pub mod wav_backend;
 
-pub trait AudioRenderer: Send + Sync {
+pub trait AudioRenderer: Send {
     /// Appelé à chaque tick logique (ex: changement de step)
     fn handle_event(&mut self, event: AudioEvent);
 

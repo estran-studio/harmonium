@@ -769,6 +769,7 @@ dependencies = [
  "ctrlc",
  "harmonium_audio",
  "harmonium_core",
+ "hound",
  "midly",
  "rand",
  "rand_chacha",
@@ -802,10 +803,12 @@ dependencies = [
 name = "harmonium_audio"
 version = "0.1.0"
 dependencies = [
+ "arrayvec",
  "harmonium_core",
  "hound",
  "midly",
  "oxisynth",
+ "rtrb",
 ]
 
 [[package]]

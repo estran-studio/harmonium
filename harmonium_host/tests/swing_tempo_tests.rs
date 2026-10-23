@@ -264,6 +264,8 @@ fn make_note_harness() -> NoteHarness {
     let initial = TransportClock::initial(SAMPLE_RATE as u32);
     let (clock_tx, clock_output) = triple_buffer::TripleBuffer::new(&initial).split();
     let notes = Arc::new(Mutex::new(Vec::with_capacity(512)));
+    // Première prise du verrou ici : sur macOS elle alloue, et le callback est sous garde.
+    drop(notes.lock());
     let engine = PlaybackEngine::new(
         SAMPLE_RATE,
         Box::new(FrameRecorder { frame: 0, notes: notes.clone() }),

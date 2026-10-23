@@ -34,12 +34,14 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 /// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
 pub const FEET_BANK_OFFSET: u32 = 1;
 
-/// Programmes des trois pistes mélodiques, résolus depuis le profil.
+/// Programmes des trois pistes mélodiques, résolus depuis le profil
+/// (sur la pile : utilisable dans le callback sans allouer).
 #[must_use]
 pub fn gm_programs_for_profile(
     instruments: &harmonium_core::style_profile::ProfileInstruments,
-) -> Vec<(u8, u8)> {
-    let mut progs = vec![(0, instruments.melody_program)];
+) -> arrayvec::ArrayVec<(u8, u8), 3> {
+    let mut progs = arrayvec::ArrayVec::new();
+    progs.push((0, instruments.melody_program));
     if let Some(chords) = instruments.chords_program {
         progs.push((1, chords));
     }
@@ -350,6 +352,11 @@ impl VoiceManager {
         match event {
             AudioEvent::NoteOn { note, velocity, channel } => {
                 let midi_ch = self.midi_channel_map[channel as usize];
+                // Dette tierce assumée et circonscrite : `oxisynth` alloue puis libère
+                // un `Vec` de 64 pointeurs à chaque NoteOn (`core/midi.rs`, `inner_noteon`).
+                // Seul cet appel échappe à la garde ; rendu, NoteOff, CC et tout le code
+                // de ce dépôt restent sous `RTCheckAllocator`.
+                let _allowed = crate::realtime::rt_check::allow_allocation();
                 let _ = self.synth.send_event(oxisynth::MidiEvent::NoteOn {
                     channel: midi_ch,
                     key: note,
@@ -388,9 +395,10 @@ impl VoiceManager {
                 self.set_channel_program(channel as usize, program);
             }
             AudioEvent::UpdateMusicalParams { params } => {
-                self.apply_profile_programs(&params.profile_instruments);
+                self.apply_profile_programs(&params.instruments);
             }
             AudioEvent::TimingUpdate { .. }
+            | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }
             | AudioEvent::LoadFont { .. }
             | AudioEvent::SetChannelRoute { .. }

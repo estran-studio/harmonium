@@ -84,7 +84,7 @@ impl ReplState {
             c.generate_bars(1);
             let _ = self
                 .playback_cmd_tx
-                .push(PlaybackCommand::UpdateMusicalParams(Box::new(c.musical_params().clone())));
+                .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()));
         }
     }
 }
@@ -827,7 +827,7 @@ fn print_state(state: &mut ReplState) {
 
     if let Some(report) = state.get_state() {
         let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot.unwrap_or((
-            report.musical_params.profile_id.clone(),
+            std::sync::Arc::from(report.musical_params.profile_id.as_str()),
             report.musical_params.feet_density,
             None,
             report.session_key.to_string(),
