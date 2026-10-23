@@ -18,9 +18,14 @@ impl Writehead {
             tempo_map: TempoMap::new(sample_rate, ticks_per_beat),
         }
     }
+    /// Vrai si une mesure reste à générer devant `playhead_bar`.
+    ///
+    /// La fenêtre est bornée par la capacité de la timeline : générer plus loin
+    /// évincerait des mesures pas encore jouées (jamais envoyées au moteur de
+    /// lecture, qui attendrait alors indéfiniment la mesure évincée).
     #[must_use]
     pub fn needs_generation(&self, playhead_bar: usize) -> bool {
-        self.current_bar < playhead_bar + self.lookahead
+        self.current_bar < playhead_bar + self.lookahead.min(self.timeline.capacity())
     }
     pub fn commit_measure(&mut self, measure: Measure) {
         self.current_bar = measure.index + 1;

@@ -61,8 +61,8 @@ Conséquence de conception : la logique de set doit **entrer dans le chemin `dra
 ne s'entend jamais en jeu.
 
 CLI : `--export --bars N` sans automation ne se termine pas pour N ≥ 110 avec `--tours 1` (graine 2 ; tué à 25 s ;
-N = 100 : 0,3 s) ni pour `--bars 160 --tours 3` ; hors périmètre, noté pour le coordinateur. Les exports de
-l'étude passent par `--automation` (pas d'outro, pas de blocage).
+N = 100 : 0,3 s) ni pour `--bars 160 --tours 3` ; corrigé depuis (BUG1, `plan.md` §7 : la génération dépassait
+la capacité de 100 mesures de la timeline). Les exports de l'étude passent par `--automation` (pas d'outro).
 
 ## 2. Pratique réelle
 
