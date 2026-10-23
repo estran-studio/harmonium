@@ -229,6 +229,54 @@ fn draw_weight(
     }
     unreachable!("validated positive weights")
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RoleResolution {
+    #[default]
+    PerTune,
+    PerPass,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VariationOperation {
+    VariedEnd,
+    RepeatedNotes,
+    Octave,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RhythmPattern {
+    pub durations: Vec<usize>,
+    pub weight: u32,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PositionRhythm {
+    pub bar: usize,
+    pub patterns: Vec<RhythmPattern>,
+}
+fn default_true() -> bool {
+    true
+}
+fn default_opening_retries() -> usize {
+    8
+}
+fn default_contour_window() -> f32 {
+    4.0
+}
+fn default_register_tolerance() -> f32 {
+    6.0
+}
+fn default_leap() -> i8 {
+    4
+}
+fn default_variation_operations() -> Vec<VariationOperation> {
+    vec![
+        VariationOperation::VariedEnd,
+        VariationOperation::RepeatedNotes,
+        VariationOperation::Octave,
+    ]
+}
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfilePart {
@@ -238,14 +286,80 @@ pub struct ProfilePart {
     /// Variante de la dernière mesure, jouée à la dernière reprise de la partie.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub second_ending: Option<ProfileRole>,
+    /// Frontières explicites 1-based ; vide : frontières portées par les rôles cadentiels.
+    #[serde(default)]
+    pub phrase_ends: Vec<usize>,
+    #[serde(default = "default_true")]
+    pub link_previous: bool,
+    #[serde(default)]
+    pub rhythm: Vec<PositionRhythm>,
+    /// Omission : protéger la dernière mesure ; [] : aucune protection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ornament_protected_bars: Option<Vec<usize>>,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfileForm {
     pub parts: Vec<ProfilePart>,
     pub sequence: Vec<usize>,
+    #[serde(default)]
+    pub resolve: RoleResolution,
+    #[serde(default)]
+    pub repeat_variation: f32,
+    #[serde(default)]
+    pub tour_variation: f32,
+    #[serde(default = "default_variation_operations")]
+    pub variation_operations: Vec<VariationOperation>,
+    #[serde(default = "default_true")]
+    pub avoid_adjacent: bool,
+    #[serde(default = "default_opening_retries")]
+    pub opening_retries: usize,
+    #[serde(default = "default_contour_window")]
+    pub contour_window_semitones: f32,
+    #[serde(default = "default_register_tolerance")]
+    pub register_tolerance_semitones: f32,
+    #[serde(default = "default_leap")]
+    pub max_leap_degrees: i8,
+    #[serde(default = "default_true")]
+    pub close_part_loop: bool,
+    #[serde(default = "default_half")]
+    pub varied_end_keep: f32,
+    #[serde(default = "default_one")]
+    pub next_same_weight: u32,
+    #[serde(default = "default_one")]
+    pub next_relative_weight: u32,
+    #[serde(default = "default_ornament_min_steps")]
+    pub ornament_min_steps: usize,
+    #[serde(default = "default_two_units")]
+    pub cadence_min_units: usize,
+    #[serde(default = "default_half")]
+    pub cadence_search_from: f32,
 }
 impl ProfileForm {
+    pub(crate) fn varied_end_split(&self, units: usize) -> usize {
+        ((units as f32 * self.varied_end_keep) as usize).clamp(1, units.saturating_sub(1).max(1))
+    }
+    pub(crate) fn expanded_material(&self) -> bool {
+        self.resolve == RoleResolution::PerPass
+            || self.repeat_variation > 0.0
+            || self.tour_variation > 0.0
+    }
+    pub(crate) fn phrase_end(&self, part: usize, offset: usize, role: ImposedRole) -> bool {
+        let ends = &self.parts[part].phrase_ends;
+        if ends.is_empty() {
+            matches!(
+                role,
+                ImposedRole::CadHalf
+                    | ImposedRole::CadFull
+                    | ImposedRole::CadTonic
+                    | ImposedRole::CadOpen
+                    | ImposedRole::CadFifth
+                    | ImposedRole::CadOther
+            )
+        } else {
+            ends.contains(&(offset + 1))
+        }
+    }
     pub fn bars_per_tour(&self) -> usize {
         self.sequence.iter().map(|&p| self.parts[p].roles.len()).sum()
     }
@@ -267,6 +381,18 @@ impl ProfileForm {
     pub fn unique_offset(&self, part: usize) -> usize {
         self.parts[..part].iter().map(|p| p.roles.len()).sum()
     }
+}
+fn default_half() -> f32 {
+    0.5
+}
+fn default_one() -> u32 {
+    1
+}
+fn default_ornament_min_steps() -> usize {
+    3
+}
+fn default_two_units() -> usize {
+    2
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -557,6 +683,67 @@ impl StyleProfile {
             "form.parts",
             "1..32 parties requises",
         )?;
+        for (name, value) in [
+            ("repeat_variation", self.form.repeat_variation),
+            ("tour_variation", self.form.tour_variation),
+        ] {
+            check(
+                value.is_finite() && (0.0..=1.0).contains(&value),
+                &format!("form.{name}"),
+                "probabilité finie attendue dans 0..1",
+            )?;
+        }
+        check(
+            !self.form.variation_operations.is_empty()
+                && self.form.variation_operations.iter().collect::<HashSet<_>>().len()
+                    == self.form.variation_operations.len(),
+            "form.variation_operations",
+            "opérations non vides et uniques requises",
+        )?;
+        check(self.form.opening_retries <= 10000, "form.opening_retries", "attendu 0..10000")?;
+        for (name, value) in [
+            ("contour_window_semitones", self.form.contour_window_semitones),
+            ("register_tolerance_semitones", self.form.register_tolerance_semitones),
+        ] {
+            check(
+                value.is_finite() && (0.0..=127.0).contains(&value),
+                &format!("form.{name}"),
+                "attendu 0..127 fini",
+            )?;
+        }
+        check(
+            (0..=28).contains(&self.form.max_leap_degrees),
+            "form.max_leap_degrees",
+            "attendu 0..28",
+        )?;
+        check(
+            self.form.varied_end_keep.is_finite()
+                && self.form.varied_end_keep > 0.0
+                && self.form.varied_end_keep < 1.0,
+            "form.varied_end_keep",
+            "fraction finie strictement entre 0 et 1 requise",
+        )?;
+        check_weights(
+            [self.form.next_same_weight, self.form.next_relative_weight].into_iter(),
+            "form.next_same_weight",
+        )?;
+        check(
+            (2..=256).contains(&self.form.ornament_min_steps),
+            "form.ornament_min_steps",
+            "attendu 2..256 pas",
+        )?;
+        check(
+            self.form.cadence_min_units > 0
+                && self.form.cadence_min_units <= self.melody.cell_units,
+            "form.cadence_min_units",
+            "durée positive au plus égale à melody.cell_units requise",
+        )?;
+        check(
+            self.form.cadence_search_from.is_finite()
+                && (0.0..=1.0).contains(&self.form.cadence_search_from),
+            "form.cadence_search_from",
+            "fraction finie attendue dans 0..1",
+        )?;
         let mut names = HashSet::new();
         for (i, part) in self.form.parts.iter().enumerate() {
             let field = format!("form.parts[{i}]");
@@ -575,6 +762,50 @@ impl StyleProfile {
                 &format!("{field}.melody_center_offset"),
                 "attendu -24..24",
             )?;
+            check(
+                part.phrase_ends.iter().all(|&bar| bar > 0 && bar <= part.roles.len())
+                    && part.phrase_ends.windows(2).all(|w| w[0] < w[1]),
+                &format!("{field}.phrase_ends"),
+                "frontières 1-based strictement croissantes dans la partie",
+            )?;
+            if let Some(bars) = &part.ornament_protected_bars {
+                check(
+                    bars.iter().all(|&bar| bar > 0 && bar <= part.roles.len())
+                        && bars.windows(2).all(|w| w[0] < w[1]),
+                    &format!("{field}.ornament_protected_bars"),
+                    "mesures protégées 1-based strictement croissantes dans la partie",
+                )?;
+            }
+            let mut rhythm_bars = HashSet::new();
+            for (r, rhythm) in part.rhythm.iter().enumerate() {
+                let rhythm_field = format!("{field}.rhythm[{r}]");
+                check(
+                    rhythm.bar > 0
+                        && rhythm.bar <= part.roles.len()
+                        && rhythm_bars.insert(rhythm.bar),
+                    &rhythm_field,
+                    "position 1-based existante et unique requise",
+                )?;
+                check(
+                    !rhythm.patterns.is_empty() && rhythm.patterns.len() <= 256,
+                    &rhythm_field,
+                    "1..256 motifs rythmiques requis",
+                )?;
+                check_weights(rhythm.patterns.iter().map(|p| p.weight), &rhythm_field)?;
+                for pattern in &rhythm.patterns {
+                    check(
+                        !pattern.durations.is_empty()
+                            && pattern.durations.iter().all(|&d| d > 0)
+                            && pattern
+                                .durations
+                                .iter()
+                                .try_fold(0usize, |sum, &d| sum.checked_add(d))
+                                == Some(self.melody.cell_units),
+                        &rhythm_field,
+                        "durées positives en unités de cellule couvrant exactement la mesure",
+                    )?;
+                }
+            }
             for (bar, role) in part.roles.iter().enumerate() {
                 role.validate(&self.form, i, bar, &format!("{field}.roles[{bar}]"))?;
             }
@@ -625,7 +856,12 @@ impl StyleProfile {
             .flat_map(|p| p.roles.iter().chain(p.second_ending.iter()))
             .any(ProfileRole::uses_varied_end)
         {
-            let split = self.melody.cell_units / 2;
+            check(
+                self.melody.cell_units >= 2,
+                "melody.cell_units",
+                "VariedEndOf exige au moins deux unités",
+            )?;
+            let split = self.form.varied_end_split(self.melody.cell_units);
             let endings = self
                 .melody
                 .cells

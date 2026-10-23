@@ -41,13 +41,12 @@ pub struct ActiveTune {
     pub tune_index: usize,
     /// Plan structurel du tune (tonalité, mode, type, schéma AABB).
     pub plan: TunePlan,
-    /// Ligne de violon des 32 mesures d'un tour.
+    /// Matériel mélodique des parties, passes et tours configurés.
     pub fiddle: FiddleLine,
     /// Modèle harmonique sélectionné par le profil, précalculé par mesure.
     pub harmony: HarmonyPlan,
     /// Décalages d'humanisation des vélocités des pieds, par position de mesure
-    /// (2 strains × 8 mesures) et par pas. Tirés une fois à la génération du
-    /// tune pour garantir des reprises identiques (A1=A2, B1=B2, D4).
+    /// de chaque partie et par pas. Tirés une fois par air, relus aux reprises.
     pub feet_humanize: Vec<Vec<i8>>,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
@@ -169,7 +168,8 @@ impl TradGenerator {
     #[must_use]
     pub fn bar_info(&self, bar_number: usize) -> Option<(TunePlan, BarRole)> {
         let tune = self.tune_for_bar(bar_number)?;
-        let role = tune.plan.bar_role_1based(bar_number.max(1));
+        let position = self.position_of(bar_number);
+        let role = tune.plan.bar_role(self.performed_bar(&position));
         let mut plan = tune.plan.clone();
         plan.mode = tune.color_at(bar_number).0;
         Some((plan, role))
@@ -353,14 +353,16 @@ impl TradGenerator {
                 || (matches!(
                     dynamics.mode_shift_boundary,
                     super::dynamics::ModeShiftBoundary::Phrase
-                ) && matches!(
-                    tune.plan.roles_for_part(position.part.0)[position.bar_in_strain - 2],
-                    ImposedRole::CadHalf
-                        | ImposedRole::CadFull
-                        | ImposedRole::CadTonic
-                        | ImposedRole::CadOpen
-                        | ImposedRole::CadFifth
-                        | ImposedRole::CadOther
+                ) && self.profile.form.phrase_end(
+                    position.part.0,
+                    position.bar_in_strain - 2,
+                    tune.plan
+                        .bar_role(
+                            position.bar_in_tour() - 1
+                                + position.tour.saturating_sub(1)
+                                    * self.profile.form.bars_per_tour(),
+                        )
+                        .role,
                 )))
             && target_dark != dark
         {
@@ -518,6 +520,11 @@ impl TradGenerator {
                 };
                 measure.add_note(TrackId::Melody, note);
             }
+            // La fin empruntée peut attaquer après le début de la levée.
+            // Le playhead parcourt chaque piste par attaques croissantes.
+            if let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) {
+                notes.sort_unstable_by_key(|note| (note.start_step, note.id));
+            }
         }
     }
 
@@ -534,6 +541,10 @@ impl TradGenerator {
         offset
     }
 
+    fn performed_bar(&self, position: &TunePosition) -> usize {
+        position.bar_in_tour() + position.tour.saturating_sub(1) * self.profile.form.bars_per_tour()
+    }
+
     /// Remplit une mesure de tour normale (identique à l'existant D11).
     fn fill_tour_measure(
         &mut self,
@@ -542,13 +553,13 @@ impl TradGenerator {
         measure: &mut Measure,
     ) {
         if let HarmonyPlan::JazzFunctional(bars) = &tune.harmony {
-            let slot = tune.plan.material_index(position.bar_in_tour());
+            let slot = tune.plan.material_index(self.performed_bar(position));
             self.fill_jazz_measure(tune, position, &bars[slot], measure);
             self.fill_percussion(tune, position, measure);
             return;
         }
         if let HarmonyPlan::None = &tune.harmony {
-            let bar_in_tour = position.bar_in_tour();
+            let bar_in_tour = self.performed_bar(position);
             let plan = &tune.plan;
             measure.chord_context = ChordContext {
                 root_offset: 0,
@@ -565,7 +576,7 @@ impl TradGenerator {
             self.fill_percussion(tune, position, measure);
             return;
         }
-        let bar_in_tour = position.bar_in_tour();
+        let bar_in_tour = self.performed_bar(position);
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
         measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
@@ -636,7 +647,7 @@ impl TradGenerator {
         }
         measure.chord_context = measure.chord_changes[0].context.clone();
         if self.track_active(TrackId::Melody, position) {
-            for mut note in tune.fiddle.notes_for_bar(position.bar_in_tour()) {
+            for mut note in tune.fiddle.notes_for_bar(self.performed_bar(position)) {
                 note.id = self.alloc_note_id();
                 measure.add_note(TrackId::Melody, note);
             }
@@ -698,7 +709,7 @@ impl TradGenerator {
         if measure.chord_changes.is_empty() {
             return;
         }
-        let bar = tune.plan.material_index(position.bar_in_tour());
+        let bar = tune.plan.material_index(self.performed_bar(position));
         let chords = &bars[bar];
         let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) else { return };
         let source = std::mem::take(notes);
@@ -752,8 +763,11 @@ impl TradGenerator {
             let slot =
                 self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
             let humanize = &tune.feet_humanize[slot];
-            let is_cadence = position.bar_in_strain == 4
-                || position.bar_in_strain == self.profile.form.parts[position.part.0].roles.len();
+            let is_cadence = self.profile.form.phrase_end(
+                position.part.0,
+                position.bar_in_strain - 1,
+                tune.plan.bar_role(self.performed_bar(position)).role,
+            );
             let (heel_notes, toe_notes) = feet_notes_with_cadence(
                 &self.tuning.profile.percussion,
                 self.feet_density(),
@@ -949,8 +963,14 @@ impl TradGenerator {
         let Some(position) = measure.position else {
             return;
         };
+        let part = &self.profile.form.parts[position.part.0];
         if position.is_intro()
-            || position.bar_in_strain == self.profile.form.parts[position.part.0].roles.len()
+            || part
+                .ornament_protected_bars
+                .as_ref()
+                .map_or(position.bar_in_strain == part.roles.len(), |bars| {
+                    bars.contains(&position.bar_in_strain)
+                })
         {
             return;
         }
@@ -961,7 +981,7 @@ impl TradGenerator {
             let original_count = notes.len();
             for index in 0..original_count {
                 let note = &notes[index];
-                if note.duration_steps < 3
+                if note.duration_steps < self.profile.form.ornament_min_steps
                     || (note.start_step as f32 / measure.steps as f32) >= passing
                 {
                     continue;
@@ -986,9 +1006,8 @@ impl TradGenerator {
     }
 
     /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`Guitarist`]
-    /// depuis le début de la passe de strain courante (`(bar_in_tour / 8) * 8`),
-    /// garantissant des reprises A1=A2, B1=B2 et des tours identiques même après
-    /// invalidation.
+    /// depuis le début de la passe courante, sans hypothèse de longueur ;
+    /// le matériel rejoué reste stable après invalidation émotionnelle.
     fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
         let strain_pass_start = bar_in_tour - offset;
@@ -1122,7 +1141,7 @@ impl TradGenerator {
             rng,
         );
         if let Some(prev_first) = prev_first_cell {
-            for _ in 0..8 {
+            for _ in 0..self.profile.form.opening_retries {
                 if !same_cell_up_to_octave(fiddle.cell_for_bar(0), &prev_first) {
                     break;
                 }
@@ -1332,14 +1351,18 @@ fn compute_pickup_notes(target_midi: u8, count: u8, key: PitchClass, mode: Mode)
 // ---------------------------------------------------------------------------
 
 /// Tire le [`TunePlan`] du tune suivant à partir du précédent :
-/// même tonalité/mode ou tonalité relative (choix équiprobable au seed, D4).
+/// même tonalité/mode ou relatif, selon les poids du profil.
 #[must_use]
 pub fn draw_next_tune_plan(
     prev_plan: TunePlan,
     _params: &ReelFiddleParams,
     rng: &mut dyn RngCore,
 ) -> TunePlan {
-    if rng.next_range_usize(0..2) == 0 {
+    if rng.next_range_usize(
+        0..(prev_plan.profile.form.next_same_weight + prev_plan.profile.form.next_relative_weight)
+            as usize,
+    ) < prev_plan.profile.form.next_same_weight as usize
+    {
         TunePlan::with_profile(prev_plan.key, prev_plan.mode, prev_plan.profile)
     } else {
         relative_tune_plan(prev_plan)

@@ -113,19 +113,12 @@ pub fn candidate_chords(mode: Mode, profile: &StyleProfile) -> &[TradChord] {
     profile.harmony.candidates.iter().find(|c| c.mode == mode).map_or(&[], |c| c.chords.as_slice())
 }
 
-/// Dominante du mode (`V`, avec la qualité du candidat du mode).
-#[must_use]
-fn dominant(mode: Mode) -> TradChord {
-    let quality =
-        if matches!(mode, Mode::Ionian) { ChordQuality::Major } else { ChordQuality::Minor };
-    TradChord::new(ChordDegree::V, quality)
-}
-
-/// Tonique du mode (`I`, avec la qualité du candidat du mode).
-#[must_use]
-fn tonic(mode: Mode) -> TradChord {
-    let quality = if mode.is_minor() { ChordQuality::Minor } else { ChordQuality::Major };
-    TradChord::new(ChordDegree::I, quality)
+/// Les cadences emploient les qualités I/V du profil, comme le vote libre.
+fn cadence_chord(mode: Mode, profile: &StyleProfile, degree: ChordDegree) -> TradChord {
+    match candidate_chords(mode, profile).iter().find(|chord| chord.degree == degree) {
+        Some(chord) => *chord,
+        None => unreachable!("validated tonic and dominant candidates"),
+    }
 }
 
 fn vote_weight(step: usize, params: &TradHarmonyParams) -> u32 {
@@ -152,7 +145,7 @@ fn vote_half(
     let width = profile.harmony.steps_per_chord;
     let steps = half * width..(half + 1) * width;
     let candidates = candidate_chords(mode, profile);
-    let mut best = (tonic(mode), 0u32, usize::MAX);
+    let mut best = (cadence_chord(mode, profile, ChordDegree::I), 0u32, usize::MAX);
     for (index, &chord) in candidates.iter().enumerate() {
         let score: u32 = melody
             .iter()
@@ -185,10 +178,12 @@ pub fn harmonize_bar(
         (0..count).map(|slot| vote_half(melody, key, mode, slot, params, profile)).collect();
     match bar_role.role {
         ImposedRole::CadFull | ImposedRole::CadTonic => {
-            chords[0] = dominant(mode);
-            chords[count - 1] = tonic(mode);
+            chords[0] = cadence_chord(mode, profile, ChordDegree::V);
+            chords[count - 1] = cadence_chord(mode, profile, ChordDegree::I);
         }
-        ImposedRole::CadHalf | ImposedRole::CadFifth => chords[count - 1] = dominant(mode),
+        ImposedRole::CadHalf | ImposedRole::CadFifth => {
+            chords[count - 1] = cadence_chord(mode, profile, ChordDegree::V);
+        }
         _ => {}
     }
     chords

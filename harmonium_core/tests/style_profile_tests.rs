@@ -35,6 +35,10 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
         .map(|(role, notes)| Cell::from_notation(role, notes))
         .collect::<Result<_, _>>()?,
     };
+    for part in &mut p.form.parts {
+        part.rhythm.clear();
+        part.phrase_ends.clear();
+    }
     let mut third = p.form.parts[0].clone();
     third.name = "C".into();
     third.roles = [ImposedRole::Open, ImposedRole::CadFull].map(Into::into).to_vec();
@@ -329,6 +333,7 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
         let mut profile = StyleProfile::named(style_id)?;
         for part in &mut profile.form.parts {
             part.second_ending = None;
+            part.rhythm.clear();
             part.roles = [
                 ImposedRole::Open,
                 ImposedRole::Free,
@@ -372,8 +377,22 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
             _ => unreachable!(),
         };
         let actual = serde_json::Value::Object(all_runs);
+        type Runs =
+            std::collections::BTreeMap<String, Vec<(usize, Vec<(u8, u8, usize, usize, u8)>)>>;
+        // Le contrat musical conserve tous les événements, pas l'ancien ordre
+        // non chronologique d'une levée ajoutée après une fin Tail.
+        let canonical = |value: serde_json::Value| -> Result<Runs, serde_json::Error> {
+            let mut runs: Runs = serde_json::from_value(value)?;
+            for bars in runs.values_mut() {
+                for (_, notes) in bars {
+                    notes.sort_unstable();
+                }
+            }
+            Ok(runs)
+        };
         assert_eq!(
-            actual, golden,
+            canonical(actual)?,
+            canonical(golden)?,
             "notes de {style_id} différentes de main (graines 1..3, 64 mesures, feet off)"
         );
     }

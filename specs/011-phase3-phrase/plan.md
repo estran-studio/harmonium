@@ -1,4 +1,4 @@
-# Phase 3 — Couche phrase probabiliste et fins de reprise (P3-T1 / P3-T2)
+# Phase 3 — Phrases, fins de reprise et règles paramétrables (P3-T1 / P3-T2 / P3-T3)
 
 ## Problème et décisions
 
@@ -325,3 +325,200 @@ air, et je ne trouve pas qu'on perde vraiment rien ». Couche phrase retenue.
 Exigence : **toute règle de structure doit être paramétrable** dans le profil (reprise de motif,
 variation aux reprises, etc.). Suite : P3-T3 (audit de ce qui reste codé en dur, rythme par
 position, guide des règles).
+
+## P3-T3 — Toute règle de structure dans le profil
+
+### Audit règle → donnée
+
+Localisations **avant modification, commit `9323ef1`** : elles restent stables
+pour retrouver les décisions retirées, même si les ajouts déplacent les lignes.
+Le schéma et ses bornes sont décrits dans « Règles de phrase » du guide des profils.
+
+| Règle / source avant P3-T3 | Décision après audit |
+|---|---|
+| Reprises et tours relisent une seule cellule ; `trad/plan.rs:136-150`, `trad/fiddle.rs:134-142` | `form.repeat_variation = 0..1`, `tour_variation = 0..1`, menu `variation_operations = ["varied_end","repeated_notes","octave"]`. Défauts zéro, aucun tirage nouveau si désactivés. |
+| Choix une fois par air ; `trad/plan.rs:104-118` | `form.resolve = "per_tune"` (défaut) ou `"per_pass"`. Cette dernière portée retire rôles et cellules pour chaque passe jouée, tours compris ; tout est précalculé au début de l'air. |
+| Première mesure toujours Open ; `profiles/reel_quebecois/profile.toml:32,46` | **Déjà une donnée**, pas un verrou du générateur : elle accepte un choix Open/Free/cadence pondéré. Les sept profils gardent Open ; un contrat vérifie le choix dès m.1. |
+| Longueur de partie et ordre AABB ; `style_profile.rs:234-269` | Déjà `roles.len()` et `form.sequence` ; aucun 8 obligatoire. Contrat supplémentaire : partie de six mesures, groupement 3+3. |
+| Cadences de percussion à m.4 et fin de partie ; `trad/generator.rs:755-756` | `parts.phrase_ends`, explicite `[4,8]` dans les sept profils. Vide/omis : positions portant un rôle cadentiel. Aucun test `bar == 4` restant. |
+| Frontière de changement de mode après rôle cadentiel ; `trad/generator.rs:352-364` | Même `phrase_ends`, avec `dynamics.mode_shift_boundary` déjà configurable ; le début d'une nouvelle partie reste une frontière. Les accords restent gouvernés par les rôles, pas par ce regroupement. |
+| Continuité entre parties ; `trad/fiddle.rs:63-74,305-343` | `parts.link_previous = true` par défaut, `false` pour repartir indépendamment. `CopyOfPart` reste un lien explicite vers la première passe de la source. |
+| Exclusion de la cellule libre précédente ; `trad/fiddle.rs:373-376` | `form.avoid_adjacent = true` par défaut ; `false` autorise la répétition immédiate. |
+| Maximum huit nouveaux tirages d'ouverture entre airs ; `trad/generator.rs:1124-1135` | `form.opening_retries = 8`, réglable 0..10000 ; zéro permet de garder le même incipit. |
+| Même couleur / relatif à 50/50 ; `trad/generator.rs:1342` | `form.next_same_weight`, `next_relative_weight`, défauts 1/1. Le déplacement relatif ±3 demi-tons reste la définition diatonique de l'opération, pas un choix de style. |
+| Première moitié conservée par VariedEndOf ; `trad/fiddle.rs:468` | `form.varied_end_keep = 0.5`, strictement 0..1, raccord borné à l'intérieur de la mesure. S'applique aussi aux variations de reprise. |
+| CadTonic : recherche en seconde moitié et tenue minimale de deux unités ; `trad/fiddle.rs:500-507` | `form.cadence_search_from = 0.5`, `cadence_min_units = 2`. La cible tonique reste la définition du rôle, sa durée n'est plus imposée par l'algorithme. |
+| Fenêtre stricte de contour ±4 demi-tons ; `trad/fiddle.rs:555-576` | `form.contour_window_semitones = 4.0`. |
+| Tolérance de registre six demi-tons ; `trad/fiddle.rs:892-896` | `form.register_tolerance_semitones = 6.0`. Les centres par partie restent `melody_center_offset`. |
+| Sauts de quinte aux entrées et aux retours ; `trad/fiddle.rs:908-921` | `form.max_leap_degrees = 4` pas diatoniques ; `close_part_loop = true`. La proximité d'un CopyOf(1) est évaluée depuis les rôles réellement résolus, pas depuis une position m.4 codée. |
+| Distance de continuité et nombre d'essais ; `trad/fiddle.rs:596,600,905-906` | Déjà `melody.params.max_continuity_step_distance`, `continuity_max_retries` ; pas de deuxième seuil parallèle. |
+| Dernière mesure protégée des ornements de densité ; `trad/generator.rs:949-951` | `parts.ornament_protected_bars` : omission protège la fin, liste explicite pour d'autres positions, `[]` pour aucune. |
+| Tenue d'au moins trois pas avant ornement de densité ; `trad/generator.rs:961` | `form.ornament_min_steps = 3`. La note de passage dure un pas, unité minimale de la grille ; la note source conserve au moins un pas. La quantité reste la courbe existante `dynamics.density_passing`. |
+| Rythme général aux positions cadentielles libres ; `trad/fiddle.rs:601-645` | `parts.rhythm = [{bar, patterns=[{durations,weight}]}]`, durées en unités de cellule ; tirage distinct du rôle. Copie/séquence/fin variée ont priorité, CadFull/CadTonic gardent leurs tenues. |
+| Qualité I/V codée selon le mode même si le profil dit autre chose ; `trad/harmony.rs:118-128` | Réutilise désormais **les qualités de `harmony.candidates`** ; I/V sont déjà exigés par la validation. Les sept profils déclarent les mêmes qualités qu'avant. |
+| V–I ou V imposé par un rôle ; `trad/harmony.rs:183-193` | Invariant **sémantique des rôles choisis** CadTonic/CadFull et CadHalf/CadFifth. Pour ne pas imposer cette harmonie, choisir CadOpen/Free ; nombre/positions d'accords, candidats, poids de vote et priorités sont déjà en données. |
+| Seconde fin à la dernière passe ; `trad/plan.rs:130-133` | Déjà `parts.second_ending` optionnel et `sequence` : « seconde fin » signifie ici dernière passe de la partie. Aucun présupposé de deux passes ; la forme entrelacée à trois passes reste couverte. |
+| Invalidation émotionnelle ne retire pas les choix ; `trad/generator.rs:379-388` | Invariant de déterminisme/relecture : elle relit le matériel préconstruit. La portée per_pass n'est pas un nouveau hasard au moment du callback ou de l'invalidation. |
+| Humanisation de pieds réutilisée par position ; `trad/generator.rs:752-754,1169-1174` | Choix expressif, pas nouvelle forme : amplitude déjà `percussion.velocity_humanize`, motifs en données. Les variations de phrase portent sur la mélodie ; aucune déstabilisation opportuniste des pieds. |
+| Intro/tours/entrées/outro ; `trad/generator.rs:405-514,1047-1055,1205-1244` | Longueurs, nombre de tours, levée et formes d'intro sont déjà `arrangement`, `intro.forms[].bars`, `pickup_eighths`, `each_tune`. `end_after_tour` est une commande explicite de terminaison qui conserve sa priorité tonique. |
+| Réinitialisation des voicings à chaque passe ; `trad/generator.rs:992-1026` | Déjà calculée depuis `form.position`, pas par division par huit ; matériel harmonique indexé sur les nouvelles passes/tours quand nécessaire. |
+
+Les autres nombres des quatre modules ne sont pas des règles de style cachées :
+
+- **7 degrés, 12 demi-tons, MIDI 0..127**, ±octaves et absence du degré zéro :
+  invariants de représentation musicale ; validation et repli de tessiture.
+- Recherche d'octave `-4..4` pour une séquence, `-2..2` pour le registre, poids
+  de priorité `16` devant la distance d'octave (`fiddle.rs:434-455,839-843`) :
+  enveloppes et ordre du solveur de tessiture, pas probabilité/phrase. Une
+  pénalité de dépassement domine toute distance d'octave candidate (au plus 4).
+  Le seuil stylistique de contour et la tolérance de registre sont, eux, sortis.
+- Milieu des centres de registre (`fiddle.rs:824-828`) : définition de la
+  frontière géométrique ; centres et tolérance sont configurables.
+- Chiffres 0/1 de boucles, indices 1-based, compteurs de passes et limites de
+  capacité validées (parties, choix, mesures, tours) : invariants d'indexation
+  et de représentation bornée, pas décisions de répétition.
+- Une levée ascendante emploie les degrés voisins du mode ; son nombre de notes
+  est une donnée. L'échelle temporaire de quatre octaves (`generator.rs:1299-1313`)
+  est une enveloppe de calcul pour les toniques MIDI, pas quatre phrases.
+- Vélocités d'intro/outro, numéros de timbre/percussion et durées d'articulation
+  ne décident pas de la structure : non modifiés dans cette tâche. Aucun nom
+  de style n'est introduit dans les algorithmes.
+
+### Rythme : source et décision de réglage
+
+Le labo publie `real.rhythm.cells`, mais pas de motifs de durée par position.
+Les préférences de m.4/8 sont donc une **distribution conditionnelle de corpus**,
+pas une fausse mesure positionnelle : mesure entière, durées entières positives
+représentables par les cellules actuelles, au moins deux durées distinctes.
+Les poids sont les effectifs exacts conservés ; pas de poids inventé pour
+atteindre l'entropie. Les rythmes isochrones et tenues uniques restent dans
+les banques et cadences fermées. Le premier essai non conditionné conservait
+trop de croches continues ; le conditionnement « tenue » seul gardait trop de
+pulsations identiques en valse. Le choix final privilégie donc les durées
+contrastées dans les positions qui avaient perdu leur variété. Aucune
+préférence n'est ajoutée aux six autres positions ; banques et poids de rôles
+restent inchangés. Les tirages supplémentaires peuvent déplacer les choix
+de cellules suivants dans le flux RNG, d'où la version de contrat 13.
+
+Sources : `/Users/william.quintal/Project/bascanada/harmonium_lab/references/structure/`
+`quebecoise-{reel,jig,waltz}.json`, `acadienne-reel.json`,
+`britannique_coloniale-{march,jig,hornpipe}.json`. Les fractions, triolets et
+silences non représentables ne sont pas arrondis ni supprimés du corpus ;
+ils sont exclus de cette projection explicitement limitée à la grille actuelle.
+
+### Mesure appariée : 200 airs par profil
+
+Seeds **1..200**, un premier tour AABB, premières passes A et B uniquement,
+arrangement plat pour ne pas confondre le résultat avec les intros. Trois
+configurations du même générateur : rôles fixes pré-P3-T1 sans seconde fin et
+sans préférence rythmique ; profil P3-T2 sans préférence ; profil P3-T3 courant.
+La preuve D2 fixe établit séparément l'identité du chemin pré-P3-T1 historique.
+
+Les `MeasureSnapshot` fournissent hauteurs/attaques et mode/tonique publiés.
+Les durées vont jusqu'à l'attaque suivante ou la barre, comme `engine_material`
+du labo : gate et swing exclus. Les fonctions inchangées `Material` et
+`analyze_materials` de DS-T9 calculent entropie, motifs et cadences. **4 200 airs,
+67 200 mesures distinctes** sur l'ensemble des trois configurations ; chaque
+cellule d'entropie porte sur 3 200 mesures. Ce relevé apparié à 200 seeds ne
+remplace pas les anciennes valeurs sur 20 exports par une comparaison de lots
+différents.
+
+Entropie Shannon, bits par mesure :
+
+| Profil | Avant P3-T1 | Avant P3-T3 | Après P3-T3 |
+|---|---:|---:|---:|
+| `reel_quebecois` | 2.895 | 2.706 | 3.316 |
+| `gigue_quebecoise` | 2.343 | 1.931 | 2.440 |
+| `valse_quebecoise` | 3.225 | 2.956 | 3.265 |
+| `reel_acadien` | 2.970 | 2.697 | 3.065 |
+| `marche_britannique_coloniale` | 3.769 | 3.779 | 4.001 |
+| `gigue_britannique_coloniale` | 2.291 | 1.958 | 2.403 |
+| `hornpipe_britannique_coloniale` | 3.146 | 3.013 | 3.445 |
+
+L'objectif après ≥ avant P3-T1 est atteint dans les sept profils. Un contrat
+sur les snapshots compare aussi cette inégalité sur les mêmes 200 seeds.
+
+Fréquences structurelles en %, **avant P3-T3 → après P3-T3** :
+
+| Profil | m.5–6 = m.1–2 | « a b a c » | « a b c d » | A:m.8 repos tonique | B:m.7 = A:m.7 |
+|---|---:|---:|---:|---:|---:|
+| `reel_quebecois` | 46.25 → 46.25 | 28.00 → 28.00 | 17.75 → 16.25 | 17.00 → 16.50 | 20.50 → 20.50 |
+| `gigue_quebecoise` | 36.75 → 36.75 | 23.00 → 23.00 | 24.00 → 23.50 | 12.00 → 12.00 | 33.00 → 33.50 |
+| `valse_quebecoise` | 13.00 → 14.00 | 11.00 → 12.00 | 43.50 → 43.50 | 12.50 → 12.50 | 10.50 → 9.50 |
+| `reel_acadien` | 35.50 → 36.00 | 21.50 → 21.75 | 18.25 → 18.25 | 9.00 → 9.00 | 33.00 → 33.50 |
+| `marche_britannique_coloniale` | 9.25 → 10.00 | 6.00 → 6.75 | 39.50 → 39.25 | 26.50 → 26.00 | 45.50 → 46.00 |
+| `gigue_britannique_coloniale` | 26.50 → 26.75 | 20.25 → 20.50 | 28.50 → 27.50 | 9.50 → 10.50 | 37.50 → 36.50 |
+| `hornpipe_britannique_coloniale` | 39.50 → 39.75 | 29.25 → 29.25 | 23.00 → 22.50 | 5.00 → 5.00 | 39.00 → 39.50 |
+
+Écart maximal des cinq indicateurs : **1,5 point**, sous la tolérance de dix
+points. Les marges CopyOf/CadTonic et les secondes fins restent aussi testées
+sur 200 airs contre leurs poids configurés. Les taux de repos tonique DS-T9
+(tenue d'au moins un temps métrique) ne sont pas la fréquence de la seule
+classe finale tonique ni celle des rôles CadTonic.
+
+### Reproduction
+
+```sh
+cargo run -p harmonium_core --example phrase_metrics -- /tmp/phrase-params.json
+/Users/william.quintal/Project/bascanada/harmonium_lab/.venv/bin/python \
+  specs/011-phase3-phrase/measure_parameters.py \
+  --lab-root /Users/william.quintal/Project/bascanada/harmonium_lab \
+  --snapshots /tmp/phrase-params.json --output /tmp/phrase-params-metrics.json
+```
+
+Le script échoue si l'entropie passe sous le témoin pré-phrase ou si l'un des
+cinq indicateurs structurels dévie de plus de dix points. Les exemples du
+profil, valeurs mécaniques/libres et trois recettes sont dans
+[le guide humain](../../profiles/README.md#règles-de-phrase).
+
+### Régression d'intro révélée et corrigée
+
+Les nouveaux rythmes ont exposé une fin Tail attaquant après le début de sa
+levée : la piste ajoutait les notes de levée en fin de vecteur, alors que le
+playhead utilise un curseur d'attaques croissantes. `handoff_tests` a échoué
+à **bar 2, step 12**, levée MIDI 61 absente au rendu mais présente au snapshot.
+Après ajout de la levée, le producteur trie sans allocation par `(start_step,id)`.
+Aucun changement au callback, aucune note supprimée pour masquer l'erreur.
+Le même scénario de handoff passe après correction ; un contrat Tail + levée
+vérifie aussi ordre, positions 12/14 et note d'arrivée sur le début de A.
+
+### Contrat, smoke et références P3-T3
+
+- `TUNING_VERSION = 13`, goldens courants régénérés avec ce changement.
+  D2 courant : **23 178 notes / 1 000 mesures** ; D2 historique à rôles fixes,
+  sans seconde fin ni préférence rythmique : **22 558 notes**, zéro différence.
+  **`profile_d2_fixed.json` n'est pas modifié.**
+- Les anciens goldens gigue/valse à rôles fixes conservent eux aussi tous les
+  événements (piste, hauteur, attaque, durée, vélocité). Leur comparaison
+  canonise seulement l'ordre des événements : une levée Tail historiquement
+  non triée ne doit pas imposer à nouveau un ordre illisible par le playhead.
+  Le nouveau contrat d'intro vérifie séparément l'ordre chronologique réel.
+- Smoke de l'API, seed 7, sans seconde fin : `repeat_variation = 0` donne
+  **0/16** mesures de reprise différentes ; `= 1` avec octave donne **14/16**.
+  `tour_variation = 0` donne **0/32** différences ; `= 1` donne **28/32**.
+  Les quatre cibles et tenues cadentielles comparées sont conservées. Une
+  octave impossible dans la tessiture est correctement sautée, pas forcée.
+  Le programme de smoke temporaire a été supprimé après exécution.
+- CLI offline seed 42, reel, 34 mesures, deux tours : **35,48 s audio en
+  0,80 s**, MIDI et vérité JSON exportés dans `/tmp/harmonium-p3t3-smoke-final.*`.
+  La banque GM complète et les samples de pieds ne sont pas installés :
+  rendu avec `assets/test.sf2` et avertissements explicites, **pas de nouvelle
+  validation instrumentale à l'oreille revendiquée**.
+- Clippy hors tests : **165 avertissements avant, 165 après, aucun nouveau**,
+  comparaison des multisets fichier/code/message ; commande
+  `cargo clippy --workspace --lib --bins --message-format=json`, code retour 0.
+- Aucun `unwrap()`/`expect()` dans les nouveaux chemins de production, aucun
+  changement du callback. Le matériel et les variantes restent construits
+  sur le thread principal ; le tri d'intro est sans allocation.
+- Guide humain : chaque paramètre, valeurs mécanique/libre et trois recettes.
+  L'exemple `phrase_metrics` et `measure_parameters.py` sont les outils durables
+  de reproduction, pas une seconde implémentation des métriques du labo.
+- Vérification finale : **`cargo test --workspace` : 386 tests passent,
+  39 suites, 2 ignorés** ; `cargo fmt --all` puis `cargo fmt --all --check`
+  passent. Les dix-sept nouveaux contrats de paramètres et le contrat d'intro
+  portent sur les snapshots, pas sur l'état privé du générateur. Ils couvrent
+  aussi les longueurs de cellule impaires (demi-mesure tronquée, comme avant)
+  et la tenue tonique de CadFull précédant une levée, conservée aux variations.
+- Branche issue de `main` (`9323ef1`) ; changement livré dans un commit
+  atomique en français, sans fusion ni push.
+

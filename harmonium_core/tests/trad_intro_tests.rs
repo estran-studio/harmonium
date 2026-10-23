@@ -300,3 +300,33 @@ fn end_after_tour_ends_last_measure_with_tonic() {
     let after = bar(&snaps, 97);
     assert!(!has(after, TrackId::Melody), "pas de nouvel air après end_after_tour");
 }
+
+#[test]
+fn tail_pickup_is_ordered_and_present_after_later_tail_attacks() {
+    use harmonium_core::{
+        style_profile::{PositionRhythm, RhythmPattern},
+        trad::ImposedRole,
+    };
+    let mut tuning = tuning_single_form(IntroRole::Tail, 2, 2);
+    tuning.profile.form.parts[1].second_ending = None;
+    tuning.profile.form.parts[1].roles[7] = ImposedRole::Free.into();
+    tuning.profile.form.parts[1].rhythm = vec![PositionRhythm {
+        bar: 8,
+        patterns: vec![RhythmPattern { durations: vec![1; 8], weight: 1 }],
+    }];
+    tuning.validate().unwrap();
+    let with_pickup = stream_with(42, 3, tuning.clone());
+    tuning.profile.arrangement.intro.pickup_eighths = 0;
+    let tail_only = stream_with(42, 3, tuning);
+    let melody = track(bar(&with_pickup, 2), TrackId::Melody);
+    assert!(melody.windows(2).all(|pair| pair[0].start_step <= pair[1].start_step));
+    let token = |n: &NoteSnapshot| (n.pitch, n.start_step, n.duration_steps, n.velocity);
+    let mut pickup: Vec<_> = melody.into_iter().map(token).collect();
+    for note in track(bar(&tail_only, 2), TrackId::Melody) {
+        let index = pickup.iter().position(|n| *n == token(note)).expect("note de fin perdue");
+        pickup.remove(index);
+    }
+    assert_eq!(pickup.iter().map(|n| (n.1, n.2)).collect::<Vec<_>>(), vec![(12, 2), (14, 2)]);
+    assert!(pickup[0].0 <= pickup[1].0);
+    assert_eq!(pickup[1].0, track(bar(&with_pickup, 3), TrackId::Melody)[0].pitch);
+}
