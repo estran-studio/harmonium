@@ -359,6 +359,8 @@ impl TradGenerator {
                         | ImposedRole::CadFull
                         | ImposedRole::CadTonic
                         | ImposedRole::CadOpen
+                        | ImposedRole::CadFifth
+                        | ImposedRole::CadOther
                 )))
             && target_dark != dark
         {
@@ -375,8 +377,8 @@ impl TradGenerator {
             tune.plan.mode = mode;
             tune.fiddle.set_mode(mode);
             if matches!(tune.harmony, HarmonyPlan::TradFunctional(_)) {
-                let melody: Vec<_> = (0..self.profile.form.unique_bars())
-                    .map(|i| tune.fiddle.notes_for_bar(tune.plan.first_pass_bar(i)))
+                let melody: Vec<_> = (0..tune.plan.material_bars())
+                    .map(|i| tune.fiddle.notes_for_bar(tune.plan.representative_bar(i)))
                     .collect();
                 if let Some(accompaniment) = &self.tuning.profile.accompaniment
                     && let Ok(h) = TuneHarmony::new(tune.plan.clone(), &melody, accompaniment)
@@ -540,8 +542,7 @@ impl TradGenerator {
         measure: &mut Measure,
     ) {
         if let HarmonyPlan::JazzFunctional(bars) = &tune.harmony {
-            let slot =
-                self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
+            let slot = tune.plan.material_index(position.bar_in_tour());
             self.fill_jazz_measure(tune, position, &bars[slot], measure);
             self.fill_percussion(tune, position, measure);
             return;
@@ -697,7 +698,7 @@ impl TradGenerator {
         if measure.chord_changes.is_empty() {
             return;
         }
-        let bar = self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
+        let bar = tune.plan.material_index(position.bar_in_tour());
         let chords = &bars[bar];
         let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) else { return };
         let source = std::mem::take(notes);
@@ -1141,7 +1142,7 @@ impl TradGenerator {
             );
             let chords_per_bar =
                 self.profile.meter.steps_per_bar / self.profile.harmony.steps_per_chord;
-            let bars = (0..self.profile.form.unique_bars())
+            let bars = (0..plan.material_bars())
                 .map(|_| {
                     (0..chords_per_bar)
                         .map(|_| {
@@ -1155,8 +1156,8 @@ impl TradGenerator {
         } else if self.profile.harmony.model == "none" {
             HarmonyPlan::None
         } else if let Some(accompaniment) = &self.tuning.profile.accompaniment {
-            let distinct_melody: Vec<_> = (0..self.profile.form.unique_bars())
-                .map(|i| fiddle.notes_for_bar(plan.first_pass_bar(i)))
+            let distinct_melody: Vec<_> = (0..plan.material_bars())
+                .map(|i| fiddle.notes_for_bar(plan.representative_bar(i)))
                 .collect();
             match TuneHarmony::new(plan.clone(), &distinct_melody, accompaniment) {
                 Ok(h) => HarmonyPlan::TradFunctional(h),

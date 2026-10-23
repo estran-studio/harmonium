@@ -10,6 +10,9 @@ use rand_chacha::ChaCha8Rng;
 
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
+    for part in &mut p.form.parts {
+        part.second_ending = None;
+    }
     p.meta.id = "fixture".into();
     p.meter.time_signature = TimeSignature::new(6, 8);
     p.meter.steps_per_bar = 12;
@@ -325,6 +328,7 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
         for part in &mut profile.form.parts {
+            part.second_ending = None;
             part.roles = [
                 ImposedRole::Open,
                 ImposedRole::Free,

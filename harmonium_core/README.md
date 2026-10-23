@@ -20,9 +20,10 @@ graph TD
 Un profil définit la grille, la pulse, la forme, les cellules, l'harmonie,
 l'accompagnement, la percussion, l'instrumentarium et les courbes émotionnelles.
 `TuningParams` ne contient que ce profil ; ses anciens réglages autonomes et les
-overlays ne font pas partie du schéma. `TUNING_VERSION = 11` introduit les rôles
-de phrase et cadences probabilistes ; les goldens sont régénérés. Un profil aux
-rôles fixes d'origine reproduit le contrat de notes antérieur sans second chemin.
+overlays ne font pas partie du schéma. `TUNING_VERSION = 12` ajoute les secondes
+fins de reprise aux rôles de phrase et cadences probabilistes ; les goldens sont
+régénérés. Les rôles fixes d'origine, sans `second_ending`, reproduisent le
+contrat de notes antérieur sans second chemin.
 
 ## Modules
 

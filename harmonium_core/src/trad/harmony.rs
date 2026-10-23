@@ -188,7 +188,7 @@ pub fn harmonize_bar(
             chords[0] = dominant(mode);
             chords[count - 1] = tonic(mode);
         }
-        ImposedRole::CadHalf => chords[count - 1] = dominant(mode),
+        ImposedRole::CadHalf | ImposedRole::CadFifth => chords[count - 1] = dominant(mode),
         _ => {}
     }
     chords
@@ -213,8 +213,7 @@ impl fmt::Display for TuneHarmonyError {
 
 impl std::error::Error for TuneHarmonyError {}
 
-/// Harmonie d'un tune : les 16 mesures distinctes (strain A puis B) sont
-/// harmonisées une fois ; les reprises relisent les mêmes accords.
+/// Harmonie des cellules distinctes, y compris les fins de reprise configurées.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TuneHarmony {
     plan: TunePlan,
@@ -222,19 +221,19 @@ pub struct TuneHarmony {
 }
 
 impl TuneHarmony {
-    /// Harmonise `melody` : 16 mesures, les 8 de la strain A puis les 8 de B.
+    /// Harmonise le matériel de chaque partie, puis ses éventuelles secondes fins.
     pub fn new<M: AsRef<[TimelineNote]>>(
         plan: TunePlan,
         melody: &[M],
         params: &TradHarmonyParams,
     ) -> Result<Self, TuneHarmonyError> {
-        let expected = plan.profile.form.unique_bars();
+        let expected = plan.material_bars();
         if melody.len() != expected {
             return Err(TuneHarmonyError::WrongBarCount { expected, found: melody.len() });
         }
         let mut bars = Vec::with_capacity(expected);
         for (i, notes) in melody.iter().enumerate() {
-            let role = plan.bar_role(plan.first_pass_bar(i));
+            let role = plan.bar_role(plan.representative_bar(i));
             bars.push(harmonize_bar(
                 notes.as_ref(),
                 plan.key,
@@ -256,11 +255,7 @@ impl TuneHarmony {
     /// Accords de la mesure `bar_in_tune` (0-based, replié sur le tune).
     #[must_use]
     pub fn chords_for_bar(&self, bar_in_tune: usize) -> &[TradChord] {
-        let role = self.plan.bar_role(bar_in_tune);
-        let index = self.plan.profile.form.unique_offset(role.strain.0)
-            + usize::from(role.bar_in_strain)
-            - 1;
-        &self.bars[index]
+        &self.bars[self.plan.material_index(bar_in_tune)]
     }
 }
 
@@ -291,6 +286,7 @@ mod tests {
     fn fixed_plan(mode: Mode) -> TunePlan {
         let mut profile = StyleProfile::default();
         for part in &mut profile.form.parts {
+            part.second_ending = None;
             part.roles = [
                 ImposedRole::Open,
                 ImposedRole::Free,
@@ -501,7 +497,7 @@ mod tests {
 
     #[test]
     fn tune_harmony_rejects_wrong_bar_count() {
-        let plan = TunePlan::new(D, Mode::Ionian);
+        let plan = fixed_plan(Mode::Ionian);
         let few = vec![melody("1 3 5 3 1 3 5 3", Mode::Ionian); 15];
         assert_eq!(
             TuneHarmony::new(plan.clone(), &few, &TradHarmonyParams::default()),

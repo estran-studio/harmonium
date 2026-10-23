@@ -19,6 +19,7 @@ fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNot
     let bank = CellBank::default();
     let mut profile = harmonium_core::StyleProfile::default();
     for part in &mut profile.form.parts {
+        part.second_ending = None;
         part.roles = [
             ImposedRole::Open,
             ImposedRole::Free,

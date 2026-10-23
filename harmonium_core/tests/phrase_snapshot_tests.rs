@@ -46,6 +46,7 @@ fn fixture() -> StyleProfile {
         .collect(),
     };
     for part in &mut p.form.parts {
+        part.second_ending = None;
         part.roles = [
             ImposedRole::Open,
             ImposedRole::Free,

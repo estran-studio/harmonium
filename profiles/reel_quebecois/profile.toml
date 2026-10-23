@@ -38,6 +38,7 @@ roles = [
   { choose = [{ role = { CopyOf = 3 }, weight = 3825 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = 1, weight = 1 }] } }, weight = 30 }, { role = { VariedEndOf = 3 }, weight = 1355 }, { role = "Free", weight = 4790 }] },
   { choose = [{ role = "CadTonic", weight = 2199 }, { role = "CadHalf", weight = 783 }, { role = "CadOpen", weight = 7018 }] },
 ]
+second_ending = { choose = [{ role = "CadTonic", weight = 169 }, { role = "CadFifth", weight = 19 }, { role = "CadOther", weight = 99 }] }
 [[form.parts]]
 name = "B"
 melody_center_offset = 2
@@ -51,6 +52,7 @@ roles = [
   { choose = [{ role = { CopyOf = 3 }, weight = 2321 }, { role = { VariedEndOf = 3 }, weight = 1137 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 2063 }, { role = "Free", weight = 4479 }] },
   { choose = [{ role = "CadTonic", weight = 1784 }, { role = "CadHalf", weight = 936 }, { role = "CadOpen", weight = 7280 }] },
 ]
+second_ending = { choose = [{ role = "CadTonic", weight = 182 }, { role = "CadFifth", weight = 18 }, { role = "CadOther", weight = 78 }] }
 
 [melody]
 cell_units = 8

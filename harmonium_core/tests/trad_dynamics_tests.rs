@@ -74,7 +74,7 @@ fn intensity_changes_energy_and_articulation_not_the_current_tune() {
 }
 
 #[test]
-fn intensity_automation_preserves_aabb_pitches() {
+fn intensity_automation_preserves_repeats_except_the_configured_volta() {
     let (mut generator, mut rng) = generator();
     let snapshots: Vec<_> = (1..=32)
         .map(|bar| {
@@ -83,7 +83,7 @@ fn intensity_automation_preserves_aabb_pitches() {
         })
         .collect();
     for start in [0, 16] {
-        for i in 0..8 {
+        for i in 0..7 {
             assert_eq!(melody(&snapshots[start + i]), melody(&snapshots[start + i + 8]));
         }
     }

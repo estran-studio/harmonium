@@ -20,6 +20,7 @@ use crate::{
 pub struct FiddleLine {
     plan: TunePlan,
     parts: Vec<Vec<Cell>>,
+    second_endings: Vec<Option<Cell>>,
     params: ReelFiddleParams,
     tonic_midi: u8,
     render_mode: super::Mode,
@@ -72,7 +73,39 @@ impl FiddleLine {
                 rng,
             ));
         }
-        Self { render_mode: plan.mode, plan, parts, params: params.clone(), tonic_midi }
+        let second_endings = (0..parts.len())
+            .map(|part| {
+                plan.second_ending_role(part).map(|role| {
+                    let chosen = &parts[part];
+                    let last = chosen.len() - 1;
+                    select_bar_cell(
+                        Part(part),
+                        last,
+                        role,
+                        &plan,
+                        tonic_midi,
+                        active_bank,
+                        params,
+                        &chosen[..last],
+                        &parts,
+                        chosen[..last]
+                            .last()
+                            .and_then(|c| c.last_degree())
+                            .map(degree_to_diatonic_step),
+                        chosen.first().and_then(|c| c.first_degree()).map(degree_to_diatonic_step),
+                        rng,
+                    )
+                })
+            })
+            .collect();
+        Self {
+            render_mode: plan.mode,
+            plan,
+            parts,
+            second_endings,
+            params: params.clone(),
+            tonic_midi,
+        }
     }
 
     /// Plan structurel du tune associé à cette ligne de violon.
@@ -99,8 +132,14 @@ impl FiddleLine {
 
     #[must_use]
     pub fn cell_for_bar(&self, bar_in_tune: usize) -> &Cell {
-        let role = self.plan.bar_role(bar_in_tune);
-        &self.parts[role.strain.0][usize::from(role.bar_in_strain) - 1]
+        let (part, _, offset, second_ending) = self.plan.position(bar_in_tune);
+        if second_ending {
+            self.second_endings[part]
+                .as_ref()
+                .unwrap_or_else(|| unreachable!("resolved second ending"))
+        } else {
+            &self.parts[part][offset]
+        }
     }
 
     /// Génère les [`TimelineNote`] d'une mesure du tune (`bar_in_tune` 0-based).
@@ -279,44 +318,20 @@ fn select_strain_cells(
 
     let roles = plan.roles_for_part(strain.0);
     for (bar_idx, &bar_role) in roles.iter().enumerate() {
-        let mut cell = match bar_role {
-            ImposedRole::CopyOf(src_1based) => {
-                let src_idx = usize::from(src_1based) - 1;
-                chosen[src_idx].clone()
-            }
-            ImposedRole::CopyOfPart { part, bar } => {
-                previous_parts[part][usize::from(bar) - 1].clone()
-            }
-            ImposedRole::SequenceOf { bar, shift } => {
-                sequence_cell(&chosen[usize::from(bar) - 1], shift, plan, tonic_midi, params)
-            }
-            ImposedRole::VariedEndOf(bar) => {
-                varied_end_cell(&chosen[usize::from(bar) - 1], bank, plan, tonic_midi, params, rng)
-            }
-            imposed => {
-                let excluded_cell = if matches!(imposed, ImposedRole::Free) && bar_idx > 0 {
-                    Some(&chosen[bar_idx - 1])
-                } else {
-                    None
-                };
-                pick_cell_for_bar(
-                    strain,
-                    bar_idx,
-                    imposed,
-                    plan,
-                    tonic_midi,
-                    bank,
-                    params,
-                    *prev_last_step,
-                    bar1_first_step,
-                    excluded_cell,
-                    rng,
-                )
-            }
-        };
-        if matches!(bar_role, ImposedRole::CadTonic | ImposedRole::CadOpen) {
-            shape_cadence(&mut cell, bar_role);
-        }
+        let cell = select_bar_cell(
+            strain,
+            bar_idx,
+            bar_role,
+            plan,
+            tonic_midi,
+            bank,
+            params,
+            &chosen,
+            previous_parts,
+            *prev_last_step,
+            bar1_first_step,
+            rng,
+        );
 
         if bar_idx == 0 {
             bar1_first_step = cell.first_degree().map(degree_to_diatonic_step);
@@ -328,6 +343,63 @@ fn select_strain_cells(
     }
 
     chosen
+}
+
+#[allow(clippy::too_many_arguments)]
+fn select_bar_cell(
+    strain: Part,
+    bar_idx: usize,
+    bar_role: ImposedRole,
+    plan: &TunePlan,
+    tonic_midi: u8,
+    bank: &CellBank,
+    params: &ReelFiddleParams,
+    chosen: &[Cell],
+    previous_parts: &[Vec<Cell>],
+    prev_last_step: Option<i8>,
+    bar1_first_step: Option<i8>,
+    rng: &mut dyn RngCore,
+) -> Cell {
+    let mut cell = match bar_role {
+        ImposedRole::CopyOf(source) => chosen[usize::from(source) - 1].clone(),
+        ImposedRole::CopyOfPart { part, bar } => previous_parts[part][usize::from(bar) - 1].clone(),
+        ImposedRole::SequenceOf { bar, shift } => {
+            sequence_cell(&chosen[usize::from(bar) - 1], shift, plan, tonic_midi, params)
+        }
+        ImposedRole::VariedEndOf(bar) => {
+            varied_end_cell(&chosen[usize::from(bar) - 1], bank, plan, tonic_midi, params, rng)
+        }
+        imposed => {
+            let excluded_cell = if imposed == ImposedRole::Free && bar_idx > 0 {
+                Some(&chosen[bar_idx - 1])
+            } else {
+                None
+            };
+            pick_cell_for_bar(
+                strain,
+                bar_idx,
+                imposed,
+                plan,
+                tonic_midi,
+                bank,
+                params,
+                prev_last_step,
+                bar1_first_step,
+                excluded_cell,
+                rng,
+            )
+        }
+    };
+    if matches!(
+        bar_role,
+        ImposedRole::CadTonic
+            | ImposedRole::CadOpen
+            | ImposedRole::CadFifth
+            | ImposedRole::CadOther
+    ) {
+        shape_cadence(&mut cell, bar_role);
+    }
+    cell
 }
 
 /// Déplacement diatonique uniforme ; une octave commune préserve le contour.
@@ -448,9 +520,15 @@ fn shape_cadence(cell: &mut Cell, role: ImposedRole) {
         }
     } else if let Some(CellNote::Degree(degree)) =
         cell.notes.iter_mut().rev().find(|note| matches!(note, CellNote::Degree(_)))
-        && degree_to_diatonic_step(*degree).rem_euclid(7) == 0
     {
-        *degree = diatonic_step_to_degree(degree_to_diatonic_step(*degree) + 1);
+        let step = degree_to_diatonic_step(*degree);
+        let class = step.rem_euclid(7);
+        if role == ImposedRole::CadFifth {
+            let octave = ((f32::from(step - 4) / 7.0).round() as i8) * 7;
+            *degree = diatonic_step_to_degree(octave + 4);
+        } else if class == 0 || (role == ImposedRole::CadOther && class == 4) {
+            *degree = diatonic_step_to_degree(step + 1);
+        }
     }
 }
 

@@ -229,9 +229,13 @@ mod tests {
                 })
         };
         for start in [1, 17, 33, 49] {
-            for offset in 0..8 {
+            for offset in 0..7 {
                 assert_eq!(pitches(start + offset)?, pitches(start + offset + 8)?);
             }
+        }
+        // Une volta diffère entre passes, mais reste la même au tour suivant.
+        for bar in [8usize, 16, 24, 32] {
+            assert_eq!(pitches(bar)?, pitches(bar + 32)?);
         }
         Ok(())
     }
@@ -265,6 +269,7 @@ mod tests {
                     use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                     let mut tuning = harmonium_core::TuningParams::default();
                     for part in &mut tuning.profile.form.parts {
+                        part.second_ending = None;
                         part.roles =
                             [Open, Free, Free, CadHalf, CopyOf(1), CopyOf(2), Free, CadFull]
                                 .map(Into::into)
@@ -301,14 +306,14 @@ mod tests {
             }
         }
         let actual = serde_json::json!({
-            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0" } else { "TUNING_VERSION:11" },
+            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0" } else { "TUNING_VERSION:12" },
             "runs": runs
         });
         let filename = if fixed_roles { "profile_d2_fixed.json" } else { "profile_d2_main.json" };
         let path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(filename);
         if !fixed_roles && std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_some() {
-            std::fs::write(&path, serde_json::to_string_pretty(&actual)?)?;
+            std::fs::write(&path, serde_json::to_string(&actual)?)?;
         }
         let reference: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
         assert_eq!(actual, reference, "D2 : notes différentes de main");

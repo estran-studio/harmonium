@@ -235,6 +235,9 @@ pub struct ProfilePart {
     pub name: String,
     pub roles: Vec<ProfileRole>,
     pub melody_center_offset: i8,
+    /// Variante de la dernière mesure, jouée à la dernière reprise de la partie.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second_ending: Option<ProfileRole>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -575,6 +578,19 @@ impl StyleProfile {
             for (bar, role) in part.roles.iter().enumerate() {
                 role.validate(&self.form, i, bar, &format!("{field}.roles[{bar}]"))?;
             }
+            if let Some(ending) = &part.second_ending {
+                check(
+                    self.form.sequence.iter().filter(|&&part| part == i).count() >= 2,
+                    &format!("{field}.second_ending"),
+                    "une seconde fin exige au moins deux passes",
+                )?;
+                ending.validate(
+                    &self.form,
+                    i,
+                    part.roles.len() - 1,
+                    &format!("{field}.second_ending"),
+                )?;
+            }
         }
         check(
             !self.form.sequence.is_empty() && self.form.sequence.len() <= 256,
@@ -602,7 +618,13 @@ impl StyleProfile {
                 "longueur différente de cell_units",
             )?;
         }
-        if self.form.parts.iter().flat_map(|p| &p.roles).any(ProfileRole::uses_varied_end) {
+        if self
+            .form
+            .parts
+            .iter()
+            .flat_map(|p| p.roles.iter().chain(p.second_ending.iter()))
+            .any(ProfileRole::uses_varied_end)
+        {
             let split = self.melody.cell_units / 2;
             let endings = self
                 .melody
@@ -625,14 +647,18 @@ impl StyleProfile {
             )?;
         }
         for role in crate::trad::CellRole::ALL {
-            let needed =
-                self.form.parts.iter().flat_map(|p| &p.roles).any(|r| r.needs_cell_role(role))
-                    || matches!(
-                        role,
-                        crate::trad::CellRole::Run
-                            | crate::trad::CellRole::Arp
-                            | crate::trad::CellRole::Turn
-                    );
+            let needed = self
+                .form
+                .parts
+                .iter()
+                .flat_map(|p| p.roles.iter().chain(p.second_ending.iter()))
+                .any(|r| r.needs_cell_role(role))
+                || matches!(
+                    role,
+                    crate::trad::CellRole::Run
+                        | crate::trad::CellRole::Arp
+                        | crate::trad::CellRole::Turn
+                );
             check(
                 !needed
                     || self

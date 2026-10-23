@@ -28,8 +28,9 @@ d'harmonie non implémenté est refusé : aucune substitution silencieuse.
 
 Un rôle fixe reste valide sans consommer de nouveau tirage. Une alternative
 pondérée se tire une seule fois par mesure distincte de partie et par air,
-sur le `ChaCha8Rng` du générateur. Les reprises et les tours relisent ce choix ;
-une invalidation émotionnelle ne le retire pas.
+sur le `ChaCha8Rng` du générateur. Les reprises et les tours relisent ces choix ;
+la dernière mesure peut avoir sa propre seconde fin. Une invalidation
+émotionnelle ne retire aucune de ces décisions.
 
 ```toml
 roles = [
@@ -42,6 +43,7 @@ roles = [
   "Free",
   { choose = [{ role = "CadTonic", weight = 22 }, { role = "CadHalf", weight = 8 }, { role = "CadOpen", weight = 70 }] },
 ]
+second_ending = { choose = [{ role = "CadTonic", weight = 70 }, { role = "CadFifth", weight = 10 }, { role = "CadOther", weight = 20 }] }
 ```
 
 - `CopyOf = k` : copie exacte de la mesure antérieure `k` (1-based).
@@ -65,6 +67,22 @@ roles = [
   `CadHalf` conserve sa fin sur 2, 5 ou 7 et sa dominante harmonique.
   Tous ces rôles cadentiels marquent une frontière de phrase pour le changement
   de mode émotionnel, même si la cadence est ouverte.
+- `CadFifth` : cellule de demi-cadence, dernière attaque ajustée à la quinte,
+  sans changer son rythme ; dernier accord dominant.
+- `CadOther` : cellule libre, dernière attaque hors tonique/quinte, toujours
+  dans le mode ; aucun accord imposé. `CadFifth` et `CadOther` marquent aussi
+  une frontière de phrase.
+
+`[[form.parts]] second_ending` est optionnel et accepte exactement les mêmes
+rôles fixes, opérations et distributions que `roles`. Il remplace **uniquement
+la dernière mesure à la dernière passe de cette partie dans `sequence`** :
+A2/B2 en AABB ; A3 si la partie A joue trois fois. Les autres passes utilisent
+`roles`, et toutes les autres mesures restent identiques. La partie doit jouer
+au moins deux fois. Les références restent strictement antérieures à la mesure
+finale ; copier cette même mesure de la première passe n'est pas une
+auto-référence autorisée. Mélodie et harmonie de la variante sont précalculées
+une seule fois, puis relues à chaque tour. L'outro `end_after_tour` reste
+prioritaire et conclut sur la tonique, quel que soit `second_ending`.
 
 Poids entiers non négatifs, somme positive dans `u32`, au plus 64 choix ou
 décalages. Pas de choix imbriqué, de référence en avant ni d'auto-référence.
@@ -90,9 +108,23 @@ structures de paires ne sont pas imposés et doivent être remesurés au labo.
 Les banques rythmiques restent inchangées ; le rapport avant/après indique
 aussi leur entropie, qui n'est pas garantie meilleure par ce seul changement.
 
+### Secondes fins distribuées (P3-T2, contrat 12)
+
+Les poids de `second_ending` sont les **effectifs**, sans arrondi, de la
+dernière note écrite des fins finales A/B des parties de huit mesures :
+tonique → `CadTonic`, quinte → `CadFifth`, autre → `CadOther`.
+La commande de mesure et les quatorze relevés tradition × type se trouvent
+dans [le rapport de phase](../specs/011-phase3-phrase/plan.md#p3-t2--fins-de-reprise).
+Le parseur du labo complète les mesures partielles par la levée de reprise :
+cette note ajoutée est exclue de la fin écrite mesurée. Les premières fins
+conservent leurs réglages DS-T9 de **repos tonique**, qui ne sont pas une mesure
+de dernière note écrite ; les deux indicateurs ne sont pas interchangeables.
+Les taux réels finaux ne justifient pas une tonique obligatoire dans tous les
+styles, et les petits effectifs sont signalés dans le rapport.
+
 ### Reproduire le contrat historique à rôles fixes
 
-Remplacer `roles` dans chaque partie du reel par :
+Omettre `second_ending` et remplacer `roles` dans chaque partie du reel par :
 
 ```toml
 roles = ["Open", "Free", "Free", "CadHalf", { CopyOf = 1 }, { CopyOf = 2 }, "Free", "CadFull"]
