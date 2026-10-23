@@ -17,7 +17,23 @@ const NUM_SEEDS: u64 = 20;
 fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNote>>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let bank = CellBank::default();
-    let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(Default::default()));
+    let mut profile = harmonium_core::StyleProfile::default();
+    for part in &mut profile.form.parts {
+        part.second_ending = None;
+        part.roles = [
+            ImposedRole::Open,
+            ImposedRole::Free,
+            ImposedRole::Free,
+            ImposedRole::CadHalf,
+            ImposedRole::CopyOf(1),
+            ImposedRole::CopyOf(2),
+            ImposedRole::Free,
+            ImposedRole::CadFull,
+        ]
+        .map(Into::into)
+        .to_vec();
+    }
+    let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(profile));
     let line = FiddleLine::new(plan.clone(), &bank, &mut rng);
     let tune = line.render_tune();
     (plan, line, tune)

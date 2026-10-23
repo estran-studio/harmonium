@@ -21,6 +21,13 @@ fn flat_tuning() -> TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
             p.arrangement = ReelArrangement::from_start(1, Default::default());
+            for part in &mut p.form.parts {
+                part.second_ending = None;
+                use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
+                part.roles = [Open, Free, Free, CadHalf, CopyOf(1), CopyOf(2), Free, CadFull]
+                    .map(Into::into)
+                    .to_vec();
+            }
             p
         },
         ..TuningParams::default()

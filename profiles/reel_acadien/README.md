@@ -66,3 +66,36 @@ Le profil acadien reprend du québécois ce que les données statistiques ne con
 - **Podorythmie** (Heel / Toe, canal 9 kit GM ou banque de pieds `harmonium_trad.sf2`) :
   - Talon (note 36) : pas 0 et 8 (densité 0), pas 0, 4, 8, 12 (densité 1 et 2).
   - Pointe (note 37) : contretemps 2, 6, 10, 14 (densité 1), doublée en doubles-croches (densité 2).
+
+## Phrases probabilistes — DS-T9 / P3-T1
+
+Source : `harmonium_lab/references/structure/acadienne-reel.json`, champ `real`
+(statistiques DS-T9, corpus et droits dans le manifeste du labo).
+Les taux par mesure de `transformations` pilotent copies, séquences et fins variées ;
+les déplacements utilisent les effectifs `sequence_shifts` de la même position.
+Les repos toniques viennent de `phrases.rest_by_position` ; les autres longues
+fins servent de proxy de demi-cadence. Voir [le schéma et les limites](../README.md#phrases--rôles-pondérés-motifs-et-cadences).
+
+| Partie | Copie m.5←1 | Copie m.6←2 | Cadence tonique m.8 | Copie B:m.7←A:m.7 |
+|---|---:|---:|---:|---:|
+| A | 77.17 % | 64.13 % | 23.91 % | 0.00 % |
+| B | 61.90 % | 44.76 % | 24.76 % | 35.23 % |
+
+Poids arrondis sur 10 000 ; les mesures se tirent indépendamment.
+Les taux conjoints m.5–6 et les structures de paires restent des mesures de
+sortie, pas des garanties du profil. Banques de cellules inchangées.
+
+## Secondes fins — P3-T2 (contrat 12)
+
+`second_ending` utilise les effectifs de dernière note **écrite**, avant toute
+complétion par une levée : tonique (`CadTonic`), quinte (`CadFifth`), autre
+(`CadOther`). Source : `harmonium_lab/corpus/acadienne/tunes/reel/*.abc`,
+analysé par `trad.form.analyze_form` avec la commande
+[`measure_endings.py`](../../specs/011-phase3-phrase/measure_endings.py).
+Les poids du profil sont les effectifs des paires de passes de huit mesures,
+séparément pour A (**72** occasions) et B (**62** occasions), sans arrondi.
+
+La variante s'applique à A2/B2 et reste identique à chaque tour ; les sept
+autres mesures ne changent pas entre passes. Les premières fins conservent
+les réglages DS-T9 ci-dessus. Les chiffres réels et les limites de mesure
+sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fins-de-reprise).

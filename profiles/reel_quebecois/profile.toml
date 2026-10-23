@@ -28,11 +28,31 @@ sequence = [0, 0, 1, 1]
 [[form.parts]]
 name = "A"
 melody_center_offset = 0
-roles = ["Open", "Free", "Free", "CadHalf", { CopyOf = 1 }, { CopyOf = 2 }, "Free", "CadFull"]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 301 }, { role = { VariedEndOf = 1 }, weight = 602 }, { role = "Free", weight = 9097 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1235 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 4 }, { degrees = -1, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = 7, weight = 2 }] } }, weight = 301 }, { role = { VariedEndOf = 1 }, weight = 1084 }, { role = "Free", weight = 7380 }] },
+  { choose = [{ role = "CadTonic", weight = 572 }, { role = "CadHalf", weight = 934 }, { role = "CadOpen", weight = 8494 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 7169 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 5 }, { degrees = -2, weight = 1 }] } }, weight = 181 }, { role = { VariedEndOf = 1 }, weight = 452 }, { role = "Free", weight = 2198 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 6627 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 2 }] } }, weight = 60 }, { role = { VariedEndOf = 2 }, weight = 1084 }, { role = "Free", weight = 2229 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 3825 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = 1, weight = 1 }] } }, weight = 30 }, { role = { VariedEndOf = 3 }, weight = 1355 }, { role = "Free", weight = 4790 }] },
+  { choose = [{ role = "CadTonic", weight = 2199 }, { role = "CadHalf", weight = 783 }, { role = "CadOpen", weight = 7018 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 169 }, { role = "CadFifth", weight = 19 }, { role = "CadOther", weight = 99 }] }
 [[form.parts]]
 name = "B"
 melody_center_offset = 2
-roles = ["Open", "Free", "Free", "CadHalf", { CopyOf = 1 }, { CopyOf = 2 }, "Free", "CadFull"]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 205 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 3 }, { degrees = 1, weight = 1 }, { degrees = 3, weight = 1 }] } }, weight = 146 }, { role = { VariedEndOf = 1 }, weight = 526 }, { role = "Free", weight = 9123 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1053 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 9 }, { degrees = -1, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = -4, weight = 1 }] } }, weight = 409 }, { role = { VariedEndOf = 1 }, weight = 1140 }, { role = "Free", weight = 7398 }] },
+  { choose = [{ role = "CadTonic", weight = 556 }, { role = "CadHalf", weight = 848 }, { role = "CadOpen", weight = 8596 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 6754 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 1 }, { degrees = -2, weight = 1 }] } }, weight = 58 }, { role = { VariedEndOf = 1 }, weight = 497 }, { role = "Free", weight = 2691 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 5819 }, { role = { VariedEndOf = 2 }, weight = 1462 }, { role = "Free", weight = 2719 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 2321 }, { role = { VariedEndOf = 3 }, weight = 1137 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 2063 }, { role = "Free", weight = 4479 }] },
+  { choose = [{ role = "CadTonic", weight = 1784 }, { role = "CadHalf", weight = 936 }, { role = "CadOpen", weight = 7280 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 182 }, { role = "CadFifth", weight = 18 }, { role = "CadOther", weight = 78 }] }
 
 [melody]
 cell_units = 8

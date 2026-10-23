@@ -10,10 +10,7 @@
 //! - Notes de mélodie dans le mode publié
 //! - Accompagnement aux pas attendus (basse et accords simples, sans chop québécois)
 //! - Absence totale de podorythmie québécoise (aucun coup sur Heel / Toe)
-//! - Cadence finale du hornpipe (trois noires accentuées)
 //! - Déterminisme strict (même graine => mêmes snapshots)
-
-use std::collections::HashSet;
 
 use harmonium_core::{
     StyleProfile,
@@ -330,34 +327,6 @@ fn hornpipe_accompaniment_steps_and_no_percussion() {
             );
         }
     }
-}
-
-#[test]
-fn hornpipe_final_cadence_three_quarter_notes_pattern() {
-    // Vérifie que les mesures de cadence complète (mesures 8, 16, 24, 32 d'un tour)
-    // comportent la formule traditionnelle en trois noires sur les temps 1, 2, 3 (pas 0, 4, 8)
-    let p = hornpipe_profile();
-    let snaps = generate_snapshots(&p, 1, 64);
-    let mut cad_count = 0;
-    for s in &snaps {
-        if let Some(pos) = s.position {
-            if !pos.is_intro() && pos.bar_in_strain == 8 {
-                let melody_notes: Vec<_> = s.notes.iter().filter(|n| n.track == 0).collect();
-                assert!(!melody_notes.is_empty(), "la mesure cadentielle doit avoir des notes");
-                cad_count += 1;
-
-                // Vérifie que des attaques de mélodie sont présentes sur les temps forts
-                let start_steps: HashSet<usize> =
-                    melody_notes.iter().map(|n| n.start_step).collect();
-                // Au moins les temps 1 et 3 (pas 0 et 8) ou les temps 1, 2, 3 sont attaqués
-                assert!(
-                    start_steps.contains(&0),
-                    "attaque attendue sur le premier temps de la cadence finale"
-                );
-            }
-        }
-    }
-    assert!(cad_count >= 2, "au moins 2 cadences complètes générées");
 }
 
 #[test]

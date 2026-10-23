@@ -10,6 +10,9 @@ use rand_chacha::ChaCha8Rng;
 
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
+    for part in &mut p.form.parts {
+        part.second_ending = None;
+    }
     p.meta.id = "fixture".into();
     p.meter.time_signature = TimeSignature::new(6, 8);
     p.meter.steps_per_bar = 12;
@@ -34,10 +37,13 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     };
     let mut third = p.form.parts[0].clone();
     third.name = "C".into();
-    third.roles = vec![ImposedRole::Open, ImposedRole::CadFull];
-    p.form.parts[0].roles = vec![ImposedRole::Open, ImposedRole::Free, ImposedRole::CadFull];
+    third.roles = [ImposedRole::Open, ImposedRole::CadFull].map(Into::into).to_vec();
+    p.form.parts[0].roles =
+        [ImposedRole::Open, ImposedRole::Free, ImposedRole::CadFull].map(Into::into).to_vec();
     p.form.parts[1].roles =
-        vec![ImposedRole::Open, ImposedRole::Free, ImposedRole::CopyOf(1), ImposedRole::CadFull];
+        [ImposedRole::Open, ImposedRole::Free, ImposedRole::CopyOf(1), ImposedRole::CadFull]
+            .map(Into::into)
+            .to_vec();
     p.form.parts.push(third);
     p.form.sequence = vec![2, 0, 1, 0, 2];
     p.harmony.steps_per_chord = 12;
@@ -112,7 +118,7 @@ fn cross_section_bounds_reject_before_generation() -> Result<(), Box<dyn std::er
     p.percussion.patterns[0].hits[0].step = 12;
     assert_eq!(p.validate().unwrap_err().field, "percussion.patterns[0].hits");
     p = variable_profile()?;
-    p.form.parts[0].roles[0] = ImposedRole::CopyOf(1);
+    p.form.parts[0].roles[0] = ImposedRole::CopyOf(1).into();
     assert_eq!(p.validate().unwrap_err().field, "form.parts[0].roles[0]");
     p = variable_profile()?;
     p.melody.cells.cells[0].notes.pop();
@@ -318,9 +324,24 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 #[test]
-fn non_regression_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::error::Error>> {
+fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::error::Error>> {
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
-        let profile = StyleProfile::named(style_id)?;
+        let mut profile = StyleProfile::named(style_id)?;
+        for part in &mut profile.form.parts {
+            part.second_ending = None;
+            part.roles = [
+                ImposedRole::Open,
+                ImposedRole::Free,
+                ImposedRole::Free,
+                ImposedRole::CadHalf,
+                ImposedRole::CopyOf(1),
+                ImposedRole::CopyOf(2),
+                ImposedRole::Free,
+                ImposedRole::CadFull,
+            ]
+            .map(Into::into)
+            .to_vec();
+        }
         let tuning =
             harmonium_core::TuningParams { profile: profile.clone(), ..Default::default() };
         let mut params = MusicalParams::default();
