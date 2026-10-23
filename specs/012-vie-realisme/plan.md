@@ -675,6 +675,16 @@ avant toute augmentation des valeurs.
   sept profils distribués, sans automation puis avec une automation constante, en parallèle, délai maximal de
   120 s. Avant correction : les sept profils sans automation dépassent le délai ; après : 33 s au total en debug.
 
+### Valeurs britanniques DS-T9b
+
+Les extraits de `harmonium_lab/specs/001-trad-dataset/ds-t9b-profils-proposes.md` (références régénérées
+après correction du parseur ABC) sont appliqués tels quels aux `roles`, `second_ending` et `rhythm` des
+parties A et B de `gigue_britannique_coloniale` et `hornpipe_britannique_coloniale` ; la marche ne change pas
+(références et secondes fins identiques). Les banques `cells.toml` ne sont pas régénérées. Le flux de
+snapshots change pour ces deux profils à graine égale (MIDI différent aux graines 3 et 5, marche identique) :
+`TUNING_VERSION` passe à 15 et `profile_d2_main.json` est régénéré (seule la ligne `source` change) ;
+`profile_d2_fixed.json` reste identique. Provenance dans le README de chaque profil.
+
 ## 8. Voix
 
 - **À faire d'abord** : étude de faisabilité (turlutte, chansons à répondre,

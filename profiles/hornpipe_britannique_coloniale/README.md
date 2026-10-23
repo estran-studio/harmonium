@@ -76,8 +76,8 @@ fins servent de proxy de demi-cadence. Voir [le schéma et les limites](../READM
 
 | Partie | Copie m.5←1 | Copie m.6←2 | Cadence tonique m.8 | Copie B:m.7←A:m.7 |
 |---|---:|---:|---:|---:|
-| A | 84.75 % | 74.58 % | 6.78 % | 0.00 % |
-| B | 44.07 % | 28.81 % | 8.47 % | 42.11 % |
+| A | 85.00 % | 75.00 % | 6.67 % | 0.00 % |
+| B | 42.62 % | 27.87 % | 8.20 % | 43.10 % |
 
 Poids arrondis sur 10 000 ; les mesures se tirent indépendamment.
 Les taux conjoints m.5–6 et les structures de paires restent des mesures de
@@ -91,7 +91,7 @@ complétion par une levée : tonique (`CadTonic`), quinte (`CadFifth`), autre
 analysé par `trad.form.analyze_form` avec la commande
 [`measure_endings.py`](../../specs/011-phase3-phrase/measure_endings.py).
 Les poids du profil sont les effectifs des paires de passes de huit mesures,
-séparément pour A (**51** occasions) et B (**12** occasions), sans arrondi.
+séparément pour A (**52** occasions) et B (**13** occasions), sans arrondi.
 
 La variante s'applique à A2/B2 et reste identique à chaque tour ; les sept
 autres mesures ne changent pas entre passes. Les premières fins conservent
@@ -100,6 +100,18 @@ sont dans [le rapport de phase](../../specs/011-phase3-phrase/plan.md#p3-t2--fin
 
 Effectifs faibles : ces poids décrivent ce corpus, pas une certitude sur
 l’ensemble de la tradition.
+
+## Valeurs DS-T9b (parseur corrigé)
+
+Les champs `roles`, `second_ending` et `rhythm` des parties A et B sont les extraits
+proposés par `harmonium_lab/specs/001-trad-dataset/ds-t9b-profils-proposes.md`,
+appliqués tels quels. Ils dérivent des références régénérées
+(`references/structure/britannique_coloniale-hornpipe.json`) après correction du parseur ABC
+et des secondes fins mesurées par
+[`measure_endings.py`](../../specs/011-phase3-phrase/measure_endings.py), relancé sans
+modification. La formule est celle des valeurs précédentes (rejouée sur les anciennes
+références, elle les reproduit à l'identique). Les banques `cells.toml` ne sont pas
+régénérées.
 
 ## Espace et mixage V1
 
