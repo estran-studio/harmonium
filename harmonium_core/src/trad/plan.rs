@@ -13,14 +13,19 @@ pub enum ImposedRole {
     CadHalf,
     CopyOf(u8),
     CadFull,
+    CadOpen,
+    CadTonic,
+    SequenceOf { bar: u8, shift: i8 },
+    VariedEndOf(u8),
+    CopyOfPart { part: usize, bar: u8 },
 }
 impl ImposedRole {
     pub const fn forced_cell_role(self) -> Option<CellRole> {
         match self {
             Self::Open => Some(CellRole::Open),
             Self::CadHalf => Some(CellRole::CadHalf),
-            Self::CadFull => Some(CellRole::CadFull),
-            Self::Free | Self::CopyOf(_) => None,
+            Self::CadFull | Self::CadTonic => Some(CellRole::CadFull),
+            _ => None,
         }
     }
 }
@@ -37,6 +42,8 @@ pub struct TunePlan {
     pub key: PitchClass,
     pub mode: Mode,
     pub profile: Arc<StyleProfile>,
+    roles: Vec<Vec<ImposedRole>>,
+    roles_resolved: bool,
 }
 impl Default for TunePlan {
     fn default() -> Self {
@@ -48,7 +55,15 @@ impl TunePlan {
         Self::with_profile(key, mode, Arc::new(StyleProfile::default()))
     }
     pub fn with_profile(key: PitchClass, mode: Mode, profile: Arc<StyleProfile>) -> Self {
-        Self { key: key % 12, mode, profile }
+        let roles = profile
+            .form
+            .parts
+            .iter()
+            .map(|part| {
+                part.roles.iter().map(|role| role.fixed().unwrap_or(ImposedRole::Free)).collect()
+            })
+            .collect();
+        Self { key: key % 12, mode, profile, roles, roles_resolved: false }
     }
     pub fn draw(
         rng: &mut dyn RngCore,
@@ -77,6 +92,21 @@ impl TunePlan {
         }
         unreachable!("validated positive weights")
     }
+    /// Un seul tirage structurel par air ; les reprises ne consomment aucun aléa.
+    pub fn resolve_roles(&mut self, rng: &mut dyn RngCore) {
+        if self.roles_resolved {
+            return;
+        }
+        for (part, configured) in self.profile.form.parts.iter().enumerate() {
+            for (bar, role) in configured.roles.iter().enumerate() {
+                self.roles[part][bar] = role.draw(&self.profile.form, rng);
+            }
+        }
+        self.roles_resolved = true;
+    }
+    pub fn roles_for_part(&self, part: usize) -> &[ImposedRole] {
+        &self.roles[part]
+    }
     pub fn total_bars(&self) -> usize {
         self.profile.form.bars_per_tour()
     }
@@ -87,7 +117,7 @@ impl TunePlan {
             bar_in_strain: (offset + 1) as u8,
             pass: pass as u8,
             is_repeat: pass > 1,
-            role: self.profile.form.parts[part].roles[offset],
+            role: self.roles[part][offset],
         }
     }
     pub fn bar_role_1based(&self, bar: usize) -> BarRole {

@@ -57,3 +57,21 @@ Le type « gigue » existant dans les deux traditions, le tableau ci-dessous dé
 - **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), accords légers posés sur les temps 0 et 6.
 - **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les pulsations 0 et 6.
 - **Percussion** : Pistes Heel et Toe désactivées dans l'arrangement (pas de podorythmie).
+
+## Phrases probabilistes — DS-T9 / P3-T1
+
+Source : `harmonium_lab/references/structure/britannique_coloniale-jig.json`, champ `real`
+(statistiques DS-T9, corpus et droits dans le manifeste du labo).
+Les taux par mesure de `transformations` pilotent copies, séquences et fins variées ;
+les déplacements utilisent les effectifs `sequence_shifts` de la même position.
+Les repos toniques viennent de `phrases.rest_by_position` ; les autres longues
+fins servent de proxy de demi-cadence. Voir [le schéma et les limites](../README.md#phrases--rôles-pondérés-motifs-et-cadences).
+
+| Partie | Copie m.5←1 | Copie m.6←2 | Cadence tonique m.8 | Copie B:m.7←A:m.7 |
+|---|---:|---:|---:|---:|
+| A | 74.33 % | 52.67 % | 13.33 % | 0.00 % |
+| B | 49.65 % | 33.22 % | 18.18 % | 34.52 % |
+
+Poids arrondis sur 10 000 ; les mesures se tirent indépendamment.
+Les taux conjoints m.5–6 et les structures de paires restent des mesures de
+sortie, pas des garanties du profil. Banques de cellules inchangées.

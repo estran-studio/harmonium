@@ -353,9 +353,13 @@ impl TradGenerator {
                 || (matches!(
                     dynamics.mode_shift_boundary,
                     super::dynamics::ModeShiftBoundary::Phrase
-                ) && self.profile.form.parts[position.part.0].roles
-                    [position.bar_in_strain - 2]
-                    == ImposedRole::CadHalf))
+                ) && matches!(
+                    tune.plan.roles_for_part(position.part.0)[position.bar_in_strain - 2],
+                    ImposedRole::CadHalf
+                        | ImposedRole::CadFull
+                        | ImposedRole::CadTonic
+                        | ImposedRole::CadOpen
+                )))
             && target_dark != dark
         {
             mode = if target_dark {
@@ -877,7 +881,7 @@ impl TradGenerator {
         let role = tune.plan.bar_role(bar);
         let slot = usize::from(role.bar_in_strain) - 1;
         let length = self.profile.form.parts[role.strain.0].roles.len();
-        if !matches!(role.role, ImposedRole::CadHalf | ImposedRole::CadFull)
+        if !matches!(role.role, ImposedRole::CadHalf | ImposedRole::CadFull | ImposedRole::CadTonic)
             && (slot as f32 / length as f32) < threshold
         {
             let last = chords.len() - 1;
@@ -1082,7 +1086,7 @@ impl TradGenerator {
     ) -> ActiveTune {
         let dynamics = &self.tuning.profile.dynamics;
         let valence = self.musical_params.harmony_valence;
-        let plan = if valence == dynamics.neutral_valence {
+        let mut plan = if valence == dynamics.neutral_valence {
             match prev_plan {
                 None => TunePlan::draw(rng, None, self.profile.clone()),
                 Some(prev) => draw_next_tune_plan(prev, &self.tuning.profile.melody.params, rng),
@@ -1090,6 +1094,7 @@ impl TradGenerator {
         } else {
             dynamics.draw_color(valence, rng, self.profile.clone())
         };
+        plan.resolve_roles(rng);
         let mut fiddle_params = self.tuning.profile.melody.params.clone();
         let intensity = self.musical_params.intensity;
         fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
@@ -1333,19 +1338,27 @@ pub fn draw_next_tune_plan(
     _params: &ReelFiddleParams,
     rng: &mut dyn RngCore,
 ) -> TunePlan {
-    if rng.next_range_usize(0..2) == 0 { prev_plan } else { relative_tune_plan(prev_plan) }
+    if rng.next_range_usize(0..2) == 0 {
+        TunePlan::with_profile(prev_plan.key, prev_plan.mode, prev_plan.profile)
+    } else {
+        relative_tune_plan(prev_plan)
+    }
 }
 
 /// Calcule le [`TunePlan`] relatif (majeur ↔ mineur relatif à ±3 demi-tons) d'un plan donné.
 #[must_use]
 pub fn relative_tune_plan(plan: TunePlan) -> TunePlan {
-    let (key, mode) = match plan.mode {
-        Mode::Ionian => ((plan.key + 9) % 12, Mode::Aeolian),
-        Mode::Mixolydian => ((plan.key + 9) % 12, Mode::Dorian),
-        Mode::Aeolian => ((plan.key + 3) % 12, Mode::Ionian),
-        Mode::Dorian => ((plan.key + 3) % 12, Mode::Mixolydian),
-    };
+    let (key, mode) = relative_key_mode(plan.key, plan.mode);
     TunePlan::with_profile(key, mode, plan.profile)
+}
+
+fn relative_key_mode(key: PitchClass, mode: Mode) -> (PitchClass, Mode) {
+    match mode {
+        Mode::Ionian => ((key + 9) % 12, Mode::Aeolian),
+        Mode::Mixolydian => ((key + 9) % 12, Mode::Dorian),
+        Mode::Aeolian => ((key + 3) % 12, Mode::Ionian),
+        Mode::Dorian => ((key + 3) % 12, Mode::Mixolydian),
+    }
 }
 
 /// Nom anglo-saxon lisible d'une classe de hauteur (`0` = `"C"`, `2` = `"D"`, `6` = `"F#"`, etc.).
@@ -1392,7 +1405,9 @@ pub fn build_chord_context(chord: TradChord, key: PitchClass, mode: Mode) -> Cho
 /// Vérifie si `next` est soit identique à `prev`, soit sa relative.
 #[must_use]
 pub fn is_same_or_relative_plan(prev: TunePlan, next: TunePlan) -> bool {
-    next == prev || next == relative_tune_plan(prev)
+    next.profile == prev.profile
+        && ((next.key, next.mode) == (prev.key, prev.mode)
+            || (next.key, next.mode) == relative_key_mode(prev.key, prev.mode))
 }
 
 /// Degré de l'accord tonique pour les assertions de tests.

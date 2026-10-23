@@ -52,11 +52,188 @@ impl ProfileMeter {
         }
     }
 }
+/// Rôle fixe historique ou opération/tirage décrit dans le profil.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+pub enum ProfileRole {
+    Choice {
+        choose: Vec<WeightedRole>,
+    },
+    Sequence {
+        #[serde(rename = "SequenceOf")]
+        sequence: SequenceRole,
+    },
+    CrossPart {
+        #[serde(rename = "CopyOfPart")]
+        source: PartReference,
+    },
+    Fixed(ImposedRole),
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WeightedRole {
+    pub role: ProfileRole,
+    pub weight: u32,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DegreeShift {
+    pub degrees: i8,
+    pub weight: u32,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SequenceRole {
+    pub bar: u8,
+    pub shift: Vec<DegreeShift>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PartReference {
+    pub part: String,
+    pub bar: u8,
+}
+impl From<ImposedRole> for ProfileRole {
+    fn from(role: ImposedRole) -> Self {
+        Self::Fixed(role)
+    }
+}
+impl ProfileRole {
+    pub fn fixed(&self) -> Option<ImposedRole> {
+        match self {
+            Self::Fixed(role) => Some(*role),
+            _ => None,
+        }
+    }
+    fn needs_cell_role(&self, role: crate::trad::CellRole) -> bool {
+        match self {
+            Self::Fixed(fixed) => fixed.forced_cell_role() == Some(role),
+            Self::Choice { choose } => choose.iter().any(|c| c.role.needs_cell_role(role)),
+            _ => false,
+        }
+    }
+    fn uses_varied_end(&self) -> bool {
+        match self {
+            Self::Fixed(ImposedRole::VariedEndOf(_)) => true,
+            Self::Choice { choose } => choose.iter().any(|c| c.role.uses_varied_end()),
+            _ => false,
+        }
+    }
+    pub(crate) fn draw(
+        &self,
+        form: &ProfileForm,
+        rng: &mut dyn crate::algo::RngCore,
+    ) -> ImposedRole {
+        match self {
+            Self::Fixed(role) => *role,
+            Self::Choice { choose } => {
+                let index = draw_weight(choose.iter().map(|c| c.weight), rng);
+                choose[index].role.draw(form, rng)
+            }
+            Self::Sequence { sequence } => {
+                let index = draw_weight(sequence.shift.iter().map(|s| s.weight), rng);
+                ImposedRole::SequenceOf { bar: sequence.bar, shift: sequence.shift[index].degrees }
+            }
+            Self::CrossPart { source } => ImposedRole::CopyOfPart {
+                part: form.parts.iter().position(|p| p.name == source.part).unwrap_or(0),
+                bar: source.bar,
+            },
+        }
+    }
+    fn validate(
+        &self,
+        form: &ProfileForm,
+        part: usize,
+        bar: usize,
+        field: &str,
+    ) -> Result<(), ProfileError> {
+        let previous = |source: u8| {
+            check(
+                source > 0 && usize::from(source) <= bar,
+                field,
+                "référence antérieure 1-based requise",
+            )
+        };
+        match self {
+            Self::Choice { choose } => {
+                check(!choose.is_empty() && choose.len() <= 64, field, "1..64 choix requis")?;
+                check_weights(choose.iter().map(|c| c.weight), field)?;
+                for (index, choice) in choose.iter().enumerate() {
+                    check(
+                        !matches!(choice.role, Self::Choice { .. }),
+                        field,
+                        "choix imbriqués interdits",
+                    )?;
+                    choice.role.validate(
+                        form,
+                        part,
+                        bar,
+                        &format!("{field}.choose[{index}].role"),
+                    )?;
+                }
+                Ok(())
+            }
+            Self::Sequence { sequence } => {
+                previous(sequence.bar)?;
+                check(
+                    !sequence.shift.is_empty() && sequence.shift.len() <= 64,
+                    field,
+                    "1..64 décalages requis",
+                )?;
+                check(
+                    sequence.shift.iter().all(|s| (-14..=14).contains(&s.degrees)),
+                    field,
+                    "décalage attendu -14..14",
+                )?;
+                check_weights(sequence.shift.iter().map(|s| s.weight), field)
+            }
+            Self::CrossPart { source } => check(
+                form.parts[..part].iter().enumerate().any(|(index, p)| {
+                    p.name == source.part
+                        && source.bar > 0
+                        && usize::from(source.bar) <= p.roles.len()
+                        && form.sequence.iter().position(|&p| p == index)
+                            < form.sequence.iter().position(|&p| p == part)
+                }),
+                field,
+                "partie antérieure et mesure existante requises",
+            ),
+            Self::Fixed(ImposedRole::CopyOf(source) | ImposedRole::VariedEndOf(source)) => {
+                previous(*source)
+            }
+            Self::Fixed(ImposedRole::SequenceOf { .. } | ImposedRole::CopyOfPart { .. }) => Err(
+                ProfileError::new(field, "opération de motif attendue avec poids ou nom de partie"),
+            ),
+            Self::Fixed(_) => Ok(()),
+        }
+    }
+}
+fn check(ok: bool, field: &str, message: &str) -> Result<(), ProfileError> {
+    if ok { Ok(()) } else { Err(ProfileError::new(field, message)) }
+}
+fn check_weights(mut weights: impl Iterator<Item = u32>, field: &str) -> Result<(), ProfileError> {
+    let total = weights.try_fold(0u32, |sum, weight| sum.checked_add(weight));
+    check(total.is_some_and(|total| total > 0), field, "somme des poids positive dans u32 requise")
+}
+fn draw_weight(
+    weights: impl Iterator<Item = u32> + Clone,
+    rng: &mut dyn crate::algo::RngCore,
+) -> usize {
+    let total: u32 = weights.clone().sum();
+    let mut pick = rng.next_range_usize(0..total as usize) as u32;
+    for (index, weight) in weights.enumerate() {
+        if pick < weight {
+            return index;
+        }
+        pick -= weight;
+    }
+    unreachable!("validated positive weights")
+}
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfilePart {
     pub name: String,
-    pub roles: Vec<ImposedRole>,
+    pub roles: Vec<ProfileRole>,
     pub melody_center_offset: i8,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -314,9 +491,6 @@ impl StyleProfile {
         Ok(profile)
     }
     pub fn validate(&self) -> Result<(), ProfileError> {
-        let check = |ok: bool, field: &str, message: &str| {
-            if ok { Ok(()) } else { Err(ProfileError::new(field, message)) }
-        };
         check(
             !self.meta.id.is_empty()
                 && self
@@ -399,13 +573,7 @@ impl StyleProfile {
                 "attendu -24..24",
             )?;
             for (bar, role) in part.roles.iter().enumerate() {
-                if let ImposedRole::CopyOf(source) = role {
-                    check(
-                        *source > 0 && usize::from(*source) <= bar,
-                        &format!("{field}.roles[{bar}]"),
-                        "la copie doit viser une mesure précédente (1-based)",
-                    )?;
-                }
+                role.validate(&self.form, i, bar, &format!("{field}.roles[{bar}]"))?;
             }
         }
         check(
@@ -434,19 +602,37 @@ impl StyleProfile {
                 "longueur différente de cell_units",
             )?;
         }
-        for role in crate::trad::CellRole::ALL {
-            let needed = self
-                .form
-                .parts
+        if self.form.parts.iter().flat_map(|p| &p.roles).any(ProfileRole::uses_varied_end) {
+            let split = self.melody.cell_units / 2;
+            let endings = self
+                .melody
+                .cells
+                .cells
                 .iter()
-                .flat_map(|p| &p.roles)
-                .any(|r| r.forced_cell_role() == Some(role))
-                || matches!(
-                    role,
-                    crate::trad::CellRole::Run
-                        | crate::trad::CellRole::Arp
-                        | crate::trad::CellRole::Turn
-                );
+                .filter(|cell| matches!(cell.notes[split], crate::trad::CellNote::Degree(_)));
+            check(
+                split > 0
+                    && endings.clone().any(|a| {
+                        endings.clone().any(|b| {
+                            !crate::trad::fiddle::same_degree_classes(
+                                &a.notes[split..],
+                                &b.notes[split..],
+                            )
+                        })
+                    }),
+                "melody.cells",
+                "VariedEndOf exige deux fins distinctes avec attaque à mi-mesure",
+            )?;
+        }
+        for role in crate::trad::CellRole::ALL {
+            let needed =
+                self.form.parts.iter().flat_map(|p| &p.roles).any(|r| r.needs_cell_role(role))
+                    || matches!(
+                        role,
+                        crate::trad::CellRole::Run
+                            | crate::trad::CellRole::Arp
+                            | crate::trad::CellRole::Turn
+                    );
             check(
                 !needed
                     || self
@@ -767,7 +953,7 @@ mod tests {
         p.meter.steps_per_pulse = 0;
         assert_eq!(p.validate().unwrap_err().field, "meter.steps_per_pulse");
         p = StyleProfile::default();
-        p.form.parts[0].roles[0] = ImposedRole::CopyOf(1);
+        p.form.parts[0].roles[0] = ImposedRole::CopyOf(1).into();
         assert_eq!(p.validate().unwrap_err().field, "form.parts[0].roles[0]");
         p = StyleProfile::default();
         p.form.sequence.push(99);

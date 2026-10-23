@@ -10,7 +10,7 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
 | `[files]` | `cells`, `feet`, `arrangement`, `dynamics` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
-| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle par mesure : `Open`, `Free`, `CadHalf`, `CadFull`, `{CopyOf = n}` (mesure précédente 1-based). |
+| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Phrases »). |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight`. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"` ou `"jazz_functional"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; modes ionian, mixolydian, dorian, aeolian. Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). |
 | `[accompaniment]` | `strong_steps`, poids de vote et `tie_priority`, `bass_steps`, `chop_steps` en pas ; durées, vélocités et tessitures de basse/guitare. Le registre de basse jazz doit couvrir au moins 12 hauteurs consécutives. Pas d'option de voicing parcimonieux à ce stade (voir l'inventaire Legacy). |
@@ -23,6 +23,86 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Phrases : rôles pondérés, motifs et cadences
+
+Un rôle fixe reste valide sans consommer de nouveau tirage. Une alternative
+pondérée se tire une seule fois par mesure distincte de partie et par air,
+sur le `ChaCha8Rng` du générateur. Les reprises et les tours relisent ce choix ;
+une invalidation émotionnelle ne le retire pas.
+
+```toml
+roles = [
+  "Open",
+  "Free",
+  { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 2 }, { degrees = 2, weight = 1 }] } },
+  { VariedEndOf = 2 },
+  { choose = [{ role = { CopyOf = 1 }, weight = 53 }, { role = "Free", weight = 47 }] },
+  { CopyOf = 2 },
+  "Free",
+  { choose = [{ role = "CadTonic", weight = 22 }, { role = "CadHalf", weight = 8 }, { role = "CadOpen", weight = 70 }] },
+]
+```
+
+- `CopyOf = k` : copie exacte de la mesure antérieure `k` (1-based).
+- `SequenceOf` : mêmes attaques et durées, déplacement uniforme en degrés
+  diatoniques, dans le mode publié. `shift` est une distribution de décalages
+  `degrees` dans `-14..14`, sans degré zéro dans la notation des notes.
+  Une octave commune garde le contour dans la tessiture quand il y tient ;
+  le rendu replie par octave les notes qui dépassent, comme les autres cellules.
+- `VariedEndOf = k` : première moitié de `k`, deuxième moitié d'une autre
+  cellule de la banque, avec attaque au raccord et fin distincte même après
+  réduction des octaves. La banque doit offrir deux fins compatibles distinctes.
+- `{ CopyOfPart = { part = "A", bar = 7 } }` : copie exacte entre parties.
+  La partie référencée doit précéder la partie courante dans la déclaration
+  **et** lors de sa première occurrence dans `sequence`.
+- `Open`, `Free`, `CadHalf`, `CadFull` : rôles fixes historiques ;
+  `CadFull` conserve les cellules d'origine, levées de reprise comprises.
+- `CadTonic` : cellule cadentielle, dernier repos tonique tenu au moins deux
+  unités de cellule ; harmonie dominante–tonique. Une tenue tonique existante
+  est conservée, une levée éventuelle est absorbée par cette tenue.
+- `CadOpen` : cellule libre, fin non tonique dans le mode, sans accord imposé.
+  `CadHalf` conserve sa fin sur 2, 5 ou 7 et sa dominante harmonique.
+  Tous ces rôles cadentiels marquent une frontière de phrase pour le changement
+  de mode émotionnel, même si la cadence est ouverte.
+
+Poids entiers non négatifs, somme positive dans `u32`, au plus 64 choix ou
+décalages. Pas de choix imbriqué, de référence en avant ni d'auto-référence.
+Toutes les branches, même de poids zéro, sont validées avant génération.
+
+### Source des réglages distribués (P3-T1, contrat 11)
+
+Les README de profil citent les fichiers DS-T9 du labo et leurs champs `real`.
+Aux m.2/3/5, la référence locale est m.1 ; à m.6, m.2 ; à m.7, m.3.
+Les poids `exact`, `sequence`, `varied_ending` viennent de
+`real.transformations.<position>.rates`, arrondis sur 10 000 ; `Free` est le
+complément. Les déplacements reprennent les effectifs de `real.sequence_shifts`
+à la même position, sans inventer une distribution lorsqu'elle est absente.
+À B:m7, la copie de A:m7 utilise son taux `exact` mesuré ; les opérations locales
+se partagent le complément proportionnellement.
+
+Aux m.4/8, `CadTonic` utilise `tonic_cadence_rate` dans
+`real.phrases.rest_by_position`. Faute de classe harmonique finale dans DS-T9,
+`CadHalf` emploie **comme proxy**, et non comme mesure de demi-cadence,
+`max(0, long_final_rate - tonic_cadence_rate)` ; `CadOpen` reçoit le complément.
+Les tirages par position sont indépendants : les taux conjoints m.5–6 et les
+structures de paires ne sont pas imposés et doivent être remesurés au labo.
+Les banques rythmiques restent inchangées ; le rapport avant/après indique
+aussi leur entropie, qui n'est pas garantie meilleure par ce seul changement.
+
+### Reproduire le contrat historique à rôles fixes
+
+Remplacer `roles` dans chaque partie du reel par :
+
+```toml
+roles = ["Open", "Free", "Free", "CadHalf", { CopyOf = 1 }, { CopyOf = 2 }, "Free", "CadFull"]
+```
+
+Aucun drapeau de compatibilité ni second générateur : ces rôles ne consomment
+aucun tirage structurel. Le test `profile_d2_main_note_reference` compare ce
+profil à `profile_d2_fixed.json` (ancien main), et le profil distribué au nouveau
+`profile_d2_main.json`. Régénération explicite de la référence courante :
+`HARMONIUM_UPDATE_GOLDENS=1 cargo test -p harmonium-cli profile_d2_main_note_reference`.
 
 ## Modèle fonctionnel jazz
 

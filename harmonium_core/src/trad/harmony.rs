@@ -184,7 +184,7 @@ pub fn harmonize_bar(
     let mut chords: Vec<_> =
         (0..count).map(|slot| vote_half(melody, key, mode, slot, params, profile)).collect();
     match bar_role.role {
-        ImposedRole::CadFull => {
+        ImposedRole::CadFull | ImposedRole::CadTonic => {
             chords[0] = dominant(mode);
             chords[count - 1] = tonic(mode);
         }
@@ -288,8 +288,27 @@ mod tests {
             .collect()
     }
 
+    fn fixed_plan(mode: Mode) -> TunePlan {
+        let mut profile = StyleProfile::default();
+        for part in &mut profile.form.parts {
+            part.roles = [
+                ImposedRole::Open,
+                ImposedRole::Free,
+                ImposedRole::Free,
+                ImposedRole::CadHalf,
+                ImposedRole::CopyOf(1),
+                ImposedRole::CopyOf(2),
+                ImposedRole::Free,
+                ImposedRole::CadFull,
+            ]
+            .map(Into::into)
+            .to_vec();
+        }
+        TunePlan::with_profile(D, mode, std::sync::Arc::new(profile))
+    }
+
     fn role(bar_in_tune: usize) -> BarRole {
-        TunePlan::new(D, Mode::Ionian).bar_role(bar_in_tune)
+        fixed_plan(Mode::Ionian).bar_role(bar_in_tune)
     }
 
     fn free_role() -> BarRole {
@@ -443,7 +462,7 @@ mod tests {
 
     #[test]
     fn repeats_return_identical_chords() -> Result<(), TuneHarmonyError> {
-        let plan = TunePlan::new(D, Mode::Ionian);
+        let plan = fixed_plan(Mode::Ionian);
         let harmony =
             TuneHarmony::new(plan.clone(), &two_strain_melody(), &TradHarmonyParams::default())?;
         for bar in 0..32 {

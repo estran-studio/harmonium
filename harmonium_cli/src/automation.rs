@@ -236,9 +236,14 @@ mod tests {
         Ok(())
     }
 
-    /// D2 : contrat de notes capturé sur main 64266ff avant le refactor P2-T1.
+    /// Contrat courant et preuve D2 : les rôles fixes conservent l'ancien flux.
     #[test]
     fn profile_d2_main_note_reference() -> Result<()> {
+        profile_note_reference(false)?;
+        profile_note_reference(true)
+    }
+
+    fn profile_note_reference(fixed_roles: bool) -> Result<()> {
         let automation = Automation::from_toml(include_str!("../../demos/automation_combat.toml"))?;
         let mut runs = Vec::new();
         let mut count = 0;
@@ -256,6 +261,17 @@ mod tests {
                     seed,
                 );
 
+                if fixed_roles {
+                    use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
+                    let mut tuning = harmonium_core::TuningParams::default();
+                    for part in &mut tuning.profile.form.parts {
+                        part.roles =
+                            [Open, Free, Free, CadHalf, CopyOf(1), CopyOf(2), Free, CadFull]
+                                .map(Into::into)
+                                .to_vec();
+                    }
+                    composer.set_tuning(tuning);
+                }
                 composer.use_emotion_mode();
                 composer.set_emotions(0.5, 0.0, 0.5, 0.0);
                 let mut bars = Vec::new();
@@ -285,13 +301,18 @@ mod tests {
             }
         }
         let actual = serde_json::json!({
-            "source": "main:64266ff5b27284a6cd37dfb82c500325776f1cb0",
+            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0" } else { "TUNING_VERSION:11" },
             "runs": runs
         });
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/profile_d2_main.json");
+        let filename = if fixed_roles { "profile_d2_fixed.json" } else { "profile_d2_main.json" };
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(filename);
+        if !fixed_roles && std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_some() {
+            std::fs::write(&path, serde_json::to_string_pretty(&actual)?)?;
+        }
         let reference: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
         assert_eq!(actual, reference, "D2 : notes différentes de main");
-        println!("D2 : {count} notes comparées, 1000 mesures, 0 différence");
+        println!("D2 (rôles fixes = {fixed_roles}) : {count} notes comparées, 1000 mesures, 0 différence");
         Ok(())
     }
 }

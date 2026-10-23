@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{style_profile::StyleProfile, trad::harmony::ChordDegree};
 
-/// Version du contrat de génération : le profil embarqué est le moteur par défaut.
-pub const TUNING_VERSION: u32 = 10;
+/// Version du contrat : rôles de phrase et cadences probabilistes en données.
+pub const TUNING_VERSION: u32 = 11;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

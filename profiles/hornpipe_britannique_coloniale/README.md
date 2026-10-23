@@ -50,7 +50,7 @@ Le corpus de référence confirme sans ambiguïté la formule de conclusion trad
 | **Métrique et pulse** | 2/2 (Alla Breve), pulse à la blanche (2 temps de 8 pas) | **4/4**, pulse à la noire (**4 temps de 4 pas**) | 73 airs sur 77 sont notés en 4/4 dans le corpus de hornpipes britanniques. |
 | **Swing (rythme pointé)** | Swing léger (0.56, quasi-égal) | **Fort swing pointé : 0.65** (~1.86:1) | Caractéristique fondamentale du hornpipe britannique (« dotted hornpipe »). |
 | **Tempo à la noire** | 230.0 BPM (vif et continu) | **92.0 BPM** (plage 80–104) | Tempo de danse beaucoup plus lent, indispensable pour articuler le rythme pointé. |
-| **Cadence finale (m.8)** | Résolution en croches continues vers la tonique | **Trois noires accentuées** (temps 1, 2, 3) | Formule de cadence emblématique universelle du hornpipe dans le corpus. |
+| **Cadence finale (m.8)** | Type pondéré depuis DS-T9 | Type pondéré ; les cellules cadentielles conservent leurs tenues quand une cadence tonique est tirée | La formule en trois noires de la banque n'est plus imposée à chaque partie. |
 | **Levée d'intro** (`pickup_eighths`) | 2 croches (1 temps de blanche/demi-mesure en 2/2) | **2 croches = 1 noire** (71 airs sur 77 ont une anacrouse d'une noire) | `pickups_eighths` du labo : 92.2 % des hornpipes démarrent sur le 4ᵉ temps. |
 | **Accompagnement** | Chop guitare percussif (durée 1) sur contretemps 4 et 12 | **Accords simples soutenus** (durée 4) sur temps 1 et 3 (0 et 8) | Accompagnement mesuré sans contretemps syncopé. |
 | **Podorythmie** | Podorythmie québécoise omniprésente | **Aucune podorythmie** | Pratique absente des danses militaires et maritimes d'officiers britanniques. |
@@ -64,3 +64,21 @@ Le corpus de référence confirme sans ambiguïté la formule de conclusion trad
 - **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), accords tenus de noire (durée 4 pas) sur les temps 0 et 8.
 - **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les temps 0 et 8.
 - **Percussion** : Pistes Heel et Toe désactivées dans l'arrangement (pas de podorythmie).
+
+## Phrases probabilistes — DS-T9 / P3-T1
+
+Source : `harmonium_lab/references/structure/britannique_coloniale-hornpipe.json`, champ `real`
+(statistiques DS-T9, corpus et droits dans le manifeste du labo).
+Les taux par mesure de `transformations` pilotent copies, séquences et fins variées ;
+les déplacements utilisent les effectifs `sequence_shifts` de la même position.
+Les repos toniques viennent de `phrases.rest_by_position` ; les autres longues
+fins servent de proxy de demi-cadence. Voir [le schéma et les limites](../README.md#phrases--rôles-pondérés-motifs-et-cadences).
+
+| Partie | Copie m.5←1 | Copie m.6←2 | Cadence tonique m.8 | Copie B:m.7←A:m.7 |
+|---|---:|---:|---:|---:|
+| A | 84.75 % | 74.58 % | 6.78 % | 0.00 % |
+| B | 44.07 % | 28.81 % | 8.47 % | 42.11 % |
+
+Poids arrondis sur 10 000 ; les mesures se tirent indépendamment.
+Les taux conjoints m.5–6 et les structures de paires restent des mesures de
+sortie, pas des garanties du profil. Banques de cellules inchangées.
