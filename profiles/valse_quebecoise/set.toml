@@ -30,3 +30,9 @@ weight = 100
 [end]
 outro = true
 gap_bars = [{ bars = 0, weight = 1 }]
+
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 2.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.05]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 150.0

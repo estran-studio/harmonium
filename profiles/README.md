@@ -607,6 +607,36 @@ Les six profils de médley utilisent les propositions de raccord de l'étude §4
 outro ; les pauses restent à zéro faute d'écoute. La marche conserve son appel complet
 à chaque air, sans outro supplémentaire. Ces propositions **ne sont pas un ADR d'écoute**.
 
+### Rampe par air et priorité du jeu
+
+`[ramp]` (`[set.ramp]` inline) est optionnel. Les courbes `tempo_bpm` et
+`intensity_lift` couvrent 0..1, avec sorties finies non décroissantes, respectivement
+0..300 et 0..1. `gate` couvre 0..1, sorties 0..1, **zéro aux deux extrêmes**.
+`ceiling_bpm` est optionnel (défaut `meter.max_bpm`), entre `meter.min_bpm` et 300.
+Un set d'un seul air ou sans fin ne reçoit aucune rampe.
+
+La progression est `(tune_in_set − 1)/(tunes_in_set − 1)` : même palier pendant
+tout l'air, intro incluse, tant que les entrées du jeu restent constantes.
+L'intensité effective est `clamp(i + intensity_lift(p) × gate(i), 0, 1)` ;
+elle pilote les mêmes lectures de dynamique que l'intensité du jeu.
+Le tempo reçoit l'offset émotionnel puis `tempo_bpm(p) × gate(i)`, borné au plafond.
+Ni le lift d'intensité ni celui de tempo ne peuvent faire dépasser ce plafond ;
+le tempo des émotions seules n'est **jamais abaissé**, même s'il le dépasse déjà.
+À intensité 0 ou 1 : mêmes tempo et notes qu'en l'absence de rampe.
+
+`MusicComposer::set_bpm` marque `MusicalParams::bpm_explicit = true` :
+la valeur demandée gagne exactement, sans offset émotionnel ni lift de set.
+L'automation CLI `bpm` emprunte cette même API. `reset_bpm` rétablit le pilotage
+émotionnel et la rampe ; charger un profil remet aussi ce drapeau à `false`.
+Une commande tempo ou émotionnelle du jeu reste applicable pendant un air :
+le palier concerne la progression du **set**, pas le verrouillage du jeu.
+
+Valeurs proposées dans l'étude §4.5 : +8 bpm / +0,08 pour les reels, +6 / +0,08
+pour la gigue québécoise, +5 / +0,06 pour la gigue britannique, +3 / +0,05 pour
+le hornpipe, +2 / +0,05 pour la valse ; marche sans rampe. Borne proxy
+cap-bretonnaise, **pas une mesure québécoise ni une validation d'écoute**.
+
+
 
 ## Règles de phrase
 

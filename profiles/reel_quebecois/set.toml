@@ -38,3 +38,10 @@ weight = 10
 [end]
 outro = true
 gap_bars = [{ bars = 0, weight = 1 }]
+
+# Paliers de médley, borne Garner (+2,6 à +5,5 % pour les reels), étude §4.5.
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 8.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.08]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 240.0

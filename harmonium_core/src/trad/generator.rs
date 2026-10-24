@@ -142,11 +142,11 @@ impl TradGenerator {
         }
     }
 
-    fn feet_density(&self) -> u8 {
+    fn feet_density(&self, intensity: f32) -> u8 {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
         (f32::from(p.feet_density)
-            + d.feet_intensity.eval(p.intensity)
+            + d.feet_intensity.eval(intensity)
             + d.density_feet.eval(p.rhythm_density))
         .round()
         .clamp(0.0, 2.0) as u8
@@ -287,6 +287,38 @@ impl TradGenerator {
             .map_or((TransitionKind::Direct, 0), |u| self.profile.set.transition(u))
     }
 
+    fn ramp_progress(&self, tune_index: usize) -> Option<(&super::set::SetRamp, f32)> {
+        let (_, set) = self.set_of(tune_index)?;
+        if set.tunes() <= 1 {
+            return None;
+        }
+        Some((self.profile.set.ramp.as_ref()?, set.progress(tune_index)))
+    }
+
+    fn effective_intensity(&self, tune_index: usize) -> f32 {
+        let intensity = self.musical_params.intensity;
+        self.ramp_progress(tune_index).map_or(intensity, |(ramp, p)| {
+            ramp.effective_intensity(p, intensity)
+        })
+    }
+
+    fn tempo_for(&self, tune_index: usize) -> f32 {
+        let params = &self.musical_params;
+        if params.bpm_explicit {
+            return params.bpm;
+        }
+        let dynamics = &self.profile.dynamics;
+        let game_tempo = dynamics.tempo_for(params.bpm, params.intensity);
+        let Some((ramp, progress)) = self.ramp_progress(tune_index) else {
+            return game_tempo;
+        };
+        let ceiling = ramp.ceiling_bpm.unwrap_or(self.profile.meter.max_bpm);
+        let base = dynamics.tempo_for(params.bpm, self.effective_intensity(tune_index))
+            .max(game_tempo).min(ceiling.max(game_tempo));
+        let lift = ramp.tempo_bpm.eval(progress) * ramp.gate.eval(params.intensity);
+        base + lift.min((ceiling - base).max(0.0))
+    }
+
     /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
     /// lancé l'air (décompte aux pieds, vamp) continue au lieu de se taire quand
     /// le violon entre (écoute 2026-10-22).
@@ -331,11 +363,7 @@ impl TradGenerator {
 
         let time_sig = self.profile.meter.time_signature;
         let steps = self.profile.meter.steps_per_bar;
-        let tempo = self
-            .tuning
-            .profile
-            .dynamics
-            .tempo_for(self.musical_params.bpm, self.musical_params.intensity);
+        let tempo = self.tempo_for(position.tune_index);
 
         let mut measure = Measure::new(bar_index, time_sig, tempo, steps);
         measure.pulse = self.profile.meter.pulse_spec();
@@ -411,7 +439,7 @@ impl TradGenerator {
             let offset = if is_intro {
                 0.0
             } else {
-                self.profile.dynamics.chop_intensity.eval(self.musical_params.intensity)
+                self.profile.dynamics.chop_intensity.eval(self.effective_intensity(position.tune_index))
                     + self.profile.dynamics.density_chop.eval(self.musical_params.rhythm_density)
             };
             let seed =
@@ -626,7 +654,7 @@ impl TradGenerator {
                     let zero_humanize = vec![0i8; steps];
                     let (heel_notes, toe_notes) = feet_notes(
                         &tuning.profile.percussion,
-                        self.feet_density(),
+                        self.feet_density(self.effective_intensity(position.tune_index)),
                         steps,
                         &zero_humanize,
                     );
@@ -967,7 +995,7 @@ impl TradGenerator {
             );
             let (heel_notes, toe_notes) = feet_notes_with_cadence(
                 &self.tuning.profile.percussion,
-                self.feet_density(),
+                self.feet_density(self.effective_intensity(position.tune_index)),
                 measure.steps,
                 humanize,
                 is_cadence,
@@ -1115,14 +1143,17 @@ impl TradGenerator {
     fn apply_dynamics(&mut self, measure: &mut Measure) {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
+        let intensity = self.effective_intensity(
+            measure.position.map_or(0, |position| position.tune_index),
+        );
         let duration =
-            d.fiddle_duration.eval(p.intensity) * d.tension_duration.eval(p.harmony_tension);
-        let strong = d.strong_accent.eval(p.intensity)
+            d.fiddle_duration.eval(intensity) * d.tension_duration.eval(p.harmony_tension);
+        let strong = d.strong_accent.eval(intensity)
             + d.brightness_accent.eval(d.valence_input(p.harmony_valence));
         let offbeat = d.tension_offbeat.eval(p.harmony_tension);
         let chord_duration = d.tension_chord_duration.eval(p.harmony_tension);
         for (&track, notes) in &mut measure.tracks {
-            let velocity = d.velocity(track, p.intensity);
+            let velocity = d.velocity(track, intensity);
             for note in notes {
                 let accent = if track == TrackId::Melody {
                     if note.start_step % usize::from(measure.pulse.steps_per_pulse) == 0 {
@@ -1230,7 +1261,7 @@ impl TradGenerator {
             return Vec::new();
         };
         let d = &self.tuning.profile.dynamics;
-        let chop_offset = d.chop_intensity.eval(self.musical_params.intensity)
+        let chop_offset = d.chop_intensity.eval(self.effective_intensity(tune.tune_index))
             + d.density_chop.eval(self.musical_params.rhythm_density);
         let hits = &harmony.chords.pattern(chop_offset).hits;
         let mut guitarist = Guitarist::new();
@@ -1318,7 +1349,7 @@ impl TradGenerator {
         let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
         plan.resolve_roles(rng);
         let mut fiddle_params = self.tuning.profile.melody.params.clone();
-        let intensity = self.musical_params.intensity;
+        let intensity = self.effective_intensity(tune_index);
         fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
             * dynamics.run_weight.eval(intensity))
         .round()

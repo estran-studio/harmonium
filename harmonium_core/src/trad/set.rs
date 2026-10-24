@@ -5,7 +5,7 @@
 //! de la tonalité du prochain air) sont génériques ; aucun nom de style ici.
 use serde::{Deserialize, Serialize};
 
-use super::mode::Mode;
+use super::{mode::Mode, dynamics::Curve};
 use crate::{
     algo::RngCore,
     style_profile::{ProfileError, StyleProfile},
@@ -196,6 +196,48 @@ pub struct SetEnd {
     pub gap_bars: Vec<SetGap>,
 }
 
+/// Rampe par air ; aucune modulation continue à l'intérieur de l'air.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetRamp {
+    pub tempo_bpm: Curve,
+    pub intensity_lift: Curve,
+    pub gate: Curve,
+    /// Omission : plafond du mètre.
+    #[serde(default)]
+    pub ceiling_bpm: Option<f32>,
+}
+
+impl SetRamp {
+    fn validate(&self) -> Result<(), ProfileError> {
+        for (name, curve, max) in [
+            ("tempo_bpm", &self.tempo_bpm, 300.0),
+            ("intensity_lift", &self.intensity_lift, 1.0),
+            ("gate", &self.gate, 1.0),
+        ] {
+            let field = format!("set.ramp.{name}");
+            curve.validate(&field, 0.0, max)
+                .map_err(|message| ProfileError::new(&field, message))?;
+            if name != "gate" && curve.0.windows(2).any(|p| p[0][1] > p[1][1]) {
+                return Err(ProfileError::new(field, "rampe non décroissante requise"));
+            }
+        }
+        if self.gate.eval(0.0) != 0.0 || self.gate.eval(1.0) != 0.0 {
+            return Err(ProfileError::new("set.ramp.gate", "valeur nulle aux deux extrêmes requise"));
+        }
+        if self.ceiling_bpm.is_some_and(|bpm| !bpm.is_finite() || !(40.0..=300.0).contains(&bpm)) {
+            return Err(ProfileError::new("set.ramp.ceiling_bpm", "tempo fini dans 40..=300 requis"));
+        }
+        Ok(())
+    }
+
+    /// Intensité du set ajoutée sans diminuer ni dépasser les bornes du jeu.
+    #[must_use]
+    pub fn effective_intensity(&self, progress: f32, intensity: f32) -> f32 {
+        (intensity + self.intensity_lift.eval(progress) * self.gate.eval(intensity)).clamp(0.0, 1.0)
+    }
+}
+
 /// Section `[set]` du profil (`set.toml`). Section absente : un set sans fin, tous
 /// les facteurs à 1 ; chaque air se tire alors indépendamment du précédent.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -213,6 +255,9 @@ pub struct ProfileSet {
     /// Cadence et pause de fin de set.
     #[serde(default)]
     pub end: SetEnd,
+    /// Arc de tempo et d'énergie, optionnel.
+    #[serde(default)]
+    pub ramp: Option<SetRamp>,
 }
 
 impl ProfileSet {
@@ -295,6 +340,9 @@ impl ProfileSet {
                     "attendu 0..=MAX_INTRO_BARS",
                 ));
             }
+        }
+        if let Some(ramp) = &self.ramp {
+            ramp.validate()?;
         }
         Ok(())
     }
@@ -492,6 +540,14 @@ impl SetPlan {
     #[must_use]
     pub const fn tune_in_set(&self, tune_index: usize) -> usize {
         tune_index - self.first_tune + 1
+    }
+
+    /// Progression par paliers ; un air seul ou un set sans fin n'a pas de rampe.
+    #[must_use]
+    pub fn progress(&self, tune_index: usize) -> f32 {
+        if self.tunes <= 1 { 0.0 } else {
+            (self.tune_in_set(tune_index) - 1) as f32 / (self.tunes - 1) as f32
+        }
     }
 
     /// Vrai si `tune_in_set` est le dernier air d'un set fini.

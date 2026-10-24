@@ -542,15 +542,19 @@ impl MusicComposer {
 
     // === Parameter setters (called directly, no command queue) ===
 
+    /// Tempo direct du jeu : désactive l'offset émotionnel et la rampe de set.
     pub fn set_bpm(&mut self, bpm: f32) {
         let clamped = bpm.clamp(40.0, 300.0);
         self.bpm_override = Some(clamped);
         self.musical_params.bpm = clamped;
+        self.musical_params.bpm_explicit = true;
     }
 
+    /// Rend le tempo aux émotions et à la rampe de set.
     pub fn reset_bpm(&mut self) {
         self.bpm_override = None;
         self.musical_params.bpm = self.emotion_mapped_bpm;
+        self.musical_params.bpm_explicit = false;
     }
 
     pub fn set_time_signature(&mut self, numerator: usize, denominator: usize) {
@@ -571,6 +575,7 @@ impl MusicComposer {
         self.musical_params.bpm = meter.default_bpm;
         self.emotion_mapped_bpm = meter.default_bpm;
         self.bpm_override = None;
+        self.musical_params.bpm_explicit = false;
         self.musical_params.set_swing_ratio(meter.default_swing_ratio);
         self.musical_params.time_signature = meter.time_signature;
         self.musical_params.pulse = Some(meter.pulse_spec());
