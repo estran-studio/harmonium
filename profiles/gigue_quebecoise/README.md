@@ -114,3 +114,13 @@ Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est re
 Effectifs faibles (≤ 19 occurrences par type) : taux global seulement, pas de taux par mesure.
 
 Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).
+
+## Forme longue V7b
+
+`set.toml` : sets de 2 à 5 airs (poids 45·44·7·4, The Session), intro complète et entrées de pistes au premier air
+de chaque set seulement. Rapports observé / indépendance *jig → jig* de The Session (51 672 transitions).
+
+`same` 1,21 · `parallel` 0,90 · `relative` 0,98 · `fifth_up` 0,97 · `fourth_up` 1,06 · `step_up` 0,79 · `step_down` 0,74 · `other` 0,95 · `last_dark` 1,00.
+
+`last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
+[profiles/README.md](../README.md#forme-longue-set).

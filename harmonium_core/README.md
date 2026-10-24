@@ -23,7 +23,9 @@ l'accompagnement, la percussion, l'instrumentarium et les courbes émotionnelles
 overlays ne font pas partie du schéma. `TUNING_VERSION = 12` ajoute les secondes
 fins de reprise aux rôles de phrase et cadences probabilistes ; les goldens sont
 régénérés. Les rôles fixes d'origine, sans `second_ending`, reproduisent le
-contrat de notes antérieur sans second chemin.
+contrat de notes antérieur sans second chemin, à la version courante des tirages.
+`TUNING_VERSION = 19` ajoute les sets : un bloc de tirages (longueur du set, tonalité de chaque
+air) pris avant l'air 1 de chaque set (`set.toml`, module `trad::set`).
 
 ## Modules
 

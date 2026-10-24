@@ -7,9 +7,11 @@ use std::path::PathBuf;
 
 use harmonium_core::{
     timeline::{Measure, ScoreTimeline, TimelineNote, TrackId, write_midi},
-    trad::{CellBank, FIFTH_SEMITONES, FiddleLine, ImposedRole, TunePlan, same_cell_up_to_octave},
+    trad::{
+        CellBank, FIFTH_SEMITONES, FiddleLine, ImposedRole, TunePlan, same_cell_up_to_octave, set,
+    },
 };
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 const NUM_SEEDS: u64 = 20;
@@ -33,7 +35,9 @@ fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNot
         .map(Into::into)
         .to_vec();
     }
-    let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(profile));
+    let candidates = set::candidates(&profile, profile.dynamics.neutral_valence);
+    let (key, mode) = profile.set.choose(None, &candidates, false, rng.gen_range(0..1_000_000));
+    let plan = TunePlan::with_profile(key, mode, std::sync::Arc::new(profile));
     let line = FiddleLine::new(plan.clone(), &bank, &mut rng);
     let tune = line.render_tune();
     (plan, line, tune)

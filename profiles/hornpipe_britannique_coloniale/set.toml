@@ -1,0 +1,24 @@
+# Forme longue : un set est une suite d'airs de ce profil (même mètre, même forme).
+# Schéma et effet à l'oreille : profiles/README.md#forme-longue-set.
+
+# Nombre d'airs d'un set : distribution pondérée (The Session, 105 959 sets de 2 airs ou plus :
+# 2 airs 45,2 %, 3 : 44,3 %, 4 : 6,8 %, 5 et plus : 3,8 %, repliés sur 5).
+length = [
+  { tunes = 2, weight = 45 },
+  { tunes = 3, weight = 44 },
+  { tunes = 4, weight = 7 },
+  { tunes = 5, weight = 4 },
+]
+
+# Facteurs sur le poids de base de chaque tonalité candidate selon sa classe de transition
+# depuis l'air précédent. Rapports observé / indépendance, hornpipe → hornpipe (7 291 transitions, The Session).
+[key]
+same      = 1.16   # même tonique, même mode
+parallel  = 1.17   # même tonique, autre mode
+relative  = 0.85   # même collection diatonique, autre tonique
+fifth_up  = 0.97   # tonique +7 demi-tons
+fourth_up = 1.04   # tonique +5
+step_up   = 0.86   # tonique +2
+step_down = 0.74   # tonique −2
+other     = 0.73   # autre
+last_dark = 1.00   # neutre : effet de position non mesuré pour ce type

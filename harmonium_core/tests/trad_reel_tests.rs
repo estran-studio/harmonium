@@ -4,7 +4,7 @@ use harmonium_core::{
     params::{MusicalParams, PulseSpec},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{ReelArrangement, TradGenerator, TunePlan, is_same_or_relative_plan},
+    trad::{ReelArrangement, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -169,13 +169,6 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
                     "seed {seed}: m.8 1re moitié doit être sur V (+7 demi-tons)"
                 );
             }
-        }
-
-        // Tune 2 est dans la même tonalité ou la relative de Tune 1
-        let p1 = trad_gen.bar_info(1).map(|(p, _)| p);
-        let p2 = trad_gen.bar_info(33).map(|(p, _)| p);
-        if let (Some(plan1), Some(plan2)) = (p1, p2) {
-            assert!(is_same_or_relative_plan(plan1, plan2));
         }
     }
 }

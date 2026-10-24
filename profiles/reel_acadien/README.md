@@ -181,3 +181,13 @@ Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est re
 Le triolet de notes répétées (124) est plus fréquent que dans les autres reels.
 
 Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).
+
+## Forme longue V7b
+
+`set.toml` : sets de 2 à 5 airs (poids 45·44·7·4, The Session), intro complète et entrées de pistes au premier air
+de chaque set seulement. Racine carrée des rapports mesurés chez les artistes acadiens enregistrés (205 transitions, dominées par le Cap-Breton : même tonalité ×3,45 mesuré, ×1,86 retenu ; la dorien et mi dorien restent candidats).
+
+`same` 1,86 · `parallel` 1,42 · `relative` 0,60 · `fifth_up` 0,58 · `fourth_up` 0,66 · `step_up` 0,76 · `step_down` 0,66 · `other` 0,74 · `last_dark` 0,80.
+
+`last_dark` 0,80 : le dernier air d'un set finit plus souvent en majeur (28,9 % de modes mineurs contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels). Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
+[profiles/README.md](../README.md#forme-longue-set).

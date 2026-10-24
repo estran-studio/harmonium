@@ -64,8 +64,8 @@ impl Part {
 
 /// Position structurée d'une mesure dans la suite d'airs d'une session.
 ///
-/// Conventions : `tune_index` est 0-based (comme `ActiveTune::tune_index`) ;
-/// `tour`, `pass` et `bar_in_strain` sont 1-based, comme les numéros de mesure
+/// Conventions : `tune_index` et `set_index` sont 0-based (comme `ActiveTune::tune_index`) ;
+/// `tune_in_set`, `tour`, `pass` et `bar_in_strain` sont 1-based, comme les numéros de mesure
 /// du contrat. `bar_in_intro` vaut 0 pour les mesures de tour.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TunePosition {
@@ -73,6 +73,16 @@ pub struct TunePosition {
     pub section: Section,
     /// Indice 0-based de l'air dans la session.
     pub tune_index: usize,
+    /// Indice 0-based du set dans la session.
+    #[serde(default)]
+    pub set_index: usize,
+    /// Rang 1-based de l'air dans son set (1 : premier air, intro complète). Dans un set sans
+    /// fin (`tunes_in_set == 0`), compte les airs de la session.
+    #[serde(default)]
+    pub tune_in_set: usize,
+    /// Longueur du set, tirée au début du set et constante dans le set ; `0` : set sans fin.
+    #[serde(default)]
+    pub tunes_in_set: usize,
     /// Tour de l'air (`1..=tours`). 0 pour les mesures d'intro.
     pub tour: usize,
     /// Nombre de tours de cet air (`tour == tours` : dernier tour).
@@ -98,8 +108,7 @@ impl TunePosition {
     /// et que le premier air est précédé de `intro_bars` mesures d'intro.
     ///
     /// C'est l'unique conversion mesure → position du moteur trad.
-    /// Pour `each_tune = false`, passer `intro_bars` identique pour chaque air
-    /// (seul le premier a une intro) ; la fonction décale `bar` d'autant.
+    /// Passer `intro_bars` identique pour chaque air ; la fonction décale `bar` d'autant.
     #[must_use]
     pub fn at_bar(
         bar: usize,
@@ -125,6 +134,9 @@ impl TunePosition {
         Self {
             section: if intro { Section::Intro } else { Section::Tour },
             tune_index: zero / cycle,
+            set_index: 0,
+            tune_in_set: zero / cycle + 1,
+            tunes_in_set: 0,
             tour: if intro { 0 } else { (zero % cycle) / form.bars_per_tour() + 1 },
             tours,
             part: Part(part),
@@ -227,6 +239,7 @@ impl IntroForm {
 
 /// Configuration de l'intro (section `[intro]` de `reel_arrangement.toml`, P1-T11).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct IntroConfig {
     /// Formes d'intro avec poids de tirage.
     #[serde(default)]
@@ -234,9 +247,6 @@ pub struct IntroConfig {
     /// Nombre de croches de levée (0..=3).
     #[serde(default)]
     pub pickup_eighths: u8,
-    /// `true` : chaque air a une intro. `false` (défaut) : seul le premier air.
-    #[serde(default)]
-    pub each_tune: bool,
 }
 
 impl Default for IntroConfig {
@@ -248,7 +258,6 @@ impl Default for IntroConfig {
                 IntroForm { role: IntroRole::Vamp, weight: 1, bars: 2 },
             ],
             pickup_eighths: 2,
-            each_tune: false,
         }
     }
 }
@@ -257,17 +266,18 @@ impl IntroConfig {
     /// Aucune intro : pas de formes, pas de levée.
     #[must_use]
     pub const fn none() -> Self {
-        Self { forms: Vec::new(), pickup_eighths: 0, each_tune: false }
+        Self { forms: Vec::new(), pickup_eighths: 0 }
     }
 
-    /// Nombre total de mesures d'intro pour `tune_index` (0-based).
-    /// Retourne 0 si la config est vide ou si `each_tune = false` et `tune_index > 0`.
+    /// Nombre total de mesures d'intro d'un air.
+    /// `first_in_set` : premier air d'un set (intro complète) ; sinon seulement la levée
+    /// (1 mesure si `pickup_eighths > 0`, sinon 0). 0 si la config est vide.
     #[must_use]
-    pub fn bars_for_tune(&self, tune_index: usize, form_bars: usize) -> usize {
+    pub fn bars_for_tune(&self, first_in_set: bool, form_bars: usize) -> usize {
         if self.forms.is_empty() && self.pickup_eighths == 0 {
             return 0;
         }
-        if tune_index == 0 || self.each_tune {
+        if first_in_set {
             // Intro complète : forme + levée (la levée est dans la dernière mesure)
             form_bars
         } else {
@@ -425,8 +435,6 @@ impl std::error::Error for ArrangementError {}
 pub struct ReelArrangement {
     /// Nombre de tours AABB joués avant de tirer un nouvel air (`1..=`[`MAX_TOURS`]).
     pub tours_per_tune: usize,
-    /// `false` : à partir du 2ᵉ air, toutes les pistes jouent dès le début.
-    pub intro_each_tune: bool,
     /// Point d'entrée de chaque piste.
     pub entries: TrackEntries,
     /// Configuration des intros idiomatiques (P1-T11).
@@ -453,11 +461,10 @@ const fn default_tours_per_tune() -> i64 {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RawArrangement {
     #[serde(default = "default_tours_per_tune")]
     tours_per_tune: i64,
-    #[serde(default)]
-    intro_each_tune: bool,
     entries: std::collections::BTreeMap<String, RawEntry>,
     #[serde(default)]
     intro: IntroConfig,
@@ -505,12 +512,7 @@ impl TryFrom<RawArrangement> for ReelArrangement {
         let chords = take_optional(TrackId::Chords)?;
         let bass = take_optional(TrackId::Bass)?;
         let entries = TrackEntries { melody, chords, bass, heel, toe };
-        let table = Self {
-            tours_per_tune,
-            intro_each_tune: raw.intro_each_tune,
-            entries,
-            intro: raw.intro,
-        };
+        let table = Self { tours_per_tune, entries, intro: raw.intro };
         Ok(table)
     }
 }
@@ -533,7 +535,6 @@ impl ReelArrangement {
         let start = EntryPoint::from_start(first_part);
         Self {
             tours_per_tune,
-            intro_each_tune: false,
             entries: TrackEntries {
                 melody: start,
                 chords: Some(start),
@@ -600,7 +601,9 @@ impl ReelArrangement {
         self.entries.get(track).is_some()
     }
 
-    /// Vrai si l'arrangement autorise `track` à jouer à `position`.
+    /// Vrai si l'arrangement autorise `track` à jouer à `position`. Seul le premier air d'un set
+    /// (`tune_in_set == 1`) a des entrées progressives ; les suivants voient toutes les pistes
+    /// dès A1.
     ///
     /// Ne tient pas compte des drapeaux de jeu (`enable_*`), qui sont des
     /// plafonds appliqués par le générateur. Les pistes sont autorisées
@@ -615,7 +618,7 @@ impl ReelArrangement {
         if position.is_intro() {
             return true;
         }
-        if position.tune_index > 0 && !self.intro_each_tune {
+        if position.tune_in_set > 1 {
             return true;
         }
         let last_tour = self.tours_per_tune.max(1);
@@ -693,6 +696,9 @@ mod tests {
             TunePosition {
                 section: Section::Tour,
                 tune_index: 0,
+                set_index: 0,
+                tune_in_set: 1,
+                tunes_in_set: 0,
                 tour: 1,
                 tours: 3,
                 part: Part(0),
@@ -900,23 +906,6 @@ mod tests {
         let mut config = IntroConfig::default();
         config.pickup_eighths = 5;
         assert!(matches!(config.validate(), Err(ArrangementError::PickupEighthsOutOfRange(5))));
-    }
-
-    #[test]
-    fn intro_bars_for_tune_respects_each_tune() {
-        let config = IntroConfig { each_tune: false, pickup_eighths: 2, ..IntroConfig::default() };
-        // Tune 0: full intro (form bars)
-        assert_eq!(config.bars_for_tune(0, 1), 1);
-        // Tune 1+: only pickup bar
-        assert_eq!(config.bars_for_tune(1, 1), 1);
-        // No pickup → 0
-        let config_no_pickup = IntroConfig { pickup_eighths: 0, ..config.clone() };
-        assert_eq!(config_no_pickup.bars_for_tune(1, 1), 0);
-
-        // each_tune = true
-        let config_each = IntroConfig { each_tune: true, ..config.clone() };
-        assert_eq!(config_each.bars_for_tune(0, 2), 2);
-        assert_eq!(config_each.bars_for_tune(1, 2), 2);
     }
 
     #[test]

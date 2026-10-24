@@ -1,0 +1,25 @@
+# Forme longue : un set est une suite d'airs de ce profil (même mètre, même forme).
+# Schéma et effet à l'oreille : profiles/README.md#forme-longue-set.
+
+# Nombre d'airs d'un set : distribution pondérée (The Session, 105 959 sets de 2 airs ou plus :
+# 2 airs 45,2 %, 3 : 44,3 %, 4 : 6,8 %, 5 et plus : 3,8 %, repliés sur 5).
+length = [
+  { tunes = 2, weight = 45 },
+  { tunes = 3, weight = 44 },
+  { tunes = 4, weight = 7 },
+  { tunes = 5, weight = 4 },
+]
+
+# Facteurs sur le poids de base de chaque tonalité candidate selon sa classe de transition
+# depuis l'air précédent. Racine carrée des rapports mesurés chez les artistes acadiens enregistrés (205 transitions, dominées par
+# le Cap-Breton : même 3,45 mesuré, 1,86 retenu).
+[key]
+same      = 1.86   # même tonique, même mode
+parallel  = 1.42   # même tonique, autre mode
+relative  = 0.60   # même collection diatonique, autre tonique
+fifth_up  = 0.58   # tonique +7 demi-tons
+fourth_up = 0.66   # tonique +5
+step_up   = 0.76   # tonique +2
+step_down = 0.66   # tonique −2
+other     = 0.74   # autre
+last_dark = 0.80   # dernier air du set : facteur des modes sombres (28,9 % contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels)

@@ -1,4 +1,6 @@
 # Arrangement du reel : tours d'un air, entrées progressives (D11), et intros idiomatiques (P1-T11).
+# Les entrées progressives et l'intro complète ne concernent que le premier air de chaque set
+# (`set.toml`) ; les airs suivants du set voient toutes les pistes dès A1 et n'ont que la levée.
 #
 # Un air est joué `tours_per_tune` tours AABB de 32 mesures avant d'en tirer un
 # nouveau ; chaque tour rejoue la même ligne et la même harmonie.
@@ -14,10 +16,6 @@
 # l'autorise ET si le drapeau le permet.
 
 tours_per_tune = 3
-
-# `false` : à partir du 2ᵉ air, tout le monde joue dès A1 du tour 1.
-# `true`  : chaque air rejoue l'entrée progressive.
-intro_each_tune = false
 
 [entries]
 # Le violon part seul et fait la première phrase.
@@ -44,14 +42,13 @@ Toe = { tour = 2, part = 0, pass = 1 }
 # Toutes les formes incluent une levée (anacrouse) de `pickup_eighths` croches
 # à la fin de la dernière mesure d'intro, montant vers la première note de l'air.
 #
-# `each_tune` (défaut false) : si false, seul le premier air a une intro
-# complète ; les suivants enchaînent avec seulement la levée (comme dans un
-# vrai set). Si true, chaque air a son intro complète.
+# Seul le premier air d'un set a l'intro complète ; les suivants enchaînent avec
+# seulement la levée (comme dans un vrai set). Un profil où chaque air est son
+# propre set (`length = [{ tunes = 1, weight = 1 }]`) annonce chaque air en entier.
 # ---------------------------------------------------------------------------
 
 [intro]
 pickup_eighths = 2
-each_tune = false
 
 [[intro.forms]]
 role = "percussion"

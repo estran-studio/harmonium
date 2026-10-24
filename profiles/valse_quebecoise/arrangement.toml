@@ -1,7 +1,6 @@
 # Arrangement de la valse québécoise : tours d'un air, entrées progressives et intros idiomatiques.
 
 tours_per_tune = 3
-intro_each_tune = false
 
 [entries]
 Melody = { tour = 1, part = 0, pass = 1 }
@@ -12,7 +11,6 @@ Toe = { tour = 2, part = 0, pass = 1 }
 
 [intro]
 pickup_eighths = 2
-each_tune = false
 
 [[intro.forms]]
 role = "percussion"

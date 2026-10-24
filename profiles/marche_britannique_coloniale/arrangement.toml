@@ -1,10 +1,10 @@
 # Arrangement pour la marche britannique coloniale (fifre et tambour).
 #
 # Pas d'accords, pas de basse. Fifre et tambour jouent ensemble dès le début,
-# précédés par une mesure d'intro en décompte de tambour.
+# précédés par une mesure d'intro en décompte de tambour : chaque air est son propre set
+# (`set.toml`), donc annoncé en entier.
 
 tours_per_tune = 3
-intro_each_tune = true
 
 [entries]
 Melody = { tour = 1, part = 0, pass = 1 }
@@ -13,7 +13,6 @@ Toe = { tour = 1, part = 0, pass = 1 }
 
 [intro]
 pickup_eighths = 0
-each_tune = true
 
 [[intro.forms]]
 role = "percussion"

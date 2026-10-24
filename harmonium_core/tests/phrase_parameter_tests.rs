@@ -175,18 +175,6 @@ fn varied_end_keep_controls_exactly_the_preserved_prefix() {
     }
 }
 #[test]
-fn tune_transition_weights_control_published_color() {
-    for relative in [false, true] {
-        let mut p = fixture();
-        p.form.next_same_weight = u32::from(!relative);
-        p.form.next_relative_weight = u32::from(relative);
-        let s = stream(&p, 15, 33);
-        let a = s[0].position.unwrap();
-        let b = s[32].position.unwrap();
-        assert_eq!((a.key, a.mode) == (b.key, b.mode), !relative);
-    }
-}
-#[test]
 fn numeric_structure_controls_reach_the_snapshot_stream() {
     let controls: &[(&str, fn(&mut StyleProfile))] = &[
         ("avoid_adjacent", |p| p.form.avoid_adjacent = false),
@@ -249,10 +237,6 @@ fn invalid_structure_values_name_the_field() {
         ("form.varied_end_keep", |p| p.form.varied_end_keep = 1.0),
         ("form.cadence_min_units", |p| p.form.cadence_min_units = 0),
         ("form.cadence_search_from", |p| p.form.cadence_search_from = 1.1),
-        ("form.next_same_weight", |p| {
-            p.form.next_same_weight = 0;
-            p.form.next_relative_weight = 0;
-        }),
         ("form.parts[0].phrase_ends", |p| p.form.parts[0].phrase_ends = vec![9]),
         ("form.parts[0].rhythm[0]", |p| {
             p.form.parts[0].rhythm[0].patterns[0].durations = vec![0, 8]

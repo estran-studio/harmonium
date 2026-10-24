@@ -17,6 +17,7 @@ use super::{
     harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
     mode::Mode,
     plan::{BarRole, ImposedRole, TunePlan},
+    set::{KEY_DRAW_RANGE, SetPlan, candidates},
 };
 use crate::{
     algo::RngCore,
@@ -90,6 +91,8 @@ pub struct TradGenerator {
     pub tuning: TuningParams,
     /// Airs générés indexés par `tune_index` (`0` = mesures 1..=32×tours, etc.).
     tunes: BTreeMap<usize, Arc<ActiveTune>>,
+    /// Sets de la session, dans l'ordre ; chacun couvre des airs consécutifs.
+    sets: Vec<SetPlan>,
     profile: Arc<crate::style_profile::StyleProfile>,
     /// Compteur monotone d'identifiants de notes.
     next_note_id: NoteId,
@@ -106,6 +109,7 @@ impl TradGenerator {
             profile: Arc::new(tuning.profile.clone()),
             tuning,
             tunes: BTreeMap::new(),
+            sets: Vec::new(),
             next_note_id: 1,
             current_bar: 0,
         }
@@ -121,6 +125,7 @@ impl TradGenerator {
     pub fn invalidate_future(&mut self, playing_bar: usize) {
         let current_tune = self.position_of(playing_bar).tune_index;
         self.tunes.retain(|&index, _| index <= current_tune);
+        self.sets.retain(|set| set.first_tune() <= current_tune);
         for tune in self.tunes.values_mut() {
             let tune = Arc::make_mut(tune);
             tune.mode_changes.retain(|&bar, _| bar <= playing_bar);
@@ -145,6 +150,7 @@ impl TradGenerator {
             self.profile = Arc::new(tuning.profile.clone());
             self.tuning = tuning;
             self.tunes.clear();
+            self.sets.clear();
         }
     }
 
@@ -155,6 +161,7 @@ impl TradGenerator {
     /// exactement la séquence de tirages sur le RNG.
     pub fn reset_to_initial(&mut self) {
         self.tunes.clear();
+        self.sets.clear();
         self.current_bar = 0;
     }
 
@@ -218,6 +225,16 @@ impl TradGenerator {
                     &self.profile.form,
                 );
                 position.tune_index = tune_idx;
+                if let Some((set_index, set)) = self.set_of(tune_idx) {
+                    position.set_index = set_index;
+                    position.tune_in_set = set.tune_in_set(tune_idx);
+                    position.tunes_in_set = set.tunes();
+                } else {
+                    // Air pas encore construit : set provisoire, l'air ouvre un nouveau set.
+                    position.set_index = self.sets.len();
+                    position.tune_in_set = 1;
+                    position.tunes_in_set = 0;
+                }
                 return position;
             }
 
@@ -242,6 +259,16 @@ impl TradGenerator {
             || self.played_intro(track, position.tune_index);
         flag && entered
             && self.tuning.profile.dynamics.allows(track, self.musical_params.rhythm_density)
+    }
+
+    /// Set de l'air `tune_index` et son indice dans la session, s'il est déjà tiré.
+    fn set_of(&self, tune_index: usize) -> Option<(usize, &SetPlan)> {
+        self.sets.iter().enumerate().rev().find(|(_, set)| set.contains(tune_index))
+    }
+
+    /// Vrai si l'air `tune_index` ouvre un set : intro complète et entrées progressives.
+    fn is_first_in_set(&self, tune_index: usize) -> bool {
+        self.set_of(tune_index).map_or(tune_index == 0, |(_, set)| set.first_tune() == tune_index)
     }
 
     /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
@@ -1225,10 +1252,14 @@ impl TradGenerator {
                 return;
             }
             if !self.tunes.contains_key(&tune_idx) {
+                if self.set_of(tune_idx).is_none() {
+                    // Début d'un set : le bloc de tirages passe avant la construction de l'air 1.
+                    self.sets.push(SetPlan::draw(tune_idx, &self.tuning.profile.set, rng));
+                }
                 let prev = tune_idx.checked_sub(1).and_then(|prev_idx| self.tunes.get(&prev_idx));
-                let prev_plan = prev.map(|t| t.plan.clone());
+                let prev_key_mode = prev.map(|t| (t.plan.key, t.plan.mode));
                 let prev_first_cell = prev.map(|t| t.fiddle.cell_for_bar(0).clone());
-                let tune = self.build_tune(tune_idx, prev_plan, prev_first_cell, rng);
+                let tune = self.build_tune(tune_idx, prev_key_mode, prev_first_cell, rng);
                 self.tunes.insert(tune_idx, Arc::new(tune));
             }
             let intro_bars = self.tunes[&tune_idx].intro_info.intro_bars;
@@ -1250,20 +1281,14 @@ impl TradGenerator {
     fn build_tune(
         &self,
         tune_index: usize,
-        prev_plan: Option<TunePlan>,
+        prev_key_mode: Option<(PitchClass, Mode)>,
         prev_first_cell: Option<Cell>,
         rng: &mut dyn RngCore,
     ) -> ActiveTune {
         let dynamics = &self.tuning.profile.dynamics;
         let valence = self.musical_params.harmony_valence;
-        let mut plan = if valence == dynamics.neutral_valence {
-            match prev_plan {
-                None => TunePlan::draw(rng, None, self.profile.clone()),
-                Some(prev) => draw_next_tune_plan(prev, &self.tuning.profile.melody.params, rng),
-            }
-        } else {
-            dynamics.draw_color(valence, rng, self.profile.clone())
-        };
+        let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
+        let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
         plan.resolve_roles(rng);
         let mut fiddle_params = self.tuning.profile.melody.params.clone();
         let intensity = self.musical_params.intensity;
@@ -1392,11 +1417,42 @@ impl TradGenerator {
         }
     }
 
+    /// Tonalité de l'air `tune_index` parmi les candidats de la valence courante.
+    ///
+    /// Premier air d'un set : poids de base. Suivants : poids de base × facteur de classe de
+    /// la transition depuis `prev_key_mode`, avec le tirage fixé au début du set (un set sans
+    /// fin tire ici).
+    fn draw_key_mode(
+        &self,
+        tune_index: usize,
+        prev_key_mode: Option<(PitchClass, Mode)>,
+        valence: f32,
+        rng: &mut dyn RngCore,
+    ) -> (PitchClass, Mode) {
+        let candidates = candidates(&self.tuning.profile, valence);
+        let set = &self.tuning.profile.set;
+        let planned = self
+            .set_of(tune_index)
+            .map(|(_, set)| set)
+            .filter(|set| set.first_tune() != tune_index);
+        let (prev, last, u) = match (prev_key_mode, planned) {
+            (Some(prev), Some(plan)) => {
+                let tune_in_set = plan.tune_in_set(tune_index);
+                let u = plan
+                    .key_draw(tune_in_set)
+                    .unwrap_or_else(|| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32);
+                (Some(prev), plan.is_last(tune_in_set), u)
+            }
+            _ => (None, false, rng.next_range_usize(0..KEY_DRAW_RANGE) as u32),
+        };
+        set.choose(prev, &candidates, last, u)
+    }
+
     /// Tire une intro pour `tune_index` selon `IntroConfig` (P1-T11).
     ///
     /// - Tire une forme pondérée parmi `intro.forms`
     /// - Calcule les notes de levée ascendantes vers la première note de A1
-    /// - Respecte `each_tune` : tunes 1+ sans intro complète ont seulement la levée
+    /// - Seul le premier air d'un set a l'intro complète ; les suivants ont seulement la levée
     fn draw_intro(
         &self,
         tune_index: usize,
@@ -1407,11 +1463,8 @@ impl TradGenerator {
         let intro_config = &self.tuning.profile.arrangement.intro;
 
         // Tirage de la forme (seulement si forme complète nécessaire)
-        let form = if tune_index == 0 || intro_config.each_tune {
-            draw_intro_form(intro_config, rng)
-        } else {
-            None
-        };
+        let first_in_set = self.is_first_in_set(tune_index);
+        let form = if first_in_set { draw_intro_form(intro_config, rng) } else { None };
 
         let form_bars = form
             .map(|k| {
@@ -1424,7 +1477,7 @@ impl TradGenerator {
             })
             .unwrap_or(0);
 
-        let intro_bars = intro_config.bars_for_tune(tune_index, form_bars);
+        let intro_bars = intro_config.bars_for_tune(first_in_set, form_bars);
 
         // Calculer les notes de levée
         let pickup_notes = if intro_config.pickup_eighths > 0 && intro_bars > 0 {
@@ -1526,41 +1579,6 @@ fn compute_pickup_notes(target_midi: u8, count: u8, key: PitchClass, mode: Mode)
 // Fonctions existantes
 // ---------------------------------------------------------------------------
 
-/// Tire le [`TunePlan`] du tune suivant à partir du précédent :
-/// même tonalité/mode ou relatif, selon les poids du profil.
-#[must_use]
-pub fn draw_next_tune_plan(
-    prev_plan: TunePlan,
-    _params: &ReelFiddleParams,
-    rng: &mut dyn RngCore,
-) -> TunePlan {
-    if rng.next_range_usize(
-        0..(prev_plan.profile.form.next_same_weight + prev_plan.profile.form.next_relative_weight)
-            as usize,
-    ) < prev_plan.profile.form.next_same_weight as usize
-    {
-        TunePlan::with_profile(prev_plan.key, prev_plan.mode, prev_plan.profile)
-    } else {
-        relative_tune_plan(prev_plan)
-    }
-}
-
-/// Calcule le [`TunePlan`] relatif (majeur ↔ mineur relatif à ±3 demi-tons) d'un plan donné.
-#[must_use]
-pub fn relative_tune_plan(plan: TunePlan) -> TunePlan {
-    let (key, mode) = relative_key_mode(plan.key, plan.mode);
-    TunePlan::with_profile(key, mode, plan.profile)
-}
-
-fn relative_key_mode(key: PitchClass, mode: Mode) -> (PitchClass, Mode) {
-    match mode {
-        Mode::Ionian => ((key + 9) % 12, Mode::Aeolian),
-        Mode::Mixolydian => ((key + 9) % 12, Mode::Dorian),
-        Mode::Aeolian => ((key + 3) % 12, Mode::Ionian),
-        Mode::Dorian => ((key + 3) % 12, Mode::Mixolydian),
-    }
-}
-
 /// Nom anglo-saxon lisible d'une classe de hauteur (`0` = `"C"`, `2` = `"D"`, `6` = `"F#"`, etc.).
 #[must_use]
 pub const fn pitch_class_name(pc: PitchClass) -> &'static str {
@@ -1600,14 +1618,6 @@ pub fn build_chord_context(chord: TradChord, key: PitchClass, mode: Mode) -> Cho
         chord_name: trad_chord_name(chord, key, mode),
         scale_guidance: None,
     }
-}
-
-/// Vérifie si `next` est soit identique à `prev`, soit sa relative.
-#[must_use]
-pub fn is_same_or_relative_plan(prev: TunePlan, next: TunePlan) -> bool {
-    next.profile == prev.profile
-        && ((next.key, next.mode) == (prev.key, prev.mode)
-            || (next.key, next.mode) == relative_key_mode(prev.key, prev.mode))
 }
 
 /// Degré de l'accord tonique pour les assertions de tests.
@@ -1676,26 +1686,6 @@ mod tests {
         assert!((m1.swing_ratio - 0.56).abs() < f32::EPSILON);
         assert!((m1.tempo - 230.0).abs() < f32::EPSILON);
         assert!(!m1.chord_context.chord_name.is_empty());
-    }
-
-    #[test]
-    fn next_tune_is_same_or_relative_across_seeds() {
-        for seed in 0..20 {
-            let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let mut trad_gen = TradGenerator::new(make_reel_params(), make_reel_tuning_flat());
-            for bar in 1..=97 {
-                let _ = trad_gen.generate_measure(bar, &mut rng);
-            }
-            let tune1 = trad_gen.tune_for_bar(1).map(|t| t.plan.clone());
-            let tune2 = trad_gen.tune_for_bar(97).map(|t| t.plan.clone());
-            assert!(tune1.is_some() && tune2.is_some());
-            if let (Some(p1), Some(p2)) = (tune1, tune2) {
-                assert!(
-                    is_same_or_relative_plan(p1.clone(), p2.clone()),
-                    "seed {seed}: tune 2 ({p2:?}) n'est ni identique ni relatif à tune 1 ({p1:?})"
-                );
-            }
-        }
     }
 
     #[test]

@@ -253,7 +253,8 @@ mod tests {
         Ok(())
     }
 
-    /// Contrat courant et preuve D2 : les rôles fixes conservent l'ancien flux.
+    /// Contrat courant à `TUNING_VERSION` : rôles tirés, puis rôles fixes (accompagnement et
+    /// interprétation neutralisés, rôles historiques).
     #[test]
     fn profile_d2_main_note_reference() -> Result<()> {
         profile_note_reference(false)?;
@@ -335,13 +336,13 @@ mod tests {
             }
         }
         let actual = serde_json::json!({
-            "source": if fixed_roles { "main:64266ff5b27284a6cd37dfb82c500325776f1cb0".to_string() } else { format!("TUNING_VERSION:{}", harmonium_core::tuning::TUNING_VERSION) },
+            "source": if fixed_roles { format!("TUNING_VERSION:{}:fixed_roles", harmonium_core::tuning::TUNING_VERSION) } else { format!("TUNING_VERSION:{}", harmonium_core::tuning::TUNING_VERSION) },
             "runs": runs
         });
         let filename = if fixed_roles { "profile_d2_fixed.json" } else { "profile_d2_main.json" };
         let path =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(filename);
-        if !fixed_roles && std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_some() {
+        if std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_some() {
             std::fs::write(&path, serde_json::to_string(&actual)?)?;
         }
         let reference: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
