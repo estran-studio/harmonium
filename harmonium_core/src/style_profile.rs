@@ -452,7 +452,7 @@ pub struct StyleProfile {
     pub performance: crate::performance::Performance,
     #[serde(default)]
     pub ornaments: crate::ornaments::Ornaments,
-    /// Forme longue : longueur des sets et facteurs de transition de tonalité (`set.toml`).
+    /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
     pub set: crate::trad::set::ProfileSet,
 }
@@ -623,6 +623,13 @@ impl StyleProfile {
         self.performance.validate(self.meter.steps_per_bar)?;
         self.ornaments.validate()?;
         self.set.validate()?;
+        if let Some(ceiling) = self.set.ramp.as_ref().and_then(|ramp| ramp.ceiling_bpm) {
+            check(
+                ceiling >= self.meter.min_bpm,
+                "set.ramp.ceiling_bpm",
+                "plafond inférieur à meter.min_bpm",
+            )?;
+        }
         check(
             !self.meta.id.is_empty()
                 && self

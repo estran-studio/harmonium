@@ -264,6 +264,9 @@ pub struct MusicalParams {
     // ═══════════════════════════════════════════════════════════════════
     /// BPM direct (pas calculé depuis arousal)
     pub bpm: f32,
+    /// Commande directe du jeu : ni offset émotionnel ni rampe de set sur le tempo.
+    #[serde(default)]
+    pub bpm_explicit: bool,
 
     /// Time Signature (numerator/denominator)
     #[serde(default)]
@@ -497,6 +500,7 @@ impl Default for MusicalParams {
         Self {
             // Global
             bpm: profile.meter.default_bpm,
+            bpm_explicit: false,
             time_signature: profile.meter.time_signature,
             swing_ratio: profile.meter.default_swing_ratio,
             pulse: Some(profile.meter.pulse_spec()),

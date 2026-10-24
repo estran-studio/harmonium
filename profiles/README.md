@@ -17,10 +17,10 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
-| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités, fin accentuée. Consulter `reel_quebecois/arrangement.toml`. L'intro complète ne vient qu'au premier air de chaque set ; les suivants n'ont que la levée. |
+| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois des cinq pistes et EQ stéréo ; schéma et bornes ci-dessous. |
-| `[set]` (`set.toml`) | Longueur des sets et facteurs de classe de transition de tonalité ; section « Forme longue (set) » ci-dessous. |
+| `[set]` (`set.toml`) | Longueur, tonalités, raccords, clôture, rampe par air et mémoire signature ; section « Forme longue (set) » ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
@@ -512,19 +512,19 @@ reste décidée par la valence ; le set ne fait que **pondérer** des candidats 
 autorise (`melody.key_modes` à `neutral_valence`, `[[color]]` évalué à la valence ailleurs).
 
 - **Premier air d'un set** : intro complète (`[intro]`, formes pondérées et levée) et entrées
-  progressives des pistes (`[arrangement.entries]`). Les **airs suivants** n'ont que la levée et
-  toutes les pistes dès A1, comme dans un vrai set.
+  progressives des pistes (`[arrangement.entries]`). Les **airs suivants** utilisent le raccord
+  pondéré (`direct`, `call`, `held`, `silence`) puis toutes les pistes dès A1.
 - **Section absente** : un set sans fin ; tous les facteurs à 1, chaque air se tire indépendamment
   du précédent, intro complète et entrées au seul premier air de la session.
-- `set.toml` contient `length` et `[key]` à la racine du fichier, comme `arrangement.toml` contient
-  `tours_per_tune` et `[entries]`. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
+- `set.toml` contient `length`, `[key]`, `[ramp]`, `[signature]`, `[[transitions]]`, `[end]`
+  à la racine du fichier. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
   `arrangement.intro_each_tune` et `intro.each_tune` sont refusés au chargement (champ inconnu) :
   `length = [{ tunes = 1, weight = 1 }]` redonne une intro complète à chaque air.
 - **Tirages.** Au début de chaque set, **avant l'air 1**, le moteur tire la longueur du set puis un
-  tirage de tonalité par air 2..L (un set sans fin ne tire rien d'avance). Ces tirages sont convertis
-  en tonalité **à la construction de l'air**, avec les poids de la valence d'alors : si le jeu change
-  la valence entre deux airs, la tonalité suit la valence, mais la longueur du set et son plan ne
-  changent pas. Le premier air d'un set se tire sans facteur, comme tout air d'un profil sans `[set]`.
+  tirage par famille (tonalité, raccord, signature) pour chaque air 2..L, enfin la pause.
+  Un set sans fin ne tire rien d'avance. La tonalité se résout **à la construction de l'air** :
+  si le jeu change la valence entre deux airs, la tonalité la suit, mais le plan du set ne
+  change pas. Le premier air d'un set se tire sans facteur, comme tout air d'un profil sans `[set]`.
   Le poids de chaque candidat de l'air suivant est son poids de base × le facteur de la classe
   (précédent → candidat), classes testées dans l'ordre `same`, `parallel`, `relative`, puis
   l'intervalle de tonique ; **aucune tonalité n'est publiée hors des candidats**.
@@ -578,6 +578,93 @@ du set dans la session), `tune_in_set` (**1-based**, « air n° k du set » ; 1 
 compte les airs de la session). `tune_index` reste l'indice global. Les trois champs ont une valeur
 par défaut à la lecture : un JSON de snapshot antérieur à V7b se relit. L'export CLI les affiche
 (« set 2, air 1/3 ») et les écrit dans `measures[].measure.position` du JSON.
+
+### Raccords et clôture
+
+`[[transitions]]` dans `set.toml` (`[[set.transitions]]` en profil inline) contient
+`kind`, `weight` et, seulement pour `call` / `silence`, `bars` (1..=4).
+Les poids sont entiers, somme positive dans u32, au plus 64 entrées ; table absente :
+`direct`. Les tirages de raccord sont fixés dans le bloc initial du set, indépendamment
+des émotions et de la génération spéculative.
+
+| Forme | Rendu |
+|---|---|
+| `direct` | Levée seule, une mesure si `pickup_eighths > 0`, sinon aucune. |
+| `call` | `bars` mesures de percussion seule, puis la levée dans une mesure séparée. |
+| `silence` | `bars` mesures vides, puis la levée dans une mesure séparée. |
+| `held` | Dernière mesure de l'air précédent rendue par l'outro tonique existante ; puis levée. Aucun arrêt du lecteur. |
+
+`[end] outro = true` applique cette outro à la dernière mesure du dernier air du set.
+`gap_bars = [{ bars = 0, weight = 1 }]` est la distribution des pauses (0..=4 mesures),
+tirée au début du set ; elle précède l'intro complète du set suivant. Toutes ces mesures
+portent `Section::Intro` et la position de l'air suivant ; `held` reste la dernière mesure
+de l'air précédent. La grille et la pulse ne s'interrompent pas.
+Section `[end]` absente : aucune outro ni pause. Sans longueur de set : aucun raccord
+autre que la levée, aucune clôture. `end_after_tour` reste un arrêt demandé par le jeu
+à la fin de l'air courant, indépendant de cette clôture.
+
+Les six profils de médley ont une outro ; les pauses restent à zéro faute d'écoute.
+Reels et gigue québécoise : direct/call/held aux poids 70/20/10 ; valse : direct seul.
+Gigue et hornpipe britanniques : direct/held 90/10, **pas de call**, leur table de
+percussion étant volontairement vide. L'étude proposait 80/10/10 : cela produisait
+un silence, pas un appel ; aucun instrument ni pattern n'a été ajouté pour le masquer.
+La marche conserve son appel complet à chaque air, sans outro supplémentaire.
+Ces propositions **ne sont pas un ADR d'écoute**.
+
+### Rampe par air et priorité du jeu
+
+`[ramp]` (`[set.ramp]` inline) est optionnel. Les courbes `tempo_bpm` et
+`intensity_lift` couvrent 0..1, avec sorties finies non décroissantes, respectivement
+0..300 et 0..1. `gate` couvre 0..1, sorties 0..1, **zéro aux deux extrêmes**.
+`ceiling_bpm` est optionnel (défaut `meter.max_bpm`), entre `meter.min_bpm` et 300.
+Un set d'un seul air ou sans fin ne reçoit aucune rampe.
+
+La progression est `(tune_in_set − 1)/(tunes_in_set − 1)` : même palier pendant
+tout l'air, intro incluse, tant que les entrées du jeu restent constantes.
+L'intensité effective est `clamp(i + intensity_lift(p) × gate(i), 0, 1)` ;
+elle pilote les mêmes lectures de dynamique que l'intensité du jeu.
+Le tempo reçoit l'offset émotionnel puis `tempo_bpm(p) × gate(i)`, borné au plafond.
+Ni le lift d'intensité ni celui de tempo ne peuvent faire dépasser ce plafond ;
+le tempo des émotions seules n'est **jamais abaissé**, même s'il le dépasse déjà.
+À intensité 0 ou 1 : mêmes tempo et notes qu'en l'absence de rampe.
+
+`MusicComposer::set_bpm` marque `MusicalParams::bpm_explicit = true` :
+la valeur demandée gagne exactement, sans offset émotionnel ni lift de set.
+L'automation CLI `bpm` emprunte cette même API. `reset_bpm` rétablit le pilotage
+émotionnel et la rampe ; charger un profil remet aussi ce drapeau à `false`.
+Une commande tempo ou émotionnelle du jeu reste applicable pendant un air :
+le palier concerne la progression du **set**, pas le verrouillage du jeu.
+
+Valeurs proposées dans l'étude §4.5 : +8 bpm / +0,08 pour les reels, +6 / +0,08
+pour la gigue québécoise, +5 / +0,06 pour la gigue britannique, +3 / +0,05 pour
+le hornpipe, +2 / +0,05 pour la valse ; marche sans rampe. Borne proxy
+cap-bretonnaise, **pas une mesure québécoise ni une validation d'écoute**.
+
+### Air signature
+
+`[signature] return_rate = 0.17, memory = 3` (`[set.signature]` inline) reprend
+le taux de 16,7 % d'airs déjà posés par le même membre dans un set antérieur
+(The Session, étude §3.2). Probabilité finie 0..1, mémoire 0..16 airs ; absence,
+taux zéro ou mémoire zéro : aucun retour.
+
+Comme le bloc de l'étude §4.3, un tirage par air **2..L** est fixé au début du set.
+Le premier air est neuf ; le premier set n'a pas encore de mémoire. Le taux s'applique
+donc aux occasions éligibles, **pas à tous les airs de session** (mesurer séparément
+les deux dénominateurs). Les `memory` dernières occurrences des sets précédents
+sont examinées, puis filtrées par le poids de tonalité/mode à la valence courante
+(strictement positif). Un matériel déjà joué dans le set courant est exclu aussi.
+L'index vient de `floor((u / return_rate) × nombre_éligible)`, sans nouveau tirage.
+
+Le moteur réutilise le `TunePlan` résolu et la `FiddleLine` écrite, **pas une graine** :
+un changement d'intensité ou de registre émotionnel ne réécrit pas la mélodie.
+La couleur parallèle et la dynamique restent pilotées par le jeu ; harmonie,
+accompagnement, intro et interprétation sont recalculés pour l'état courant.
+La fenêtre de mémoire référence les airs déjà conservés pour la position et le seek :
+pas de deuxième copie, et `invalidate_future` retire automatiquement les futurs retours.
+Le rejeu depuis la mesure 1 reconstruit la même mémoire.
+
+
+
 
 ## Règles de phrase
 

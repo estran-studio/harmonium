@@ -57,6 +57,7 @@ fn arranged() -> StyleProfile {
     p.arrangement =
         harmonium_core::trad::ReelArrangement::from_start(2, harmonium_core::trad::Part(0));
     p.arrangement.intro = harmonium_core::trad::IntroConfig::none();
+    p.set = Default::default();
     p
 }
 

@@ -24,6 +24,7 @@ fn recipe(name: &str) -> StyleProfile {
     let mut profile = StyleProfile::from_toml(&toml::to_string(&profile).unwrap()).unwrap();
     profile.arrangement = ReelArrangement::from_start(2, Part(0));
     profile.arrangement.intro = IntroConfig::none();
+    profile.set = Default::default();
     profile
 }
 

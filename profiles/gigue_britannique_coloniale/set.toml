@@ -22,3 +22,25 @@ step_up   = 0.79   # tonique +2
 step_down = 0.74   # tonique −2
 other     = 0.95   # autre
 last_dark = 1.00   # neutre : effet de position non mesuré pour ce type
+
+# Pas d'appel : ce profil n'a aucun matériel de percussion. Raccords à valider à l'oreille.
+[[transitions]]
+kind = "direct"
+weight = 90
+[[transitions]]
+kind = "held"
+weight = 10
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]
+
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 5.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.06]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 168.0
+
+[signature]
+return_rate = 0.17
+memory = 3

@@ -22,3 +22,31 @@ step_up   = 0.91   # tonique +2
 step_down = 0.73   # tonique −2
 other     = 0.75   # autre
 last_dark = 0.80   # dernier air du set : facteur des modes sombres (28,9 % contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels)
+
+# Raccords proposés par l'étude §4.5, à valider à l'oreille (non mesurés dans le corpus).
+[[transitions]]
+kind = "direct"
+weight = 70
+[[transitions]]
+kind = "call"
+weight = 20
+bars = 1
+[[transitions]]
+kind = "held"
+weight = 10
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]
+
+# Paliers de médley, borne Garner (+2,6 à +5,5 % pour les reels), étude §4.5.
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 8.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.08]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 240.0
+
+# The Session : 16,7 % d'airs déjà posés dans un set antérieur du même membre (§3.2).
+[signature]
+return_rate = 0.17
+memory = 3

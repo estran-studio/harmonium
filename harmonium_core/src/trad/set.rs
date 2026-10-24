@@ -1,11 +1,11 @@
 //! Forme longue : un set est une suite d'airs d'un même profil (même mètre, même forme).
 //!
-//! Ce module porte le schéma `[set]` du profil (`set.toml`) : longueur des sets et
-//! facteurs de classe de transition de tonalité. Les algorithmes (classes, résolution
-//! de la tonalité du prochain air) sont génériques ; aucun nom de style ici.
+//! Schéma `[set]` (`set.toml`) : longueur, tonalités, raccords, clôture, rampe et
+//! mémoire d'airs signature. Tous les mécanismes restent génériques, en dehors
+//! du callback audio.
 use serde::{Deserialize, Serialize};
 
-use super::mode::Mode;
+use super::{dynamics::Curve, mode::Mode};
 use crate::{
     algo::RngCore,
     style_profile::{ProfileError, StyleProfile},
@@ -157,6 +157,102 @@ impl SetKey {
     }
 }
 
+/// Mécanisme de raccord entre deux airs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransitionKind {
+    #[default]
+    Direct,
+    Call,
+    Held,
+    Silence,
+}
+
+/// Transition pondérée ; `bars` est réservé à l'appel et au silence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetTransition {
+    pub kind: TransitionKind,
+    pub weight: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bars: Option<usize>,
+}
+
+/// Pause pondérée après un set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetGap {
+    pub bars: usize,
+    pub weight: u32,
+}
+
+/// Clôture d'un set fini.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetEnd {
+    #[serde(default)]
+    pub outro: bool,
+    #[serde(default)]
+    pub gap_bars: Vec<SetGap>,
+}
+
+/// Rampe par air ; aucune modulation continue à l'intérieur de l'air.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetRamp {
+    pub tempo_bpm: Curve,
+    pub intensity_lift: Curve,
+    pub gate: Curve,
+    /// Omission : plafond du mètre.
+    #[serde(default)]
+    pub ceiling_bpm: Option<f32>,
+}
+
+impl SetRamp {
+    fn validate(&self) -> Result<(), ProfileError> {
+        for (name, curve, max) in [
+            ("tempo_bpm", &self.tempo_bpm, 300.0),
+            ("intensity_lift", &self.intensity_lift, 1.0),
+            ("gate", &self.gate, 1.0),
+        ] {
+            let field = format!("set.ramp.{name}");
+            curve
+                .validate(&field, 0.0, max)
+                .map_err(|message| ProfileError::new(&field, message))?;
+            if name != "gate" && curve.0.windows(2).any(|p| p[0][1] > p[1][1]) {
+                return Err(ProfileError::new(field, "rampe non décroissante requise"));
+            }
+        }
+        if self.gate.eval(0.0) != 0.0 || self.gate.eval(1.0) != 0.0 {
+            return Err(ProfileError::new(
+                "set.ramp.gate",
+                "valeur nulle aux deux extrêmes requise",
+            ));
+        }
+        if self.ceiling_bpm.is_some_and(|bpm| !bpm.is_finite() || !(40.0..=300.0).contains(&bpm)) {
+            return Err(ProfileError::new(
+                "set.ramp.ceiling_bpm",
+                "tempo fini dans 40..=300 requis",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Intensité du set ajoutée sans diminuer ni dépasser les bornes du jeu.
+    #[must_use]
+    pub fn effective_intensity(&self, progress: f32, intensity: f32) -> f32 {
+        (intensity + self.intensity_lift.eval(progress) * self.gate.eval(intensity)).clamp(0.0, 1.0)
+    }
+}
+
+/// Retour de matériel des derniers airs des sets précédents.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetSignature {
+    pub return_rate: f32,
+    pub memory: usize,
+}
+
 /// Section `[set]` du profil (`set.toml`). Section absente : un set sans fin, tous
 /// les facteurs à 1 ; chaque air se tire alors indépendamment du précédent.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -168,16 +264,20 @@ pub struct ProfileSet {
     /// Facteurs de classe de transition de tonalité.
     #[serde(default)]
     pub key: SetKey,
+    /// Raccords des airs 2..L ; vide : levée seule.
+    #[serde(default)]
+    pub transitions: Vec<SetTransition>,
+    /// Cadence et pause de fin de set.
+    #[serde(default)]
+    pub end: SetEnd,
+    /// Arc de tempo et d'énergie, optionnel.
+    #[serde(default)]
+    pub ramp: Option<SetRamp>,
+    #[serde(default)]
+    pub signature: SetSignature,
 }
 
 impl ProfileSet {
-    /// Vrai si chaque air est son propre set : l'air est annoncé en entier à chaque fois.
-    #[must_use]
-    pub fn is_one_tune_per_set(&self) -> bool {
-        !self.length.is_empty()
-            && self.length.iter().filter(|entry| entry.weight > 0).all(|entry| entry.tunes == 1)
-    }
-
     /// Validation avec le chemin du champ fautif (`set.key.same`, `set.length[2].weight`…).
     pub fn validate(&self) -> Result<(), ProfileError> {
         if self.length.len() > MAX_SET_LENGTH_ENTRIES {
@@ -226,8 +326,85 @@ impl ProfileSet {
                 "au moins un facteur de classe positif requis",
             ));
         }
+        let max_bars = super::arrangement::MAX_INTRO_BARS;
+        validate_weights("set.transitions", self.transitions.iter().map(|t| t.weight))?;
+        for (index, transition) in self.transitions.iter().enumerate() {
+            let valid = match transition.kind {
+                TransitionKind::Call | TransitionKind::Silence => {
+                    transition.bars.is_some_and(|bars| (1..=max_bars).contains(&bars))
+                }
+                TransitionKind::Direct | TransitionKind::Held => transition.bars.is_none(),
+            };
+            if !valid {
+                return Err(ProfileError::new(
+                    format!("set.transitions[{index}].bars"),
+                    "1..=MAX_INTRO_BARS pour call/silence ; absent pour direct/held",
+                ));
+            }
+        }
+        validate_weights("set.end.gap_bars", self.end.gap_bars.iter().map(|g| g.weight))?;
+        for (index, gap) in self.end.gap_bars.iter().enumerate() {
+            if gap.bars > max_bars {
+                return Err(ProfileError::new(
+                    format!("set.end.gap_bars[{index}].bars"),
+                    "attendu 0..=MAX_INTRO_BARS",
+                ));
+            }
+        }
+        if let Some(ramp) = &self.ramp {
+            ramp.validate()?;
+        }
+        if !self.signature.return_rate.is_finite()
+            || !(0.0..=1.0).contains(&self.signature.return_rate)
+        {
+            return Err(ProfileError::new(
+                "set.signature.return_rate",
+                "probabilité finie dans 0..=1 requise",
+            ));
+        }
+        if self.signature.memory > MAX_SET_TUNES {
+            return Err(ProfileError::new("set.signature.memory", "attendu 0..=16"));
+        }
         Ok(())
     }
+
+    /// Résout le raccord sans tirer de nouvel aléa.
+    #[must_use]
+    pub fn transition(&self, u: u32) -> (TransitionKind, usize) {
+        weighted_index(self.transitions.iter().map(|t| t.weight), u).map_or(
+            (TransitionKind::Direct, 0),
+            |index| {
+                let t = self.transitions[index];
+                (t.kind, t.bars.unwrap_or(0))
+            },
+        )
+    }
+
+    /// Résout la pause de fin de set.
+    #[must_use]
+    pub fn gap_bars(&self, u: u32) -> usize {
+        weighted_index(self.end.gap_bars.iter().map(|g| g.weight), u)
+            .map_or(0, |index| self.end.gap_bars[index].bars)
+    }
+}
+
+fn weighted_index(weights: impl Iterator<Item = u32> + Clone, u: u32) -> Option<usize> {
+    let total: u64 = weights.clone().map(u64::from).sum();
+    let mut remaining = u64::from(u) * total / KEY_DRAW_RANGE as u64;
+    weights.enumerate().find_map(|(index, weight)| {
+        let hit = remaining < u64::from(weight);
+        remaining = remaining.saturating_sub(u64::from(weight));
+        hit.then_some(index)
+    })
+}
+
+fn validate_weights(field: &str, weights: impl Iterator<Item = u32>) -> Result<(), ProfileError> {
+    let (count, total) = weights.fold((0usize, 0u64), |(n, sum), w| (n + 1, sum + u64::from(w)));
+    if count > MAX_SET_LENGTH_ENTRIES || (count > 0 && !(1..=u64::from(u32::MAX)).contains(&total))
+    {
+        return Err(ProfileError::new(field, "au plus 64 entrées, somme positive dans u32"));
+    }
+    Ok(())
 }
 
 /// Résolution d'un tirage uniforme `0..UNIT` en tonalité (même précision partout).
@@ -331,15 +508,25 @@ pub struct SetPlan {
     first_tune: usize,
     tunes: usize,
     key_draws: Vec<u32>,
+    transition_draws: Vec<u32>,
+    signature_draws: Vec<u32>,
+    gap_draw: u32,
 }
 
 impl SetPlan {
-    /// Tire le bloc d'un set qui commence à l'air `first_tune` (0-based) : la longueur, puis un
-    /// tirage de tonalité pour chacun des airs 2..=L.
+    /// Tire au début du set : longueur L, puis les L−1 tirages de tonalité,
+    /// de raccord et de signature (par famille), enfin un tirage de pause.
     pub fn draw(first_tune: usize, set: &ProfileSet, rng: &mut dyn RngCore) -> Self {
         let total: u64 = set.length.iter().map(|entry| u64::from(entry.weight)).sum();
         if total == 0 {
-            return Self { first_tune, tunes: 0, key_draws: Vec::new() };
+            return Self {
+                first_tune,
+                tunes: 0,
+                key_draws: Vec::new(),
+                transition_draws: Vec::new(),
+                signature_draws: Vec::new(),
+                gap_draw: 0,
+            };
         }
         let mut remaining = rng.next_range_usize(0..total as usize) as u64;
         let tunes = set
@@ -353,7 +540,12 @@ impl SetPlan {
             .map_or(1, |entry| entry.tunes);
         let key_draws =
             (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
-        Self { first_tune, tunes, key_draws }
+        let transition_draws =
+            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        let signature_draws =
+            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        let gap_draw = rng.next_range_usize(0..KEY_DRAW_RANGE) as u32;
+        Self { first_tune, tunes, key_draws, transition_draws, signature_draws, gap_draw }
     }
 
     /// Indice 0-based du premier air du set dans la session.
@@ -381,6 +573,16 @@ impl SetPlan {
         tune_index - self.first_tune + 1
     }
 
+    /// Progression par paliers ; un air seul ou un set sans fin n'a pas de rampe.
+    #[must_use]
+    pub fn progress(&self, tune_index: usize) -> f32 {
+        if self.tunes <= 1 {
+            0.0
+        } else {
+            (self.tune_in_set(tune_index) - 1) as f32 / (self.tunes - 1) as f32
+        }
+    }
+
     /// Vrai si `tune_in_set` est le dernier air d'un set fini.
     #[must_use]
     pub const fn is_last(&self, tune_in_set: usize) -> bool {
@@ -391,6 +593,24 @@ impl SetPlan {
     #[must_use]
     pub fn key_draw(&self, tune_in_set: usize) -> Option<u32> {
         self.key_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Tirage de raccord de l'air de rang `tune_in_set` (≥ 2).
+    #[must_use]
+    pub fn transition_draw(&self, tune_in_set: usize) -> Option<u32> {
+        self.transition_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Tirage de retour de l'air de rang `tune_in_set` (≥ 2).
+    #[must_use]
+    pub fn signature_draw(&self, tune_in_set: usize) -> Option<u32> {
+        self.signature_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Pause choisie pour la fin de ce set.
+    #[must_use]
+    pub fn gap_bars(&self, set: &ProfileSet) -> usize {
+        if self.tunes == 0 { 0 } else { set.gap_bars(self.gap_draw) }
     }
 }
 

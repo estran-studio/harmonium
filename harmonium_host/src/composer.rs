@@ -329,14 +329,21 @@ impl MusicComposer {
         }
     }
 
-    /// Drain the return ring: unmark returned bars (epoch-matched, so a
-    /// republished bar is never unmarked by its stale copy) and drop the
-    /// boxes here, on the main thread. Called from `generate_ahead` and
-    /// every control point that changes what playback should hold.
+    /// Libère les Box sur le thread principal ; seules les mesures futures
+    /// rendues sont à republier. L'acquittement de la mesure en cours reste
+    /// jusqu'à l'avancée du transport, même si son dernier pas a déjà rendu sa Box.
     fn drain_returned(&mut self) {
+        let playing_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
+        self.published.retain(|&bar, _| bar >= playing_bar);
         while let Ok(returned) = self.return_rx.pop() {
             let bar = returned.measure.index;
-            if self.published.get(&bar).is_some_and(|epoch| *epoch == returned.epoch) {
+            // La Box peut être rendue dès l'entrée du dernier pas, avant que sa fin
+            // publie la mesure suivante. Garder l'acquittement de cette mesure :
+            // la republier remplirait la fenêtre audio de copies déjà jouées.
+            let playing_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
+            if bar > playing_bar
+                && self.published.get(&bar).is_some_and(|epoch| *epoch == returned.epoch)
+            {
                 self.published.remove(&bar);
             }
             // `returned` drops here, on the main thread.
@@ -542,15 +549,19 @@ impl MusicComposer {
 
     // === Parameter setters (called directly, no command queue) ===
 
+    /// Tempo direct du jeu : désactive l'offset émotionnel et la rampe de set.
     pub fn set_bpm(&mut self, bpm: f32) {
         let clamped = bpm.clamp(40.0, 300.0);
         self.bpm_override = Some(clamped);
         self.musical_params.bpm = clamped;
+        self.musical_params.bpm_explicit = true;
     }
 
+    /// Rend le tempo aux émotions et à la rampe de set.
     pub fn reset_bpm(&mut self) {
         self.bpm_override = None;
         self.musical_params.bpm = self.emotion_mapped_bpm;
+        self.musical_params.bpm_explicit = false;
     }
 
     pub fn set_time_signature(&mut self, numerator: usize, denominator: usize) {
@@ -571,6 +582,7 @@ impl MusicComposer {
         self.musical_params.bpm = meter.default_bpm;
         self.emotion_mapped_bpm = meter.default_bpm;
         self.bpm_override = None;
+        self.musical_params.bpm_explicit = false;
         self.musical_params.set_swing_ratio(meter.default_swing_ratio);
         self.musical_params.time_signature = meter.time_signature;
         self.musical_params.pulse = Some(meter.pulse_spec());

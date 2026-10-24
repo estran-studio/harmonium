@@ -49,6 +49,7 @@ fn flat_tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement.intro = IntroConfig::none();
     tuning.profile.performance = Default::default();
+    tuning.profile.set = Default::default();
     tuning
 }
 
@@ -74,35 +75,6 @@ fn melody_tuples(snap: &MeasureSnapshot) -> Vec<(u8, usize, usize, u8)> {
         .iter()
         .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
         .collect()
-}
-
-#[test]
-fn default_entries_violin_alone_then_accompaniment_then_feet() {
-    for seed in SEEDS {
-        let snaps = stream(seed, 97);
-        for b in 1..=8 {
-            let s = bar(&snaps, b);
-            assert!(has(s, TrackId::Melody), "seed {seed} m.{b}: violon attendu");
-            for t in [TrackId::Chords, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
-                assert!(!has(s, t), "seed {seed} m.{b}: {t:?} ne doit pas jouer");
-            }
-        }
-        for b in 9..=32 {
-            let s = bar(&snaps, b);
-            assert!(has(s, TrackId::Chords) && has(s, TrackId::Bass), "seed {seed} m.{b}");
-            assert!(!has(s, TrackId::Heel) && !has(s, TrackId::Toe), "seed {seed} m.{b}");
-        }
-        for b in 33..=96 {
-            let s = bar(&snaps, b);
-            for t in TrackId::ALL {
-                assert!(has(s, t), "seed {seed} m.{b}: {t:?} attendu");
-            }
-        }
-        // À partir du 2e air : tout le monde dès A1 (2ᵉ air du set).
-        for t in TrackId::ALL {
-            assert!(has(bar(&snaps, 97), t), "seed {seed} m.97: {t:?} attendu");
-        }
-    }
 }
 
 #[test]

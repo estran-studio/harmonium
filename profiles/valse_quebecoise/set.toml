@@ -22,3 +22,21 @@ step_up   = 0.84   # tonique +2
 step_down = 0.81   # tonique −2
 other     = 0.62   # autre
 last_dark = 1.00   # neutre : effet de position non mesuré pour ce type
+
+[[transitions]]
+kind = "direct"
+weight = 100
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]
+
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 2.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.05]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 150.0
+
+[signature]
+return_rate = 0.17
+memory = 3

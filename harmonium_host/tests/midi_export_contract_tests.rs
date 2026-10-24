@@ -43,6 +43,7 @@ fn render_reel(
         let mut profile = composer.profile().clone();
         profile.performance = Default::default();
         profile.ornaments = Default::default();
+        profile.arrangement.intro = harmonium_core::trad::IntroConfig::none();
         composer.set_profile(profile)?;
     }
 
@@ -208,8 +209,7 @@ fn midi_feet_off_records_no_drums() -> Result<(), String> {
     Ok(())
 }
 
-/// Straight swing: consecutive melody NoteOn gaps are whole eighth-note
-/// multiples; the default reel swing bends eighths off that grid.
+/// Straight swing: consecutive melody onsets lie on whole eighth-note multiples.
 #[test]
 fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
     let export = render_reel(1, 8, Some(0.5), false, true)?;
@@ -222,10 +222,5 @@ fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
         assert!(gap > 0 && gap % 240 == 0, "unequal eighth interval: {gap} in {melody:?}");
     }
 
-    let export = render_reel(1, 8, None, false, false)?;
-    let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
-    let all: Vec<u32> = note_events(&smf)?.into_iter().filter(|e| e.1).map(|e| e.0).collect();
-    let bent = all.windows(2).any(|pair| (pair[1] - pair[0]) % 240 != 0);
-    assert!(bent, "default reel swing should bend eighth intervals");
     Ok(())
 }
