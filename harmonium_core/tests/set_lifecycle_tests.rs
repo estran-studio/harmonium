@@ -8,6 +8,7 @@ fn tuning(kind: TransitionKind) -> TuningParams {
     let mut profile = StyleProfile::default();
     profile.arrangement.tours_per_tune = 2;
     profile.arrangement.intro.forms = vec![IntroForm { role: IntroRole::Percussion, weight: 1, bars: 1 }];
+    profile.set.signature = Default::default();
     profile.set.length = vec![SetLength { tunes: 2, weight: 1 }];
     profile.set.transitions = vec![SetTransition { kind, weight: 1,
         bars: matches!(kind, TransitionKind::Call | TransitionKind::Silence).then_some(2) }];

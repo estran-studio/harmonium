@@ -45,3 +45,8 @@ tempo_bpm = [[0.0, 0.0], [1.0, 8.0]]
 intensity_lift = [[0.0, 0.0], [1.0, 0.08]]
 gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
 ceiling_bpm = 240.0
+
+# The Session : 16,7 % d'airs déjà posés dans un set antérieur du même membre (§3.2).
+[signature]
+return_rate = 0.17
+memory = 3

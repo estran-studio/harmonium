@@ -44,3 +44,7 @@ tempo_bpm = [[0.0, 0.0], [1.0, 5.0]]
 intensity_lift = [[0.0, 0.0], [1.0, 0.06]]
 gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
 ceiling_bpm = 168.0
+
+[signature]
+return_rate = 0.17
+memory = 3

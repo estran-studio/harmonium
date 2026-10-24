@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut generator = TradGenerator::new(params, tuning);
                 let mut rng = ChaCha8Rng::seed_from_u64(seed);
                 let mut tunes: Vec<serde_json::Value> = Vec::new();
+                let mut materials = Vec::new();
                 for bar in 1.. {
                     let measure = generator.generate_measure(bar, &mut rng);
                     let Some(position) = MeasureSnapshot::from_measure(&measure).position else {
@@ -49,10 +50,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             position.key,
                             position.mode
                         ]));
+                        if let Some(tune) = generator.tune_for_bar(bar) {
+                            // Empreinte du matériel écrit, avant dynamique, ornements et interprétation.
+                            let mut hash = 0xcbf2_9ce4_8422_2325u64;
+                            for b in 0..tune.plan.total_bars() {
+                                for note in tune.fiddle.notes_for_bar(b) {
+                                    for value in [u64::from(note.pitch), note.start_step as u64, note.duration_steps as u64] {
+                                        hash = (hash ^ value).wrapping_mul(0x0000_0100_0000_01b3);
+                                    }
+                                }
+                            }
+                            materials.push(format!("{hash:016x}"));
+                        }
                     }
                 }
                 rows.push(serde_json::json!({
                     "style": profile.meta.id, "valence": valence, "seed": seed, "airs": tunes,
+                    "materials": materials,
                 }));
             }
         }

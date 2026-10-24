@@ -22,6 +22,9 @@ fn invalid_set_is_refused_with_the_field_path() {
         ("set.key.same", |p| p.set.key.same = -0.1),
         ("set.key.step_down", |p| p.set.key.step_down = f32::NAN),
         ("set.key.last_dark", |p| p.set.key.last_dark = f32::INFINITY),
+        ("set.signature.return_rate", |p| p.set.signature.return_rate = -0.1),
+        ("set.signature.return_rate", |p| p.set.signature.return_rate = f32::NAN),
+        ("set.signature.memory", |p| p.set.signature.memory = 17),
         ("set.key", |p| {
             p.set.key = harmonium_core::trad::set::SetKey {
                 same: 0.0,
@@ -105,6 +108,8 @@ const NEUTRAL: f32 = 0.3;
 fn tuning(mutate: impl FnOnce(&mut StyleProfile)) -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement.tours_per_tune = 1;
+    tuning.profile.set.signature = Default::default();
+    tuning.profile.set.ramp = None;
     mutate(&mut tuning.profile);
     tuning
 }

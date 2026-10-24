@@ -238,6 +238,14 @@ impl SetRamp {
     }
 }
 
+/// Retour de matériel des derniers airs des sets précédents.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetSignature {
+    pub return_rate: f32,
+    pub memory: usize,
+}
+
 /// Section `[set]` du profil (`set.toml`). Section absente : un set sans fin, tous
 /// les facteurs à 1 ; chaque air se tire alors indépendamment du précédent.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -258,6 +266,8 @@ pub struct ProfileSet {
     /// Arc de tempo et d'énergie, optionnel.
     #[serde(default)]
     pub ramp: Option<SetRamp>,
+    #[serde(default)]
+    pub signature: SetSignature,
 }
 
 impl ProfileSet {
@@ -343,6 +353,14 @@ impl ProfileSet {
         }
         if let Some(ramp) = &self.ramp {
             ramp.validate()?;
+        }
+        if !self.signature.return_rate.is_finite()
+            || !(0.0..=1.0).contains(&self.signature.return_rate)
+        {
+            return Err(ProfileError::new("set.signature.return_rate", "probabilité finie dans 0..=1 requise"));
+        }
+        if self.signature.memory > MAX_SET_TUNES {
+            return Err(ProfileError::new("set.signature.memory", "attendu 0..=16"));
         }
         Ok(())
     }
@@ -485,6 +503,7 @@ pub struct SetPlan {
     tunes: usize,
     key_draws: Vec<u32>,
     transition_draws: Vec<u32>,
+    signature_draws: Vec<u32>,
     gap_draw: u32,
 }
 
@@ -496,7 +515,7 @@ impl SetPlan {
         if total == 0 {
             return Self {
                 first_tune, tunes: 0, key_draws: Vec::new(),
-                transition_draws: Vec::new(), gap_draw: 0,
+                transition_draws: Vec::new(), signature_draws: Vec::new(), gap_draw: 0,
             };
         }
         let mut remaining = rng.next_range_usize(0..total as usize) as u64;
@@ -513,8 +532,10 @@ impl SetPlan {
             (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
         let transition_draws =
             (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        let signature_draws =
+            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
         let gap_draw = rng.next_range_usize(0..KEY_DRAW_RANGE) as u32;
-        Self { first_tune, tunes, key_draws, transition_draws, gap_draw }
+        Self { first_tune, tunes, key_draws, transition_draws, signature_draws, gap_draw }
     }
 
     /// Indice 0-based du premier air du set dans la session.
@@ -566,6 +587,12 @@ impl SetPlan {
     #[must_use]
     pub fn transition_draw(&self, tune_in_set: usize) -> Option<u32> {
         self.transition_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Tirage de retour de l'air de rang `tune_in_set` (≥ 2).
+    #[must_use]
+    pub fn signature_draw(&self, tune_in_set: usize) -> Option<u32> {
+        self.signature_draws.get(tune_in_set.checked_sub(2)?).copied()
     }
 
     /// Pause choisie pour la fin de ce set.

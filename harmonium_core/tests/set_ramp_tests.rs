@@ -12,6 +12,7 @@ fn ramp() -> SetRamp {
 fn tuning() -> TuningParams {
     let mut p = StyleProfile::default();
     p.arrangement.tours_per_tune = 1;
+    p.set.signature = Default::default();
     p.set.length = vec![SetLength { tunes: 3, weight: 1 }];
     p.set.ramp = Some(ramp());
     TuningParams { profile: p }

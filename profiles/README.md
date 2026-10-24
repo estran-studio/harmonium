@@ -636,6 +636,30 @@ pour la gigue québécoise, +5 / +0,06 pour la gigue britannique, +3 / +0,05 pou
 le hornpipe, +2 / +0,05 pour la valse ; marche sans rampe. Borne proxy
 cap-bretonnaise, **pas une mesure québécoise ni une validation d'écoute**.
 
+### Air signature
+
+`[signature] return_rate = 0.17, memory = 3` (`[set.signature]` inline) reprend
+le taux de 16,7 % d'airs déjà posés par le même membre dans un set antérieur
+(The Session, étude §3.2). Probabilité finie 0..1, mémoire 0..16 airs ; absence,
+taux zéro ou mémoire zéro : aucun retour.
+
+Comme le bloc de l'étude §4.3, un tirage par air **2..L** est fixé au début du set.
+Le premier air est neuf ; le premier set n'a pas encore de mémoire. Le taux s'applique
+donc aux occasions éligibles, **pas à tous les airs de session** (mesurer séparément
+les deux dénominateurs). Les `memory` dernières occurrences des sets précédents
+sont examinées, puis filtrées par le poids de tonalité/mode à la valence courante
+(strictement positif). Un matériel déjà joué dans le set courant est exclu aussi.
+L'index vient de `floor((u / return_rate) × nombre_éligible)`, sans nouveau tirage.
+
+Le moteur réutilise le `TunePlan` résolu et la `FiddleLine` écrite, **pas une graine** :
+un changement d'intensité ou de registre émotionnel ne réécrit pas la mélodie.
+La couleur parallèle et la dynamique restent pilotées par le jeu ; harmonie,
+accompagnement, intro et interprétation sont recalculés pour l'état courant.
+La fenêtre de mémoire référence les airs déjà conservés pour la position et le seek :
+pas de deuxième copie, et `invalidate_future` retire automatiquement les futurs retours.
+Le rejeu depuis la mesure 1 reconstruit la même mémoire.
+
+
 
 
 ## Règles de phrase

@@ -61,6 +61,8 @@ pub struct ActiveTune {
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
+    /// Identité du matériel d'origine, conservée lors d'un retour.
+    material_origin: usize,
     initial_dark: bool,
     bright_mode: Mode,
     dark_mode: Option<Mode>,
@@ -1331,6 +1333,33 @@ impl TradGenerator {
         }
     }
 
+    /// Fenêtre bornée sur les airs déjà conservés pour le rejeu : aucune deuxième copie
+    /// du matériel, aucun état de mémoire à invalider séparément.
+    fn signature_source(&self, tune_index: usize, valence: f32) -> Option<&ActiveTune> {
+        let signature = self.profile.set.signature;
+        if signature.return_rate == 0.0 || signature.memory == 0 {
+            return None;
+        }
+        let (_, set) = self.set_of(tune_index)?;
+        let u = f64::from(set.signature_draw(set.tune_in_set(tune_index))?)
+            / KEY_DRAW_RANGE as f64;
+        let rate = f64::from(signature.return_rate);
+        if u >= rate {
+            return None;
+        }
+        let allowed = candidates(&self.profile, valence);
+        let eligible = self.tunes.range(..set.first_tune()).rev()
+            .take(signature.memory).map(|(_, tune)| tune.as_ref())
+            .filter(|tune| {
+                allowed.iter().any(|c| {
+                    c.weight > 0.0 && c.key == tune.plan.key && c.mode == tune.initial_mode
+                }) && self.tunes.range(set.first_tune()..tune_index)
+                    .all(|(_, current)| current.material_origin != tune.material_origin)
+            });
+        let count = eligible.clone().count();
+        eligible.into_iter().nth((u / rate * count as f64) as usize)
+    }
+
     /// Construit un [`ActiveTune`] complet (`TunePlan` + `FiddleLine` + `TuneHarmony` + intro).
     ///
     /// Règle P1-T7 : deux tunes consécutifs ne commencent pas par la même
@@ -1345,6 +1374,14 @@ impl TradGenerator {
     ) -> ActiveTune {
         let dynamics = &self.tuning.profile.dynamics;
         let valence = self.musical_params.harmony_valence;
+        let source = self.signature_source(tune_index, valence);
+        let material_origin = source.map_or(tune_index, |tune| tune.material_origin);
+        let (plan, fiddle) = if let Some(source) = source {
+            let plan = source.fiddle.plan();
+            let mut fiddle = source.fiddle.clone();
+            fiddle.set_mode(plan.mode);
+            (plan, fiddle)
+        } else {
         let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
         let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
         plan.resolve_roles(rng);
@@ -1386,6 +1423,8 @@ impl TradGenerator {
                 );
             }
         }
+            (plan, fiddle)
+        };
 
         let harmony = if self.profile.harmony.model == "jazz_functional" {
             let mut model = SteedmanGrammar::new(
@@ -1467,6 +1506,7 @@ impl TradGenerator {
             material_seed,
             intro_info,
             initial_mode: plan.mode,
+            material_origin,
             initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,
             bright_mode,
             dark_mode: plan.mode.is_minor().then_some(plan.mode),
