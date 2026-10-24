@@ -35,6 +35,8 @@ pub enum TrackId {
     Heel,
     /// Toe / Foot tap (MIDI channel 4)
     Toe,
+    /// Independent melodic voice (MIDI channel 5).
+    Countermelody,
 }
 
 impl TrackId {
@@ -47,11 +49,24 @@ impl TrackId {
             Self::Bass => 2,
             Self::Heel => 3,
             Self::Toe => 4,
+            Self::Countermelody => 5,
         }
     }
 
     /// All track IDs in canonical order
-    pub const ALL: [TrackId; 5] = [Self::Melody, Self::Chords, Self::Bass, Self::Heel, Self::Toe];
+    pub const ALL: [TrackId; 6] =
+        [Self::Melody, Self::Chords, Self::Bass, Self::Heel, Self::Toe, Self::Countermelody];
+
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Melody => "Melody",
+            Self::Chords => "Chords",
+            Self::Bass => "Bass",
+            Self::Heel => "Heel",
+            Self::Toe => "Toe",
+            Self::Countermelody => "Countermelody",
+        }
+    }
 }
 
 /// Musical position within the score (bar, beat, tick)
@@ -436,7 +451,7 @@ mod tests {
         assert_eq!(measure.index, 1);
         assert_eq!(measure.steps, 16);
         assert_eq!(measure.total_notes(), 0);
-        assert_eq!(measure.tracks.len(), 5);
+        assert_eq!(measure.tracks.len(), TrackId::ALL.len());
     }
 
     #[test]

@@ -11,6 +11,7 @@ use rand_chacha::ChaCha8Rng;
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.heterophony = None;
     p.accompaniment.as_mut().unwrap().bass.passing = None;
     p.accompaniment.as_mut().unwrap().chords.strum = None;
     p.accompaniment.as_mut().unwrap().chords.strings = 3;
@@ -329,6 +330,7 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
+        profile.heterophony = None;
         profile.ornaments = Default::default();
         profile.accompaniment.as_mut().unwrap().bass.passing = None;
         profile.accompaniment.as_mut().unwrap().chords.strum = None;

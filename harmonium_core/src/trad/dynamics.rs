@@ -292,7 +292,7 @@ impl StyleDynamics {
     #[must_use]
     pub fn velocity(&self, track: TrackId, intensity: f32) -> f32 {
         match track {
-            TrackId::Melody => &self.melody_velocity,
+            TrackId::Melody | TrackId::Countermelody => &self.melody_velocity,
             TrackId::Chords => &self.guitar_velocity,
             TrackId::Bass => &self.bass_velocity,
             TrackId::Heel | TrackId::Toe => &self.feet_velocity,

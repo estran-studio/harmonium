@@ -1,6 +1,7 @@
 pub mod algo;
 pub mod command;
 pub mod events;
+pub mod heterophony;
 pub mod log;
 pub mod mapper;
 pub mod mix;

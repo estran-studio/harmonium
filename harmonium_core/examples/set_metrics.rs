@@ -23,7 +23,7 @@ struct TuneMetrics {
     last_mode: harmonium_core::trad::Mode,
     tail_is_outro: bool,
     /// Par piste : nombre de notes et somme des vélocités, corps seulement.
-    energy: [[u64; 2]; 5],
+    energy: [[u64; 2]; TrackId::ALL.len()],
 }
 
 fn material_hash(tune: &ActiveTune) -> String {
@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             tempo_max: measure.tempo,
                             last_mode: position.mode,
                             tail_is_outro: false,
-                            energy: [[0; 2]; 5],
+                            energy: [[0; 2]; TrackId::ALL.len()],
                         });
                     }
                     let Some(detail) = details.last_mut() else { continue };

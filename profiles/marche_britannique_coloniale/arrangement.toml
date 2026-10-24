@@ -10,6 +10,7 @@ tours_per_tune = 3
 Melody = { tour = 1, part = 0, pass = 1 }
 Heel = { tour = 1, part = 0, pass = 1 }
 Toe = { tour = 1, part = 0, pass = 1 }
+Countermelody = { tour = 2, part = 0, pass = 1 }
 
 [intro]
 pickup_eighths = 0

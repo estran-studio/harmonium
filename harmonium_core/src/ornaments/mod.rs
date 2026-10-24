@@ -194,7 +194,7 @@ impl Default for Ornaments {
 }
 
 /// Contexte d'une mesure de mélodie, préparé par le générateur.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct BarContext {
     pub key: PitchClass,
     pub mode: Mode,
@@ -212,6 +212,8 @@ pub struct BarContext {
     pub bar_index: usize,
     /// Graine de l'air (0 si aucun type ne tire).
     pub seed: u64,
+    /// Porteuses dont les agréments tirent dans un domaine distinct de l'unisson.
+    pub independent_steps: Vec<usize>,
 }
 
 fn bounded(value: f32, lo: f32, hi: f32, field: &str) -> Result<(), ProfileError> {
@@ -340,10 +342,11 @@ impl Ornaments {
     pub fn apply(
         &self,
         measure: &mut crate::timeline::Measure,
+        track: crate::timeline::TrackId,
         ctx: &BarContext,
         written: &[usize],
         next_id: &mut dyn FnMut() -> crate::timeline::NoteId,
     ) -> bool {
-        realize::apply(self, measure, ctx, written, next_id)
+        realize::apply(self, measure, track, ctx, written, next_id)
     }
 }

@@ -406,6 +406,7 @@ velocity_jitter = 5
 
 [instruments]
 melody_program = 40
+countermelody_program = 40
 chords_program = 24
 bass_program = 32
 percussion_bank = 128
@@ -981,3 +982,33 @@ velocity_scale = 0.8
 written_per_100_notes = 0.009638
 min_carrier_eighths = 1.0
 velocity_scale = 0.8
+
+[mix.tracks.Countermelody]
+level_db = -12.0
+pan = -0.22
+reverb_send = 0.16
+
+[performance.tracks.Countermelody]
+jitter = 0.025
+phrase = [[0.0, 0.98], [0.7, 1.02], [1.0, 0.94]]
+breath = 0.08
+
+[heterophony]
+source = "Melody"
+octave = 0
+low = 55
+high = 88
+arousal_low = 0.5
+arousal_high = 1.5
+density_low = 0.7
+density_high = 1.3
+operations = [
+  { operation = "unison", weight = 72 },
+  { operation = "ornament", weight = 10, phrase_end = "never" },
+  { operation = "plain", weight = 8 },
+  { operation = "simplify", weight = 7, phrase_end = "never" },
+  { operation = "octave", weight = 2 },
+  { operation = "third", weight = 3, phrase_end = "only" },
+  { operation = "sixth", weight = 2, phrase_end = "only" },
+  { operation = "rest", weight = 3, beats = ["weak"], phrase_end = "never" },
+]

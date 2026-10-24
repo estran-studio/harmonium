@@ -323,6 +323,8 @@ pub struct TrackEntries {
     pub heel: EntryPoint,
     #[serde(rename = "Toe")]
     pub toe: EntryPoint,
+    #[serde(rename = "Countermelody", skip_serializing_if = "Option::is_none")]
+    pub countermelody: Option<EntryPoint>,
 }
 
 impl TrackEntries {
@@ -333,6 +335,7 @@ impl TrackEntries {
             TrackId::Bass => self.bass,
             TrackId::Heel => Some(self.heel),
             TrackId::Toe => Some(self.toe),
+            TrackId::Countermelody => self.countermelody,
         }
     }
 
@@ -381,7 +384,8 @@ impl fmt::Display for ArrangementError {
             }
             Self::UnknownTrack(name) => write!(
                 f,
-                "piste inconnue dans l'arrangement : « {name} » (attendu Melody, Chords, Bass, Heel ou Toe)"
+                "piste inconnue dans l'arrangement : « {name} » (attendu {})",
+                TrackId::ALL.map(TrackId::name).join(", ")
             ),
             Self::MissingTrack(track) => {
                 write!(f, "point d'entrée manquant pour la piste {track:?}")
@@ -494,7 +498,8 @@ impl TryFrom<RawArrangement> for ReelArrangement {
         };
         let chords = take_optional(TrackId::Chords)?;
         let bass = take_optional(TrackId::Bass)?;
-        let entries = TrackEntries { melody, chords, bass, heel, toe };
+        let countermelody = take_optional(TrackId::Countermelody)?;
+        let entries = TrackEntries { melody, chords, bass, heel, toe, countermelody };
         let table = Self { tours_per_tune, entries, intro: raw.intro };
         Ok(table)
     }
@@ -524,6 +529,7 @@ impl ReelArrangement {
                 bass: Some(start),
                 heel: start,
                 toe: start,
+                countermelody: Some(start),
             },
             intro: IntroConfig::none(),
         }

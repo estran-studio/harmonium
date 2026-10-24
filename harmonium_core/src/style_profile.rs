@@ -426,12 +426,26 @@ pub struct ProfileHarmony {
 pub struct ProfileInstruments {
     pub melody_program: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub countermelody_program: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chords_program: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bass_program: Option<u8>,
     pub percussion_bank: u16,
     pub percussion_program: u8,
 }
+impl ProfileInstruments {
+    pub const fn program(&self, track: TrackId) -> Option<u8> {
+        match track {
+            TrackId::Melody => Some(self.melody_program),
+            TrackId::Countermelody => self.countermelody_program,
+            TrackId::Chords => self.chords_program,
+            TrackId::Bass => self.bass_program,
+            TrackId::Heel | TrackId::Toe => Some(self.percussion_program),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StyleProfile {
@@ -452,6 +466,8 @@ pub struct StyleProfile {
     pub performance: crate::performance::Performance,
     #[serde(default)]
     pub ornaments: crate::ornaments::Ornaments,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heterophony: Option<crate::heterophony::Heterophony>,
     /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
     pub set: crate::trad::set::ProfileSet,
@@ -461,6 +477,11 @@ impl StyleProfile {
     pub fn has_track(&self, track: TrackId) -> bool {
         match track {
             TrackId::Melody => true,
+            TrackId::Countermelody => {
+                self.heterophony.is_some()
+                    && self.instruments.countermelody_program.is_some()
+                    && self.arrangement.has_track(track)
+            }
             TrackId::Chords => {
                 self.harmony.model != "none"
                     && self.instruments.chords_program.is_some()
@@ -622,6 +643,19 @@ impl StyleProfile {
         self.mix.validate()?;
         self.performance.validate(self.meter.steps_per_bar)?;
         self.ornaments.validate()?;
+        if let Some(h) = &self.heterophony {
+            h.validate()?;
+            check(
+                self.instruments.countermelody_program.is_some(),
+                "instruments.countermelody_program",
+                "programme requis avec heterophony",
+            )?;
+            check(
+                self.arrangement.has_track(TrackId::Countermelody),
+                "arrangement.entries.Countermelody",
+                "entrée requise avec heterophony",
+            )?;
+        }
         self.set.validate()?;
         if let Some(ceiling) = self.set.ramp.as_ref().and_then(|ramp| ramp.ceiling_bpm) {
             check(
@@ -1069,6 +1103,13 @@ impl StyleProfile {
         )?;
         let i = &self.instruments;
         check(i.melody_program <= 127, "instruments.melody_program", "programme MIDI dans 0..127")?;
+        if let Some(program) = i.countermelody_program {
+            check(
+                program <= 127,
+                "instruments.countermelody_program",
+                "programme MIDI dans 0..127",
+            )?;
+        }
         if let Some(chords) = i.chords_program {
             check(chords <= 127, "instruments.chords_program", "programme MIDI dans 0..127")?;
         }

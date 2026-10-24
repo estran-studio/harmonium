@@ -197,13 +197,7 @@ impl Performance {
         rng: &mut dyn RngCore,
     ) {
         for track in TrackId::ALL {
-            let name = match track {
-                TrackId::Melody => "Melody",
-                TrackId::Chords => "Chords",
-                TrackId::Bass => "Bass",
-                TrackId::Heel => "Heel",
-                TrackId::Toe => "Toe",
-            };
+            let name = track.name();
             let Some(p) = self.tracks.get(name) else { continue };
             if p.is_neutral() {
                 continue;

@@ -26,6 +26,7 @@ Bass = { tour = 1, part = 0, pass = 2 }
 # Les pieds entrent au deuxième tour.
 Heel = { tour = 2, part = 0, pass = 1 }
 Toe = { tour = 2, part = 0, pass = 1 }
+Countermelody = { tour = 2, part = 0, pass = 1 }
 
 # ---------------------------------------------------------------------------
 # [intro] — Intros idiomatiques (P1-T11, constitution v3 V)

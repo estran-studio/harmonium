@@ -267,7 +267,7 @@ impl TradGenerator {
             return false;
         }
         let flag = match track {
-            TrackId::Melody => self.musical_params.enable_melody,
+            TrackId::Melody | TrackId::Countermelody => self.musical_params.enable_melody,
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
             TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
         };
@@ -334,6 +334,7 @@ impl TradGenerator {
             let intro = &tune.intro_info;
             match track {
                 TrackId::Melody => intro.melody_active(),
+                TrackId::Countermelody => false,
                 TrackId::Chords | TrackId::Bass => intro.chords_active(),
                 TrackId::Heel | TrackId::Toe => intro.feet_active(),
             }
@@ -348,6 +349,7 @@ impl TradGenerator {
         self.tuning.profile.dynamics.allows(track, self.musical_params.rhythm_density)
             && match track {
                 TrackId::Melody => intro_info.melody_active() && self.musical_params.enable_melody,
+                TrackId::Countermelody => false,
                 TrackId::Chords | TrackId::Bass => {
                     intro_info.chords_active() && self.musical_params.enable_harmony
                 }
@@ -422,6 +424,32 @@ impl TradGenerator {
         };
         self.apply_dynamics(&mut measure);
         self.fit_jazz_melody(&mut measure, &tune, &position);
+        let hetero_written = if !is_intro && self.track_active(TrackId::Countermelody, &position) {
+            let context = self.ornament_context(&measure, &tune, &position);
+            let changes: Vec<_> =
+                if !is_outro && matches!(tune.harmony, HarmonyPlan::TradFunctional(_)) {
+                    self.chords_for_bar(&tune, self.performed_bar(&position))
+                        .iter()
+                        .enumerate()
+                        .map(|(slot, chord)| ChordChange {
+                            start_step: slot * self.profile.harmony.steps_per_chord,
+                            context: build_chord_context(*chord, tune.plan.key, tune.plan.mode),
+                        })
+                        .collect()
+                } else {
+                    measure.chord_changes.clone()
+                };
+            let next = &mut self.next_note_id;
+            self.profile.heterophony.as_ref().map(|h| {
+                h.prepare(&mut measure, &context, &written, &changes, &mut || {
+                    let id = *next;
+                    *next += 1;
+                    id
+                })
+            })
+        } else {
+            None
+        };
         if !is_intro && !self.profile.performance.is_neutral() {
             let offset = position.bar_in_strain - 1;
             let (start, end) = self.phrase_window(&tune, &position);
@@ -460,6 +488,40 @@ impl TradGenerator {
         }
         if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
+        }
+        if let Some((written, independent_steps)) = hetero_written {
+            if !is_outro && !self.profile.ornaments.is_inert() {
+                let mut context = self.ornament_context(&measure, &tune, &position);
+                if let Some(h) = &self.profile.heterophony {
+                    context.tessitura = (h.low, h.high);
+                }
+                context.independent_steps = independent_steps;
+                let next = &mut self.next_note_id;
+                self.profile.ornaments.apply(
+                    &mut measure,
+                    TrackId::Countermelody,
+                    &context,
+                    &written,
+                    &mut || {
+                        let id = *next;
+                        *next += 1;
+                        id
+                    },
+                );
+            }
+            if self.ornament_context(&measure, &tune, &position).phrase_end_bar
+                && let Some(h) = &self.profile.heterophony
+            {
+                let next = &mut self.next_note_id;
+                h.close_cadence(&mut measure, &mut || {
+                    let id = *next;
+                    *next += 1;
+                    id
+                });
+            }
+            if let Some(h) = &self.profile.heterophony {
+                h.veto(&mut measure);
+            }
         }
         if !is_intro
             && !is_outro
@@ -1166,7 +1228,7 @@ impl TradGenerator {
         for (&track, notes) in &mut measure.tracks {
             let velocity = d.velocity(track, intensity);
             for note in notes {
-                let accent = if track == TrackId::Melody {
+                let accent = if matches!(track, TrackId::Melody | TrackId::Countermelody) {
                     if note.start_step % usize::from(measure.pulse.steps_per_pulse) == 0 {
                         strong
                     } else if self
@@ -1186,7 +1248,7 @@ impl TradGenerator {
                 };
                 note.velocity =
                     (f32::from(note.velocity) * velocity + accent).round().clamp(1.0, 127.0) as u8;
-                if track == TrackId::Melody {
+                if matches!(track, TrackId::Melody | TrackId::Countermelody) {
                     note.duration_steps =
                         (note.duration_steps as f32 * duration).round().max(1.0) as usize;
                     note.duration_steps = note.duration_steps.min(measure.steps - note.start_step);
@@ -1207,6 +1269,21 @@ impl TradGenerator {
         position: &TunePosition,
         written: &[usize],
     ) {
+        let context = self.ornament_context(measure, tune, position);
+        let next_note_id = &mut self.next_note_id;
+        self.profile.ornaments.apply(measure, TrackId::Melody, &context, written, &mut || {
+            let id = *next_note_id;
+            *next_note_id += 1;
+            id
+        });
+    }
+
+    fn ornament_context(
+        &self,
+        measure: &Measure,
+        tune: &ActiveTune,
+        position: &TunePosition,
+    ) -> BarContext {
         let part = &self.profile.form.parts[position.part.0];
         let protected = part
             .ornament_protected_bars
@@ -1216,7 +1293,7 @@ impl TradGenerator {
             });
         let (_, end) = self.phrase_window(tune, position);
         let params = &self.tuning.profile.melody.params;
-        let context = BarContext {
+        BarContext {
             key: tune.plan.key,
             mode: tune.plan.mode,
             tessitura: (params.tessitura_min, params.tessitura_max),
@@ -1229,13 +1306,8 @@ impl TradGenerator {
             density: self.musical_params.rhythm_density,
             bar_index: measure.index,
             seed: tune.material_seed,
-        };
-        let next_note_id = &mut self.next_note_id;
-        self.profile.ornaments.apply(measure, &context, written, &mut || {
-            let id = *next_note_id;
-            *next_note_id += 1;
-            id
-        });
+            independent_steps: Vec::new(),
+        }
     }
 
     /// Mesure de la partie dont les taux par mesure s'appliquent : une copie exacte
@@ -1488,7 +1560,8 @@ impl TradGenerator {
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
         // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
         // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
-        let material_seed = if self.profile.ornaments.needs_seed()
+        let material_seed = if self.profile.heterophony.is_some()
+            || self.profile.ornaments.needs_seed()
             || self.profile.accompaniment.as_ref().is_some_and(|a| {
                 a.bass.passing.as_ref().is_some_and(|p| !p.is_inert()) || a.chords.needs_seed()
             }) {
