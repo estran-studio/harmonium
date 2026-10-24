@@ -1,9 +1,9 @@
 # Accompagnement humain — étude et conception (V5a)
 
-Phase 012, point 5. Étude et conception : **aucun code moteur modifié**. Ce document
-est le seul fichier ajouté au dépôt `harmonium`. Mesures, maquette et WAV vivent dans
-`harmonium_lab/target/accomp_etude/` (hors dépôt, `target/` ignoré) ; les scripts
-jetables y sont copiés pour pouvoir refaire les mesures (voir
+Phase 012, point 5. Étude et conception : **aucun code moteur modifié**. Mesures, maquette
+et WAV ont été produits dans `harmonium_lab/target/accomp_etude/` (hors dépôt, effacé
+depuis) ; les scripts jetables sont archivés dans
+[`etudes/accompagnement/`](etudes/accompagnement/) pour pouvoir refaire les mesures (voir
 [Reproduire](#reproduire)).
 
 Légende des affirmations : **[S]** appuyée par une source citée en fin de document ;
@@ -937,15 +937,18 @@ for s in 6 8; do target/release/harmonium-cli --export --bars 34 --style reel --
   -s /Users/william.quintal/Project/bascanada/harmonium/assets/GeneralUser-GS.sf2 \
   --record-midi /tmp/accomp_etude/src/reel_s$s.mid --record-truth /tmp/accomp_etude/src/reel_s$s.json; done
 cd /Users/william.quintal/Project/bascanada/harmonium_lab
-.venv/bin/python target/accomp_etude/measure_chords.py target/accomp_etude/chords.json
-.venv/bin/python target/accomp_etude/measure_parts.py target/accomp_etude/parts.json
-.venv/bin/python target/accomp_etude/tables.py target/accomp_etude/chords.json
+S=/Users/william.quintal/Project/bascanada/harmonium/specs/012-vie-realisme/etudes/accompagnement
+cp $S/*.py /tmp/accomp_etude/ && mkdir -p target/accomp_etude
+.venv/bin/python /tmp/accomp_etude/measure_chords.py target/accomp_etude/chords.json
+.venv/bin/python /tmp/accomp_etude/measure_parts.py target/accomp_etude/parts.json
+.venv/bin/python /tmp/accomp_etude/tables.py target/accomp_etude/chords.json
 # maquette : lit /tmp/accomp_etude/src/reel_sN.{mid,json} exportés avec harmonium-cli
-.venv/bin/python target/accomp_etude/mockup.py target/accomp_etude 6 8
+.venv/bin/python /tmp/accomp_etude/mockup.py target/accomp_etude 6 8
 ```
 
-`measure_parts.py` importe `measure_chords.py` depuis `/tmp/accomp_etude` : copier les
-deux scripts au même endroit.
+`measure_parts.py` importe `measure_chords.py` depuis `/tmp/accomp_etude` : d'où la copie
+des scripts à cet endroit. Ils lisent le moteur de `main` `ad7ad58` ; sur un moteur plus
+récent, les chiffres de la maquette peuvent différer.
 
 ## Sources
 

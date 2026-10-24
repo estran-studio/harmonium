@@ -431,8 +431,9 @@ chaque chanson utilisée. La turlutte (V0–V4) n'a besoin ni des archives ni d'
 
 ## 5. Ce qui a été vérifié en pratique
 
-**Aucun code du dépôt n'a été modifié.** Les scripts jetables (mido, librosa, fluidsynth) vivent dans
-`/tmp/v8voix/` et ne sont pas versionnés.
+**Aucun code du dépôt n'a été modifié.** Les scripts jetables (mido, librosa, fluidsynth) ont tourné
+dans `/tmp/v8voix/` ; ils sont archivés tels quels dans [`etudes/voix/`](etudes/voix/) (chemins `/tmp`
+codés en dur) et les rendus d'illustration de `harmonium_lab/target/voix_etude/` ont été effacés.
 
 ### 5.1 Méthode
 

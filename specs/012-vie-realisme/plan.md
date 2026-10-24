@@ -26,6 +26,15 @@ lentes. Cette phase ajoute la vie du jeu, **en données dans les profils**
 - Les décisions de style se figent en ADR dans ce plan **après** validation à
   l'oreille et au labo.
 
+## Kits d'écoute
+
+`kits_ecoute.py` régénère tous les kits A/B avec le moteur courant : pour chaque couche
+(mixage, interprétation, ornements, accompagnement, 2ᵉ voix), profil complet contre le même profil
+sans cette seule couche (sections TOML retirées dans une copie), seed la plus audible parmi dix,
+volume moyen égalisé, ordre tiré au hasard ; plus des sets complets. Sortie conseillée :
+`harmonium_lab/target/ecoute/` (guide `harmonium_lab/target/ECOUTE.md`). Les scripts jetables des
+études V5a, V7a et V8 sont archivés dans `etudes/`.
+
 ## Ordre et parallélisme
 
 ```mermaid

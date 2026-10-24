@@ -1,8 +1,9 @@
 # V7a — Forme longue (sets) : étude et conception
 
 Étude du point 7 du [plan de la phase 012](plan.md#7-forme-longue). **Aucun code moteur modifié.**
-Mesures et script jetable : `/tmp/set_etude/` (non versionné) ; rendu d'écoute :
-`harmonium_lab/target/set_etude/`. Moteur lu à `main` `ad7ad58`.
+Mesures et scripts jetables : exécutés dans `/tmp/set_etude/`, archivés tels quels dans
+[`etudes/forme-longue/`](etudes/forme-longue/) (chemins `/tmp` codés en dur) ; les rendus de
+`harmonium_lab/target/set_etude/` ont été effacés depuis. Moteur lu à `main` `ad7ad58`.
 
 ## 0. Résumé et recommandation
 
