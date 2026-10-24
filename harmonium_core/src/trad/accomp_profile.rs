@@ -11,6 +11,13 @@ pub enum BassDegree {
     FifthIfHeld,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BassDoubling {
+    Octave,
+    Tenth,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BassHit {
@@ -18,6 +25,8 @@ pub struct BassHit {
     pub degree: BassDegree,
     pub duration: usize,
     pub velocity: u8,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub doubling: Vec<BassDoubling>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -63,10 +72,31 @@ pub struct ChordVoice {
     pub strings: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strum: Option<Strum>,
+    #[serde(default)]
+    pub voicing: ChordVoicing,
+    #[serde(default = "fixed_low")]
+    pub low: u8,
+    #[serde(default = "fixed_high")]
+    pub high: u8,
 }
 
 fn triad_strings() -> u8 {
     3
+}
+
+fn fixed_low() -> u8 {
+    52
+}
+fn fixed_high() -> u8 {
+    64
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChordVoicing {
+    #[default]
+    CloseTriad,
+    FixedTriad,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -341,11 +371,38 @@ impl TradHarmonyParams {
             steps,
             "accompaniment.bass.hits",
         )?;
+        for (i, hit) in b.hits.iter().enumerate() {
+            let field = format!("accompaniment.bass.hits[{i}].doubling");
+            require(
+                !jazz || hit.doubling.is_empty(),
+                &field,
+                "les doublures modales demandent l'harmonie trad_functional",
+            )?;
+            require(
+                hit.doubling.len() <= 2
+                    && hit.doubling.iter().enumerate().all(|(i, d)| !hit.doubling[..i].contains(d)),
+                &field,
+                "doublures uniques octave/tenth requises",
+            )?;
+            let extra = if hit.doubling.contains(&BassDoubling::Tenth) {
+                16
+            } else if hit.doubling.is_empty() {
+                0
+            } else {
+                12
+            };
+            require(
+                (0..12).all(|pc| super::accomp::place_in_range(pc, b.low, b.high) <= 127 - extra),
+                &field,
+                "registre trop aigu pour les doublures MIDI demandées",
+            )?;
+        }
         let c = &self.chords;
         require(
             !jazz
                 || (c.strum.is_none()
                     && c.strings == 3
+                    && c.voicing == ChordVoicing::CloseTriad
                     && c.patterns
                         .iter()
                         .flat_map(|p| &p.hits)
@@ -359,6 +416,16 @@ impl TradHarmonyParams {
             (3..=6).contains(&c.strings),
             "accompaniment.chords.strings",
             "3..6 cordes requises",
+        )?;
+        require(
+            c.low <= c.high && c.high <= 127,
+            "accompaniment.chords.low",
+            "fenêtre MIDI ordonnée requise",
+        )?;
+        require(
+            c.voicing != ChordVoicing::FixedTriad || c.high - c.low >= 11,
+            "accompaniment.chords.high",
+            "fixed_triad demande douze hauteurs consécutives",
         )?;
         if let Some(strum) = &c.strum {
             strum.validate(c.strings)?;

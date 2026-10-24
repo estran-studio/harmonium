@@ -51,11 +51,14 @@ def analyze(measures, profile):
         return {'transitions': 0, 'with_passing': 0, 'boundary_transitions': 0,
                 'boundary_with_passing': 0, 'passing_notes': 0, 'strong_notes': 0,
                 'strong_conflicts': 0, 'passing_conflicts': 0, 'intervals_to_target': {},
-                'gaps_ms': [], 'spreads_ms': [], 'order_errors': 0}
+                'gaps_ms': [], 'spreads_ms': [], 'order_errors': 0,
+                'target_intervals': {}, 'bass_intervals': {}, 'up_strokes': 0,
+                'down_strokes': 0, 'offset_errors': 0}
     bass_data = acc['bass'] if 'bass' in acc else {'hits': [{'step': s} for s in acc['bass_steps']]}
     hits = {h['step'] for h in bass_data['hits']}
     result = Counter()
     gaps, spreads, intervals = [], [], Counter()
+    target_intervals, bass_intervals = Counter(), Counter()
     for bar, m in measures.items():
         bass = [n for n in m['notes'] if n['track'] == 2]
         anchors = [n for n in bass if n['start_step'] in hits]
@@ -69,10 +72,14 @@ def analyze(measures, profile):
             result['passing_conflicts'] += conflict(m, n['pitch'], n['start_step'])
         nxt = measures.get(bar + 1)
         next_anchors = [] if not nxt else [n for n in nxt['notes'] if n['track'] == 2 and n['start_step'] in hits]
+        next_bass = [] if not nxt else [n for n in nxt['notes'] if n['track'] == 2]
+        line = bass + next_bass[:1]
+        bass_intervals.update(b['pitch'] - a['pitch'] for a, b in zip(line, line[1:]))
         targets = [(n['start_step'], n['pitch'], False) for n in anchors[1:]]
         if next_anchors:
             targets.append((m['steps'] + next_anchors[0]['start_step'], next_anchors[0]['pitch'], True))
         for source, (at, pitch, boundary) in zip(anchors, targets):
+            target_intervals[pitch - source['pitch']] += 1
             if source['pitch'] == pitch:
                 continue
             run = [n for n in passing if source['start_step'] < n['start_step'] < at]
@@ -91,15 +98,19 @@ def analyze(measures, profile):
                 continue
             offsets = [n.get('performance', {}).get('offset', 0) for n in group]
             pitches = [n['pitch'] for n in group]
+            result['offset_errors'] += any(abs(offset) > 490 for offset in offsets)
             if offsets[-1] != offsets[0]:
+                result['down_strokes' if pitches[0] < pitches[1] else 'up_strokes'] += 1
                 result['order_errors'] += not (all(a < b for a, b in zip(offsets, offsets[1:])) and
                     (all(a < b for a, b in zip(pitches, pitches[1:])) or all(a > b for a, b in zip(pitches, pitches[1:]))))
                 step_ms = 60000 / m['tempo'] * profile['meter']['time_signature']['numerator'] * 4 / profile['meter']['time_signature']['denominator'] / m['steps']
                 gaps.extend((b - a) * step_ms / 1000 for a, b in zip(offsets, offsets[1:]))
                 spreads.append((max(offsets) - min(offsets)) * step_ms / 1000)
     return {**{key: result[key] for key in ('transitions', 'with_passing', 'boundary_transitions',
-        'boundary_with_passing', 'passing_notes', 'strong_notes', 'strong_conflicts', 'passing_conflicts', 'order_errors')},
-        'intervals_to_target': dict(intervals), 'gaps_ms': gaps, 'spreads_ms': spreads}
+        'boundary_with_passing', 'passing_notes', 'strong_notes', 'strong_conflicts', 'passing_conflicts',
+        'order_errors', 'up_strokes', 'down_strokes', 'offset_errors')},
+        'intervals_to_target': dict(intervals), 'target_intervals': dict(target_intervals),
+        'bass_intervals': dict(bass_intervals), 'gaps_ms': gaps, 'spreads_ms': spreads}
 
 
 def run_rates(args):
@@ -130,9 +141,11 @@ def run_rates(args):
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             for name, label, pair in pool.map(run, cases):
                 for stage, result in zip(('before', 'after'), pair):
-                    row = rows[name][label].setdefault(stage, {'counts': Counter(), 'intervals': Counter(), 'gaps': [], 'spreads': []})
+                    row = rows[name][label].setdefault(stage, {'counts': Counter(), 'intervals': Counter(), 'target_intervals': Counter(), 'bass_intervals': Counter(), 'gaps': [], 'spreads': []})
                     row['counts'].update({k: v for k, v in result.items() if isinstance(v, int)})
                     row['intervals'].update(result['intervals_to_target'])
+                    row['target_intervals'].update(result['target_intervals'])
+                    row['bass_intervals'].update(result['bass_intervals'])
                     row['gaps'].extend(result['gaps_ms']); row['spreads'].extend(result['spreads_ms'])
     report = {}
     print('| Profil | Arousal | Transitions avec passage | Frontières avec passage | Conflits forts avant → après | Écarts cordes ms min–max |')
@@ -153,7 +166,7 @@ def run_rates(args):
             before, after = pair['before'], pair['after']
             if after['strong_conflict_fraction'] > before['strong_conflict_fraction'] + 1e-12:
                 raise ValueError(f'{name}/{label}: conflits forts supérieurs à main')
-            if after['counts']['passing_conflicts'] or after['counts']['order_errors']:
+            if any(after['counts'][key] for key in ('passing_conflicts', 'order_errors', 'offset_errors')):
                 raise ValueError(f'{name}/{label}: conflit de passage ou ordre de cordes invalide')
             gap = after['gaps_ms']
             gap_text = f"{gap['min']:.2f}–{gap['max']:.2f}" if gap else '—'
@@ -167,7 +180,8 @@ def run_wav(args):
     directory.mkdir(parents=True, exist_ok=True)
     rows = {}
     with tempfile.TemporaryDirectory(prefix='harmonium-accomp-wav-') as temp:
-        auto = automation_file(Path(temp), 'neutral', 0.5)
+        auto = automation_file(Path(temp), 'neutral', 0.5,
+            '[[keys]]\nbar = 1\narousal = 0.5\nvalence = 0.3\ndensity = 0.5\ntension = 0.4\n')
         for name in LISTEN:
             root = (directory / name).resolve()
             export(args.binary.resolve(), (args.profiles_root / name).resolve(), 3, 34, auto, root, wav=True, midi=True)

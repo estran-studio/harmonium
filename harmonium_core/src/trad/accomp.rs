@@ -2,7 +2,7 @@
 //! en conduite de voix serrée et alternance fondamentale/quinte de la basse.
 
 use super::{
-    accomp_profile::{BassDegree, ChordHit},
+    accomp_profile::{BassDegree, BassDoubling, ChordHit, ChordVoicing},
     harmony::TradChord,
     mode::Mode,
 };
@@ -14,7 +14,7 @@ use crate::{
 
 /// Place la classe de hauteur `pc` dans `low..=high` (voir le doc du module
 /// pour la classe absente d'une fenêtre de 11 demi-tons).
-fn place_in_range(pc: PitchClass, low: u8, high: u8) -> u8 {
+pub(crate) fn place_in_range(pc: PitchClass, low: u8, high: u8) -> u8 {
     let low = i16::from(low);
     let high = i16::from(high);
     let pc = i16::from(pc);
@@ -54,23 +54,39 @@ pub fn bass_bar(
     steps_per_chord: usize,
     next_id: &mut impl FnMut() -> NoteId,
 ) -> Vec<TimelineNote> {
-    params
-        .bass
-        .hits
-        .iter()
-        .map(|hit| {
-            let step = hit.step;
-            TimelineNote {
+    let capacity = params.bass.hits.iter().map(|h| 1 + h.doubling.len()).sum();
+    let mut notes = Vec::with_capacity(capacity);
+    for hit in &params.bass.hits {
+        let primary = bass_hit_pitch(chords, key, mode, params, hit, steps_per_chord);
+        for doubling in std::iter::once(None).chain(hit.doubling.iter().copied().map(Some)) {
+            let pitch = match doubling {
+                None => primary,
+                Some(BassDoubling::Octave) => primary + 12,
+                Some(BassDoubling::Tenth) => {
+                    let mut pitch = primary;
+                    for _ in 0..2 {
+                        loop {
+                            pitch += 1;
+                            if mode.contains_midi(key, pitch) {
+                                break;
+                            }
+                        }
+                    }
+                    pitch + 12
+                }
+            };
+            notes.push(TimelineNote {
                 id: next_id(),
-                pitch: bass_hit_pitch(chords, key, mode, params, hit, steps_per_chord),
-                start_step: step,
+                pitch,
+                start_step: hit.step,
                 duration_steps: hit.duration,
                 velocity: hit.velocity,
                 articulation: Articulation::Normal,
                 performance: Default::default(),
-            }
-        })
-        .collect()
+            });
+        }
+    }
+    notes
 }
 
 /// Voicings serrés d'une triade : 3 sons ascendants dans moins d'une octave.
@@ -112,20 +128,25 @@ impl Guitarist {
         mode: Mode,
         params: &TradHarmonyParams,
     ) -> Option<[u8; 3]> {
-        let center_sum = 3 * i32::from(params.chords.center);
-        let max_drift_sum = 3 * i32::from(params.chords.max_drift);
-        let best = close_voicings(chord, key, mode)
-            .filter(|v| {
-                params.chords.strings <= 3 || v[usize::from(params.chords.strings - 4)] <= 115
-            })
-            .min_by_key(|v| {
+        let candidates = close_voicings(chord, key, mode).filter(|v| {
+            params.chords.strings <= 3 || v[usize::from(params.chords.strings - 4)] <= 115
+        });
+        let best = if params.chords.voicing == ChordVoicing::FixedTriad {
+            candidates
+                .filter(|v| v[0] >= params.chords.low && v[2] <= params.chords.high)
+                .min_by_key(|v| v[0])
+        } else {
+            let center_sum = 3 * i32::from(params.chords.center);
+            let max_drift_sum = 3 * i32::from(params.chords.max_drift);
+            candidates.min_by_key(|v| {
                 let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
                 let center_dist = (sum - center_sum).abs();
                 let movement: i32 = self.previous.map_or(0, |p| {
                     v.iter().zip(p).map(|(&a, b)| (i32::from(a) - i32::from(b)).abs()).sum()
                 });
                 (center_dist > max_drift_sum, movement, center_dist, v[0])
-            })?;
+            })
+        }?;
         self.previous = Some(best);
         Some(best)
     }

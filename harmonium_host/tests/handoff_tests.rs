@@ -107,6 +107,7 @@ fn make_harness(seed: u64) -> Harness {
     let mut profile = composer.profile().clone();
     profile.performance = Default::default();
     profile.ornaments = Default::default();
+    profile.accompaniment.as_mut().unwrap().chords.strum = None;
     assert!(composer.set_profile(profile).is_ok());
     let _ = composer.take_pending_drop();
     composer.set_bpm(120.0);

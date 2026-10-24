@@ -132,9 +132,16 @@ pub(crate) fn apply(
     let mut notes = std::mem::take(slot);
     let melody = measure.notes_for_track(TrackId::Melody);
     let original = notes.len();
-    for index in 0..original {
-        let target = if index + 1 < original {
-            Some((notes[index + 1].start_step, notes[index + 1].pitch))
+    let mut cursor = 0;
+    while cursor < original {
+        let index = cursor;
+        let count = notes[index..original]
+            .iter()
+            .take_while(|n| n.start_step == notes[index].start_step)
+            .count();
+        cursor += count;
+        let target = if cursor < original {
+            Some((notes[cursor].start_step, notes[cursor].pitch))
         } else {
             context.next_target.map(|(step, pitch)| (measure.steps + step, pitch))
         };
@@ -175,8 +182,9 @@ pub(crate) fn apply(
         let velocity = (i16::from(from.velocity) + rule.velocity_delta).clamp(1, 127) as u8;
         let from_pitch = from.pitch;
         let first_step = target.0 - rule.before[0];
-        notes[index].duration_steps =
-            notes[index].duration_steps.min(first_step - notes[index].start_step);
+        for note in &mut notes[index..cursor] {
+            note.duration_steps = note.duration_steps.min(first_step - note.start_step);
+        }
         for (i, &before) in rule.before.iter().enumerate() {
             let Some(pitch) =
                 approach_pitch(rule, i, from_pitch, target.1, context.key, context.mode)

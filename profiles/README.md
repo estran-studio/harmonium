@@ -155,6 +155,103 @@ Les six ensembles harmoniques gardent guitare nylon et basse acoustique :
 Reels : montées douces optionnelles à haute densité ; gigues : bas-haut-bas ;
 valse et hornpipe : montée rare. La marche reste sans accompagnement tonal.
 
+### Recettes piano et accordéon
+
+Ces snippets **remplacent les deux voix** et les deux programmes correspondants
+dans un profil complet ; ils ne s'ajoutent pas aux tables existantes.
+Les tests chargent ces snippets exacts avec le chargeur public. Les sept profils
+distribués gardent leurs instruments : aucune mesure de corpus ni écoute ne
+justifie encore de remplacer leur guitare/basse par un autre ensemble.
+
+**Piano main gauche, basse-accord (« stride » de veillée)** :
+
+```toml
+# recette: piano_main_gauche
+[instruments]
+chords_program = 0
+bass_program = 0
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 34
+walk_high = 50
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 82, doubling = ["octave"] },
+  { step = 8, degree = "fifth_if_held", duration = 3, velocity = 82, doubling = ["octave"] },
+]
+[accompaniment.bass.passing]
+none_weight = 3
+density = [[0.0, 0.0], [0.5, 0.8], [1.0, 1.2]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 4, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+[accompaniment.chords]
+voicing = "close_triad"
+center = 58
+max_drift = 5
+strings = 3
+default_pattern = 0
+patterns = [{ hits = [
+  { step = 4, stroke = "block", duration = 2, velocity = 62 },
+  { step = 12, stroke = "block", duration = 2, velocity = 58 },
+] }]
+```
+
+`doubling` est une liste de doublures uniques `octave` / `tenth`, vide par
+défaut. `tenth` remplace l'octave par la dixième diatonique au-dessus de la
+note de basse (deux voisins dans le mode, puis une octave). Les doublures
+partagent attaque, durée, vélocité et interprétation ; la marche reste une
+ligne simple entre les cibles **graves**, pas entre leurs doublures aiguës.
+Le chargeur rejette une tessiture qui ferait dépasser MIDI 127.
+Pour la variante basse-dixième, remplacer `["octave"]` par `["tenth"]`.
+Pour une gigue de Cape Breton : coups de basse 0/6, accords 2/4/8/10 ;
+adapter durées et grille au profil, pas au nom d'une recette.
+
+**Accordéon basse-accord, mélodéon à deux basses** :
+
+```toml
+# recette: accordeon_basse_accord
+[instruments]
+chords_program = 21
+bass_program = 21
+
+[accompaniment.bass]
+low = 36
+high = 47
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 70 },
+  { step = 8, degree = "fifth_if_held", duration = 3, velocity = 70 },
+]
+[accompaniment.chords]
+voicing = "fixed_triad"
+center = 58
+max_drift = 0
+low = 52
+high = 64
+strings = 3
+default_pattern = 0
+patterns = [{ hits = [
+  { step = 4, stroke = "block", duration = 2, velocity = 56 },
+  { step = 12, stroke = "block", duration = 2, velocity = 56 },
+] }]
+```
+
+`fixed_triad` choisit toujours le même renversement le plus grave dans
+`low..high`, indépendamment de l'accord précédent ; fenêtre MIDI ordonnée
+couvrant au moins douze hauteurs. `close_triad` reste le défaut, avec conduite
+de voix autour de `center` / `max_drift`. Le mélodéon n'a ni grattage ni marche ;
+pour un accordéon à davantage de basses, une règle de passage faible suffit.
+Sources, prudence sur les extrapolations et repères historiques :
+[étude V5a, §2 et §5.3](../specs/012-vie-realisme/accompagnement-etude.md).
+Ces programmes GM ont une énergie différente : mesurer à nouveau les pistes
+seules avec `measure_mix.py` avant de distribuer un profil qui adopte la recette.
+
+
 
 
 
