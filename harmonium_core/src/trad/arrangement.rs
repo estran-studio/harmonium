@@ -269,23 +269,6 @@ impl IntroConfig {
         Self { forms: Vec::new(), pickup_eighths: 0 }
     }
 
-    /// Nombre total de mesures d'intro d'un air.
-    /// `first_in_set` : premier air d'un set (intro complète) ; sinon seulement la levée
-    /// (1 mesure si `pickup_eighths > 0`, sinon 0). 0 si la config est vide.
-    #[must_use]
-    pub fn bars_for_tune(&self, first_in_set: bool, form_bars: usize) -> usize {
-        if self.forms.is_empty() && self.pickup_eighths == 0 {
-            return 0;
-        }
-        if first_in_set {
-            // Intro complète : forme + levée (la levée est dans la dernière mesure)
-            form_bars
-        } else {
-            // Seulement la levée : 1 mesure si pickup_eighths > 0, sinon 0
-            if self.pickup_eighths > 0 { 1 } else { 0 }
-        }
-    }
-
     /// Valide la configuration d'intro.
     pub fn validate(&self) -> Result<(), ArrangementError> {
         for form in &self.forms {
@@ -658,7 +641,10 @@ impl IntroInfo {
     #[must_use]
     pub const fn none() -> Self {
         Self {
-            form: None, intro_bars: 0, leading_silence: 0, form_bars: 0,
+            form: None,
+            intro_bars: 0,
+            leading_silence: 0,
+            form_bars: 0,
             pickup_notes: Vec::new(),
         }
     }

@@ -10,6 +10,8 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn stream(mut profile: StyleProfile, seed: u64, bars: usize, outro: bool) -> Vec<MeasureSnapshot> {
+    // Une clôture de set peut remplacer la volta ; sa priorité est couverte séparément.
+    profile.set = Default::default();
     if let Some(a) = &mut profile.accompaniment {
         a.bass.passing = None;
         a.chords.strum = None;

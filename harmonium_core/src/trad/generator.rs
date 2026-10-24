@@ -135,6 +135,10 @@ impl TradGenerator {
     /// les décisions de mode et les airs encore futurs.
     pub fn invalidate_future(&mut self, playing_bar: usize) {
         let current_tune = self.position_of(playing_bar).tune_index;
+        self.current_bar = playing_bar;
+        if let Some(ending) = &mut self.ending_tune {
+            *ending = (*ending).min(current_tune);
+        }
         self.tunes.retain(|&index, _| index <= current_tune);
         self.sets.retain(|set| set.first_tune() <= current_tune);
         for tune in self.tunes.values_mut() {
@@ -299,9 +303,8 @@ impl TradGenerator {
 
     fn effective_intensity(&self, tune_index: usize) -> f32 {
         let intensity = self.musical_params.intensity;
-        self.ramp_progress(tune_index).map_or(intensity, |(ramp, p)| {
-            ramp.effective_intensity(p, intensity)
-        })
+        self.ramp_progress(tune_index)
+            .map_or(intensity, |(ramp, p)| ramp.effective_intensity(p, intensity))
     }
 
     fn tempo_for(&self, tune_index: usize) -> f32 {
@@ -315,8 +318,10 @@ impl TradGenerator {
             return game_tempo;
         };
         let ceiling = ramp.ceiling_bpm.unwrap_or(self.profile.meter.max_bpm);
-        let base = dynamics.tempo_for(params.bpm, self.effective_intensity(tune_index))
-            .max(game_tempo).min(ceiling.max(game_tempo));
+        let base = dynamics
+            .tempo_for(params.bpm, self.effective_intensity(tune_index))
+            .max(game_tempo)
+            .min(ceiling.max(game_tempo));
         let lift = ramp.tempo_bpm.eval(progress) * ramp.gate.eval(params.intensity);
         base + lift.min((ceiling - base).max(0.0))
     }
@@ -391,10 +396,12 @@ impl TradGenerator {
         let last_bar = !is_intro
             && position.is_last_tour()
             && position.bar_in_tour() + 1 == self.profile.form.bars_per_tour();
-        let set_outro = last_bar && self.set_of(position.tune_index).is_some_and(|(_, set)| {
-            set.is_last(position.tune_in_set) && self.profile.set.end.outro
-        });
-        let held = last_bar && self.transition_for(position.tune_index + 1).0 == TransitionKind::Held;
+        let set_outro = last_bar
+            && self.set_of(position.tune_index).is_some_and(|(_, set)| {
+                set.is_last(position.tune_in_set) && self.profile.set.end.outro
+            });
+        let held =
+            last_bar && self.transition_for(position.tune_index + 1).0 == TransitionKind::Held;
         let is_outro = last_bar && (self.musical_params.end_after_tour || set_outro || held);
 
         if is_intro {
@@ -441,7 +448,10 @@ impl TradGenerator {
             let offset = if is_intro {
                 0.0
             } else {
-                self.profile.dynamics.chop_intensity.eval(self.effective_intensity(position.tune_index))
+                self.profile
+                    .dynamics
+                    .chop_intensity
+                    .eval(self.effective_intensity(position.tune_index))
                     + self.profile.dynamics.density_chop.eval(self.musical_params.rhythm_density)
             };
             let seed =
@@ -1145,9 +1155,8 @@ impl TradGenerator {
     fn apply_dynamics(&mut self, measure: &mut Measure) {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
-        let intensity = self.effective_intensity(
-            measure.position.map_or(0, |position| position.tune_index),
-        );
+        let intensity =
+            self.effective_intensity(measure.position.map_or(0, |position| position.tune_index));
         let duration =
             d.fiddle_duration.eval(intensity) * d.tension_duration.eval(p.harmony_tension);
         let strong = d.strong_accent.eval(intensity)
@@ -1341,19 +1350,24 @@ impl TradGenerator {
             return None;
         }
         let (_, set) = self.set_of(tune_index)?;
-        let u = f64::from(set.signature_draw(set.tune_in_set(tune_index))?)
-            / KEY_DRAW_RANGE as f64;
+        let u = f64::from(set.signature_draw(set.tune_in_set(tune_index))?) / KEY_DRAW_RANGE as f64;
         let rate = f64::from(signature.return_rate);
         if u >= rate {
             return None;
         }
         let allowed = candidates(&self.profile, valence);
-        let eligible = self.tunes.range(..set.first_tune()).rev()
-            .take(signature.memory).map(|(_, tune)| tune.as_ref())
+        let eligible = self
+            .tunes
+            .range(..set.first_tune())
+            .rev()
+            .take(signature.memory)
+            .map(|(_, tune)| tune.as_ref())
             .filter(|tune| {
                 allowed.iter().any(|c| {
                     c.weight > 0.0 && c.key == tune.plan.key && c.mode == tune.initial_mode
-                }) && self.tunes.range(set.first_tune()..tune_index)
+                }) && self
+                    .tunes
+                    .range(set.first_tune()..tune_index)
                     .all(|(_, current)| current.material_origin != tune.material_origin)
             });
         let count = eligible.clone().count();
@@ -1382,47 +1396,47 @@ impl TradGenerator {
             fiddle.set_mode(plan.mode);
             (plan, fiddle)
         } else {
-        let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
-        let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
-        plan.resolve_roles(rng);
-        let mut fiddle_params = self.tuning.profile.melody.params.clone();
-        let intensity = self.effective_intensity(tune_index);
-        fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
-            * dynamics.run_weight.eval(intensity))
-        .round()
-        .max(1.0) as u32;
-        fiddle_params.weight_role_arp = (fiddle_params.weight_role_arp as f32
-            * dynamics.arp_weight.eval(intensity))
-        .round()
-        .max(1.0) as u32;
-        fiddle_params.weight_role_turn = (fiddle_params.weight_role_turn as f32
-            * dynamics.turn_weight.eval(intensity))
-        .round()
-        .max(1.0) as u32;
-        fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
-            + dynamics.color_register.eval(dynamics.valence_input(valence)))
-        .round()
-        .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
-            as u8;
-        let mut fiddle = FiddleLine::with_params(
-            plan.clone(),
-            &self.tuning.profile.melody.cells,
-            &fiddle_params,
-            rng,
-        );
-        if let Some(prev_first) = prev_first_cell {
-            for _ in 0..self.profile.form.opening_retries {
-                if !same_cell_up_to_octave(fiddle.cell_for_bar(0), &prev_first) {
-                    break;
+            let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
+            let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
+            plan.resolve_roles(rng);
+            let mut fiddle_params = self.tuning.profile.melody.params.clone();
+            let intensity = self.effective_intensity(tune_index);
+            fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
+                * dynamics.run_weight.eval(intensity))
+            .round()
+            .max(1.0) as u32;
+            fiddle_params.weight_role_arp = (fiddle_params.weight_role_arp as f32
+                * dynamics.arp_weight.eval(intensity))
+            .round()
+            .max(1.0) as u32;
+            fiddle_params.weight_role_turn = (fiddle_params.weight_role_turn as f32
+                * dynamics.turn_weight.eval(intensity))
+            .round()
+            .max(1.0) as u32;
+            fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
+                + dynamics.color_register.eval(dynamics.valence_input(valence)))
+            .round()
+            .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
+                as u8;
+            let mut fiddle = FiddleLine::with_params(
+                plan.clone(),
+                &self.tuning.profile.melody.cells,
+                &fiddle_params,
+                rng,
+            );
+            if let Some(prev_first) = prev_first_cell {
+                for _ in 0..self.profile.form.opening_retries {
+                    if !same_cell_up_to_octave(fiddle.cell_for_bar(0), &prev_first) {
+                        break;
+                    }
+                    fiddle = FiddleLine::with_params(
+                        plan.clone(),
+                        &self.tuning.profile.melody.cells,
+                        &fiddle_params,
+                        rng,
+                    );
                 }
-                fiddle = FiddleLine::with_params(
-                    plan.clone(),
-                    &self.tuning.profile.melody.cells,
-                    &fiddle_params,
-                    rng,
-                );
             }
-        }
             (plan, fiddle)
         };
 
@@ -1572,7 +1586,10 @@ impl TradGenerator {
         };
         let form_bars = if first_in_set {
             form.map_or(0, |role| {
-                intro_config.forms.iter().find(|f| f.role == role)
+                intro_config
+                    .forms
+                    .iter()
+                    .find(|f| f.role == role)
                     .map_or(role.default_bars(), |f| f.effective_bars())
             })
         } else if transition == TransitionKind::Call {
@@ -1581,7 +1598,8 @@ impl TradGenerator {
             0
         };
         let leading_silence = if first_in_set {
-            self.set_of(tune_index).and_then(|(index, _)| index.checked_sub(1))
+            self.set_of(tune_index)
+                .and_then(|(index, _)| index.checked_sub(1))
                 .map_or(0, |index| self.sets[index].gap_bars(&self.profile.set))
         } else if transition == TransitionKind::Silence {
             transition_bars
@@ -1589,11 +1607,8 @@ impl TradGenerator {
             0
         };
         let pickup_bars = usize::from(intro_config.pickup_eighths > 0);
-        let content_bars = if first_in_set {
-            form_bars.max(pickup_bars)
-        } else {
-            form_bars + pickup_bars
-        };
+        let content_bars =
+            if first_in_set { form_bars.max(pickup_bars) } else { form_bars + pickup_bars };
         let intro_bars = leading_silence + content_bars;
 
         // Calculer les notes de levée

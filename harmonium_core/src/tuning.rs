@@ -9,9 +9,9 @@ use crate::{
     },
 };
 
-/// Version du contrat : sets (V7b) — bloc de tirages de set avant l'air 1, tonalité des airs
-/// suivants pondérée par classe de transition.
-pub const TUNING_VERSION: u32 = 19;
+/// Version du contrat : sets complets (V7c) — raccords, clôture, rampe par air
+/// et retour du matériel signature des sets précédents.
+pub const TUNING_VERSION: u32 = 20;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

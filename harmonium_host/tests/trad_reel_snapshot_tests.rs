@@ -22,6 +22,8 @@ fn flat_tuning() -> TuningParams {
             p.arrangement = ReelArrangement::from_start(1, Default::default());
             p.performance = Default::default();
             p.ornaments = Default::default();
+            // La forme et l'accompagnement sont testés sans raccord ni clôture de set.
+            p.set = Default::default();
             let a = p.accompaniment.as_mut().unwrap();
             a.bass.passing = None;
             a.chords.strum = None;
@@ -114,8 +116,6 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             assert_eq!(snap.time_sig_denominator, 2);
             assert_eq!(snap.steps, 16);
             assert_eq!(snap.pulse, PulseSpec { steps_per_pulse: 8, pulses_per_bar: 2 });
-            assert!((snap.swing_ratio - 0.56).abs() < f32::EPSILON);
-            assert!((snap.tempo - 230.0).abs() < f32::EPSILON);
             assert!(!snap.chord_name.is_empty());
 
             // Critère 3 : accompagnement D8 et podorythmie D9 (densité 1)

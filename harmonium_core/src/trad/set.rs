@@ -1,11 +1,11 @@
 //! Forme longue : un set est une suite d'airs d'un même profil (même mètre, même forme).
 //!
-//! Ce module porte le schéma `[set]` du profil (`set.toml`) : longueur des sets et
-//! facteurs de classe de transition de tonalité. Les algorithmes (classes, résolution
-//! de la tonalité du prochain air) sont génériques ; aucun nom de style ici.
+//! Schéma `[set]` (`set.toml`) : longueur, tonalités, raccords, clôture, rampe et
+//! mémoire d'airs signature. Tous les mécanismes restent génériques, en dehors
+//! du callback audio.
 use serde::{Deserialize, Serialize};
 
-use super::{mode::Mode, dynamics::Curve};
+use super::{dynamics::Curve, mode::Mode};
 use crate::{
     algo::RngCore,
     style_profile::{ProfileError, StyleProfile},
@@ -216,17 +216,24 @@ impl SetRamp {
             ("gate", &self.gate, 1.0),
         ] {
             let field = format!("set.ramp.{name}");
-            curve.validate(&field, 0.0, max)
+            curve
+                .validate(&field, 0.0, max)
                 .map_err(|message| ProfileError::new(&field, message))?;
             if name != "gate" && curve.0.windows(2).any(|p| p[0][1] > p[1][1]) {
                 return Err(ProfileError::new(field, "rampe non décroissante requise"));
             }
         }
         if self.gate.eval(0.0) != 0.0 || self.gate.eval(1.0) != 0.0 {
-            return Err(ProfileError::new("set.ramp.gate", "valeur nulle aux deux extrêmes requise"));
+            return Err(ProfileError::new(
+                "set.ramp.gate",
+                "valeur nulle aux deux extrêmes requise",
+            ));
         }
         if self.ceiling_bpm.is_some_and(|bpm| !bpm.is_finite() || !(40.0..=300.0).contains(&bpm)) {
-            return Err(ProfileError::new("set.ramp.ceiling_bpm", "tempo fini dans 40..=300 requis"));
+            return Err(ProfileError::new(
+                "set.ramp.ceiling_bpm",
+                "tempo fini dans 40..=300 requis",
+            ));
         }
         Ok(())
     }
@@ -271,13 +278,6 @@ pub struct ProfileSet {
 }
 
 impl ProfileSet {
-    /// Vrai si chaque air est son propre set : l'air est annoncé en entier à chaque fois.
-    #[must_use]
-    pub fn is_one_tune_per_set(&self) -> bool {
-        !self.length.is_empty()
-            && self.length.iter().filter(|entry| entry.weight > 0).all(|entry| entry.tunes == 1)
-    }
-
     /// Validation avec le chemin du champ fautif (`set.key.same`, `set.length[2].weight`…).
     pub fn validate(&self) -> Result<(), ProfileError> {
         if self.length.len() > MAX_SET_LENGTH_ENTRIES {
@@ -357,7 +357,10 @@ impl ProfileSet {
         if !self.signature.return_rate.is_finite()
             || !(0.0..=1.0).contains(&self.signature.return_rate)
         {
-            return Err(ProfileError::new("set.signature.return_rate", "probabilité finie dans 0..=1 requise"));
+            return Err(ProfileError::new(
+                "set.signature.return_rate",
+                "probabilité finie dans 0..=1 requise",
+            ));
         }
         if self.signature.memory > MAX_SET_TUNES {
             return Err(ProfileError::new("set.signature.memory", "attendu 0..=16"));
@@ -368,11 +371,13 @@ impl ProfileSet {
     /// Résout le raccord sans tirer de nouvel aléa.
     #[must_use]
     pub fn transition(&self, u: u32) -> (TransitionKind, usize) {
-        weighted_index(self.transitions.iter().map(|t| t.weight), u)
-            .map_or((TransitionKind::Direct, 0), |index| {
-            let t = self.transitions[index];
-            (t.kind, t.bars.unwrap_or(0))
-        })
+        weighted_index(self.transitions.iter().map(|t| t.weight), u).map_or(
+            (TransitionKind::Direct, 0),
+            |index| {
+                let t = self.transitions[index];
+                (t.kind, t.bars.unwrap_or(0))
+            },
+        )
     }
 
     /// Résout la pause de fin de set.
@@ -395,7 +400,8 @@ fn weighted_index(weights: impl Iterator<Item = u32> + Clone, u: u32) -> Option<
 
 fn validate_weights(field: &str, weights: impl Iterator<Item = u32>) -> Result<(), ProfileError> {
     let (count, total) = weights.fold((0usize, 0u64), |(n, sum), w| (n + 1, sum + u64::from(w)));
-    if count > MAX_SET_LENGTH_ENTRIES || (count > 0 && !(1..=u64::from(u32::MAX)).contains(&total)) {
+    if count > MAX_SET_LENGTH_ENTRIES || (count > 0 && !(1..=u64::from(u32::MAX)).contains(&total))
+    {
         return Err(ProfileError::new(field, "au plus 64 entrées, somme positive dans u32"));
     }
     Ok(())
@@ -508,14 +514,18 @@ pub struct SetPlan {
 }
 
 impl SetPlan {
-    /// Tire le bloc d'un set qui commence à l'air `first_tune` (0-based) : la longueur, puis un
-    /// tirage de tonalité pour chacun des airs 2..=L.
+    /// Tire au début du set : longueur L, puis les L−1 tirages de tonalité,
+    /// de raccord et de signature (par famille), enfin un tirage de pause.
     pub fn draw(first_tune: usize, set: &ProfileSet, rng: &mut dyn RngCore) -> Self {
         let total: u64 = set.length.iter().map(|entry| u64::from(entry.weight)).sum();
         if total == 0 {
             return Self {
-                first_tune, tunes: 0, key_draws: Vec::new(),
-                transition_draws: Vec::new(), signature_draws: Vec::new(), gap_draw: 0,
+                first_tune,
+                tunes: 0,
+                key_draws: Vec::new(),
+                transition_draws: Vec::new(),
+                signature_draws: Vec::new(),
+                gap_draw: 0,
             };
         }
         let mut remaining = rng.next_range_usize(0..total as usize) as u64;
@@ -566,7 +576,9 @@ impl SetPlan {
     /// Progression par paliers ; un air seul ou un set sans fin n'a pas de rampe.
     #[must_use]
     pub fn progress(&self, tune_index: usize) -> f32 {
-        if self.tunes <= 1 { 0.0 } else {
+        if self.tunes <= 1 {
+            0.0
+        } else {
             (self.tune_in_set(tune_index) - 1) as f32 / (self.tunes - 1) as f32
         }
     }

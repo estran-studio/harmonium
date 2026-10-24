@@ -530,6 +530,6 @@ fn old_snapshots_without_set_fields_still_load() -> TestResult {
             (new.tune_index, new.tour, new.key, new.mode)
         );
     }
-    assert_eq!(harmonium_core::tuning::TUNING_VERSION, 19);
+    assert_eq!(harmonium_core::tuning::TUNING_VERSION, 20);
     Ok(())
 }

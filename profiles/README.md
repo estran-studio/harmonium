@@ -17,10 +17,10 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
-| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités, fin accentuée. Consulter `reel_quebecois/arrangement.toml`. L'intro complète ne vient qu'au premier air de chaque set ; les suivants n'ont que la levée. |
+| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois des cinq pistes et EQ stéréo ; schéma et bornes ci-dessous. |
-| `[set]` (`set.toml`) | Longueur des sets et facteurs de classe de transition de tonalité ; section « Forme longue (set) » ci-dessous. |
+| `[set]` (`set.toml`) | Longueur, tonalités, raccords, clôture, rampe par air et mémoire signature ; section « Forme longue (set) » ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
@@ -512,19 +512,19 @@ reste décidée par la valence ; le set ne fait que **pondérer** des candidats 
 autorise (`melody.key_modes` à `neutral_valence`, `[[color]]` évalué à la valence ailleurs).
 
 - **Premier air d'un set** : intro complète (`[intro]`, formes pondérées et levée) et entrées
-  progressives des pistes (`[arrangement.entries]`). Les **airs suivants** n'ont que la levée et
-  toutes les pistes dès A1, comme dans un vrai set.
+  progressives des pistes (`[arrangement.entries]`). Les **airs suivants** utilisent le raccord
+  pondéré (`direct`, `call`, `held`, `silence`) puis toutes les pistes dès A1.
 - **Section absente** : un set sans fin ; tous les facteurs à 1, chaque air se tire indépendamment
   du précédent, intro complète et entrées au seul premier air de la session.
-- `set.toml` contient `length` et `[key]` à la racine du fichier, comme `arrangement.toml` contient
-  `tours_per_tune` et `[entries]`. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
+- `set.toml` contient `length`, `[key]`, `[ramp]`, `[signature]`, `[[transitions]]`, `[end]`
+  à la racine du fichier. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
   `arrangement.intro_each_tune` et `intro.each_tune` sont refusés au chargement (champ inconnu) :
   `length = [{ tunes = 1, weight = 1 }]` redonne une intro complète à chaque air.
 - **Tirages.** Au début de chaque set, **avant l'air 1**, le moteur tire la longueur du set puis un
-  tirage de tonalité par air 2..L (un set sans fin ne tire rien d'avance). Ces tirages sont convertis
-  en tonalité **à la construction de l'air**, avec les poids de la valence d'alors : si le jeu change
-  la valence entre deux airs, la tonalité suit la valence, mais la longueur du set et son plan ne
-  changent pas. Le premier air d'un set se tire sans facteur, comme tout air d'un profil sans `[set]`.
+  tirage par famille (tonalité, raccord, signature) pour chaque air 2..L, enfin la pause.
+  Un set sans fin ne tire rien d'avance. La tonalité se résout **à la construction de l'air** :
+  si le jeu change la valence entre deux airs, la tonalité la suit, mais le plan du set ne
+  change pas. Le premier air d'un set se tire sans facteur, comme tout air d'un profil sans `[set]`.
   Le poids de chaque candidat de l'air suivant est son poids de base × le facteur de la classe
   (précédent → candidat), classes testées dans l'ordre `same`, `parallel`, `relative`, puis
   l'intervalle de tonique ; **aucune tonalité n'est publiée hors des candidats**.
@@ -603,9 +603,13 @@ Section `[end]` absente : aucune outro ni pause. Sans longueur de set : aucun ra
 autre que la levée, aucune clôture. `end_after_tour` reste un arrêt demandé par le jeu
 à la fin de l'air courant, indépendant de cette clôture.
 
-Les six profils de médley utilisent les propositions de raccord de l'étude §4.5 et une
-outro ; les pauses restent à zéro faute d'écoute. La marche conserve son appel complet
-à chaque air, sans outro supplémentaire. Ces propositions **ne sont pas un ADR d'écoute**.
+Les six profils de médley ont une outro ; les pauses restent à zéro faute d'écoute.
+Reels et gigue québécoise : direct/call/held aux poids 70/20/10 ; valse : direct seul.
+Gigue et hornpipe britanniques : direct/held 90/10, **pas de call**, leur table de
+percussion étant volontairement vide. L'étude proposait 80/10/10 : cela produisait
+un silence, pas un appel ; aucun instrument ni pattern n'a été ajouté pour le masquer.
+La marche conserve son appel complet à chaque air, sans outro supplémentaire.
+Ces propositions **ne sont pas un ADR d'écoute**.
 
 ### Rampe par air et priorité du jeu
 

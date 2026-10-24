@@ -452,7 +452,7 @@ pub struct StyleProfile {
     pub performance: crate::performance::Performance,
     #[serde(default)]
     pub ornaments: crate::ornaments::Ornaments,
-    /// Forme longue : longueur des sets et facteurs de transition de tonalité (`set.toml`).
+    /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
     pub set: crate::trad::set::ProfileSet,
 }

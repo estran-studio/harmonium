@@ -1169,15 +1169,15 @@ celui consigné en V5b-1 ; aucune nouvelle instruction audio ni aucun
 
 ## 7. Forme longue
 
-- **À faire** : sets enchaînés (choix des tonalités entre airs,
-  accélération, arc d'énergie), airs « signature » récurrents.
+- **Implémenté** : sets enchaînés (tonalités, raccords, clôture, rampe par air),
+  mémoire de matériel et airs « signature » récurrents.
 - **Vérifier** : enchaînements de tonalités comparés au corpus quand il les
   documente ; tempo et énergie mesurés sur un set complet.
 
 Étude et conception : [`forme-longue-etude.md`](forme-longue-etude.md) (V7a). Réglages et effet à
-l'oreille : [`profiles/README.md`](../../profiles/README.md#forme-longue-set). **V7b T1 à T3
-faits** (schéma, plan de set, position publiée) ; T4 (transitions, fin de set), T5 (rampe), T6
-(signature) et T7 (clôture, écoute, ADR) restent à faire.
+l'oreille : [`profiles/README.md`](../../profiles/README.md#forme-longue-set). **V7b T1 à T3 et
+V7c T4 à T7 réalisés** ; mesures et WAV ci-dessous. L'écoute du propriétaire et l'ADR
+musical restent distincts de la validation technique : aucune écoute n'est déclarée ici.
 
 ### Décisions V7b (T1 à T3)
 
@@ -1322,6 +1322,205 @@ mixage. `cargo test --workspace --no-fail-fast` : aucun échec ; `cargo fmt` pro
 --workspace` : mêmes décomptes qu'avant (126 avertissements du crate `harmonium_core`, aucun nouveau).
 Rien de nouveau dans le callback audio : le plan de set se tire sur le thread principal avec le reste
 de l'air.
+
+### Mesures V7c — T4 à T7
+
+Branche `wquintal/vie-v7c-sets`, depuis `main` `a2a72d9`, 2026-10-24. Aucun sous-worker.
+`TUNING_VERSION` **19 → 20** ; goldens régénérés explicitement dans le commit de T7, dont
+`profile_d2_fixed.json` (`source = TUNING_VERSION:20:fixed_roles`, SHA-256
+`ae28035f…0f31`) et `profile_d2_main.json` (`c07ea56a…66b0`), les deux références à rôles
+fixes gigue/valse et le flux de snapshots seed 42 (`821dee47…47b3`).
+Même décision de cutover que V7b : le bloc initial prend maintenant les tirages de tonalité,
+de raccord et de signature (L−1 par famille), puis un tirage de pause, avant l'air 1.
+
+#### Décisions d'implémentation
+
+- `direct` : levée seule ; `call` / `silence` : nombre de mesures configuré **puis**
+  levée dans une mesure séparée. `held` utilise l'outro tonique existante sur la dernière
+  mesure de l'air précédent, sans arrêt. `end.outro` clôt le dernier air seulement ;
+  `end.gap_bars` précède l'intro complète du set suivant. Intro et entrées progressives
+  sont réappliquées à chaque set. `end_after_tour` vise désormais l'air courant, pas
+  systématiquement l'air global 0. Aucun changement des patterns, ornements ou interprétation.
+- **Données sans effet refusées en pratique** : l'étude proposait direct/call/held 80/10/10
+  pour la gigue et le hornpipe britanniques ; leurs `feet.toml` contiennent des patterns
+  vides, gain/vélocités zéro. La première mesure observait donc 10 % de **silences**, pas
+  d'appels. Réglage retenu : **direct/held 90/10**, sans ajouter de percussion.
+  Reels et gigue québécoise : 70/20/10 ; valse : direct seul ; marche : intro à chaque air.
+  Les pauses distribuées restent à zéro, faute d'écoute. Les autres mécanismes sont
+  forcés dans les contrats ; rien n'est présenté comme un ADR musical.
+- Rampe non décroissante, sorties finies bornées et positives ou nulles ; gate nul à
+  intensité 0 et 1. Progression par air, sans RNG ; un air seul ou un set sans fin est
+  neutre. Le lift d'intensité ne peut lui-même faire franchir le plafond de tempo ;
+  jamais de réduction du tempo des émotions seules. `MusicalParams::bpm_explicit`,
+  posé par `MusicComposer::set_bpm`, donne **exactement** la valeur du jeu, sans offset
+  émotionnel ni lift. `reset_bpm` et le chargement d'un profil retirent ce drapeau.
+  Le jeu peut encore changer ses commandes pendant un air : seul le palier du set
+  est constant, pas les entrées du jeu.
+- Signature : fenêtre des `memory` dernières occurrences des **sets antérieurs**,
+  filtrée par poids de couleur > 0 et par absence du matériel dans le set courant.
+  La fenêtre référence les `ActiveTune` déjà conservés pour la position et le seek :
+  pas de deuxième copie ni de `VecDeque` à invalider. Le retour copie le `TunePlan`
+  résolu et la `FiddleLine`, pas leur graine ; harmonie et rendu courant sont recalculés.
+  Le mode de construction est repris, puis les changements parallèles du jeu restent
+  applicables. `silent_advance` reconstruit la mémoire ; une invalidation supprime
+  naturellement les sources et retours futurs.
+
+#### Méthode reproductible et comparaison au corpus
+
+```sh
+cargo run --release -p harmonium_core --example set_metrics -- /tmp/harmonium-v7c-sets.json 500 16
+python3 specs/012-vie-realisme/measure_sets.py --metrics /tmp/harmonium-v7c-sets.json
+/Users/william.quintal/Project/bascanada/harmonium_lab/.venv/bin/python \
+  specs/012-vie-realisme/measure_sets.py --metrics /tmp/harmonium-v7c-sets.json \
+  --render --binary target/release/harmonium-cli --output /tmp/harmonium-sets
+```
+
+**500 graines × 7 profils × 3 valences × 16 airs = 168 000 airs**, 10 500 sessions.
+Un tour par air pour les statistiques ; seuls les trois premiers **sets complets**
+de chaque session sont utilisés pour les distributions, sans biais de troncature.
+Tempo et énergie sont mesurés à intensité constante 0,5. La loi attendue est calculée
+en Python, conditionnée par la couleur réellement entendue et la fenêtre de signature
+avant chaque tirage ; on ne compare plus le généré avec retours à une chaîne sans retours.
+**0 tonalité hors candidats**, aucun écart à quatre écarts-types sur longueurs, classes,
+raccords et taux de signature ; tempo constant dans chaque air et conforme au calcul indépendant.
+
+La concentration du répertoire borne toujours les classes : reel québécois neutre,
+même tonalité **28,7 %** contre **24,0 %** sous indépendance (The Session reel→reel :
+20,9 % absolu, facteur mesuré 1,28). Les chiffres réels ne sont pas une cible absolue
+pour les cinq candidats du profil. Aucune fréquence de `call` / `held` n'est mesurable
+dans ce corpus symbolique ; ce sont des propositions d'écoute, pas une mesure historique.
+
+| Profil | Tempo premier → dernier (bpm) | Hausse | Vélocité mélodie | Vélocité pieds | Attaques pieds / mesure |
+|---|---:|---:|---:|---:|---:|
+| reel québécois | 230 → 240 | 4,35 % | 92,15 → 97,77 | 45,54 → 50,49 | 7,98 → 7,78 |
+| gigue québécoise | 172,5 → 180,9 | 4,87 % | 92,25 → 98,10 | 44,03 → 48,95 | 5,98 → 5,84 |
+| reel acadien | 228 → 238 | 4,39 % | 91,50 → 97,06 | 45,49 → 50,50 | 7,98 → 7,78 |
+| gigue britannique | 156 → 162,2 | 3,97 % | 91,01 → 94,50 | — | 0,003 → 0,031 |
+| hornpipe britannique | 92 → 95,8 | 4,13 % | 95,84 → 98,48 | — | 0,003 → 0,031 |
+| valse québécoise | 145 → 148,5 | 2,41 % | 97,25 → 101,46 | 43,92 → 47,64 | 3,00 → 2,94 |
+| marche britannique | 108 → 108 | 0 % | 100,31 → 100,31 | 80,32 → 80,32 | 9,50 → 9,50 |
+
+Mesure de l'énergie comme dans l'étude §7 : vélocités et attaques, pas une estimation
+psychoacoustique. Les intros sont exclues ; la cadence de clôture reste dans le corps,
+ce qui réduit légèrement la densité du dernier air. Les rares accents Heel des outros
+britanniques viennent du rendu d'outro préexistant, **pas de nouveaux patterns**.
+La guitare descend légèrement (≈74 → 72) conformément à sa courbe existante.
+Les reels restent dans la borne proxy cap-bretonnaise Garner +2,6 à +5,5 % ;
+la valse est plus stable, la marche constante. Ce n'est pas une mesure québécoise.
+
+**Taux de retour.** Le bloc de l'étude tire une signature pour les airs **2..L** :
+premier air neuf, premier set sans mémoire. Le 0,17 configuré est donc un taux par
+**occasion éligible**, pas le 16,7 % de tous les airs mesuré dans The Session.
+Cette limite du modèle est explicitée, pas cachée par un changement de dénominateur :
+
+| Profil | Retours / occasions éligibles | Taux éligible | Part de tous les airs des trois sets |
+|---|---:|---:|---:|
+| reel québécois | 297 / 1688 | 17,59 % | 7,34 % |
+| gigue québécoise | 307 / 1707 | 17,98 % | 7,55 % |
+| reel acadien | 291 / 1703 | 17,09 % | 7,17 % |
+| gigue britannique | 287 / 1679 | 17,09 % | 7,11 % |
+| hornpipe britannique | 273 / 1704 | 16,02 % | 6,72 % |
+| valse québécoise | 274 / 1703 | 16,09 % | 6,75 % |
+
+#### Niveaux, rendus et écoute
+
+Banques : `GeneralUser-GS.sf2` + `harmonium_trad.sf2` du dossier externe
+`/Users/william.quintal/Project/bascanada/harmonium/assets/`.
+Contrôle 66 mesures, deux tours, graines 1..5, automation constante
+`intensity = arousal = density = tension = feet = 1`, valence 0, et contre-épreuve neutre :
+`measure_ornaments.py peaks --binary target/release/harmonium-cli --output /tmp/harmonium-sets`.
+Contrôle supplémentaire : **deux sets complets de chacun des sept profils**, graine 3,
+deux tours, intensity/arousal 0,5, valence 0,3, density 0,7, tension 0,3, feet 1,
+**sans bpm explicite**, donc rampe réellement active.
+
+Deux corrections de mixage **nécessaires**, rien d'autre : valse master **14,5 → 12 dB**
+(avant : −1,33 dBFS max-émotions ; +0,42 dBFS en neutre, trois échantillons ≥1) ;
+reel québécois **15,5 → 14,5 dB** (avant : −0,78 dBFS sur les sets complets avec rampe).
+Pas de normalisation, pas de limiteur, aucune retouche d'accompagnement/ornement/interprétation.
+
+| Profil | Pire crête max-émotions 66 m. (dBFS) | Mesures des 2 sets | Crête des 2 sets (dBFS) |
+|---|---:|---:|---:|
+| reel québécois | −3,85 | 326 | −1,78 |
+| gigue québécoise | −2,14 | 326 | −3,55 |
+| reel acadien | −2,58 | 262 | −2,67 |
+| gigue britannique | −2,27 | 262 | −1,75 |
+| hornpipe britannique | −1,88 | 327 | −3,42 |
+| valse québécoise | −3,83 | 261 | −4,15 |
+| marche britannique | −2,28 | 130 | −5,95 |
+
+**Tous ≤ −1,5 dBFS**, aucun échantillon ≥1. JSON détaillés :
+`/tmp/harmonium-sets/{summary,renders}.json`, `peaks/peaks.json` ; les contre-épreuves
+avant correction restent dans `peaks-before-mix.json` et `renders-before-reel-mix.json`.
+WAV d'écoute : `/tmp/harmonium-sets/{reel_quebecois,gigue_quebecoise,valse_quebecoise}-set{1,2}.wav`,
+stéréo float32 44 100 Hz, découpés aux frames de barre réellement publiées, sans
+réinitialiser le synthé. Les sessions continues `*-2sets.wav`, MIDI et vérités JSON
+restent disponibles, ainsi que deux sets pour les quatre autres profils.
+**Non écoutés par le propriétaire : aucun ADR d'écoute n'est pris.**
+
+#### BUG2 — fenêtre de lecture remplie de copies de mesures déjà jouées
+
+Le nouveau contrat `set_playback_tests` traversant plusieurs sets a d'abord bloqué
+à la mesure audible 31 (transport 32, writehead 48, anticipation 16), ou 19 avec
+anticipation 4. Une Box finie revient au compositeur dès l'entrée du dernier pas ;
+le transport ne publie la mesure suivante qu'à la **fin** de ce pas. `drain_returned`
+retirait son acquittement et `republish_missing` la remettait dans la fenêtre, où
+elle n'était plus consommable. Les copies passées finissaient par saturer cette fenêtre.
+
+Correction **sur le thread principal seulement** : conserver l'acquittement de la
+mesure courante rendue jusqu'à l'avancée du transport, retirer ceux des mesures
+passées, démarquer uniquement les Box futures rendues pour éviction. Le contrat
+vérifie maintenant 150 mesures, raccords `direct/call/held/silence`, pauses de set,
+chaque barre contiguë et chaque prédiction de pulse exacte. Tests de handoff et seek
+réussis avec ce correctif ; aucune modification du callback ni de son allocateur.
+
+#### Contrats et commandes du jeu
+
+- Étude §5, n° 8–9 : `set_ramp_tests` vérifie monotonie et palier par air,
+  plafond (y compris le lift d'intensité), absence de réduction du tempo du jeu,
+  tempo explicite exact et **égalité de tous les snapshots** à intensité 0 et 1
+  avec/sans rampe.
+- N° 10 : `set_signature_tests` compare hauteurs, attaques, durées et vélocités
+  au matériel source à émotions identiques ; changement d'émotions : hauteurs
+  et attaques écrites conservées, dynamique courante autorisée. Taux zéro,
+  veto de couleur, exclusion du même set et seek sont couverts aussi.
+- N° 11–13 : `set_lifecycle_tests` observe appels, silences, levées, tonique
+  tenue, outro uniquement en fin de set, pauses puis intro et entrées de pistes.
+  `set_playback_tests` ajoute la continuité du vrai `BeatInfo`, pas seulement
+  une arithmétique de positions.
+- Les anciens contrats de phrase/volta/accompagnement/recettes isolent maintenant
+  leur objet avec un profil **sans set**, pour ne pas comparer une cadence de
+  clôture à un accord gratté ou à une copie de phrase. Les assertions incidentes
+  « défaut = 230 bpm / swing 0,56 », « le défaut doit swinguer » et le test
+  épinglant les entrées par défaut sont supprimés, pas ré-épinglés.
+  Le test MIDI mécanique retire l'intro : une fin empruntée et sa levée peuvent
+  légitimement avoir deux attaques simultanées, sans défaut de grille de swing.
+- Arrêt demandé avec anticipation : l'invalidation réaligne la barre courante
+  et borne la cible d'arrêt à l'air **joué**, pas au dernier air déjà écrit.
+  Régression reproduite avant correction avec 200 mesures pré-générées au-delà
+  de l'air courant ; puis test corrigé et sonde par l'API publique du compositeur :
+  **3 mesures futures audibles avant demande, 0 après, 99 snapshots régénérés**.
+  La sonde temporaire a été supprimée ; résultat `stop-smoke.json` hors dépôt.
+- Smoke CLI avec les deux banques : automation `bpm = 197`, 200 mesures,
+  six airs sur trois sets ; **tous les tempos publiés valent 197 exactement**.
+  Sans bpm explicite, la sonde précédente observe 230 / 235,2 / 240 par air.
+  Résultats conservés dans `/tmp/harmonium-sets/smoke.json`.
+- Rejeu final du binaire de livraison : les **326 snapshots**, le MIDI et le WAV
+  des deux sets de reel sont identiques à la mesure précédente, WAV et MIDI
+  **octet pour octet** (`final-repeat-proof.json`). Les corrections de gestion
+  d'anticipation ne changent pas la musique ni les niveaux déjà mesurés.
+- `cargo fmt --all` puis `--check` réussis. `cargo clippy --workspace --lib --bins`
+  : **162 avertissements avant et après, aucun nouveau**, comparaison par
+  paquet/fichier/code/message, multiplicités comprises. Aucun `unwrap()` ou
+  `expect()` ajouté hors tests. Rust-analyzer quitte avec code 0 avant
+  initialisation (y compris après reload) : références recherchées explicitement
+  par texte et consommateurs compilés, sans prétendre à une preuve LSP.
+- Vérification finale : **`cargo test --workspace --no-fail-fast` : 474 réussis,
+  2 ignorés, 58 suites**, aucun échec. Les sept profils exportent 200 mesures
+  avec puis sans automation dans le délai de 120 s de `export_terminates`.
+  Le test du callback complet sous `RTCheckAllocator`, enregistrement WAV/MIDI
+  compris, passe ; aucun nouveau travail n'a été ajouté à ce callback.
+
+
 
 ### BUG1 — export sans automation qui ne se termine pas (≥ 101 mesures)
 

@@ -33,6 +33,7 @@ fn fixture() -> StyleProfile {
     p.performance = Default::default();
     p.ornaments = Default::default();
     p.arrangement = ReelArrangement::from_start(2, Default::default());
+    p.set = Default::default();
     p.melody.key_modes = vec![KeyModeWeight { key: 2, mode: Mode::Dorian, weight: 1 }];
     p.melody.cells = CellBank {
         cells: [
