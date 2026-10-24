@@ -157,6 +157,45 @@ impl SetKey {
     }
 }
 
+/// Mécanisme de raccord entre deux airs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransitionKind {
+    #[default]
+    Direct,
+    Call,
+    Held,
+    Silence,
+}
+
+/// Transition pondérée ; `bars` est réservé à l'appel et au silence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetTransition {
+    pub kind: TransitionKind,
+    pub weight: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bars: Option<usize>,
+}
+
+/// Pause pondérée après un set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetGap {
+    pub bars: usize,
+    pub weight: u32,
+}
+
+/// Clôture d'un set fini.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetEnd {
+    #[serde(default)]
+    pub outro: bool,
+    #[serde(default)]
+    pub gap_bars: Vec<SetGap>,
+}
+
 /// Section `[set]` du profil (`set.toml`). Section absente : un set sans fin, tous
 /// les facteurs à 1 ; chaque air se tire alors indépendamment du précédent.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -168,6 +207,12 @@ pub struct ProfileSet {
     /// Facteurs de classe de transition de tonalité.
     #[serde(default)]
     pub key: SetKey,
+    /// Raccords des airs 2..L ; vide : levée seule.
+    #[serde(default)]
+    pub transitions: Vec<SetTransition>,
+    /// Cadence et pause de fin de set.
+    #[serde(default)]
+    pub end: SetEnd,
 }
 
 impl ProfileSet {
@@ -226,8 +271,68 @@ impl ProfileSet {
                 "au moins un facteur de classe positif requis",
             ));
         }
+        let max_bars = super::arrangement::MAX_INTRO_BARS;
+        validate_weights("set.transitions", self.transitions.iter().map(|t| t.weight))?;
+        for (index, transition) in self.transitions.iter().enumerate() {
+            let valid = match transition.kind {
+                TransitionKind::Call | TransitionKind::Silence => {
+                    transition.bars.is_some_and(|bars| (1..=max_bars).contains(&bars))
+                }
+                TransitionKind::Direct | TransitionKind::Held => transition.bars.is_none(),
+            };
+            if !valid {
+                return Err(ProfileError::new(
+                    format!("set.transitions[{index}].bars"),
+                    "1..=MAX_INTRO_BARS pour call/silence ; absent pour direct/held",
+                ));
+            }
+        }
+        validate_weights("set.end.gap_bars", self.end.gap_bars.iter().map(|g| g.weight))?;
+        for (index, gap) in self.end.gap_bars.iter().enumerate() {
+            if gap.bars > max_bars {
+                return Err(ProfileError::new(
+                    format!("set.end.gap_bars[{index}].bars"),
+                    "attendu 0..=MAX_INTRO_BARS",
+                ));
+            }
+        }
         Ok(())
     }
+
+    /// Résout le raccord sans tirer de nouvel aléa.
+    #[must_use]
+    pub fn transition(&self, u: u32) -> (TransitionKind, usize) {
+        weighted_index(self.transitions.iter().map(|t| t.weight), u)
+            .map_or((TransitionKind::Direct, 0), |index| {
+            let t = self.transitions[index];
+            (t.kind, t.bars.unwrap_or(0))
+        })
+    }
+
+    /// Résout la pause de fin de set.
+    #[must_use]
+    pub fn gap_bars(&self, u: u32) -> usize {
+        weighted_index(self.end.gap_bars.iter().map(|g| g.weight), u)
+            .map_or(0, |index| self.end.gap_bars[index].bars)
+    }
+}
+
+fn weighted_index(weights: impl Iterator<Item = u32> + Clone, u: u32) -> Option<usize> {
+    let total: u64 = weights.clone().map(u64::from).sum();
+    let mut remaining = u64::from(u) * total / KEY_DRAW_RANGE as u64;
+    weights.enumerate().find_map(|(index, weight)| {
+        let hit = remaining < u64::from(weight);
+        remaining = remaining.saturating_sub(u64::from(weight));
+        hit.then_some(index)
+    })
+}
+
+fn validate_weights(field: &str, weights: impl Iterator<Item = u32>) -> Result<(), ProfileError> {
+    let (count, total) = weights.fold((0usize, 0u64), |(n, sum), w| (n + 1, sum + u64::from(w)));
+    if count > MAX_SET_LENGTH_ENTRIES || (count > 0 && !(1..=u64::from(u32::MAX)).contains(&total)) {
+        return Err(ProfileError::new(field, "au plus 64 entrées, somme positive dans u32"));
+    }
+    Ok(())
 }
 
 /// Résolution d'un tirage uniforme `0..UNIT` en tonalité (même précision partout).
@@ -331,6 +436,8 @@ pub struct SetPlan {
     first_tune: usize,
     tunes: usize,
     key_draws: Vec<u32>,
+    transition_draws: Vec<u32>,
+    gap_draw: u32,
 }
 
 impl SetPlan {
@@ -339,7 +446,10 @@ impl SetPlan {
     pub fn draw(first_tune: usize, set: &ProfileSet, rng: &mut dyn RngCore) -> Self {
         let total: u64 = set.length.iter().map(|entry| u64::from(entry.weight)).sum();
         if total == 0 {
-            return Self { first_tune, tunes: 0, key_draws: Vec::new() };
+            return Self {
+                first_tune, tunes: 0, key_draws: Vec::new(),
+                transition_draws: Vec::new(), gap_draw: 0,
+            };
         }
         let mut remaining = rng.next_range_usize(0..total as usize) as u64;
         let tunes = set
@@ -353,7 +463,10 @@ impl SetPlan {
             .map_or(1, |entry| entry.tunes);
         let key_draws =
             (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
-        Self { first_tune, tunes, key_draws }
+        let transition_draws =
+            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        let gap_draw = rng.next_range_usize(0..KEY_DRAW_RANGE) as u32;
+        Self { first_tune, tunes, key_draws, transition_draws, gap_draw }
     }
 
     /// Indice 0-based du premier air du set dans la session.
@@ -391,6 +504,18 @@ impl SetPlan {
     #[must_use]
     pub fn key_draw(&self, tune_in_set: usize) -> Option<u32> {
         self.key_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Tirage de raccord de l'air de rang `tune_in_set` (≥ 2).
+    #[must_use]
+    pub fn transition_draw(&self, tune_in_set: usize) -> Option<u32> {
+        self.transition_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+
+    /// Pause choisie pour la fin de ce set.
+    #[must_use]
+    pub fn gap_bars(&self, set: &ProfileSet) -> usize {
+        if self.tunes == 0 { 0 } else { set.gap_bars(self.gap_draw) }
     }
 }
 

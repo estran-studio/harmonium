@@ -22,3 +22,19 @@ step_up   = 0.86   # tonique +2
 step_down = 0.74   # tonique −2
 other     = 0.73   # autre
 last_dark = 1.00   # neutre : effet de position non mesuré pour ce type
+
+# Raccords proposés par l'étude §4.5, à valider à l'oreille.
+[[transitions]]
+kind = "direct"
+weight = 80
+[[transitions]]
+kind = "call"
+weight = 10
+bars = 1
+[[transitions]]
+kind = "held"
+weight = 10
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]

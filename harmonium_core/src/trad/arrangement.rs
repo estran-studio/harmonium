@@ -644,6 +644,10 @@ pub struct IntroInfo {
     pub form: Option<IntroRole>,
     /// Nombre de mesures d'intro pour cet air.
     pub intro_bars: usize,
+    /// Mesures vides avant la forme (pause de set ou transition silence).
+    pub leading_silence: usize,
+    /// Mesures consacrées à la forme, hors pause et levée séparée.
+    pub form_bars: usize,
     /// Notes MIDI de la levée (croches ascendantes vers la première note de l'air).
     /// Vide si `pickup_eighths == 0`.
     pub pickup_notes: Vec<u8>,
@@ -653,7 +657,10 @@ impl IntroInfo {
     /// Pas d'intro du tout.
     #[must_use]
     pub const fn none() -> Self {
-        Self { form: None, intro_bars: 0, pickup_notes: Vec::new() }
+        Self {
+            form: None, intro_bars: 0, leading_silence: 0, form_bars: 0,
+            pickup_notes: Vec::new(),
+        }
     }
 
     /// Vrai si la percussion joue pendant l'intro (rôle `Percussion`).

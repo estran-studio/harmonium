@@ -579,6 +579,35 @@ compte les airs de la session). `tune_index` reste l'indice global. Les trois ch
 par défaut à la lecture : un JSON de snapshot antérieur à V7b se relit. L'export CLI les affiche
 (« set 2, air 1/3 ») et les écrit dans `measures[].measure.position` du JSON.
 
+### Raccords et clôture
+
+`[[transitions]]` dans `set.toml` (`[[set.transitions]]` en profil inline) contient
+`kind`, `weight` et, seulement pour `call` / `silence`, `bars` (1..=4).
+Les poids sont entiers, somme positive dans u32, au plus 64 entrées ; table absente :
+`direct`. Les tirages de raccord sont fixés dans le bloc initial du set, indépendamment
+des émotions et de la génération spéculative.
+
+| Forme | Rendu |
+|---|---|
+| `direct` | Levée seule, une mesure si `pickup_eighths > 0`, sinon aucune. |
+| `call` | `bars` mesures de percussion seule, puis la levée dans une mesure séparée. |
+| `silence` | `bars` mesures vides, puis la levée dans une mesure séparée. |
+| `held` | Dernière mesure de l'air précédent rendue par l'outro tonique existante ; puis levée. Aucun arrêt du lecteur. |
+
+`[end] outro = true` applique cette outro à la dernière mesure du dernier air du set.
+`gap_bars = [{ bars = 0, weight = 1 }]` est la distribution des pauses (0..=4 mesures),
+tirée au début du set ; elle précède l'intro complète du set suivant. Toutes ces mesures
+portent `Section::Intro` et la position de l'air suivant ; `held` reste la dernière mesure
+de l'air précédent. La grille et la pulse ne s'interrompent pas.
+Section `[end]` absente : aucune outro ni pause. Sans longueur de set : aucun raccord
+autre que la levée, aucune clôture. `end_after_tour` reste un arrêt demandé par le jeu
+à la fin de l'air courant, indépendant de cette clôture.
+
+Les six profils de médley utilisent les propositions de raccord de l'étude §4.5 et une
+outro ; les pauses restent à zéro faute d'écoute. La marche conserve son appel complet
+à chaque air, sans outro supplémentaire. Ces propositions **ne sont pas un ADR d'écoute**.
+
+
 ## Règles de phrase
 
 Le profil décide des répétitions ; le moteur ne suppose ni huit mesures, ni

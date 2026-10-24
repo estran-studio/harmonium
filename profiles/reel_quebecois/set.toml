@@ -22,3 +22,19 @@ step_up   = 0.91   # tonique +2
 step_down = 0.73   # tonique −2
 other     = 0.75   # autre
 last_dark = 0.80   # dernier air du set : facteur des modes sombres (28,9 % contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels)
+
+# Raccords proposés par l'étude §4.5, à valider à l'oreille (non mesurés dans le corpus).
+[[transitions]]
+kind = "direct"
+weight = 70
+[[transitions]]
+kind = "call"
+weight = 20
+bars = 1
+[[transitions]]
+kind = "held"
+weight = 10
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]

@@ -52,9 +52,9 @@ fn set_file_errors_name_the_field() -> TestResult {
 
     let mut value: toml::Value = toml::from_str(&StyleProfile::default().to_toml()?)?;
     let set = value.get_mut("set").and_then(toml::Value::as_table_mut).ok_or("set absent")?;
-    set.insert("transitions".into(), toml::Value::Array(Vec::new()));
+    set.insert("transitons".into(), toml::Value::Array(Vec::new()));
     let error = StyleProfile::from_toml(&toml::to_string(&value)?).err().ok_or("profil accepté")?;
-    assert!(error.message.contains("transitions"), "{error}");
+    assert!(error.message.contains("transitons"), "{error}");
     Ok(())
 }
 

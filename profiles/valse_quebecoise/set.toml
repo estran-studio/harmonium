@@ -22,3 +22,11 @@ step_up   = 0.84   # tonique +2
 step_down = 0.81   # tonique −2
 other     = 0.62   # autre
 last_dark = 1.00   # neutre : effet de position non mesuré pour ce type
+
+[[transitions]]
+kind = "direct"
+weight = 100
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]
