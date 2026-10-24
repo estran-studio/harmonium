@@ -194,13 +194,26 @@ rules = [
 [accompaniment.chords]
 center = 60
 max_drift = 6
+strings = 4
 default_pattern = 1
 patterns = [
-  { hits = [{ step = 4, duration = 1, velocity = 72 }] },
-  { hits = [{ step = 4, duration = 1, velocity = 72 }, { step = 10, duration = 1, velocity = 72 }] },
-  { hits = [{ step = 2, duration = 1, velocity = 72 }, { step = 4, duration = 1, velocity = 72 }, { step = 8, duration = 1, velocity = 72 }, { step = 10, duration = 1, velocity = 72 }] },
-  { hits = [{ step = 0, duration = 1, velocity = 72 }, { step = 2, duration = 1, velocity = 72 }, { step = 4, duration = 1, velocity = 72 }, { step = 6, duration = 1, velocity = 72 }, { step = 8, duration = 1, velocity = 72 }, { step = 10, duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 2, stroke = "down", duration = 1, velocity = 66 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 8, stroke = "down", duration = 1, velocity = 66 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 0, stroke = "down", duration = 1, velocity = 72 }, { step = 2, stroke = "up", duration = 1, velocity = 54 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 6, stroke = "down", duration = 1, velocity = 72 }, { step = 8, stroke = "up", duration = 1, velocity = 54 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
 ]
+
+[accompaniment.chords.strum]
+down_gap_ms = 7.0
+up_gap_ms = 5.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 172.5
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
 
 [instruments]
 melody_program = 40

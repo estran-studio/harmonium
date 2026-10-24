@@ -1007,6 +1007,60 @@ La migration précédente passait également `cargo test --workspace` :
 430 réussis, deux ignorés, 50 suites. Référence clippy hors tests de main
 archivé (`649c684`) : 162 avertissements, enregistrés pour comparaison finale.
 
+**V5b-3 — grattage.** `trad/strum.rs`, schéma de cordes et coups dans
+`trad/accomp_profile.rs`, triades doublées par octaves et coups montants dans
+`trad/accomp.rs`. Le rejeu de conduite de voix n'alloue plus de notes jetables.
+Les tirages de présence, vélocité et écart ont des domaines séparés de la même
+graine de matériel ; aucun tirage séquentiel ajouté. V2 interprète maintenant
+chaque attaque en bloc (jitter, articulation, gate et respiration), puis V5
+ajoute le geste dans ±490. Un geste trop large est réduit **en entier** :
+pas de saturation indépendante qui inverserait ou superposerait des cordes.
+Le jitter V2 par attaque remplace la validation croisée jitter/écart proposée
+quand V2 était encore par note. `TUNING_VERSION = 18`, deux goldens courants
+régénérés dans cette étape ; D2 fixe reste mécanique et inchangé.
+
+Mêmes 420 paires d'exports, après grattage :
+
+| Profil | Écart de cordes à arousal 0,5 (ms), min–max | Étalement moyen (ms) | Erreurs d'ordre |
+|---|---:|---:|---:|
+| reel québécois | 4,17–7,81 | 18,04 | 0 |
+| reel acadien | 4,20–7,81 | 18,10 | 0 |
+| gigue québécoise | 4,86–9,11 | 20,95 | 0 |
+| gigue britannique | 5,57–10,46 | 23,86 | 0 |
+| valse québécoise | 6,29–11,76 | 27,01 | 0 |
+| hornpipe britannique | 6,99–13,01 | 30,18 | 0 |
+| marche britannique | — | — | 0 |
+
+Résultats : `/tmp/harmonium-accomp/strum/rates/measurements.json` (intervalles
+des passages inclus). Les voisins Melody/Heel/Toe restent identiques à main ;
+conflits de passage et erreurs d'ordre nuls, conflits forts inchangés.
+
+**Contrats V5a §5.8.** Treize tests de `accompaniment_contract_tests` couvrent
+chargement, neutralité/rejeu, passages, voisins, cordes descendantes/montantes
+sur 200 mesures et trois tempos, ms/arrondi, ancre, plafonds, atomicité V2
+(jitter 0,1 pas, supérieur à l'ancien seuil), présence pondérée et MIDI statique.
+Pour l'ancre, la formule de moyenne est vérifiée avec jitter nul : avec un
+tirage indépendant **par écart**, la moyenne arithmétique des cordes n'est pas
+nécessairement le milieu des deux extrêmes ; les ancres 0/1 fixent bien la
+première/dernière corde, 0,5 le milieu de l'étalement. Cette distinction corrige
+le test 5 de l'étude sans changer le geste proposé.
+Le test 8 est vérifié relativement à main, plus strict que le plafond corpus+3.
+Les tests historiques de structure/répétition neutralisent explicitement les
+nouveaux gestes ; les assertions incidentes d'ancien nombre de notes sont
+retirées, pas réécrites pour épingler quatre cordes.
+
+`cargo test -p harmonium_core --no-fail-fast` : 314 réussis, un ignoré,
+23 suites. MIDI enregistré réel : `cargo test --release -p harmonium
+--test recorded_midi_exact_tests` (20 seeds × trois profils × deux tensions,
+plus swing/rampe) : deux tests réussis. Lecteur RT :
+`performance_playback_tests`, trois réussis ; nouveau scénario de cordes
+positives à la fin de mesure, négatives au début suivant et basse traversant
+la barre/retrigger : attaques aux frames 15000, 15100, 15150, 15200, 15850,
+15900, 15950, 17000 et fins de basse 17000/21000 (jamais l'ancienne fin 19000).
+Tout passe par les événements préparés et la garde globale RT1, aucun code
+de callback modifié.
+
+
 
 
 

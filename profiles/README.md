@@ -101,6 +101,61 @@ Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille*
 marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
 hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
 
+### Accords grattés
+
+`chords.strings` (3..6, défaut 3) complète la triade par octaves en montant.
+Chaque coup porte `stroke = "block" | "down" | "up"` (défaut `block`) et
+`probability` (0..1, défaut 1). Zéro/1 : aucun tirage de présence ; entre les
+deux : un tirage dérivé par attaque. `down` va du grave à l'aigu ; `up` ne
+joue que les `up_strings` les plus aiguës, dans l'ordre inverse. Dans le
+snapshot, l'ordre du Vec et des identifiants est toujours l'ordre d'attaque.
+
+```toml
+[accompaniment.chords.strum]
+down_gap_ms = 6.0
+up_gap_ms = 4.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 230.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
+```
+
+| Champ | Bornes / mécanique |
+|---|---|
+| `down_gap_ms`, `up_gap_ms` | 0..40 ms entre cordes ; 0 : plaqué. |
+| `gap_jitter` | 0..0,8, uniforme symétrique par écart, sur le RNG dérivé de l'attaque. |
+| `up_strings` | 2..`strings`. |
+| `anchor` | 0..1 : première corde / centre de l'étalement / dernière corde sur l'attaque V2. |
+| `tempo_exponent` | 0..1 : écart × `(ref_bpm / tempo)^exposant` ; 0 : ms fixes, 1 : geste relatif au tempo. |
+| `ref_bpm` | 1..1000, fini. |
+| `max_spread_ratio` | 0..0,4 de la distance au coup suivant du motif, retour à la mesure suivante compris. |
+| `velocity_slope`, `velocity_jitter` | 0..20 unités MIDI ; bonus décroissant de la première à la dernière corde, puis jitter individuel, **avant V2**. |
+
+Le grattage est composé **après V2** en millièmes de pas. Pour conserver l'ordre,
+le geste entier est réduit si nécessaire pour tenir dans ±490 ou le plafond
+de voisinage ; aucune corde n'est clampée indépendamment des autres.
+`strum` absent ou coup `block` : aucun décalage ni jitter V5, mais `strings`
+reste la polyphonie écrite. Mécanique historique : trois sons, pas de `strum`,
+probabilités 1, mêmes vélocités/motifs. V2 tire désormais articulation et jitter
+**par attaque** sur chaque piste (contexte = hauteur la plus grave de l'attaque
+précédente) ; gate/respiration communs, vélocités individuelles conservées.
+La validation croisée jitter/écart de V5a est donc inutile : un jitter V2 commun
+ne peut pas inverser les cordes. Les approches modales et gestes de cordes
+sont refusés avec `jazz_functional`, dont le chemin conserve ses accords absolus.
+
+Les ms sont converties avec le tempo nominal de la mesure ; swing et rampes
+du lecteur réutilisent ensuite ce décalage dans la durée gelée de chaque pas,
+comme V2 (pas d'horloge murale ni de second ordonnanceur audio).
+Les six ensembles harmoniques gardent guitare nylon et basse acoustique :
+écarts descendants 6/7/8/9/10 ms selon le profil, valeurs de départ de l'étude.
+Reels : montées douces optionnelles à haute densité ; gigues : bas-haut-bas ;
+valse et hornpipe : montée rare. La marche reste sans accompagnement tonal.
+
+
 
 
 ## Mixage
@@ -232,7 +287,7 @@ individuels citent les comptages utilisés et les choix non mesurables.
 | `rules[].weight` | Poids fini 0..1 000 000 ; tirage parmi **toutes** les règles applicables, addition des poids, pas de priorité implicite. Aucun poids positif : note inchangée. | `0` | Poids de marques écrites conditionnés par position/durée/contexte |
 | `rules[].steps` | Positions 0-based dans la mesure ; vide = toutes. | `[]` | Positions de temps/demi-temps du corpus, ramenées à la grille du profil |
 | `rules[].min_duration`, `max_duration` | Durée écrite en pas, bornes inclusives ; minimum omis = 0, maximum omis = sans plafond. | `0`, omis | Réserver une règle liée aux tenues, détachée aux notes courtes |
-| `rules[].context` | `any`, `repeated`, `ascending`, `descending` ; intervalle avec l'attaque précédente de la même piste **dans la mesure**, première attaque = `any`. | `any` | Poids conditionnels sur répétitions ou contour |
+| `rules[].context` | `any`, `repeated`, `ascending`, `descending` ; intervalle entre les hauteurs les plus graves de deux attaques de la même piste **dans la mesure**, première attaque = `any`. Un accord partage ce contexte, sans intervalle fictif entre ses cordes. | `any` | Poids conditionnels sur répétitions ou contour |
 | `rules[].shorten` | Fraction 0..0,8 retranchée à la durée ; pas de gate caché dans l'articulation. | `0` | Détaché : 0,15..0,25 ; lié : 0 |
 | `rules[].accent` | Ajout de vélocité 0..20 unités MIDI, après la dynamique existante. | `0` | 2..4 pour `Accent` |
 | `phrase` | Points `[phase 0..1, delta −20..20]`, phases strictement croissantes ; interpolation linéaire, extrémités constantes. Phase calculée à l'attaque sur la phrase configurée, pas sur tout l'air. | `[]` ou deltas nuls | −2 → +2 → −3 |

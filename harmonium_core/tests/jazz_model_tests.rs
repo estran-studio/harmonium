@@ -38,6 +38,12 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
         a.bass.walk_low = None;
         a.bass.walk_high = None;
         a.bass.passing = None;
+        a.chords.strum = None;
+        a.chords.strings = 3;
+        for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
+            hit.stroke = harmonium_core::trad::accomp_profile::Stroke::Block;
+            hit.probability = 1.0;
+        }
     }
     p.arrangement = ReelArrangement::from_start(1, Part(0));
     p.arrangement.intro = IntroConfig::none();

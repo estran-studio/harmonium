@@ -9,8 +9,8 @@ use crate::{
     },
 };
 
-/// Version du contrat : notes de passage de basse en données (V5b-2).
-pub const TUNING_VERSION: u32 = 17;
+/// Version du contrat : grattage additif après V2 et gestes par attaque (V5b-3).
+pub const TUNING_VERSION: u32 = 18;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

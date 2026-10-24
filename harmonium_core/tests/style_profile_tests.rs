@@ -12,6 +12,8 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
     p.accompaniment.as_mut().unwrap().bass.passing = None;
+    p.accompaniment.as_mut().unwrap().chords.strum = None;
+    p.accompaniment.as_mut().unwrap().chords.strings = 3;
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -329,6 +331,8 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
         profile.performance = Default::default();
         profile.ornaments = Default::default();
         profile.accompaniment.as_mut().unwrap().bass.passing = None;
+        profile.accompaniment.as_mut().unwrap().chords.strum = None;
+        profile.accompaniment.as_mut().unwrap().chords.strings = 3;
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();

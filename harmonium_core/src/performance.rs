@@ -211,14 +211,22 @@ impl Performance {
             let Some(notes) = measure.tracks.get_mut(&track) else { continue };
             let last = notes.iter().map(|n| n.start_step).max();
             let mut previous = None;
-            for note in notes {
+            let mut index = 0;
+            while index < notes.len() {
+                let step = notes[index].start_step;
+                let count = notes[index..].iter().take_while(|n| n.start_step == step).count();
+                let attack = &mut notes[index..index + count];
+                index += count;
+                // Le contexte porte sur la voix grave de l'attaque précédente, pas sur ses cordes.
+                let pitch = attack.iter().map(|n| n.pitch).min().unwrap_or(0);
                 let context =
-                    previous.map_or(NoteContext::Any, |pitch| match note.pitch.cmp(&pitch) {
+                    previous.map_or(NoteContext::Any, |previous| match pitch.cmp(&previous) {
                         std::cmp::Ordering::Equal => NoteContext::Repeated,
                         std::cmp::Ordering::Greater => NoteContext::Ascending,
                         std::cmp::Ordering::Less => NoteContext::Descending,
                     });
-                previous = Some(note.pitch);
+                previous = Some(pitch);
+                let note = &mut attack[0];
                 let matches = |r: &&ArticulationRule| {
                     (r.steps.is_empty() || r.steps.contains(&note.start_step))
                         && note.duration_steps >= r.min_duration
@@ -267,16 +275,24 @@ impl Performance {
                     } else {
                         0.0
                     };
-                let velocity = f32::from(note.velocity)
-                    + phrase
-                    + accent
-                    + valence * p.emotions.valence_velocity;
+                let delta = phrase + accent + valence * p.emotions.valence_velocity;
+                let velocity = f32::from(note.velocity) + delta;
                 let (lo, hi) = if p.velocity_max == 0 {
                     (1, 127)
                 } else {
                     (p.velocity_min.max(1), p.velocity_max)
                 };
                 note.velocity = velocity.round().clamp(f32::from(lo), f32::from(hi)) as u8;
+                let performance = note.performance;
+                let articulation = note.articulation;
+                for other in &mut attack[1..] {
+                    other.performance = performance;
+                    other.articulation = articulation;
+                    other.velocity = (f32::from(other.velocity) + delta)
+                        .round()
+                        .clamp(f32::from(lo), f32::from(hi))
+                        as u8;
+                }
             }
         }
     }

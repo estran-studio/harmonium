@@ -284,6 +284,13 @@ mod tests {
                     tuning.profile.performance = Default::default();
                     if let Some(a) = &mut tuning.profile.accompaniment {
                         a.bass.passing = None;
+                        a.chords.strings = 3;
+                        a.chords.strum = None;
+                        for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
+                            hit.probability = 1.0;
+                            hit.stroke = harmonium_core::trad::accomp_profile::Stroke::Block;
+                            hit.velocity = 72;
+                        }
                     }
                     // Seule la note de passage de densité existait sur main.
                     tuning.profile.ornaments.types.retain(|kind, _| {

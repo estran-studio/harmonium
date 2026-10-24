@@ -24,6 +24,8 @@ fn flat_tuning() -> TuningParams {
             p.performance = Default::default();
             p.ornaments = Default::default();
             p.accompaniment.as_mut().unwrap().bass.passing = None;
+            p.accompaniment.as_mut().unwrap().chords.strum = None;
+            p.accompaniment.as_mut().unwrap().chords.strings = 3;
             for part in &mut p.form.parts {
                 part.second_ending = None;
                 use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};

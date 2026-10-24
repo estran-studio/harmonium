@@ -114,19 +114,24 @@ impl Guitarist {
     ) -> Option<[u8; 3]> {
         let center_sum = 3 * i32::from(params.chords.center);
         let max_drift_sum = 3 * i32::from(params.chords.max_drift);
-        let best = close_voicings(chord, key, mode).min_by_key(|v| {
-            let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
-            let center_dist = (sum - center_sum).abs();
-            let movement: i32 = self.previous.map_or(0, |p| {
-                v.iter().zip(p).map(|(&a, b)| (i32::from(a) - i32::from(b)).abs()).sum()
-            });
-            (center_dist > max_drift_sum, movement, center_dist, v[0])
-        })?;
+        let best = close_voicings(chord, key, mode)
+            .filter(|v| {
+                params.chords.strings <= 3 || v[usize::from(params.chords.strings - 4)] <= 115
+            })
+            .min_by_key(|v| {
+                let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
+                let center_dist = (sum - center_sum).abs();
+                let movement: i32 = self.previous.map_or(0, |p| {
+                    v.iter().zip(p).map(|(&a, b)| (i32::from(a) - i32::from(b)).abs()).sum()
+                });
+                (center_dist > max_drift_sum, movement, center_dist, v[0])
+            })?;
         self.previous = Some(best);
         Some(best)
     }
 
     /// Accords d'une mesure : un coup par entrée du motif par défaut.
+    #[allow(clippy::too_many_arguments)]
     pub fn chop_bar(
         &mut self,
         chords: &[TradChord],
@@ -134,6 +139,7 @@ impl Guitarist {
         mode: Mode,
         params: &TradHarmonyParams,
         steps_per_chord: usize,
+        seed: u64,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
         self.chop_bar_on_hits(
@@ -143,6 +149,7 @@ impl Guitarist {
             params,
             &params.chords.patterns[params.chords.default_pattern].hits,
             steps_per_chord,
+            seed,
             next_id,
         )
     }
@@ -157,26 +164,64 @@ impl Guitarist {
         params: &TradHarmonyParams,
         hits: &[ChordHit],
         steps_per_chord: usize,
+        seed: u64,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
-        let mut notes = Vec::with_capacity(hits.len() * 3);
-        for hit in hits {
+        let voice = &params.chords;
+        let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.strings));
+        for hit in hits.iter().filter(|hit| super::strum::selected(hit, seed)) {
             let step = hit.step;
             let Some(voicing) = self.voice(chords[step / steps_per_chord], key, mode, params)
             else {
                 continue;
             };
-            notes.extend(voicing.map(|pitch| TimelineNote {
+            let mut pitches = [0u8; 6];
+            pitches[..3].copy_from_slice(&voicing);
+            for i in 3..usize::from(voice.strings) {
+                pitches[i] = pitches[i - 3] + 12;
+            }
+            let (first, count) = if hit.stroke == super::accomp_profile::Stroke::Up {
+                let count = voice
+                    .strum
+                    .as_ref()
+                    .map_or(usize::from(voice.strings), |s| usize::from(s.up_strings));
+                (usize::from(voice.strings) - count, count)
+            } else {
+                (0, usize::from(voice.strings))
+            };
+            let pitches = &mut pitches[first..first + count];
+            if hit.stroke == super::accomp_profile::Stroke::Up {
+                pitches.reverse();
+            }
+            let velocities = super::strum::velocities(voice, hit, count, seed);
+            notes.extend(pitches.iter().zip(velocities).map(|(&pitch, velocity)| TimelineNote {
                 id: next_id(),
                 pitch,
                 start_step: step,
                 duration_steps: hit.duration,
-                velocity: hit.velocity,
+                velocity,
                 articulation: Articulation::Normal,
                 performance: Default::default(),
             }));
         }
         notes
+    }
+
+    /// Rejoue seulement la conduite de voix : aucune note ni allocation jetable.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn advance_bar(
+        &mut self,
+        chords: &[TradChord],
+        key: PitchClass,
+        mode: Mode,
+        params: &TradHarmonyParams,
+        hits: &[ChordHit],
+        steps_per_chord: usize,
+        seed: u64,
+    ) {
+        for hit in hits.iter().filter(|h| super::strum::selected(h, seed)) {
+            let _ = self.voice(chords[hit.step / steps_per_chord], key, mode, params);
+        }
     }
 }
 
@@ -204,8 +249,15 @@ mod tests {
         TradChord::new(degree, ChordQuality::Major)
     }
 
+    fn mechanical() -> TradHarmonyParams {
+        let mut p = TradHarmonyParams::default();
+        p.chords.strings = 3;
+        p.chords.strum = None;
+        p
+    }
+
     fn chop(guitarist: &mut Guitarist, chords: [TradChord; 2]) -> Vec<TimelineNote> {
-        guitarist.chop_bar(&chords, D, Mode::Ionian, &TradHarmonyParams::default(), 8, &mut ids())
+        guitarist.chop_bar(&chords, D, Mode::Ionian, &mechanical(), 8, 0, &mut ids())
     }
 
     #[test]
@@ -305,7 +357,7 @@ mod tests {
 
     #[test]
     fn voicings_never_drift_away_from_c4() {
-        let params = TradHarmonyParams::default();
+        let params = mechanical();
         let mut guitarist = Guitarist::new();
         let mut next_id = ids();
         for bar in 0..64 {
@@ -313,7 +365,7 @@ mod tests {
             let candidates = candidate_chords(mode, profile());
             let chords =
                 [candidates[bar % candidates.len()], candidates[(bar * 3 + 1) % candidates.len()]];
-            let notes = guitarist.chop_bar(&chords, D, mode, &params, 8, &mut next_id);
+            let notes = guitarist.chop_bar(&chords, D, mode, &params, 8, 0, &mut next_id);
             for group in notes.chunks(3) {
                 let sum: i32 = group.iter().map(|n| i32::from(n.pitch)).sum();
                 assert!((sum - 3 * 60).abs() <= 3 * 6, "bar {bar}: {group:?}");
@@ -327,7 +379,15 @@ mod tests {
         let params = TradHarmonyParams::default();
         let chords = [major(ChordDegree::I); 2];
         let mut all = bass_bar(&chords, D, Mode::Ionian, &params, 8, &mut next_id);
-        all.extend(Guitarist::new().chop_bar(&chords, D, Mode::Ionian, &params, 8, &mut next_id));
+        all.extend(Guitarist::new().chop_bar(
+            &chords,
+            D,
+            Mode::Ionian,
+            &params,
+            8,
+            0,
+            &mut next_id,
+        ));
         let mut found: Vec<_> = all.iter().map(|n| n.id).collect();
         found.sort_unstable();
         found.dedup();

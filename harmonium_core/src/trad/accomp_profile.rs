@@ -40,6 +40,10 @@ pub struct ChordHit {
     pub step: usize,
     pub duration: usize,
     pub velocity: u8,
+    #[serde(default)]
+    pub stroke: Stroke,
+    #[serde(default = "unit_multiplier")]
+    pub probability: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -55,6 +59,88 @@ pub struct ChordVoice {
     pub max_drift: u8,
     pub default_pattern: usize,
     pub patterns: Vec<ChordPattern>,
+    #[serde(default = "triad_strings")]
+    pub strings: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strum: Option<Strum>,
+}
+
+fn triad_strings() -> u8 {
+    3
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Stroke {
+    #[default]
+    Block,
+    Down,
+    Up,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Strum {
+    pub down_gap_ms: f32,
+    pub up_gap_ms: f32,
+    pub up_strings: u8,
+    pub gap_jitter: f32,
+    pub anchor: f32,
+    pub tempo_exponent: f32,
+    pub ref_bpm: f32,
+    pub max_spread_ratio: f32,
+    pub velocity_slope: u8,
+    pub velocity_jitter: u8,
+}
+
+impl ChordVoice {
+    pub(crate) fn pattern(&self, offset: f32) -> &ChordPattern {
+        let index = if offset == 0.0 {
+            self.default_pattern
+        } else {
+            (1.0 + offset).round().clamp(0.0, (self.patterns.len() - 1) as f32) as usize
+        };
+        &self.patterns[index]
+    }
+    pub(crate) fn needs_seed(&self) -> bool {
+        self.patterns.iter().flat_map(|p| &p.hits).any(|h| {
+            (h.probability > 0.0 && h.probability < 1.0)
+                || (h.probability > 0.0
+                    && h.stroke != Stroke::Block
+                    && self
+                        .strum
+                        .as_ref()
+                        .is_some_and(|s| s.gap_jitter > 0.0 || s.velocity_jitter > 0))
+        })
+    }
+}
+
+impl Strum {
+    fn validate(&self, strings: u8) -> Result<(), ProfileError> {
+        let field = "accompaniment.chords.strum";
+        for (name, value, low, high) in [
+            ("down_gap_ms", self.down_gap_ms, 0.0, 40.0),
+            ("up_gap_ms", self.up_gap_ms, 0.0, 40.0),
+            ("gap_jitter", self.gap_jitter, 0.0, 0.8),
+            ("anchor", self.anchor, 0.0, 1.0),
+            ("tempo_exponent", self.tempo_exponent, 0.0, 1.0),
+            ("ref_bpm", self.ref_bpm, 1.0, 1000.0),
+            ("max_spread_ratio", self.max_spread_ratio, 0.0, 0.4),
+        ] {
+            require(
+                value.is_finite() && (low..=high).contains(&value),
+                format!("{field}.{name}"),
+                &format!("valeur finie dans {low}..{high} requise"),
+            )?;
+        }
+        require(
+            (2..=strings).contains(&self.up_strings),
+            format!("{field}.up_strings"),
+            "2..strings requis",
+        )?;
+        require(self.velocity_slope <= 20, format!("{field}.velocity_slope"), "0..20 requis")?;
+        require(self.velocity_jitter <= 20, format!("{field}.velocity_jitter"), "0..20 requis")
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -257,10 +343,26 @@ impl TradHarmonyParams {
         )?;
         let c = &self.chords;
         require(
-            c.center <= 127 && c.max_drift <= 127,
-            "accompaniment.chords.center",
-            "registre MIDI requis",
+            !jazz
+                || (c.strum.is_none()
+                    && c.strings == 3
+                    && c.patterns
+                        .iter()
+                        .flat_map(|p| &p.hits)
+                        .all(|h| h.probability == 1.0 && h.stroke == Stroke::Block)),
+            "accompaniment.chords",
+            "les gestes de cordes demandent l'harmonie trad_functional",
         )?;
+        require(c.center <= 127, "accompaniment.chords.center", "registre MIDI requis")?;
+        require(c.max_drift <= 127, "accompaniment.chords.max_drift", "registre MIDI requis")?;
+        require(
+            (3..=6).contains(&c.strings),
+            "accompaniment.chords.strings",
+            "3..6 cordes requises",
+        )?;
+        if let Some(strum) = &c.strum {
+            strum.validate(c.strings)?;
+        }
         require(
             c.default_pattern < c.patterns.len(),
             "accompaniment.chords.default_pattern",
@@ -274,6 +376,13 @@ impl TradHarmonyParams {
                 steps,
                 &field,
             )?;
+            for (j, hit) in pattern.hits.iter().enumerate() {
+                require(
+                    hit.probability.is_finite() && (0.0..=1.0).contains(&hit.probability),
+                    format!("{field}[{j}].probability"),
+                    "probabilité finie dans 0..1 requise",
+                )?;
+            }
         }
         Ok(())
     }

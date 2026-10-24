@@ -12,6 +12,8 @@ use rand_chacha::ChaCha8Rng;
 fn stream(mut profile: StyleProfile, seed: u64, bars: usize, outro: bool) -> Vec<MeasureSnapshot> {
     if let Some(a) = &mut profile.accompaniment {
         a.bass.passing = None;
+        a.chords.strum = None;
+        a.chords.strings = 3;
     }
     let mut params = MusicalParams::default();
     params.bpm = profile.meter.default_bpm;
