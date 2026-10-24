@@ -56,6 +56,10 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
         Arc::new(Mutex::new(Vec::new())),
         7,
     );
+    let mut profile = harmonium_core::StyleProfile::builtin().clone();
+    profile.arrangement = harmonium_core::trad::ReelArrangement::from_start(2, Default::default());
+    profile.instruments.countermelody_program = Some(0);
+    composer.set_profile(profile)?;
     composer.set_writehead_lookahead(12);
     composer.generate_bars(12);
     let (clock_tx, _clock_output) =
@@ -93,10 +97,12 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
         match i {
             100 => {
                 let _ = cmd_tx.push(PlaybackCommand::SetChannelGain { channel: 0, gain: 0.5 });
+                let _ = cmd_tx.push(PlaybackCommand::SetChannelGain { channel: 5, gain: 0.5 });
                 let _ = cmd_tx.push(PlaybackCommand::SetTempo { bpm: 180.0, ramp_pulses: 4 });
             }
             200 => {
                 let _ = cmd_tx.push(PlaybackCommand::SetChannelMute { channel: 1, muted: true });
+                let _ = cmd_tx.push(PlaybackCommand::SetChannelMute { channel: 5, muted: true });
                 let _ = cmd_tx.push(PlaybackCommand::SetMutedChannels([false; 16]));
                 let _ = cmd_tx.push(PlaybackCommand::UpdateMusicalParams(
                     composer.musical_params().playback_params(),
@@ -158,6 +164,14 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
             })
             .count();
         assert!(notes > 10, "MIDI : {notes} attaques");
+        assert!(
+            smf.tracks[0].iter().any(|event| matches!(
+                event.kind,
+                TrackEventKind::Midi { channel, message: MidiMessage::NoteOn { vel, .. } }
+                    if channel.as_int() == 5 && vel.as_int() > 0
+            )),
+            "la seconde voix traverse le callback gardé et l'enregistreur"
+        );
         assert!(
             smf.tracks[0]
                 .iter()

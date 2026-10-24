@@ -51,7 +51,7 @@ struct Args {
     bars: Option<usize>,
 
     /// Render only this logical track, without changing generated notes (export only).
-    #[arg(long, requires = "export", value_parser = ["Melody", "Chords", "Bass", "Heel", "Toe"])]
+    #[arg(long, requires = "export", value_parser = clap::builder::PossibleValuesParser::new(harmonium_core::timeline::TrackId::ALL.map(|track| track.name())))]
     solo_track: Option<String>,
 
     /// Courbes TOML par mesure (export seulement).

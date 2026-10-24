@@ -105,31 +105,49 @@ pub fn timeline_to_musicxml_with_instruments(
     // XML header
     write_header(&mut xml, title);
 
-    // Part names (use instrument name if available)
-    let bass_name = instrument_bass.instrument_name().unwrap_or("Bass");
-    let lead_name = instrument_lead.instrument_name().unwrap_or("Lead");
+    // Pistes à hauteur définie, dans l'ordre historique (basse, mélodie, accords) puis les autres
+    // de la liste canonique ; les pieds restent regroupés en une partie de percussions.
+    let mut pitched: Vec<TrackId> =
+        TrackId::ALL.into_iter().filter(|t| !matches!(t, TrackId::Heel | TrackId::Toe)).collect();
+    pitched.sort_by_key(|track| match track {
+        TrackId::Bass => 0,
+        TrackId::Melody => 1,
+        _ => 2,
+    });
+    let default_instrument = InstrumentConfig::default();
+    let instrument = |track| match track {
+        TrackId::Melody => instrument_lead,
+        TrackId::Bass => instrument_bass,
+        _ => &default_instrument,
+    };
+    let part_name = |track: TrackId| {
+        instrument(track).instrument_name().unwrap_or(if track == TrackId::Melody {
+            "Lead"
+        } else {
+            track.name()
+        })
+    };
 
-    // Part list
-    writeln!(xml, "  <part-list>").unwrap();
-    writeln!(xml, "    <score-part id=\"P1\"><part-name>{bass_name}</part-name></score-part>")
-        .unwrap();
-    writeln!(xml, "    <score-part id=\"P2\"><part-name>{lead_name}</part-name></score-part>")
-        .unwrap();
-    let _ = writeln!(xml, "    <score-part id=\"P3\"><part-name>Chords</part-name></score-part>");
-    writeln!(xml, "    <score-part id=\"P4\"><part-name>Drums</part-name></score-part>").unwrap();
-    writeln!(xml, "  </part-list>").unwrap();
+    let _ = writeln!(xml, "  <part-list>");
+    for (i, track) in pitched.iter().enumerate() {
+        let name = part_name(*track);
+        let _ = writeln!(
+            xml,
+            "    <score-part id=\"P{}\"><part-name>{name}</part-name></score-part>",
+            i + 1
+        );
+    }
+    let drums_id = format!("P{}", pitched.len() + 1);
+    let _ = writeln!(
+        xml,
+        "    <score-part id=\"{drums_id}\"><part-name>Drums</part-name></score-part>"
+    );
+    let _ = writeln!(xml, "  </part-list>");
 
-    // Bass part
-    write_part(&mut xml, "P1", measures, TrackId::Bass, instrument_bass);
-
-    // Lead / Melody part
-    write_part(&mut xml, "P2", measures, TrackId::Melody, instrument_lead);
-
-    // Chords part
-    write_part(&mut xml, "P3", measures, TrackId::Chords, &InstrumentConfig::default());
-
-    // Drums part (combined heel + toe)
-    write_drum_part(&mut xml, "P4", measures);
+    for (i, track) in pitched.iter().enumerate() {
+        write_part(&mut xml, &format!("P{}", i + 1), measures, *track, instrument(*track));
+    }
+    write_drum_part(&mut xml, &drums_id, measures);
 
     writeln!(xml, "</score-partwise>").unwrap();
     xml

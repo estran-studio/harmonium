@@ -104,7 +104,7 @@ pub fn run(
             playback_cmd_tx
                 .push(PlaybackCommand::SetChannelMute {
                     channel: id.channel(),
-                    muted: format!("{id:?}") != track,
+                    muted: id.name() != track,
                 })
                 .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
         }

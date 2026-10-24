@@ -97,7 +97,8 @@ fn timeline_midi_writes_profile_controllers_before_instrument_notes() {
         },
     );
     score.push_measure(measure);
-    let bytes = timeline_to_midi(&score, &mix).unwrap();
+    let profile = harmonium_core::StyleProfile { mix, ..Default::default() };
+    let bytes = timeline_to_midi(&score, &profile).unwrap();
     let smf = Smf::parse(&bytes).unwrap();
     for (instrument, expected_channel) in smf.tracks[1..].iter().zip([0, 1, 2, 9]) {
         let events: Vec<_> = instrument

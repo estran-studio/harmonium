@@ -316,7 +316,7 @@ fn export_fiddle_tune_to_midi_for_listening() {
     let _ = std::fs::create_dir_all(&target_dir);
     let midi_path = target_dir.join("trad_fiddle_demo.mid");
 
-    let res = write_midi(&timeline, &plan.profile.mix, &midi_path);
+    let res = write_midi(&timeline, &plan.profile, &midi_path);
     assert!(res.is_ok(), "échec de l'écriture MIDI: {res:?}");
     assert!(midi_path.exists(), "le fichier MIDI n'a pas été créé: {}", midi_path.display());
     println!("Tune MIDI exporté vers : {}", midi_path.display());

@@ -613,7 +613,7 @@ fn generated_strum_offsets_and_vector_order_are_present_in_static_midi() {
         score.push_measure(m);
     }
     expected.sort_by_key(|n| n.0);
-    let bytes = timeline_to_midi(&score, &p.mix).unwrap();
+    let bytes = timeline_to_midi(&score, &p).unwrap();
     let midi = Smf::parse(&bytes).unwrap();
     let mut tick = 0;
     let mut observed = Vec::new();
