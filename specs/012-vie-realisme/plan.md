@@ -976,6 +976,38 @@ tours) préparés dans `/tmp/harmonium-accomp/before/`. `TUNING_VERSION = 16`
 inchangé ; SHA-256 de `profile_d2_fixed.json` :
 `2960f927a50d0f0108c89de8f82993e531cebd9d7f02276fa37a9eca6437fec2`.
 
+**V5b-2 — passages.** `trad/bass_passing.rs` : règles pondérées, approches
+diatoniques/chromatiques, fenêtre élargie, phase de phrase et densité/arousal
+en données. Aucune approche sur les coups ou temps forts ; durée du coup
+précédent raccourcie si nécessaire. Veto sur la mélodie à l'attaque, puis
+revérification du flux après les ornements ; notes ordinaires interprétées
+par V2. Graine de matériel unique et sous-domaines par voix/mesure/attaque.
+`TUNING_VERSION = 17` ; références courantes régénérées, référence D2 fixe
+inchangée (accompagnement de passage explicitement absent dans cette fixture).
+
+Script durable `measure_accomp.py` : 20 seeds × 7 profils × arousal 0 / 0,5 / 1,
+34 mesures, deux tours, densité constante 0,5 ; compare les vérités de main
+avec les mêmes automations. Première mesure : frontières avec passage à arousal
+0,5 = reel québécois 37,0 %, reel acadien 33,1 %, gigue québécoise 33,8 %,
+gigue britannique 28,2 %, hornpipe 18,6 %, valse 1,2 % (cadence seule), marche 0.
+Reel québécois : poids d'abstention augmenté de 4 à 5 pour viser 25–35 %
+après veto, plutôt que de prétendre que les poids donnent une fréquence garantie.
+Après recalage : **30,6 %** des frontières du reel québécois à arousal 0,5
+(15,9 % à 0 ; 35,5 % à 1), mesures dans
+`/tmp/harmonium-accomp/passing-final/rates/measurements.json`.
+**Aucun conflit de passage** ; taux de conflit aux temps forts exactement celui
+de main pour les 21 cellules profil/arousal (0–3,0 %). Mélodie, Heel et Toe
+comparés note pour note : identiques, sur les 420 paires d'exports.
+
+Sept contrats dédiés passent : bornes/erreurs de chargement ; tables inertes,
+flux complet et aucun tirage (100 mesures) ; pistes voisines et basse forte
+inchangées ; trois mouvements, tessiture, approche sans répétition et veto
+(20 graines × 64 mesures) ; déterminisme et invalidation ; densité et arousal.
+La migration précédente passait également `cargo test --workspace` :
+430 réussis, deux ignorés, 50 suites. Référence clippy hors tests de main
+archivé (`649c684`) : 162 avertissements, enregistrés pour comparaison finale.
+
+
 
 
 ## 6. Timbre du violon

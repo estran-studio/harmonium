@@ -2,6 +2,7 @@
 pub mod accomp;
 pub mod accomp_profile;
 pub mod arrangement;
+mod bass_passing;
 pub mod cells;
 pub mod dynamics;
 pub mod feet;

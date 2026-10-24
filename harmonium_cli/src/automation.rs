@@ -282,6 +282,9 @@ mod tests {
                     use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                     let mut tuning = harmonium_core::TuningParams::default();
                     tuning.profile.performance = Default::default();
+                    if let Some(a) = &mut tuning.profile.accompaniment {
+                        a.bass.passing = None;
+                    }
                     // Seule la note de passage de densité existait sur main.
                     tuning.profile.ornaments.types.retain(|kind, _| {
                         *kind == harmonium_core::ornaments::OrnamentKind::Passing

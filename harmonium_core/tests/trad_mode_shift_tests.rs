@@ -17,6 +17,7 @@ fn tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement = ReelArrangement::from_start(3, Default::default());
     tuning.profile.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
+    tuning.profile.accompaniment.as_mut().unwrap().bass.passing = None;
     tuning.profile.dynamics.color = vec![ColorChoice {
         key: 2,
         mode: Mode::Ionian,

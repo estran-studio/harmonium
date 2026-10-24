@@ -29,6 +29,21 @@ fn place_in_range(pc: PitchClass, low: u8, high: u8) -> u8 {
     u8::try_from(chosen.clamp(0, 127)).unwrap_or(low as u8)
 }
 
+pub(crate) fn bass_hit_pitch(
+    chords: &[TradChord],
+    key: PitchClass,
+    mode: Mode,
+    params: &TradHarmonyParams,
+    hit: &super::accomp_profile::BassHit,
+    steps_per_chord: usize,
+) -> u8 {
+    let slot = hit.step / steps_per_chord;
+    let root = chords[slot].root_pc(key, mode);
+    let held = slot == 0 || chords[slot] == chords[slot - 1];
+    let fifth = hit.degree == BassDegree::Fifth || (hit.degree == BassDegree::FifthIfHeld && held);
+    place_in_range(if fifth { (root + 7) % 12 } else { root }, params.bass.low, params.bass.high)
+}
+
 /// Basse d'une mesure : un coup par entrée du motif du profil.
 #[must_use]
 pub fn bass_bar(
@@ -45,15 +60,9 @@ pub fn bass_bar(
         .iter()
         .map(|hit| {
             let step = hit.step;
-            let slot = step / steps_per_chord;
-            let root = chords[slot].root_pc(key, mode);
-            let unchanged = slot == 0 || chords[slot] == chords[slot - 1];
-            let fifth = hit.degree == BassDegree::Fifth
-                || (hit.degree == BassDegree::FifthIfHeld && unchanged);
-            let pc = if fifth { (root + 7) % 12 } else { root };
             TimelineNote {
                 id: next_id(),
-                pitch: place_in_range(pc, params.bass.low, params.bass.high),
+                pitch: bass_hit_pitch(chords, key, mode, params, hit, steps_per_chord),
                 start_step: step,
                 duration_steps: hit.duration,
                 velocity: hit.velocity,

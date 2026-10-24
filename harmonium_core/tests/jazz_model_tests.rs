@@ -35,6 +35,9 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
     if let Some(a) = &mut p.accompaniment {
         a.bass.low = 36;
         a.bass.high = 59;
+        a.bass.walk_low = None;
+        a.bass.walk_high = None;
+        a.bass.passing = None;
     }
     p.arrangement = ReelArrangement::from_start(1, Part(0));
     p.arrangement.intro = IntroConfig::none();

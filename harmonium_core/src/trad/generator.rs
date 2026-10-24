@@ -55,8 +55,8 @@ pub struct ActiveTune {
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
     pub performance_seed: u64,
-    /// Graine des tirages d'ornements de l'air (0 si aucun type ne tire).
-    pub ornament_seed: u64,
+    /// Graine dérivée du matériel écrit, commune aux ornements et à l'accompagnement.
+    pub material_seed: u64,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
@@ -324,6 +324,9 @@ impl TradGenerator {
         } else {
             self.fill_tour_measure(&tune, &position, &mut measure);
         }
+        if !is_intro && !is_outro {
+            self.apply_bass_passing(&mut measure, &tune, &position);
+        }
 
         let written: Vec<usize> = if self.profile.ornaments.is_inert() {
             Vec::new()
@@ -357,8 +360,72 @@ impl TradGenerator {
         if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
         }
+        if !is_intro && !is_outro {
+            if let Some(a) = &self.profile.accompaniment {
+                super::bass_passing::veto_final(&mut measure, &a.bass);
+            }
+        }
 
         measure
+    }
+
+    fn apply_bass_passing(
+        &mut self,
+        measure: &mut Measure,
+        tune: &ActiveTune,
+        position: &TunePosition,
+    ) {
+        let Some(a) = &self.profile.accompaniment else {
+            return;
+        };
+        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert())
+            || !matches!(tune.harmony, HarmonyPlan::TradFunctional(_))
+        {
+            return;
+        }
+        let bar = self.performed_bar(position);
+        let chords = self.chords_for_bar(tune, bar);
+        let next_target = a
+            .bass
+            .hits
+            .first()
+            .filter(|_| bar + 1 < self.profile.form.bars_per_tour() * position.tours)
+            .map(|hit| {
+                let next = self.chords_for_bar(tune, bar + 1);
+                (
+                    hit.step,
+                    super::accomp::bass_hit_pitch(
+                        &next,
+                        tune.plan.key,
+                        tune.plan.mode,
+                        a,
+                        hit,
+                        self.profile.harmony.steps_per_chord,
+                    ),
+                )
+            });
+        let (start, end) = self.phrase_window(tune, position);
+        let span = (end - start).max(1) as f32;
+        let context = super::bass_passing::PassingContext {
+            key: tune.plan.key,
+            mode: tune.plan.mode,
+            seed: tune.material_seed,
+            bar,
+            phase: (position.bar_in_strain - 1 - start) as f32 / span,
+            phrase_bars: span,
+            density: self.musical_params.rhythm_density,
+            arousal: self.musical_params.arousal,
+            strong_steps: &a.strong_steps,
+            chords: &chords,
+            steps_per_chord: self.profile.harmony.steps_per_chord,
+            next_target,
+        };
+        let id = &mut self.next_note_id;
+        super::bass_passing::apply(measure, &a.bass, &context, &mut || {
+            let next = *id;
+            *id += 1;
+            next
+        });
     }
 
     /// Mesures `[début, fin)` (0-based dans la partie) de la phrase qui contient
@@ -1047,7 +1114,7 @@ impl TradGenerator {
             arousal: self.musical_params.arousal,
             density: self.musical_params.rhythm_density,
             bar_index: measure.index,
-            seed: tune.ornament_seed,
+            seed: tune.material_seed,
         };
         let next_note_id = &mut self.next_note_id;
         self.profile.ornaments.apply(measure, &context, written, &mut || {
@@ -1278,7 +1345,13 @@ impl TradGenerator {
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
         // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
         // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
-        let ornament_seed = if self.profile.ornaments.needs_seed() {
+        let material_seed = if self.profile.ornaments.needs_seed()
+            || self
+                .profile
+                .accompaniment
+                .as_ref()
+                .is_some_and(|a| a.bass.passing.as_ref().is_some_and(|p| !p.is_inert()))
+        {
             crate::ornaments::tune_seed(
                 tune_index,
                 (0..plan.material_bars()).flat_map(|i| {
@@ -1304,7 +1377,7 @@ impl TradGenerator {
             harmony,
             feet_humanize,
             performance_seed,
-            ornament_seed,
+            material_seed,
             intro_info,
             initial_mode: plan.mode,
             initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,

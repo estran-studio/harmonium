@@ -11,6 +11,7 @@ use rand_chacha::ChaCha8Rng;
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.accompaniment.as_mut().unwrap().bass.passing = None;
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -208,16 +209,6 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
             }
         }
 
-        let bass_steps: Vec<_> =
-            snap.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0 || step == 6),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
-
         let chord_steps: Vec<_> =
             snap.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {
@@ -305,17 +296,6 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
             }
         }
 
-        // Accompagnement oom-pah-pah : basse au pas 0, accords aux pas 4 et 8
-        let bass_steps: Vec<_> =
-            snap.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
-
         let chord_steps: Vec<_> =
             snap.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {
@@ -348,6 +328,7 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
         profile.ornaments = Default::default();
+        profile.accompaniment.as_mut().unwrap().bass.passing = None;
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();

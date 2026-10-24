@@ -58,6 +58,50 @@ consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
 `default_pattern` est utilisé lorsque les courbes `chop_intensity + density_chop`
 valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
+### Notes de passage de basse
+
+`walk_low` / `walk_high` élargissent `low` / `high` pour les seules approches ;
+omission : fenêtre des coups. `[accompaniment.bass.passing]` est optionnel :
+absence, poids tous nuls ou courbe nulle ⇒ aucun tirage, flux inchangé.
+
+```toml
+[accompaniment.bass.passing]
+none_weight = 4
+density = [[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+arousal_low_multiplier = 0.5
+arousal_high_multiplier = 1.5
+avoid_melody_intervals = [1, 6, 11]
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 2, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+```
+
+Les poids applicables sont multipliés par `density(rhythm_density) × phrase(phase)`
+et le multiplicateur interpolé à l'arousal brut (défaut 1/1) ; `none_weight`
+reste fixe. Les courbes couvrent 0..1, sorties finies 0..4. `before` est une
+liste strictement décroissante de distances en pas avant la prochaine cible
+de basse, y compris au-delà de la barre. `scale_step` : voisin diatonique
+de la cible côté départ ; `chromatic` : demi-ton ; `scale_walk` : voisins
+successifs dans le mode actif. Aucun détour ni répétition de hauteur.
+`chord_change_inside_bar` restreint la règle à un changement d'accord intérieur.
+Les durées ne recouvrent ni la note suivante ni la cible ; le coup précédent
+est écourté si nécessaire. Pas de passage sur un coup de basse ni un temps
+fort. Le veto contre les intervalles modulo 12 lit la mélodie qui sonne ;
+il est revérifié après les ornements. Les passages reçoivent la dynamique et
+l'interprétation V2 de la piste Bass comme les autres notes.
+
+Poids entiers : somme positive dans u32, au plus 64 règles ; `duration > 0`,
+`velocity_delta` −127..127, `min_leap` 0..127. Règle impossible : abstention.
+Les tirages réutilisent la graine de matériel de V3b, dans un domaine basse
+distinct par mesure et attaque : ni mélodie, ni pieds, ni air suivant déplacé.
+Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille** :
+marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
+hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
+
+
 
 ## Mixage
 

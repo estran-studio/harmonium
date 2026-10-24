@@ -1253,6 +1253,13 @@
       },
       {
         "track": 2,
+        "pitch": 45,
+        "start_step": 4,
+        "duration_steps": 2,
+        "velocity": 66
+      },
+      {
+        "track": 2,
         "pitch": 43,
         "start_step": 8,
         "duration_steps": 4,
@@ -1943,6 +1950,13 @@
         "start_step": 0,
         "duration_steps": 4,
         "velocity": 78
+      },
+      {
+        "track": 2,
+        "pitch": 45,
+        "start_step": 4,
+        "duration_steps": 2,
+        "velocity": 66
       },
       {
         "track": 2,

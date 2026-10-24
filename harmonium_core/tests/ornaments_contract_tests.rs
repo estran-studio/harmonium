@@ -26,6 +26,7 @@ fn base() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
     p.ornaments = Default::default();
+    p.accompaniment.as_mut().unwrap().bass.passing = None;
     for part in &mut p.form.parts {
         part.ornament_protected_bars = Some(vec![]);
     }

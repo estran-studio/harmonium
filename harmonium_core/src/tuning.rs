@@ -9,8 +9,8 @@ use crate::{
     },
 };
 
-/// Version du contrat : ornements idiomatiques `[ornaments]` (V3b).
-pub const TUNING_VERSION: u32 = 16;
+/// Version du contrat : notes de passage de basse en données (V5b-2).
+pub const TUNING_VERSION: u32 = 17;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
