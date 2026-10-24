@@ -53,14 +53,28 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     p.form.sequence = vec![2, 0, 1, 0, 2];
     p.harmony.steps_per_chord = 12;
     if let Some(a) = &mut p.accompaniment {
-        a.bass_steps = vec![0, 6];
-        a.chop_steps = vec![3, 9];
+        for (hit, step) in a.bass.hits.iter_mut().zip([0, 6]) {
+            hit.step = step;
+        }
+        let prototype = a.chords.patterns[0].hits[0].clone();
+        a.chords.patterns = [vec![3], vec![3, 9], vec![0, 3, 6, 9]]
+            .into_iter()
+            .map(|steps| harmonium_core::trad::accomp_profile::ChordPattern {
+                hits: steps
+                    .into_iter()
+                    .map(|step| {
+                        let mut hit = prototype.clone();
+                        hit.step = step;
+                        hit
+                    })
+                    .collect(),
+            })
+            .collect();
         a.strong_steps = vec![0, 6];
     }
     for pattern in &mut p.percussion.patterns {
         pattern.hits = vec![FootHit::heel(0), FootHit::toe(3), FootHit::heel(6), FootHit::toe(9)];
     }
-    p.dynamics.chop_patterns = vec![vec![3], vec![3, 9], vec![0, 3, 6, 9]];
     p.arrangement = ReelArrangement::from_start(1, Part(p.form.sequence[0]));
     p.validate()?;
     Ok(p)

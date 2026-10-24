@@ -426,8 +426,8 @@ fn odd_cell_default_varied_end_keeps_the_historical_floor_half() {
     for pattern in &mut p.percussion.patterns {
         pattern.hits.retain(|hit| hit.step < 14);
     }
-    for pattern in &mut p.dynamics.chop_patterns {
-        pattern.retain(|&step| step < 14);
+    for pattern in &mut p.accompaniment.as_mut().unwrap().chords.patterns {
+        pattern.hits.retain(|hit| hit.step < 14);
     }
     for cell in &mut p.melody.cells.cells {
         cell.notes.truncate(7);

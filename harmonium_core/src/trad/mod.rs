@@ -1,5 +1,6 @@
 //! Génération traditionnelle : algorithmes génériques, données dans le profil actif.
 pub mod accomp;
+pub mod accomp_profile;
 pub mod arrangement;
 pub mod cells;
 pub mod dynamics;

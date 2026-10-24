@@ -43,7 +43,6 @@ density_tracks = [
   { track = "Heel", minimum = 0.0 },
   { track = "Toe", minimum = 0.0 },
 ]
-chop_patterns = []
 
 tension_offbeat = [[0.0, 0.0], [0.5, 4.0], [1.0, 16.0]]
 tension_duration = [[0.0, 1.05], [0.5, 1.0], [1.0, 0.80]]

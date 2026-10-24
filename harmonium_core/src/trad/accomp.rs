@@ -1,7 +1,11 @@
 //! Basse et accords d'accompagnement : motifs en pas du profil, triades
 //! en conduite de voix serrée et alternance fondamentale/quinte de la basse.
 
-use super::{harmony::TradChord, mode::Mode};
+use super::{
+    accomp_profile::{BassDegree, ChordHit},
+    harmony::TradChord,
+    mode::Mode,
+};
 use crate::{
     theory::PitchClass,
     timeline::{Articulation, NoteId, TimelineNote},
@@ -25,7 +29,7 @@ fn place_in_range(pc: PitchClass, low: u8, high: u8) -> u8 {
     u8::try_from(chosen.clamp(0, 127)).unwrap_or(low as u8)
 }
 
-/// Basse d'une mesure : une note par pas de `bass_steps` (voir le doc du module).
+/// Basse d'une mesure : un coup par entrée du motif du profil.
 #[must_use]
 pub fn bass_bar(
     chords: &[TradChord],
@@ -36,20 +40,23 @@ pub fn bass_bar(
     next_id: &mut impl FnMut() -> NoteId,
 ) -> Vec<TimelineNote> {
     params
-        .bass_steps
+        .bass
+        .hits
         .iter()
-        .enumerate()
-        .map(|(index, &step)| {
+        .map(|hit| {
+            let step = hit.step;
             let slot = step / steps_per_chord;
             let root = chords[slot].root_pc(key, mode);
             let unchanged = slot == 0 || chords[slot] == chords[slot - 1];
-            let pc = if index % 2 == 1 && unchanged { (root + 7) % 12 } else { root };
+            let fifth = hit.degree == BassDegree::Fifth
+                || (hit.degree == BassDegree::FifthIfHeld && unchanged);
+            let pc = if fifth { (root + 7) % 12 } else { root };
             TimelineNote {
                 id: next_id(),
-                pitch: place_in_range(pc, params.bass_low, params.bass_high),
+                pitch: place_in_range(pc, params.bass.low, params.bass.high),
                 start_step: step,
-                duration_steps: params.bass_duration_steps,
-                velocity: params.bass_velocity,
+                duration_steps: hit.duration,
+                velocity: hit.velocity,
                 articulation: Articulation::Normal,
                 performance: Default::default(),
             }
@@ -87,8 +94,8 @@ impl Guitarist {
         Self { previous: None }
     }
 
-    /// Voicing de `chord` : le plus proche du précédent (ou de `guitar_center`
-    /// au premier accord), dans la limite de dérive autorisée.
+    /// Voicing le plus proche du précédent (ou du centre du profil au premier
+    /// accord), dans la limite de dérive autorisée.
     fn voice(
         &mut self,
         chord: TradChord,
@@ -96,8 +103,8 @@ impl Guitarist {
         mode: Mode,
         params: &TradHarmonyParams,
     ) -> Option<[u8; 3]> {
-        let center_sum = 3 * i32::from(params.guitar_center);
-        let max_drift_sum = 3 * i32::from(params.guitar_max_drift);
+        let center_sum = 3 * i32::from(params.chords.center);
+        let max_drift_sum = 3 * i32::from(params.chords.max_drift);
         let best = close_voicings(chord, key, mode).min_by_key(|v| {
             let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
             let center_dist = (sum - center_sum).abs();
@@ -110,7 +117,7 @@ impl Guitarist {
         Some(best)
     }
 
-    /// Chops d'une mesure : un accord de 3 sons par pas de `chop_steps`.
+    /// Accords d'une mesure : un coup par entrée du motif par défaut.
     pub fn chop_bar(
         &mut self,
         chords: &[TradChord],
@@ -120,12 +127,12 @@ impl Guitarist {
         steps_per_chord: usize,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
-        self.chop_bar_on_steps(
+        self.chop_bar_on_hits(
             chords,
             key,
             mode,
             params,
-            &params.chop_steps,
+            &params.chords.patterns[params.chords.default_pattern].hits,
             steps_per_chord,
             next_id,
         )
@@ -133,18 +140,19 @@ impl Guitarist {
 
     /// Variante pilotée par un motif emprunté au profil, sans copier le tuning.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn chop_bar_on_steps(
+    pub(crate) fn chop_bar_on_hits(
         &mut self,
         chords: &[TradChord],
         key: PitchClass,
         mode: Mode,
         params: &TradHarmonyParams,
-        steps: &[usize],
+        hits: &[ChordHit],
         steps_per_chord: usize,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
-        let mut notes = Vec::with_capacity(steps.len() * 3);
-        for &step in steps {
+        let mut notes = Vec::with_capacity(hits.len() * 3);
+        for hit in hits {
+            let step = hit.step;
             let Some(voicing) = self.voice(chords[step / steps_per_chord], key, mode, params)
             else {
                 continue;
@@ -153,8 +161,8 @@ impl Guitarist {
                 id: next_id(),
                 pitch,
                 start_step: step,
-                duration_steps: params.chop_duration_steps,
-                velocity: params.chop_velocity,
+                duration_steps: hit.duration,
+                velocity: hit.velocity,
                 articulation: Articulation::Normal,
                 performance: Default::default(),
             }));
@@ -200,7 +208,7 @@ mod tests {
         // Ré2 = 38 est sous la fenêtre : fondamentale Ré3 (50), quinte La2 (45).
         assert_eq!(layout, [(0, 4, 50), (8, 4, 45)]);
         let params = TradHarmonyParams::default();
-        assert!(notes.iter().all(|n| n.velocity == params.bass_velocity));
+        assert!(notes.iter().all(|n| n.velocity == params.bass.hits[0].velocity));
     }
 
     #[test]
@@ -250,7 +258,7 @@ mod tests {
         for (i, step) in [4, 12].into_iter().enumerate() {
             let group: Vec<_> = notes.iter().filter(|n| n.start_step == step).collect();
             assert_eq!(group.len(), 3, "step {step}");
-            let chop_velocity = TradHarmonyParams::default().chop_velocity;
+            let chop_velocity = TradHarmonyParams::default().chords.patterns[1].hits[0].velocity;
             assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == chop_velocity));
             let mut pitches: Vec<u8> = group.iter().map(|n| n.pitch).collect();
             pitches.sort_unstable();

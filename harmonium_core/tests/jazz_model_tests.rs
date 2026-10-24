@@ -33,8 +33,8 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
     p.harmony.scale_guidance = guidance;
     p.melody.key_modes = vec![KeyModeWeight { key: 7, mode: Mode::Ionian, weight: 1 }];
     if let Some(a) = &mut p.accompaniment {
-        a.bass_low = 36;
-        a.bass_high = 59;
+        a.bass.low = 36;
+        a.bass.high = 59;
     }
     p.arrangement = ReelArrangement::from_start(1, Part(0));
     p.arrangement.intro = IntroConfig::none();

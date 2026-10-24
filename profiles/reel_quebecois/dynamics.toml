@@ -41,7 +41,6 @@ density_tracks = [
   { track = "Heel", minimum = 0.10 },
   { track = "Toe", minimum = 0.35 },
 ]
-chop_patterns = [[4], [4, 12], [2, 4, 10, 12], [2, 4, 6, 10, 12, 14]]
 
 # Tension : contretemps, notes sèches et dominantes tenues, sans changer la tune.
 tension_offbeat = [[0.0, -3.0], [0.3, 0.0], [1.0, 24.0]]

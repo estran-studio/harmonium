@@ -176,16 +176,24 @@ strong_steps = [0, 6]
 strong_weight = 2
 weak_weight = 1
 tie_priority = ["I", "V", "IV", "II"]
-bass_steps = [0, 6]
-bass_duration_steps = 4
-bass_velocity = 70
-bass_low = 40
-bass_high = 50
-chop_steps = [0, 6]
-chop_duration_steps = 3
-chop_velocity = 60
-guitar_center = 60
-guitar_max_drift = 6
+
+[accompaniment.bass]
+low = 40
+high = 50
+hits = [
+  { step = 0, degree = "root", duration = 4, velocity = 70 },
+  { step = 6, degree = "fifth_if_held", duration = 4, velocity = 70 },
+]
+
+[accompaniment.chords]
+center = 60
+max_drift = 6
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 0, duration = 3, velocity = 60 }] },
+  { hits = [{ step = 0, duration = 3, velocity = 60 }, { step = 6, duration = 3, velocity = 60 }] },
+  { hits = [{ step = 0, duration = 3, velocity = 60 }, { step = 6, duration = 3, velocity = 60 }] },
+]
 
 [instruments]
 melody_program = 40

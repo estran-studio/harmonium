@@ -716,29 +716,27 @@ impl TradGenerator {
             if !self.track_active(track, position) {
                 continue;
             }
-            let (steps, duration, velocity) = if track == TrackId::Chords {
-                (
-                    &accompaniment.chop_steps,
-                    accompaniment.chop_duration_steps,
-                    accompaniment.chop_velocity,
-                )
-            } else {
-                (
-                    &accompaniment.bass_steps,
-                    accompaniment.bass_duration_steps,
-                    accompaniment.bass_velocity,
-                )
-            };
-            for &step in steps {
+            let bass_hits = &accompaniment.bass.hits;
+            let chord_hits =
+                &accompaniment.chords.patterns[accompaniment.chords.default_pattern].hits;
+            let count = if track == TrackId::Chords { chord_hits.len() } else { bass_hits.len() };
+            for index in 0..count {
+                let (step, duration, velocity) = if track == TrackId::Chords {
+                    let h = &chord_hits[index];
+                    (h.step, h.duration, h.velocity)
+                } else {
+                    let h = &bass_hits[index];
+                    (h.step, h.duration, h.velocity)
+                };
                 let chord = &chords[step / period];
                 let intervals =
                     if track == TrackId::Chords { chord.chord_type.intervals() } else { &[0] };
                 for &interval in intervals {
                     let pc = (chord.root + interval) % 12;
                     let (center, low, high) = if track == TrackId::Chords {
-                        (accompaniment.guitar_center, 0, 127)
+                        (accompaniment.chords.center, 0, 127)
                     } else {
-                        (accompaniment.bass_low, accompaniment.bass_low, accompaniment.bass_high)
+                        (accompaniment.bass.low, accompaniment.bass.low, accompaniment.bass.high)
                     };
                     let pitch = nearest_pitch([pc], center, low, high);
                     let note = TimelineNote {
@@ -1095,13 +1093,13 @@ impl TradGenerator {
         let d = &self.tuning.profile.dynamics;
         let chop_offset = d.chop_intensity.eval(self.musical_params.intensity)
             + d.density_chop.eval(self.musical_params.rhythm_density);
-        let steps = if chop_offset != 0.0 {
-            let pattern =
-                (1.0 + chop_offset).round().clamp(0.0, (d.chop_patterns.len() - 1) as f32) as usize;
-            &d.chop_patterns[pattern]
+        let voice = &harmony.chords;
+        let pattern = if chop_offset != 0.0 {
+            (1.0 + chop_offset).round().clamp(0.0, (voice.patterns.len() - 1) as f32) as usize
         } else {
-            &harmony.chop_steps
+            voice.default_pattern
         };
+        let hits = &voice.patterns[pattern].hits;
         let mut guitarist = Guitarist::new();
         let mut dummy_id = 0u64;
         let mut dummy_next = || {
@@ -1110,12 +1108,12 @@ impl TradGenerator {
         };
         for b in strain_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
-            let _ = guitarist.chop_bar_on_steps(
+            let _ = guitarist.chop_bar_on_hits(
                 &c,
                 tune.plan.key,
                 tune.plan.mode,
                 harmony,
-                steps,
+                hits,
                 self.profile.harmony.steps_per_chord,
                 &mut dummy_next,
             );
@@ -1127,12 +1125,12 @@ impl TradGenerator {
             *next_note_id += 1;
             id
         };
-        guitarist.chop_bar_on_steps(
+        guitarist.chop_bar_on_hits(
             &chords,
             tune.plan.key,
             tune.plan.mode,
             harmony,
-            steps,
+            hits,
             self.profile.harmony.steps_per_chord,
             &mut next_id,
         )

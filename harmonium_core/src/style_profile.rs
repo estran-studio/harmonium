@@ -1034,45 +1034,7 @@ impl StyleProfile {
             "accords requis pour les quatre modes (dynamique parallèle)",
         )?;
         if let Some(a) = &self.accompaniment {
-            check(
-                a.strong_weight > 0 && a.weak_weight > 0,
-                "accompaniment.strong_weight",
-                "poids de vote positifs requis",
-            )?;
-            for (name, steps, duration) in [
-                ("bass_steps", &a.bass_steps, a.bass_duration_steps),
-                ("chop_steps", &a.chop_steps, a.chop_duration_steps),
-                ("strong_steps", &a.strong_steps, 0),
-            ] {
-                check(
-                    steps.iter().all(|&s| {
-                        s.checked_add(duration)
-                            .is_some_and(|end| s < m.steps_per_bar && end <= m.steps_per_bar)
-                    }),
-                    &format!("accompaniment.{name}"),
-                    "pas/durée hors mesure",
-                )?;
-            }
-            check(
-                a.bass_duration_steps > 0 && a.chop_duration_steps > 0,
-                "accompaniment.bass_duration_steps",
-                "durées positives requises",
-            )?;
-            check(
-                (1..=127).contains(&a.bass_velocity) && (1..=127).contains(&a.chop_velocity),
-                "accompaniment.bass_velocity",
-                "vélocités dans 1..127",
-            )?;
-            check(
-                a.bass_low <= a.bass_high && a.bass_high <= 127 && a.guitar_center <= 127,
-                "accompaniment.bass_low",
-                "registre MIDI invalide",
-            )?;
-            check(
-                self.harmony.model != "jazz_functional" || a.bass_high - a.bass_low >= 11,
-                "accompaniment.bass_high",
-                "le registre jazz doit couvrir les douze classes de hauteur",
-            )?;
+            a.validate_accompaniment(m.steps_per_bar, self.harmony.model == "jazz_functional")?;
         } else {
             check(
                 self.harmony.model == "none",
@@ -1169,26 +1131,6 @@ impl StyleProfile {
             "arrangement.intro.pickup_eighths",
             "la levée dépasse la mesure",
         )?;
-        if self.has_track(crate::timeline::TrackId::Chords) {
-            let a = self.accompaniment.as_ref().ok_or_else(|| {
-                ProfileError::new("accompaniment", "section accompaniment requise pour Chords")
-            })?;
-            check(
-                !self.dynamics.chop_patterns.is_empty(),
-                "dynamics.chop_patterns",
-                "motifs de chop requis lorsque Chords est actif",
-            )?;
-            for (i, pattern) in self.dynamics.chop_patterns.iter().enumerate() {
-                check(
-                    pattern.iter().all(|&step| {
-                        step.checked_add(a.chop_duration_steps)
-                            .is_some_and(|end| step < m.steps_per_bar && end <= m.steps_per_bar)
-                    }),
-                    &format!("dynamics.chop_patterns[{i}]"),
-                    "motif hors mesure",
-                )?;
-            }
-        }
         self.dynamics.validate().map_err(|error| {
             let field = error.split(':').next().unwrap_or("dynamics");
             ProfileError::new(format!("dynamics.{field}"), &error)

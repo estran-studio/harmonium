@@ -13,7 +13,7 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »). |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight`. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"` ou `"jazz_functional"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; modes ionian, mixolydian, dorian, aeolian. Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). |
-| `[accompaniment]` | `strong_steps`, poids de vote et `tie_priority`, `bass_steps`, `chop_steps` en pas ; durées, vélocités et tessitures de basse/guitare. Le registre de basse jazz doit couvrir au moins 12 hauteurs consécutives. Pas d'option de voicing parcimonieux à ce stade (voir l'inventaire Legacy). |
+| `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[arrangement]` | `tours_per_tune`, `intro_each_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. |
@@ -24,6 +24,40 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Accompagnement
+
+Le vote harmonique est inchangé. Deux voix remplacent les anciens champs plats
+et les motifs de `dynamics` ; aucun alias de compatibilité. Migration V5b-1 :
+les sept profils, dont la marche sans section harmonique, gardent le même flux.
+
+```toml
+[accompaniment.bass]
+low = 40
+high = 50
+hits = [
+  { step = 0, degree = "root", duration = 4, velocity = 78 },
+  { step = 8, degree = "fifth_if_held", duration = 4, velocity = 78 },
+]
+[accompaniment.chords]
+center = 60
+max_drift = 6
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 4, duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, duration = 1, velocity = 72 }, { step = 12, duration = 1, velocity = 72 }] },
+]
+```
+
+`degree` : `root`, `fifth`, `fifth_if_held` (quinte si l'accord n'a pas
+changé depuis le créneau précédent, ou au premier créneau de la mesure).
+Les coups sont ordonnés par `step`, uniques dans chaque voix/motif, dans la
+mesure ; durée positive entièrement dans la mesure, vélocité 1..127.
+Le registre basse est MIDI ordonné ; le modèle jazz exige douze hauteurs
+consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
+`default_pattern` est utilisé lorsque les courbes `chop_intensity + density_chop`
+valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
+
 
 ## Mixage
 

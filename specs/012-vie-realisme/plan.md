@@ -963,6 +963,20 @@ Navigation LSP tentée puis serveur rechargé : rust-analyzer quitte avec code 0
 avant initialisation. Repli : inventaire exhaustif des consommateurs et
 compilation des crates ; aucune preuve LSP revendiquée.
 
+### Mesures V5b
+
+**V5b-1 — migration neutre.** Schéma séparé en `trad/accomp_profile.rs`,
+réalisation existante adaptée, sept profils et fixture jazz migrés ; anciens
+champs et motifs de dynamique supprimés. Binaire `--release` de main conservé
+dans `/tmp/harmonium-accomp/baseline/`, profils inclus. Exports réels GM + pieds,
+seed 3, 100 mesures par profil : **700 snapshots complets identiques**, avant
+contre schéma migré (y compris mélodie, pieds, identifiants et performance).
+Trois WAV de référence (reel, gigue, valse québécois, seed 3, 34 mesures, deux
+tours) préparés dans `/tmp/harmonium-accomp/before/`. `TUNING_VERSION = 16`
+inchangé ; SHA-256 de `profile_d2_fixed.json` :
+`2960f927a50d0f0108c89de8f82993e531cebd9d7f02276fa37a9eca6437fec2`.
+
+
 
 ## 6. Timbre du violon
 
