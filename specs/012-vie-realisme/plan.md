@@ -1174,6 +1174,155 @@ celui consigné en V5b-1 ; aucune nouvelle instruction audio ni aucun
 - **Vérifier** : enchaînements de tonalités comparés au corpus quand il les
   documente ; tempo et énergie mesurés sur un set complet.
 
+Étude et conception : [`forme-longue-etude.md`](forme-longue-etude.md) (V7a). Réglages et effet à
+l'oreille : [`profiles/README.md`](../../profiles/README.md#forme-longue-set). **V7b T1 à T3
+faits** (schéma, plan de set, position publiée) ; T4 (transitions, fin de set), T5 (rampe), T6
+(signature) et T7 (clôture, écoute, ADR) restent à faire.
+
+### Décisions V7b (T1 à T3)
+
+- **Portée du schéma.** `set.toml` ne porte que ce que le moteur lit : `length` et `[key]`
+  (`same`, `parallel`, `relative`, `fifth_up`, `fourth_up`, `step_up`, `step_down`, `other`,
+  `last_dark`). `[ramp]`, `[signature]`, `[[transitions]]` et `[end]` arrivent avec le code de T4 à
+  T6 (champ inconnu refusé d'ici là) : pas de réglage sans effet. Les clés sont à la racine du fichier
+  (comme `arrangement.toml`), donc `set.key.same` côté profil et `[key] same` côté fichier.
+- **Une seule façon de faire.** `form.next_same_weight`/`next_relative_weight`,
+  `arrangement.intro_each_tune` et `intro.each_tune` sont supprimés et **refusés** au chargement
+  (`deny_unknown_fields` sur `[arrangement]` et `[intro]`, dont le premier laissait passer une faute
+  de frappe en silence). « Premier air d'un set » (`tune_in_set == 1`) remplace `tune_index == 0` pour
+  l'intro complète, la forme d'intro tirée et les entrées de pistes ; la marche, un air par set
+  (`length = [{ tunes = 1, weight = 1 }]`), garde son décompte à chaque air. Supprimés :
+  `draw_next_tune_plan`, `relative_tune_plan`, `relative_key_mode`, `is_same_or_relative_plan`,
+  `StyleDynamics::draw_color`, `TunePlan::draw` (les tests tirent via `set::candidates` et
+  `ProfileSet::choose`).
+- **Candidats uniques** (`trad::set::candidates`) : `melody.key_modes` si
+  `harmony_valence == neutral_valence` (même test qu'avant), `[[color]]` évalué à la valence sinon ;
+  premier air d'un set et airs suivants passent par le même tirage `0..1 000 000`. Plus aucune
+  tonalité hors candidats ; le chaînage est actif à toute valence.
+- **Classes** (`KeyClass::of`) : même tonalité, même tonique autre mode, relatif (même collection
+  diatonique : le relatif de ré mixolydien est la dorien, pas si dorien), puis intervalle de tonique
+  (+7, +5, +2, −2), sinon autre. Le mode du précédent est celui **entendu à sa dernière mesure
+  générée** (`plan.mode` après un éventuel changement de mode parallèle).
+- **Repli sans tonalité.** Poids = base × facteur de classe × `last_dark` (dernier air d'un set fini,
+  modes mineurs seulement ; jamais sur le premier air, même d'un set d'un air). Si la somme est
+  nulle : facteurs de classe retirés, puis `last_dark`, puis poids de base. Cela remplace
+  l'exigence « au moins un candidat de poids positif après facteurs » de l'étude §4.2 : une règle
+  statique ne pourrait pas couvrir `[[color]]` qui varie avec la valence ; la validation demande
+  seulement un facteur de classe positif.
+- **Bloc de tirages.** `SetPlan::draw` au début de chaque set, avant la construction de l'air 1 :
+  longueur `L` (`next_range_usize(0..Σpoids)`), puis `L − 1` tirages `0..1 000 000` (un par air 2 à
+  L), convertis à la construction de l'air avec la valence d'alors. Un set sans fin (`length`
+  absent) ne tire rien d'avance : chaque air tire son entier à sa construction. `invalidate_future`
+  garde les `SetPlan` dont le premier air est au plus l'air courant : un air futur est reconstruit
+  avec le même tirage, un set futur est retiré avec ses airs. Les tirages de transition (T4) et de
+  signature (T6) s'ajouteront au bloc avec leur code.
+- **`TunePosition`** : `set_index`, `tune_in_set` (1-based), `tunes_in_set` (0 : sans fin), tous
+  `#[serde(default)]`. Un air pas encore construit reçoit un set provisoire (`set_index =` nombre de
+  sets connus, rang 1, longueur 0) : seuls des appels spéculatifs l'atteignent. L'export CLI à durée
+  fixe ne génère que l'air 1 (`end_after_tour`, comportement inchangé) et n'en liste donc qu'un, avec
+  son set et son rang ; l'ancien en-tête supposait des airs de longueur uniforme sans intro.
+- **Version et goldens.** `TUNING_VERSION` 18 → **19** (T2 et T3 ensemble : le flux de notes change
+  à T2, la position publiée à T3). Régénérés : `profile_d2_main.json`,
+  `snapshot_stream_reel_seed42_8bars.json`, et **`profile_d2_fixed.json`** (SHA-256
+  `9117e34c…96a`, avant `2960f927…ec2`) ainsi que `main_golden_gigue_quebecoise.json` /
+  `main_golden_valse_quebecoise.json` (test renommé `fixed_roles_gigue_valse_notes_match_the_reference`).
+  **Pourquoi la référence fixe ne peut pas rester identique** : aucune variante raisonnable ne conserve
+  les notes. (a) Un second `ChaCha8Rng` amorcé par la graine de session : le générateur ne reçoit qu'un
+  `&mut dyn RngCore` injecté, il ne connaît pas la graine ; en dériver une amorce consomme un tirage de
+  l'injecté (décalage identique) et ajoute de l'aléa hors du flux injecté (principe II). (b) Tirer le
+  bloc *après* la construction de l'air 1 laisserait l'air 1 intact à valence constante, mais la
+  fixture couvre 100 mesures dont les mesures 99-100 sont le début de l'air 2 (tonalité désormais tirée
+  par la règle de set), et ses sessions automatisées peuvent tirer le mode parallèle pendant l'air 1,
+  donc le bloc décalerait ces tirages. La référence fixe devient une référence de non-régression à la version
+  courante : `source` = `TUNING_VERSION:19:fixed_roles`. Elle ne prouve plus l'identité avec l'ancien
+  main ; cette preuve (V1 à V5b : SHA-256 identique à chaque étape) s'arrête ici. Régénération :
+  `HARMONIUM_UPDATE_GOLDENS=1 cargo test -p harmonium-cli profile_d2_main_note_reference`,
+  `-p harmonium_core --test style_profile_tests fixed_roles`, `-p harmonium --test snapshot_stream_tests`.
+- **Test statistique adapté** : `arousal_scales_the_rate_between_the_configured_multipliers`
+  (`ornaments_contract_tests.rs`) échantillonnait 60 graines : le décalage du flux donnait un rapport
+  10,6 (bornes 11 à 19, attendu 15) sur de petits effectifs ; 200 graines, mêmes bornes, sans toucher
+  au code des ornements.
+- **Tests de contrat** (`harmonium_core/tests/set_contract_tests.rs`) : étude §5 n° 1 (position), 2
+  (longueur, 500 graines, trois écarts-types binomiaux), 3 (déterminisme et seek par `silent_advance`),
+  4 (plan stable sous émotion, `invalidate_future`), 5 (candidats, valences 0,3 / 0,6 / −0,6), 6
+  (facteurs de classe), 7 (`last_dark`), 14 (validation avec chemin du champ ; section absente =
+  set sans fin, intro et entrées au seul air 1), 15 (ancien JSON relu, `TUNING_VERSION`). Les n° 8 à 13
+  suivent T4 à T6. Supprimés : `next_tune_is_same_or_relative_across_seeds`, les contrôles
+  même/relatif de `trad_reel_tests.rs`, `trad_reel_snapshot_tests.rs` et
+  `tune_transition_weights_control_published_color`.
+
+### Mesures V7b
+
+Script durable [`measure_sets.py`](measure_sets.py) (calculs en Python indépendant du moteur : candidats,
+classification, chaîne de Markov exacte de la règle y compris `last_dark`, loi à tirages indépendants) sur
+l'exemple `harmonium_core/examples/set_metrics.rs` : **500 graines × 7 profils × 3 valences (neutre, 0,6,
+−0,6), 16 airs d'un tour**, soit 168 000 airs ; longueurs et transitions sur les **trois premiers sets** de
+chaque session (longueurs i.i.d., sans biais de troncature), 1 500 sets et environ 2 500 transitions par
+profil. Tonalité lue à la première mesure de l'air (l'intro : aucun changement de mode n'y a lieu). Le script
+sort en erreur si une tonalité sort des candidats, si une fréquence s'écarte de la loi de la règle de plus de
+quatre écarts-types, ou si une longueur s'écarte de la distribution configurée. Résultat :
+**0 tonalité hors candidats sur 168 000 airs, aucun écart**.
+
+**Tonalités hors candidats.** Sonde de l'étude (`main` `ad7ad58`, reel québécois, 1 600 transitions par
+valence) : 50,3 % hors `key_modes` à la valence neutre ; 0 % maintenant à 0,3, 0,6 et −0,6 pour les sept
+profils (8 000 airs par profil et valence).
+
+**Même tonalité d'un air au suivant, dans un set** (généré %, règle attendue entre parenthèses, tirages
+indépendants en dernière colonne ; ± 1,7 à 1,9 points à 95 %). Étude §1 (reel québécois, avant) : 50,9 %
+(neutre), 20,2 % (0,6), 13,9 % (−0,6), sans lien avec l'air précédent hors du point neutre.
+
+| Profil | 0,3 | 0,6 | −0,6 | indépendance 0,3 / 0,6 / −0,6 |
+|---|---:|---:|---:|---|
+| reel_quebecois | 29,6 (29,5) | 26,8 (26,9) | 19,8 (18,9) | 24,0 / 21,8 / 15,5 |
+| gigue_quebecoise | 28,5 (28,8) | 25,2 (26,4) | 18,8 (18,9) | 24,0 / 21,8 / 15,5 |
+| reel_acadien | 38,3 (39,5) | 46,6 (45,5) | 26,0 (25,7) | 20,9 / 25,1 / 13,4 |
+| gigue_britannique_coloniale | 30,6 (29,4) | 40,2 (40,4) | 23,8 (24,0) | 24,5 / 34,7 / 19,5 |
+| hornpipe_britannique_coloniale | 35,4 (35,2) | 40,4 (40,4) | 26,3 (26,2) | 31,0 / 35,7 / 22,1 |
+| valse_quebecoise | 29,7 (29,7) | 27,7 (27,1) | 20,6 (19,3) | 24,0 / 21,8 / 15,5 |
+| marche_britannique_coloniale | — (un air par set) | — | — | — |
+
+Le chaînage agit maintenant à toute valence : la part de « même tonalité » dépasse la loi à tirages
+indépendants dans les trois colonnes. Elle reste inférieure à celle du corpus réel (20,9 % reel → reel)
+parce que le répertoire des profils est plus concentré (3 à 5 candidats) : seuls les **rapports**
+sont comparables au corpus (colonne « Généré / indép. » du script).
+
+**Classes de transition, reel québécois, valence neutre** (n = 2 561 transitions ; réel = reel → reel
+de The Session, §3.2) :
+
+| Classe | Réel % | Indépendance % | Règle attendue % | Généré % (IC 95 %) | Généré / indép. | Facteur |
+|---|---:|---:|---:|---:|---:|---:|
+| même tonalité | 20,9 | 24,0 | 29,5 | 29,6 ± 1,8 | 1,23 | 1,28 |
+| même tonique, autre mode | 7,8 | 10,0 | 9,9 | 9,1 ± 1,2 | 0,91 | 1,00 |
+| relatif | 22,2 | 12,0 | 11,9 | 11,6 ± 1,3 | 0,97 | 1,02 |
+| tonique +5ᵗᵉ | 15,5 | 18,0 | 16,5 | 16,7 ± 1,4 | 0,93 | 0,97 |
+| tonique +4ᵗᵉ | 16,0 | 18,0 | 17,8 | 18,7 ± 1,5 | 1,04 | 1,01 |
+| tonique +1 ton | 5,6 | 9,0 | 7,7 | 8,0 ± 1,0 | 0,89 | 0,91 |
+| tonique −1 ton | 4,0 | 9,0 | 6,7 | 6,3 ± 1,0 | 0,70 | 0,73 |
+| autre | 7,8 | 0,0 | 0,0 | 0,0 ± 0,0 | — | 0,75 |
+
+Le rapport « généré / indépendance » reproduit les facteurs (même tonalité ×1,23 pour 1,28 ; −1 ton
+×0,70 pour 0,73) à la normalisation près ; « autre » vaut 0 parce que les candidats d'un reel (ré, sol,
+la ionien ; la, ré mixolydien) n'en contiennent pas : le répertoire borne ce que la règle peut produire.
+Reel acadien (n = 2 496) : même tonalité 38,3 % (réel acadien enregistré 41,5 %, indépendance 20,9 %),
+même tonique autre mode 15,1 % (24,9 % ; 12,4 %), relatif 9,1 % (3,9 % ; 13,3 %) : la racine carrée des
+rapports rapproche sans atteindre le corpus, comme l'étude le prévoyait. Les tableaux complets des sept
+profils sortent de `python3 specs/012-vie-realisme/measure_sets.py`.
+
+**Longueur des sets** (1 500 sets par profil, reel québécois) : 2 airs 44,7 % (configuré 45,0 ; The
+Session 45,2), 3 : 43,9 % (44,0 ; 44,3), 4 : 7,4 % (7,0 ; 6,8), 5 : 4,0 % (4,0 ; 3,8). Les six autres
+profils à longueurs configurées restent à 2,5 points au plus ; la marche donne 1 air partout.
+
+**Autres contrôles.** `harmonium_cli/tests/export_terminates.rs` : les sept profils exportent 200
+mesures, sans puis avec automation, en temps borné (33 s au total en debug). Crête à émotions maximales
+(`measure_ornaments.py peaks`, automation constante `intensity = arousal = density = tension = feet = 1`,
+5 graines × 7 profils, 66 mesures, 2 tours, GeneralUser-GS et `harmonium_trad.sf2`) : pire crête
+**−1,74 dBFS** (valse québécoise ; reel québécois −1,78, gigue britannique −1,97, hornpipe −2,75, reel
+acadien −2,81, gigue québécoise −3,07), aucun échantillon à 0 dBFS : la forme longue ne touche pas au
+mixage. `cargo test --workspace --no-fail-fast` : aucun échec ; `cargo fmt` propre ; `cargo clippy
+--workspace` : mêmes décomptes qu'avant (126 avertissements du crate `harmonium_core`, aucun nouveau).
+Rien de nouveau dans le callback audio : le plan de set se tire sur le thread principal avec le reste
+de l'air.
+
 ### BUG1 — export sans automation qui ne se termine pas (≥ 101 mesures)
 
 - **Symptôme** : `harmonium-cli --export --bars N` sans `--automation` ne se termine pas pour N ≥ 101
