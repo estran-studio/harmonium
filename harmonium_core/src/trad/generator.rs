@@ -238,10 +238,19 @@ impl TradGenerator {
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
             TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
         };
-        let entered = self.tuning.profile.arrangement.allows(track, position, &self.profile.form)
-            || self.played_intro(track, position.tune_index);
+        let entered = self.tuning.profile.arrangement.allows(
+            track,
+            position,
+            self.is_first_in_set(position.tune_index),
+            &self.profile.form,
+        ) || self.played_intro(track, position.tune_index);
         flag && entered
             && self.tuning.profile.dynamics.allows(track, self.musical_params.rhythm_density)
+    }
+
+    /// Vrai si l'air `tune_index` ouvre un set : intro complète et entrées progressives.
+    fn is_first_in_set(&self, tune_index: usize) -> bool {
+        tune_index == 0 || self.profile.set.is_one_tune_per_set()
     }
 
     /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
@@ -1396,7 +1405,7 @@ impl TradGenerator {
     ///
     /// - Tire une forme pondérée parmi `intro.forms`
     /// - Calcule les notes de levée ascendantes vers la première note de A1
-    /// - Respecte `each_tune` : tunes 1+ sans intro complète ont seulement la levée
+    /// - Seul le premier air d'un set a l'intro complète ; les suivants ont seulement la levée
     fn draw_intro(
         &self,
         tune_index: usize,
@@ -1407,11 +1416,8 @@ impl TradGenerator {
         let intro_config = &self.tuning.profile.arrangement.intro;
 
         // Tirage de la forme (seulement si forme complète nécessaire)
-        let form = if tune_index == 0 || intro_config.each_tune {
-            draw_intro_form(intro_config, rng)
-        } else {
-            None
-        };
+        let first_in_set = self.is_first_in_set(tune_index);
+        let form = if first_in_set { draw_intro_form(intro_config, rng) } else { None };
 
         let form_bars = form
             .map(|k| {
@@ -1424,7 +1430,7 @@ impl TradGenerator {
             })
             .unwrap_or(0);
 
-        let intro_bars = intro_config.bars_for_tune(tune_index, form_bars);
+        let intro_bars = intro_config.bars_for_tune(first_in_set, form_bars);
 
         // Calculer les notes de levée
         let pickup_notes = if intro_config.pickup_eighths > 0 && intro_bars > 0 {
@@ -1534,11 +1540,7 @@ pub fn draw_next_tune_plan(
     _params: &ReelFiddleParams,
     rng: &mut dyn RngCore,
 ) -> TunePlan {
-    if rng.next_range_usize(
-        0..(prev_plan.profile.form.next_same_weight + prev_plan.profile.form.next_relative_weight)
-            as usize,
-    ) < prev_plan.profile.form.next_same_weight as usize
-    {
+    if rng.next_range_usize(0..2) < 1 {
         TunePlan::with_profile(prev_plan.key, prev_plan.mode, prev_plan.profile)
     } else {
         relative_tune_plan(prev_plan)

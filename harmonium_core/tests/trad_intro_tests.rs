@@ -1,5 +1,5 @@
 //! Tests d'acceptation des intros idiomatiques (P1-T11) sur le flux de snapshots :
-//! formes d'intro, levée (anacrouse), déterminisme, `each_tune`, validation.
+//! formes d'intro, levée (anacrouse), déterminisme, premier air d'un set, validation.
 
 use harmonium_core::{
     params::MusicalParams,
@@ -33,11 +33,8 @@ fn stream_with(seed: u64, bars: usize, tuning: TuningParams) -> Vec<MeasureSnaps
 /// Tuning avec une seule forme d'intro (pour tester chaque forme isolément).
 fn tuning_single_form(role: IntroRole, bars: usize, pickup_eighths: u8) -> TuningParams {
     let mut tuning = TuningParams::default();
-    tuning.profile.arrangement.intro = IntroConfig {
-        forms: vec![IntroForm { role, weight: 1, bars }],
-        pickup_eighths,
-        each_tune: false,
-    };
+    tuning.profile.arrangement.intro =
+        IntroConfig { forms: vec![IntroForm { role, weight: 1, bars }], pickup_eighths };
     tuning
 }
 
@@ -222,12 +219,12 @@ fn pickup_ascends_to_first_a1_note_with_small_leaps() {
 }
 
 // ---------------------------------------------------------------------------
-// each_tune
+// premier air d'un set
 // ---------------------------------------------------------------------------
 
 #[test]
-fn each_tune_false_second_tune_has_pickup_only() {
-    // Par défaut each_tune = false : seul le premier air a une intro complète.
+fn second_tune_of_a_set_has_pickup_only() {
+    // Seul le premier air d'un set a une intro complète.
     let tuning = TuningParams::default();
     // Générer jusqu'au 2ᵉ air (intro + 96 mesures + marge)
     let snaps = stream_with(11, 110, tuning);

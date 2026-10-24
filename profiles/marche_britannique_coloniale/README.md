@@ -156,3 +156,10 @@ Pas de note de passage de densité : l'ancienne courbe `density_passing` de ce p
 Fifre : monophonique, donc `double_stop` (2 occurrences) désactivé malgré le corpus ; 5 rouleaux seulement.
 
 Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).
+
+## Forme longue V7b
+
+`set.toml` : `length = [{ tunes = 1, weight = 1 }]`. Chaque air est son propre set : il est annoncé en entier par le
+décompte de tambour de `[intro]` (rôle `percussion`, 1 mesure), comme avant V7b (`intro_each_tune`). Aucun facteur de
+tonalité (pas de logique d'enchaînement mesurable : aucun set britannique n'existe en accès libre). Schéma :
+[profiles/README.md](../README.md#forme-longue-set).

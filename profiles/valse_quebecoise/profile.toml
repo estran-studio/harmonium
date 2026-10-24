@@ -3,6 +3,7 @@ cells = "cells.toml"
 feet = "feet.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
+set = "set.toml"
 
 [meta]
 id = "valse_quebecoise"

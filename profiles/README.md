@@ -8,7 +8,7 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | Section | Champs / sens |
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
-| `[files]` | `cells`, `feet`, `arrangement`, `dynamics` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
+| `[files]` | `cells`, `feet`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »). |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight`. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
@@ -16,10 +16,11 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
-| `[arrangement]` | `tours_per_tune`, `intro_each_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. |
-| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités, fin accentuée. Consulter `reel_quebecois/arrangement.toml`. |
+| `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
+| `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités, fin accentuée. Consulter `reel_quebecois/arrangement.toml`. L'intro complète ne vient qu'au premier air de chaque set ; les suivants n'ont que la levée. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois des cinq pistes et EQ stéréo ; schéma et bornes ci-dessous. |
+| `[set]` (`set.toml`) | Longueur des sets et facteurs de classe de transition de tonalité ; section « Forme longue (set) » ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
@@ -502,6 +503,67 @@ les émotions changent entre deux passes, la même figure s'étire avec la duré
 Mesures reproductibles : `specs/012-vie-realisme/measure_ornaments.py` (`corpus`, `rates`,
 `wav`, `peaks`, `midi`).
 
+## Forme longue (set)
+
+Un **set** est une suite d'airs d'un même profil (même mètre, même forme), jouée sans pause de
+session. `set.toml`, référencé par `[files] set = "set.toml"`, règle la longueur du set et le
+choix de la tonalité d'un air au suivant. Le jeu garde la priorité : la couleur (tonalité, mode)
+reste décidée par la valence ; le set ne fait que **pondérer** des candidats que la valence
+autorise (`melody.key_modes` à `neutral_valence`, `[[color]]` évalué à la valence ailleurs).
+
+- **Premier air d'un set** : intro complète (`[intro]`, formes pondérées et levée) et entrées
+  progressives des pistes (`[arrangement.entries]`). Les **airs suivants** n'ont que la levée et
+  toutes les pistes dès A1, comme dans un vrai set.
+- **Section absente** : un set sans fin ; tous les facteurs à 1, chaque air se tire indépendamment
+  du précédent, intro complète et entrées au seul premier air de la session.
+- `set.toml` contient `length` et `[key]` à la racine du fichier, comme `arrangement.toml` contient
+  `tours_per_tune` et `[entries]`. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
+  `arrangement.intro_each_tune` et `intro.each_tune` sont refusés au chargement (champ inconnu) :
+  `length = [{ tunes = 1, weight = 1 }]` redonne une intro complète à chaque air.
+
+```toml
+# set.toml
+length = [
+  { tunes = 2, weight = 45 }, { tunes = 3, weight = 44 },
+  { tunes = 4, weight = 7 },  { tunes = 5, weight = 4 },
+]
+
+[key]
+same      = 1.28
+parallel  = 1.00
+relative  = 1.02
+fifth_up  = 0.97
+fourth_up = 1.01
+step_up   = 0.91
+step_down = 0.73
+other     = 0.75
+last_dark = 0.80
+```
+
+| Paramètre | Bornes | À l'oreille | Neutre | Vivante (reel québécois) |
+|---|---|---|---|---|
+| `length` | Liste `{ tunes, weight }` : `tunes` 1..=16, au plus 64 entrées, somme des poids positive dans u32. Tirée **au début du set** | Nombre d'airs avant la prochaine annonce complète. 1 : chaque air est annoncé en entier (marche) ; 2–3 : un enchaînement court ; 16 : presque une session sans coupure | Omettre : set sans fin | 2·3·4·5 airs aux poids 45·44·7·4 |
+| `key.same` | 0..=1000, fini | Garder la tonalité et le mode de l'air précédent : > 1 favorise la continuité, 0 l'interdit | `1` | `1.28` |
+| `key.parallel` | idem | Même tonique, autre mode (ré ionien → ré mixolydien) | `1` | `1.00` |
+| `key.relative` | idem | Même collection diatonique, autre tonique (ré ionien → si éolien) | `1` | `1.02` |
+| `key.fifth_up`, `fourth_up` | idem | Tonique +7 ou +5 demi-tons (ré → la ; ré → sol) | `1` | `0.97`, `1.01` |
+| `key.step_up`, `step_down` | idem | Tonique +2 ou −2 demi-tons ; descendre d'un ton est rare dans les sets réels | `1` | `0.91`, `0.73` |
+| `key.other` | idem | Toute autre transition | `1` | `0.75` |
+| `key.last_dark` | idem | Dernier air d'un set fini : facteur des modes mineurs (dorien, éolien) ; < 1 finit plus souvent en majeur | `1` | `0.80` |
+
+Au moins un facteur de classe doit être positif. Les facteurs multiplient le poids de base de
+chaque candidat ; si tous les candidats tombent à 0, le moteur retire d'abord les facteurs de
+classe, puis `last_dark`, avant le poids de base seul : le jeu ne se retrouve jamais sans tonalité.
+
+Les facteurs distribués sont des **rapports observé / indépendance** mesurés sur The Session
+(reel → reel, jig → jig, hornpipe, valse ; voir
+[l'étude V7a](../specs/012-vie-realisme/forme-longue-etude.md#32-sets-de-membres-the-session)).
+Presque tous valent entre 0,75 et 1,3 : l'essentiel de la logique de tonalités est la concentration
+du répertoire (`key_modes`), pas l'enchaînement. Le reel acadien prend la racine carrée des rapports
+mesurés sur 205 transitions de pistes enregistrées (échantillon dominé par le Cap-Breton).
+Longueurs de set : The Session, sets de 2 airs ou plus. Rien n'est mesuré sur la pratique québécoise
+des sets : les valeurs sont des bornes de répertoire, l'écoute fixera le réglage.
+
 ## Règles de phrase
 
 Le profil décide des répétitions ; le moteur ne suppose ni huit mesures, ni
@@ -534,7 +596,6 @@ la résolution `per_tune` et les contraintes de registre antérieures.
 | `form.max_leap_degrees` | Seuil de saut préféré à l'entrée et au retour ; pas diatoniques, 0..28, contrainte souple | `4` (quinte, défaut) | `7` |
 | `form.contour_window_semitones` | Écart préféré au centre de partie, 0..127 ; la meilleure candidate sert de repli | `0.0` | `8.0` ; défaut `4.0` |
 | `form.register_tolerance_semitones` | Tolérance autour de la frontière médiane des registres, 0..127 | `0.0` | `12.0` ; défaut `6.0` |
-| `form.next_same_weight`, `next_relative_weight` | Poids du prochain air : même couleur ou relatif diatonique ; somme positive dans u32 | `1`, `0` | `1`, `1` (défaut) |
 | `parts.rhythm` | Distribution de durées aux positions choisies, voir ci-dessous | Un motif unique | Plusieurs motifs aux poids de corpus |
 | `parts.second_ending` | Variante de la dernière mesure à la dernière passe de la partie | Omettre, ou `"CadTonic"` | Distribution tonique/quinte/autre |
 | `parts.ornament_protected_bars` | Mesures sans aucun ornement (cadences), tous types de `[ornaments]` ; omission : dernière mesure ; `[]` : aucune | `[4,8]` | `[]` |
@@ -595,7 +656,8 @@ correspondants, pas les banques et instruments.
 
 **Comptine très répétitive** : `resolve = "per_tune"`, `repeat_variation = 0.0`,
 `tour_variation = 0.0`, `avoid_adjacent = false`, `opening_retries = 0`,
-`next_same_weight = 1`, `next_relative_weight = 0`. Pour chaque partie :
+et un seul set sans changement de couleur (`set.length = [{ tunes = 16, weight = 1 }]`,
+`set.key` à 0 sauf `same = 1`). Pour chaque partie :
 
 ```toml
 roles = ["Open", {CopyOf=1}, {CopyOf=1}, "CadHalf",

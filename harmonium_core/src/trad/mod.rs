@@ -11,6 +11,7 @@ pub mod generator;
 pub mod harmony;
 pub mod mode;
 pub mod plan;
+pub mod set;
 mod strum;
 pub use accomp::{Guitarist, bass_bar};
 pub use arrangement::{

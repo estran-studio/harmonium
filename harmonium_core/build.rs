@@ -54,6 +54,7 @@ fn bundle_profiles() -> Result<(), Box<dyn std::error::Error>> {
                     "feet" => "percussion",
                     "arrangement" => "arrangement",
                     "dynamics" => "dynamics",
+                    "set" => "set",
                     _ => return Err(format!("banque {key}").into()),
                 };
                 let bank_path = dir.join(fname);

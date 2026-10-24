@@ -135,7 +135,6 @@ percussion_program = 0
 
 [arrangement]
 tours_per_tune = 1
-intro_each_tune = false
 [arrangement.entries]
 Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
@@ -145,4 +144,3 @@ Toe = { tour = 1, part = 0, pass = 1 }
 [arrangement.intro]
 forms = []
 pickup_eighths = 0
-each_tune = false

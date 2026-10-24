@@ -198,3 +198,13 @@ Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est re
 Seuls le triolet de notes répétées (30) et deux doubles cordes sont observés : aucun agrément, rouleau ni trille.
 
 Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).
+
+## Forme longue V7b
+
+`set.toml` : sets de 2 à 5 airs (poids 45·44·7·4, The Session), intro complète et entrées de pistes au premier air
+de chaque set seulement. Rapports *hornpipe → hornpipe* de The Session (7 291 transitions) ; aucun set britannique colonial n'existe en accès libre dans le corpus.
+
+`same` 1,16 · `parallel` 1,17 · `relative` 0,85 · `fifth_up` 0,97 · `fourth_up` 1,04 · `step_up` 0,86 · `step_down` 0,74 · `other` 0,73 · `last_dark` 1,00.
+
+`last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
+[profiles/README.md](../README.md#forme-longue-set).

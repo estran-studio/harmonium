@@ -325,10 +325,6 @@ pub struct ProfileForm {
     pub close_part_loop: bool,
     #[serde(default = "default_half")]
     pub varied_end_keep: f32,
-    #[serde(default = "default_one")]
-    pub next_same_weight: u32,
-    #[serde(default = "default_one")]
-    pub next_relative_weight: u32,
     #[serde(default = "default_two_units")]
     pub cadence_min_units: usize,
     #[serde(default = "default_half")]
@@ -383,9 +379,6 @@ impl ProfileForm {
 }
 fn default_half() -> f32 {
     0.5
-}
-fn default_one() -> u32 {
-    1
 }
 fn default_two_units() -> usize {
     2
@@ -459,6 +452,9 @@ pub struct StyleProfile {
     pub performance: crate::performance::Performance,
     #[serde(default)]
     pub ornaments: crate::ornaments::Ornaments,
+    /// Forme longue : longueur des sets et facteurs de transition de tonalité (`set.toml`).
+    #[serde(default)]
+    pub set: crate::trad::set::ProfileSet,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -573,6 +569,7 @@ impl StyleProfile {
                     "feet" => "percussion",
                     "arrangement" => "arrangement",
                     "dynamics" => "dynamics",
+                    "set" => "set",
                     _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
                 };
                 let name = filename
@@ -625,6 +622,7 @@ impl StyleProfile {
         self.mix.validate()?;
         self.performance.validate(self.meter.steps_per_bar)?;
         self.ornaments.validate()?;
+        self.set.validate()?;
         check(
             !self.meta.id.is_empty()
                 && self
@@ -727,10 +725,6 @@ impl StyleProfile {
                 && self.form.varied_end_keep < 1.0,
             "form.varied_end_keep",
             "fraction finie strictement entre 0 et 1 requise",
-        )?;
-        check_weights(
-            [self.form.next_same_weight, self.form.next_relative_weight].into_iter(),
-            "form.next_same_weight",
         )?;
         check(
             self.form.cadence_min_units > 0

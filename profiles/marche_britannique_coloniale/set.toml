@@ -1,0 +1,4 @@
+# Forme longue : chaque air est son propre set (annonce complète à chaque air : décompte de tambour
+# de `[intro]`). Pas de logique de tonalité entre airs : aucun `[key]`, tous les facteurs valent 1.
+# Schéma et effet à l'oreille : profiles/README.md#forme-longue-set.
+length = [{ tunes = 1, weight = 1 }]

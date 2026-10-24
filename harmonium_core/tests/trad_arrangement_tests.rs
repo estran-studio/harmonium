@@ -7,7 +7,7 @@ use harmonium_core::{
     timeline::TrackId,
     trad::{
         ArrangementError, IntroConfig, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator,
-        TunePosition,
+        TunePosition, set::SetLength,
     },
     tuning::TuningParams,
 };
@@ -98,7 +98,7 @@ fn default_entries_violin_alone_then_accompaniment_then_feet() {
                 assert!(has(s, t), "seed {seed} m.{b}: {t:?} attendu");
             }
         }
-        // À partir du 2e air : tout le monde dès A1 (intro_each_tune = false).
+        // À partir du 2e air : tout le monde dès A1 (2ᵉ air du set).
         for t in TrackId::ALL {
             assert!(has(bar(&snaps, 97), t), "seed {seed} m.97: {t:?} attendu");
         }
@@ -227,9 +227,9 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
 }
 
 #[test]
-fn intro_each_tune_replays_the_progressive_entries() {
+fn first_tune_of_each_set_replays_the_progressive_entries() {
     let mut tuning = flat_tuning();
-    tuning.profile.arrangement.intro_each_tune = true;
+    tuning.profile.set.length = vec![SetLength { tunes: 1, weight: 1 }];
     let snaps = stream_with(1, 106, reel_params(), tuning);
     for t in [TrackId::Chords, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
         assert!(!has(bar(&snaps, 97), t), "{t:?} ne doit pas jouer à la mesure 97");
