@@ -325,7 +325,7 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     Ok(())
 }
 #[test]
-fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::error::Error>> {
+fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std::error::Error>> {
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
@@ -369,15 +369,16 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
                 .collect();
             all_runs.insert(format!("seed_{seed}"), serde_json::to_value(bars)?);
         }
-        let golden: serde_json::Value = match style_id {
-            "gigue_quebecoise" => {
-                serde_json::from_str(include_str!("fixtures/main_golden_gigue_quebecoise.json"))?
-            }
-            "valse_quebecoise" => {
-                serde_json::from_str(include_str!("fixtures/main_golden_valse_quebecoise.json"))?
-            }
-            _ => unreachable!(),
-        };
+        let fixture = format!("main_golden_{style_id}.json");
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(fixture);
+        if std::env::var_os("HARMONIUM_UPDATE_GOLDENS").is_some() {
+            std::fs::write(
+                &path,
+                serde_json::to_string(&serde_json::Value::Object(all_runs.clone()))?,
+            )?;
+        }
+        let golden: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
         let actual = serde_json::Value::Object(all_runs);
         type Runs =
             std::collections::BTreeMap<String, Vec<(usize, Vec<(u8, u8, usize, usize, u8)>)>>;
@@ -395,7 +396,7 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
         assert_eq!(
             canonical(actual)?,
             canonical(golden)?,
-            "notes de {style_id} différentes de main (graines 1..3, 64 mesures, feet off)"
+            "notes de {style_id} différentes de la référence (graines 1..3, 64 mesures, feet off)"
         );
     }
     Ok(())

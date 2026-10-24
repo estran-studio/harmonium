@@ -6,7 +6,7 @@ use harmonium_core::{
     params::PulseSpec,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{ReelArrangement, TunePlan, is_same_or_relative_plan},
+    trad::{ReelArrangement, TunePlan},
     tuning::TuningParams,
 };
 
@@ -204,11 +204,6 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
                 );
             }
         }
-
-        let (plan1, _) = composer.profile_bar_info(1).ok_or_else(|| "tune 1 absent".to_string())?;
-        let (plan2, _) =
-            composer.profile_bar_info(33).ok_or_else(|| "tune 2 absent".to_string())?;
-        assert!(is_same_or_relative_plan(plan1, plan2));
     }
     Ok(())
 }

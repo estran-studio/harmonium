@@ -520,6 +520,14 @@ autorise (`melody.key_modes` à `neutral_valence`, `[[color]]` évalué à la va
   `tours_per_tune` et `[entries]`. Les anciens `form.next_same_weight`, `form.next_relative_weight`,
   `arrangement.intro_each_tune` et `intro.each_tune` sont refusés au chargement (champ inconnu) :
   `length = [{ tunes = 1, weight = 1 }]` redonne une intro complète à chaque air.
+- **Tirages.** Au début de chaque set, **avant l'air 1**, le moteur tire la longueur du set puis un
+  tirage de tonalité par air 2..L (un set sans fin ne tire rien d'avance). Ces tirages sont convertis
+  en tonalité **à la construction de l'air**, avec les poids de la valence d'alors : si le jeu change
+  la valence entre deux airs, la tonalité suit la valence, mais la longueur du set et son plan ne
+  changent pas. Le premier air d'un set se tire sans facteur, comme tout air d'un profil sans `[set]`.
+  Le poids de chaque candidat de l'air suivant est son poids de base × le facteur de la classe
+  (précédent → candidat), classes testées dans l'ordre `same`, `parallel`, `relative`, puis
+  l'intervalle de tonique ; **aucune tonalité n'est publiée hors des candidats**.
 
 ```toml
 # set.toml
@@ -795,8 +803,10 @@ roles = ["Open", "Free", "Free", "CadHalf", { CopyOf = 1 }, { CopyOf = 2 }, "Fre
 
 Aucun drapeau de compatibilité ni second générateur : ces rôles ne consomment
 aucun tirage structurel. Le test `profile_d2_main_note_reference` compare ce
-profil à `profile_d2_fixed.json` (ancien main), et le profil distribué au nouveau
-`profile_d2_main.json`. Régénération explicite de la référence courante :
+profil à `profile_d2_fixed.json` et le profil distribué à `profile_d2_main.json`, tous
+deux à la `TUNING_VERSION` courante (la référence « ancien main » a été régénérée en V7b :
+le bloc de tirages de set avant l'air 1 décale le flux de toute la session). Régénération
+explicite des deux références :
 `HARMONIUM_UPDATE_GOLDENS=1 cargo test -p harmonium-cli profile_d2_main_note_reference`.
 
 ## Modèle fonctionnel jazz

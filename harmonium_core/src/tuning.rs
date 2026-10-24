@@ -9,8 +9,9 @@ use crate::{
     },
 };
 
-/// Version du contrat : grattage additif après V2 et gestes par attaque (V5b-3).
-pub const TUNING_VERSION: u32 = 18;
+/// Version du contrat : sets (V7b) — bloc de tirages de set avant l'air 1, tonalité des airs
+/// suivants pondérée par classe de transition.
+pub const TUNING_VERSION: u32 = 19;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

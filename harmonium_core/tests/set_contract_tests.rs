@@ -86,3 +86,187 @@ fn distributed_profiles_load_their_set_file() {
         assert!(!profile.set.length.is_empty(), "{} : set.length vide", profile.meta.id);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Flux : tonalités publiées par air
+// ---------------------------------------------------------------------------
+
+use harmonium_core::{
+    params::MusicalParams,
+    report::MeasureSnapshot,
+    trad::{Mode, TradGenerator, set::SetKey},
+    tuning::TuningParams,
+};
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
+const NEUTRAL: f32 = 0.3;
+
+fn tuning(mutate: impl FnOnce(&mut StyleProfile)) -> TuningParams {
+    let mut tuning = TuningParams::default();
+    tuning.profile.arrangement.tours_per_tune = 1;
+    mutate(&mut tuning.profile);
+    tuning
+}
+
+fn session(seed: u64, tuning: &TuningParams, valence: f32, bars: usize) -> Vec<MeasureSnapshot> {
+    let meter = &tuning.profile.meter;
+    let mut params = MusicalParams::default();
+    params.bpm = meter.default_bpm;
+    params.set_swing_ratio(meter.default_swing_ratio);
+    params.time_signature = meter.time_signature;
+    params.harmony_valence = valence;
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    let mut generator = TradGenerator::new(params, tuning.clone());
+    (1..=bars)
+        .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
+        .collect()
+}
+
+/// `(key, mode)` de chaque air, lus à sa première mesure (l'intro, avant tout changement de mode).
+fn tune_colors(snapshots: &[MeasureSnapshot]) -> Vec<(u8, Mode)> {
+    let mut colors: Vec<(u8, Mode)> = Vec::new();
+    let mut last_tune = None;
+    for position in snapshots.iter().filter_map(|s| s.position) {
+        if last_tune != Some(position.tune_index) {
+            last_tune = Some(position.tune_index);
+            colors.push((position.key, position.mode));
+        }
+    }
+    colors
+}
+
+fn all_ones() -> SetKey {
+    SetKey::default()
+}
+
+#[test]
+fn published_colors_belong_to_the_candidates_of_the_valence() {
+    let base = tuning(|p| p.set.length = vec![SetLength { tunes: 4, weight: 1 }]);
+    let profile = &base.profile;
+    for valence in [NEUTRAL, 0.6, -0.6] {
+        let allowed: Vec<(u8, Mode)> = if valence == profile.dynamics.neutral_valence {
+            profile.melody.key_modes.iter().map(|c| (c.key, c.mode)).collect()
+        } else {
+            let input = profile.dynamics.valence_input(valence);
+            profile
+                .dynamics
+                .color
+                .iter()
+                .filter(|c| c.weight.eval(input) > 0.0)
+                .map(|c| (c.key, c.mode))
+                .collect()
+        };
+        let mut seen = 0;
+        for seed in 1..=30 {
+            for (index, color) in
+                tune_colors(&session(seed, &base, valence, 8 * 33)).iter().enumerate()
+            {
+                assert!(
+                    allowed.contains(color),
+                    "seed {seed}, air {index}, valence {valence}: {color:?}"
+                );
+                seen += 1;
+            }
+        }
+        assert!(seen >= 200, "valence {valence}: {seen} airs seulement");
+    }
+}
+
+fn class_of(prev: (u8, Mode), next: (u8, Mode)) -> harmonium_core::trad::set::KeyClass {
+    harmonium_core::trad::set::KeyClass::of(prev, next)
+}
+
+#[test]
+fn class_factors_drive_the_chaining() {
+    use harmonium_core::trad::set::KeyClass;
+    let long_set = |key: SetKey| {
+        tuning(|p| {
+            p.set.length = vec![SetLength { tunes: MAX_SET_TUNES, weight: 1 }];
+            p.set.key = key;
+        })
+    };
+    let base = long_set(all_ones());
+    let candidates: Vec<(u8, Mode)> =
+        base.profile.melody.key_modes.iter().map(|c| (c.key, c.mode)).collect();
+
+    // Tout à 0 sauf fifth_up : chaque transition est une quinte quand un candidat la permet.
+    let fifth_only = long_set(SetKey {
+        same: 0.0,
+        parallel: 0.0,
+        relative: 0.0,
+        fifth_up: 1.0,
+        fourth_up: 0.0,
+        step_up: 0.0,
+        step_down: 0.0,
+        other: 0.0,
+        last_dark: 1.0,
+    });
+    let (mut forced, mut free) = (0, 0);
+    for seed in 1..=20 {
+        let colors = tune_colors(&session(seed, &fifth_only, NEUTRAL, MAX_SET_TUNES * 33));
+        for pair in colors.windows(2) {
+            if candidates.iter().any(|&c| class_of(pair[0], c) == KeyClass::FifthUp) {
+                assert_eq!(class_of(pair[0], pair[1]), KeyClass::FifthUp, "seed {seed}: {pair:?}");
+                forced += 1;
+            } else {
+                assert!(candidates.contains(&pair[1]), "seed {seed}: {pair:?}");
+                free += 1;
+            }
+        }
+    }
+    assert!(forced > 100 && free > 20, "forced {forced}, free {free}");
+
+    // Tous à 1 : fréquences des airs 2 à 16 proches du poids de base des candidats.
+    let total: f64 = base.profile.melody.key_modes.iter().map(|c| f64::from(c.weight)).sum();
+    let mut counts = vec![0usize; candidates.len()];
+    let mut airs = 0usize;
+    for seed in 1..=40 {
+        for color in tune_colors(&session(seed, &base, NEUTRAL, MAX_SET_TUNES * 33)).iter().skip(1)
+        {
+            if let Some(index) = candidates.iter().position(|c| c == color) {
+                counts[index] += 1;
+            }
+            airs += 1;
+        }
+    }
+    for (index, candidate) in base.profile.melody.key_modes.iter().enumerate() {
+        let expected = f64::from(candidate.weight) / total;
+        let observed = counts[index] as f64 / airs as f64;
+        assert!(
+            (observed - expected).abs() < 0.05,
+            "{candidate:?} : {observed:.3} contre {expected:.3}"
+        );
+    }
+}
+
+#[test]
+fn last_dark_keeps_the_last_tune_of_a_set_bright() {
+    // Valence basse : les candidats sombres existent ; sets de 3 airs, dernier air = tune_index % 3 == 2.
+    let dark_share = |last_dark: f32| {
+        let tuning = tuning(|p| {
+            p.set.length = vec![SetLength { tunes: 3, weight: 1 }];
+            p.set.key.last_dark = last_dark;
+        });
+        let (mut last, mut dark) = (0, 0);
+        for seed in 1..=40 {
+            for (index, (_, mode)) in
+                tune_colors(&session(seed, &tuning, -0.6, 9 * 33)).iter().enumerate()
+            {
+                if index % 3 == 2 {
+                    last += 1;
+                    dark += usize::from(mode.is_minor());
+                }
+            }
+        }
+        (last, dark)
+    };
+    let (last, dark) = dark_share(0.0);
+    assert!(last >= 100);
+    assert_eq!(dark, 0, "dernier air sombre malgré last_dark = 0");
+    let (_, dark_neutral) = dark_share(1.0);
+    assert!(
+        dark_neutral > 10,
+        "le contrôle (last_dark = 1) doit produire des derniers airs sombres"
+    );
+}

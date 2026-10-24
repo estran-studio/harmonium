@@ -31,8 +31,7 @@ pub use fiddle::{
     transpose_cell_octaves, unit_velocity,
 };
 pub use generator::{
-    ActiveTune, TradGenerator, build_chord_context, draw_next_tune_plan, is_same_or_relative_plan,
-    pitch_class_name, relative_tune_plan, trad_chord_name,
+    ActiveTune, TradGenerator, build_chord_context, pitch_class_name, trad_chord_name,
 };
 pub use harmony::{
     ChordDegree, ChordQuality, TradChord, TuneHarmony, TuneHarmonyError, candidate_chords,

@@ -84,33 +84,6 @@ impl TunePlan {
             pass_roles: Vec::new(),
         }
     }
-    pub fn draw(
-        rng: &mut dyn RngCore,
-        key_hint: Option<PitchClass>,
-        profile: Arc<StyleProfile>,
-    ) -> Self {
-        let candidates = &profile.melody.key_modes;
-        let key = key_hint.map(|k| k % 12);
-        let total: u32 =
-            candidates.iter().filter(|c| key.is_none_or(|k| c.key == k)).map(|c| c.weight).sum();
-        if total == 0 {
-            return Self::with_profile(
-                key.unwrap_or(candidates[0].key),
-                candidates[0].mode,
-                profile,
-            );
-        }
-        let mut pick = rng.next_range_usize(0..total as usize) as u32;
-        for candidate in candidates {
-            if key.is_none_or(|k| candidate.key == k) {
-                if pick < candidate.weight {
-                    return Self::with_profile(candidate.key, candidate.mode, profile.clone());
-                }
-                pick -= candidate.weight;
-            }
-        }
-        unreachable!("validated positive weights")
-    }
     /// Résout tout le matériel structurel de l'air selon la portée configurée.
     pub fn resolve_roles(&mut self, rng: &mut dyn RngCore) {
         if self.roles_resolved {

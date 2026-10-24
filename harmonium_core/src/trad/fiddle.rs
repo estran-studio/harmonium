@@ -1250,7 +1250,7 @@ mod tests {
     fn empty_bank_falls_back_without_failure() {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let empty_bank = CellBank { cells: Vec::new() };
-        let plan = TunePlan::draw(&mut rng, None, std::sync::Arc::new(Default::default()));
+        let plan = TunePlan::with_profile(2, Mode::Ionian, std::sync::Arc::new(Default::default()));
         let line = FiddleLine::new(plan.clone(), &empty_bank, &mut rng);
         let tune = line.render_tune();
         assert_eq!(tune.len(), 32);

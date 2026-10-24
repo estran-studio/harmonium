@@ -6,7 +6,11 @@
 use serde::{Deserialize, Serialize};
 
 use super::mode::Mode;
-use crate::{style_profile::ProfileError, theory::PitchClass};
+use crate::{
+    algo::RngCore,
+    style_profile::{ProfileError, StyleProfile},
+    theory::PitchClass,
+};
 
 /// Longueur maximale d'un set, en airs.
 pub const MAX_SET_TUNES: usize = 16;
@@ -223,5 +227,192 @@ impl ProfileSet {
             ));
         }
         Ok(())
+    }
+}
+
+/// Résolution d'un tirage uniforme `0..UNIT` en tonalité (même précision partout).
+pub const KEY_DRAW_RANGE: usize = 1_000_000;
+
+/// Tonalité candidate d'un air, avec son poids de base.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KeyCandidate {
+    pub key: PitchClass,
+    pub mode: Mode,
+    pub weight: f64,
+}
+
+/// Candidats de tonalité à `valence` : `melody.key_modes` à `neutral_valence`, `[[color]]`
+/// évalué à la valence ailleurs. Seule source des candidats : le jeu garde la couleur.
+#[must_use]
+pub fn candidates(profile: &StyleProfile, valence: f32) -> Vec<KeyCandidate> {
+    let dynamics = &profile.dynamics;
+    if valence == dynamics.neutral_valence {
+        profile
+            .melody
+            .key_modes
+            .iter()
+            .map(|c| KeyCandidate { key: c.key, mode: c.mode, weight: f64::from(c.weight) })
+            .collect()
+    } else {
+        let input = dynamics.valence_input(valence);
+        dynamics
+            .color
+            .iter()
+            .map(|c| KeyCandidate {
+                key: c.key,
+                mode: c.mode,
+                weight: f64::from(c.weight.eval(input)).max(0.0),
+            })
+            .collect()
+    }
+}
+
+/// Inverse de la répartition : indice du candidat que `u` (`0..KEY_DRAW_RANGE`) désigne,
+/// jamais un poids nul. `None` si la somme des poids n'est pas positive.
+fn pick(weights: &[f64], u: u32) -> Option<usize> {
+    let total: f64 = weights.iter().sum();
+    if total.is_nan() || total <= 0.0 {
+        return None;
+    }
+    let mut remaining = f64::from(u) / KEY_DRAW_RANGE as f64 * total;
+    for (index, &weight) in weights.iter().enumerate() {
+        if remaining < weight {
+            return Some(index);
+        }
+        remaining -= weight;
+    }
+    weights.iter().rposition(|&weight| weight > 0.0)
+}
+
+impl ProfileSet {
+    /// Tonalité d'un air parmi `candidates` pour le tirage `u`.
+    ///
+    /// Sans `prev` (premier air d'un set) : poids de base. Sinon poids de base × facteur de
+    /// la classe de `prev → candidat`, × `last_dark` pour un mode sombre si `last`. Si la
+    /// somme s'annule, on retire d'abord les facteurs de classe, puis `last_dark` : le jeu
+    /// ne se retrouve jamais sans tonalité.
+    #[must_use]
+    pub fn choose(
+        &self,
+        prev: Option<(PitchClass, Mode)>,
+        candidates: &[KeyCandidate],
+        last: bool,
+        u: u32,
+    ) -> (PitchClass, Mode) {
+        let dark = |c: &KeyCandidate| {
+            if last && c.mode.is_minor() { f64::from(self.key.last_dark) } else { 1.0 }
+        };
+        let class = |c: &KeyCandidate| {
+            prev.map_or(1.0, |prev| f64::from(self.key.factor(KeyClass::of(prev, (c.key, c.mode)))))
+        };
+        let stages: [Vec<f64>; 3] = [
+            candidates.iter().map(|c| c.weight * class(c) * dark(c)).collect(),
+            candidates.iter().map(|c| c.weight * dark(c)).collect(),
+            candidates.iter().map(|c| c.weight).collect(),
+        ];
+        let chosen = stages
+            .iter()
+            .find_map(|weights| pick(weights, u))
+            .and_then(|index| candidates.get(index))
+            .or_else(|| candidates.first())
+            .unwrap_or_else(|| unreachable!("validated non-empty candidates"));
+        (chosen.key, chosen.mode)
+    }
+}
+
+/// Plan d'un set : sa longueur et ses tirages, pris **au début du set, avant l'air 1**.
+///
+/// Les tirages sont des entiers `0..KEY_DRAW_RANGE` convertis en tonalité à la construction
+/// de chaque air, avec les poids de la valence d'alors (résolution tardive) : si le jeu change
+/// de valence entre deux airs, la tonalité suit la valence, la structure du set ne change pas.
+/// Un set sans fin (`tunes() == 0`) ne tire rien d'avance : chaque air tire à sa construction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SetPlan {
+    first_tune: usize,
+    tunes: usize,
+    key_draws: Vec<u32>,
+}
+
+impl SetPlan {
+    /// Tire le bloc d'un set qui commence à l'air `first_tune` (0-based) : la longueur, puis un
+    /// tirage de tonalité pour chacun des airs 2..=L.
+    pub fn draw(first_tune: usize, set: &ProfileSet, rng: &mut dyn RngCore) -> Self {
+        let total: u64 = set.length.iter().map(|entry| u64::from(entry.weight)).sum();
+        if total == 0 {
+            return Self { first_tune, tunes: 0, key_draws: Vec::new() };
+        }
+        let mut remaining = rng.next_range_usize(0..total as usize) as u64;
+        let tunes = set
+            .length
+            .iter()
+            .find(|entry| {
+                let hit = remaining < u64::from(entry.weight);
+                remaining = remaining.saturating_sub(u64::from(entry.weight));
+                hit
+            })
+            .map_or(1, |entry| entry.tunes);
+        let key_draws =
+            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        Self { first_tune, tunes, key_draws }
+    }
+
+    /// Indice 0-based du premier air du set dans la session.
+    #[must_use]
+    pub const fn first_tune(&self) -> usize {
+        self.first_tune
+    }
+
+    /// Longueur du set en airs ; `0` pour un set sans fin.
+    #[must_use]
+    pub const fn tunes(&self) -> usize {
+        self.tunes
+    }
+
+    /// Vrai si l'air `tune_index` (0-based dans la session) appartient à ce set.
+    #[must_use]
+    pub const fn contains(&self, tune_index: usize) -> bool {
+        tune_index >= self.first_tune
+            && (self.tunes == 0 || tune_index < self.first_tune + self.tunes)
+    }
+
+    /// Rang 1-based de `tune_index` dans le set.
+    #[must_use]
+    pub const fn tune_in_set(&self, tune_index: usize) -> usize {
+        tune_index - self.first_tune + 1
+    }
+
+    /// Vrai si `tune_in_set` est le dernier air d'un set fini.
+    #[must_use]
+    pub const fn is_last(&self, tune_in_set: usize) -> bool {
+        self.tunes != 0 && tune_in_set == self.tunes
+    }
+
+    /// Tirage de tonalité de l'air de rang `tune_in_set` (≥ 2). `None` : set sans fin.
+    #[must_use]
+    pub fn key_draw(&self, tune_in_set: usize) -> Option<u32> {
+        self.key_draws.get(tune_in_set.checked_sub(2)?).copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classes_follow_the_diatonic_collection_not_a_fixed_shift() {
+        use Mode::{Aeolian, Dorian, Ionian, Mixolydian};
+        let (d, g, a, b, e, fs) = (2, 7, 9, 11, 4, 6);
+        assert_eq!(KeyClass::of((d, Ionian), (d, Ionian)), KeyClass::Same);
+        assert_eq!(KeyClass::of((d, Ionian), (d, Mixolydian)), KeyClass::Parallel);
+        assert_eq!(KeyClass::of((d, Ionian), (b, Aeolian)), KeyClass::Relative);
+        // Ré mixolydien partage la collection de sol majeur : sa relative est la dorien, pas si dorien.
+        assert_eq!(KeyClass::of((d, Mixolydian), (g, Ionian)), KeyClass::Relative);
+        assert_eq!(KeyClass::of((d, Mixolydian), (a, Dorian)), KeyClass::Relative);
+        assert_eq!(KeyClass::of((d, Mixolydian), (b, Dorian)), KeyClass::Other);
+        assert_eq!(KeyClass::of((d, Ionian), (a, Ionian)), KeyClass::FifthUp);
+        assert_eq!(KeyClass::of((d, Ionian), (g, Ionian)), KeyClass::FourthUp);
+        assert_eq!(KeyClass::of((d, Ionian), (e, Ionian)), KeyClass::StepUp);
+        assert_eq!(KeyClass::of((a, Ionian), (g, Ionian)), KeyClass::StepDown);
+        assert_eq!(KeyClass::of((d, Ionian), (fs, Aeolian)), KeyClass::Other);
     }
 }

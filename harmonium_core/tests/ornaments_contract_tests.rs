@@ -294,9 +294,9 @@ fn arousal_scales_the_rate_between_the_configured_multipliers() {
     r.arousal_low_multiplier = 0.2;
     r.arousal_high_multiplier = 3.0;
     let p = with(&base(), OrnamentKind::GraceSingle, r);
-    let low = extras(&p, 60, 0.0).0;
-    let mid = extras(&p, 60, 0.5).0;
-    let high = extras(&p, 60, 1.0).0;
+    let low = extras(&p, 200, 0.0).0;
+    let mid = extras(&p, 200, 0.5).0;
+    let high = extras(&p, 200, 1.0).0;
     assert!(low < mid && mid < high, "{low} {mid} {high}");
     let ratio = high as f32 / low as f32;
     assert!((11.0..=19.0).contains(&ratio), "{ratio} (15 attendu)");

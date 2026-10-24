@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
 
-use super::{Mode, TunePlan};
+use super::Mode;
 use crate::{algo::RngCore, timeline::TrackId};
 
 pub const REEL_INTENSITY_TOML: &str =
@@ -316,25 +316,5 @@ impl StyleDynamics {
             pick -= choice.weight as usize;
         }
         bright
-    }
-
-    pub fn draw_color(
-        &self,
-        valence: f32,
-        rng: &mut dyn RngCore,
-        profile: std::sync::Arc<crate::StyleProfile>,
-    ) -> TunePlan {
-        let valence = self.valence_input(valence);
-        let total: f32 = self.color.iter().map(|c| c.weight.eval(valence)).sum();
-        let mut pick = rng.next_range_usize(0..1_000_000) as f32 / 1_000_000.0 * total;
-        for choice in &self.color {
-            let weight = choice.weight.eval(valence);
-            if pick < weight {
-                return TunePlan::with_profile(choice.key, choice.mode, profile);
-            }
-            pick -= weight;
-        }
-        let c = &self.color[self.color.len() - 1];
-        TunePlan::with_profile(c.key, c.mode, profile)
     }
 }
