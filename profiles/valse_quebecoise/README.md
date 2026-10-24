@@ -127,3 +127,14 @@ de chaque set seulement. Rapports *valse → valse* de The Session (3 802 transi
 
 `last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+Accordéon GM 21 discret (−16 dB), pan −0,22, entrée au tour 2 ; unissons et
+notes tenues, rares tierces/sixtes de cadence avant la dernière porteuse commune.
+[Ornstein, 1982](https://cjtm.icaap.org/content/10/v10art2.html) situe accordéon
+et diffusion traditionnelle de la valse dans des strates plus récentes que 1837.
+Il s'agit donc d'une couleur de veillée moderne, **pas d'une reconstitution de 1837** ;
+un profil strictement d'époque doit retirer `[heterophony]` ou choisir un second violon.
+Les taux restent une proposition à écouter. [Schéma commun](../README.md#hétérophonie).
+

@@ -191,3 +191,14 @@ de chaque set seulement. Racine carrée des rapports mesurés chez les artistes 
 
 `last_dark` 0,80 : le dernier air d'un set finit plus souvent en majeur (28,9 % de modes mineurs contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels). Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+Deuxième violon GM 40, tour 2, −12 dB, pan +0,22, sans remplacer le premier violon.
+[Canadian Studies Center, University of Washington](https://jsis.washington.edu/canada/music-collection/acadian-music/)
+documente les traditions régionales de violon et les ensembles familiaux d'Eddy
+Arsenault/Barachois. Cela motive une doublure de violon plutôt qu'une assimilation
+automatique à l'accordéon cajun ; cela ne prouve pas les proportions de variations.
+Unissons majoritaires, peu de tenues/silences ; toutes les fins de phrases conservées.
+Neutre : section absente. [Schéma commun](../README.md#hétérophonie).
+

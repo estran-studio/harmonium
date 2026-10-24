@@ -927,6 +927,156 @@ différentes.
 - **Vérifier** : la 2ᵉ voix suit la ligne (même contour, mêmes cadences),
   diffère sur une part mesurée des notes ; niveau sous le violon (point 1).
 
+### Décisions V4
+
+Aucune décision de style n'est figée en ADR : les valeurs distribuées sont des hypothèses
+d'arrangement à écouter (pas de mesure d'ensemble dans le corpus monodique ABC).
+
+- **Une seule liste de pistes.** `TrackId::ALL` compte six pistes ; `Countermelody` a le canal
+  logique/MIDI **5** (0..4 inchangés) et `TrackId::name()` porte son nom partout où on
+  énumérait « Melody, Chords, Bass, Heel, Toe » : `[mix.tracks.*]`, `[performance.tracks.*]`,
+  `[arrangement.entries]`, snapshots et vérité, export MIDI statique et enregistré, MusicXML,
+  `--solo-track`, `mute`/`gain` du REPL (canal 5), programmes du synthé, tableau de lecture du
+  `Playhead`. Le MusicXML garde ses parties historiques (basse, mélodie, accords, percussions)
+  et ajoute la seconde voix ; le MIDI écrit un programme GM par piste mélodique.
+- **Données.** `[instruments].countermelody_program` (optionnel), `[heterophony]` (validée,
+  optionnelle), `[mix.tracks.Countermelody]`, `[performance.tracks.Countermelody]` et l'entrée
+  `Countermelody` de l'arrangement (réappliquée au premier air de chaque set comme les autres).
+  Une section `[heterophony]` exige le programme et l'entrée ; la piste n'est active que si les
+  trois existent. **Valeur neutre : section absente**, ni note ni tirage ni changement des
+  autres pistes.
+- **Même matériel, aucun tirage séquentiel.** Les décisions sont prises par porteuse avec un
+  `ChaCha8Rng` dérivé de la graine de matériel de l'air (`ornaments::mix`, domaine `HETE`),
+  mesure et pas de départ comme flux : le RNG du générateur n'est jamais touché, donc la mélodie,
+  l'intro, les pieds et les airs suivants restent ceux de `main`. La graine de matériel est
+  calculée dès qu'une section `[heterophony]` existe.
+- **Opérations en données** (`unison`, `ornament`, `plain`, `simplify`, `octave`, `third`,
+  `sixth`, `rest`), pondérées avec filtres `beats`, `phrase_end`, `bars`. Facteur d'émotion
+  `arousal_low/high × density_low/high` (0..4 chacun) appliqué aux poids **autres qu'unisson** :
+  plus d'arousal/densité ⇒ plus de variation, bornée par les facteurs (produit ≤ 16) et par la
+  règle « unisson inconditionnel obligatoire ».
+- **Ornements : le moteur V3b, pas un second.** `unison` rejoue les règles V3b avec la graine de
+  la mélodie (mêmes agréments) ; `ornament` les rejoue avec une graine dérivée distincte
+  (`mix(graine, HETO)`) ; `plain` s'abstient. Les durées éligibles passent par la même porteuse
+  protégée (`written`) que la mélodie ; la tessiture du contexte V3b est celle de l'instrument.
+- **Timing.** Aucun chemin de micro-timing nouveau : décalage, gate et souffle viennent de
+  `[performance.tracks.Countermelody]`, appliqués par `Performance::apply` avec les autres pistes.
+- **Cadences.** La dernière porteuse de chaque phrase est commune (`anchor`, puis
+  `close_cadence` après V3b qui peut scinder la dernière tenue) ; tierce et sixte diatoniques
+  seulement aux fins de phrase, sur un son de l'accord présent (accord réel de l'air, y compris
+  les accords hors forme). Harmonie, cadences et mélodie inchangées.
+- **Seconde aux temps forts : veto sur la musique réalisée.** Après V2 et V3b, à chaque temps
+  fort, une note de la 2ᵉ voix qui sonne au même instant qu'une note de la mélodie à une seconde
+  mineure/majeure (intervalle modulo l'octave 1 ou 2) est **raccourcie jusqu'à l'attaque de la
+  mélodie** si elle la précède (recouvrement de legato), sinon elle s'abstient. Première version :
+  fenêtre de ±490 millièmes de pas autour du temps fort et abstention ; elle supprimait **11 %**
+  des porteuses de la marche pour de simples recouvrements de quelques millièmes (la 2ᵉ voix est
+  à gate 1000, la mélodie à 970) ; l'instant exact (le même prédicat que la mesure) et le
+  raccourcissement ramènent les silences au poids configuré (0 à 2 %).
+- **Valeurs distribuées (prudentes).** Reels québécois et acadien, gigue québécoise : 2ᵉ violon
+  (GM 40), unisson 72–78 %, entrée au 2ᵉ tour. Valse québécoise : accordéon GM 21, −16 dB
+  (anachronique pour 1837, dit dans son README). Marche : 2ᵉ fifre GM 72, unisson 92 %,
+  tierce de cadence. **Gigues et hornpipe britanniques : pas de 2ᵉ voix** (les sources
+  retrouvées documentent des violoneux isolés, pas un ensemble). Sources et réserves dans les
+  README de profil et `profiles/README.md#hétérophonie` ; la 2ᵉ voix entre au 2ᵉ tour pour
+  laisser entendre le violon seul d'abord.
+- **Version et références.** `TUNING_VERSION = 21`. `profile_d2_main.json` régénéré ;
+  `profile_d2_fixed.json` **inchangé** (rôles fixes sans 2ᵉ voix, source conservée à 20).
+  Contrat de flux : un profil sans `[heterophony]` reproduit à l'octet (FNV-1a des notes, 5
+  graines × neutre/combat × 100 mesures) la référence de `main` `20b50c4`.
+- **Callback.** Rien de nouveau : toutes les notes sont préparées sur le thread principal ;
+  le test `RTCheckAllocator` joue maintenant la 2ᵉ voix (NoteOn canal 5 vérifiés dans le MIDI
+  enregistré), avec `gain`/`mute` sur le canal 5 en cours de lecture.
+
+### Mesures V4
+
+Mesuré le 2026-10-24 sur la branche `wquintal/vie-v4-hetero` (depuis `main` `20b50c4`), flux publics
+uniquement.
+
+**Variation et contour** — `cargo run --release -p harmonium_core --example heterophony_streams --
+/tmp/harmonium-hetero/streams.jsonl 20` puis `python3 specs/012-vie-realisme/measure_heterophony.py
+/tmp/harmonium-hetero/streams.jsonl` : 20 graines × 7 profils × arousal = densité 0 / 0,5 / 1,
+66 mesures, deux tours, mesure sur le 2ᵉ tour. Chaque porteuse de la mélodie écrite est classée par
+son **effet réalisé** (jamais par l'étiquette interne) ; « identiques » comprend les agréments
+partagés ; l'interprétation V2 est ignorée pour l'identité écrite mais employée pour les
+collisions réellement sonores. Gigue et hornpipe britanniques : pas de 2ᵉ voix, donc aucune
+ligne (le script le dit).
+
+| Profil | Arousal | Identiques % | Agrément autre / absent % | Tenue % | Octave % | Tierce+sixte % | Silence % | Accord de contour | Cadences | Collisions |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `reel_quebecois` | 0,0 | 91,0 | 1,2 / 1,0 | 5,3 | 0,8 | 0,2 | 0,6 | 0,984 | 160/160 | 0 |
+| `reel_quebecois` | 0,5 | 81,7 | 1,9 / 1,7 | 10,7 | 1,9 | 0,7 | 1,4 | 0,964 | 160/160 | 0 |
+| `reel_quebecois` | 1,0 | 73,2 | 1,2 / 2,8 | 16,4 | 3,0 | 1,2 | 2,2 | 0,941 | 160/160 | 0 |
+| `reel_acadien` | 0,0 | 91,9 | 1,9 / 0,9 | 3,8 | 0,7 | 0,2 | 0,6 | 0,979 | 160/160 | 0 |
+| `reel_acadien` | 0,5 | 84,0 | 2,8 / 1,8 | 8,5 | 1,5 | 0,3 | 1,2 | 0,968 | 160/160 | 0 |
+| `reel_acadien` | 1,0 | 77,3 | 2,0 / 3,0 | 13,2 | 2,3 | 0,5 | 1,7 | 0,959 | 160/160 | 0 |
+| `gigue_quebecoise` | 0,0 | 96,0 | 0,2 / 0,1 | 2,7 | 0,6 | 0,0 | 0,5 | 0,992 | 160/160 | 0 |
+| `gigue_quebecoise` | 0,5 | 90,1 | 0,5 / 0,2 | 6,6 | 1,4 | 0,2 | 0,9 | 0,977 | 160/160 | 0 |
+| `gigue_quebecoise` | 1,0 | 83,6 | 0,4 / 1,8 | 10,0 | 2,5 | 0,5 | 1,3 | 0,960 | 160/160 | 0 |
+| `valse_quebecoise` | 0,0 | 96,7 | 0,7 / 0,9 | 1,1 | 0,5 | 0,1 | 0,2 | 0,991 | 160/160 | 0 |
+| `valse_quebecoise` | 0,5 | 91,8 | 1,5 / 1,9 | 2,9 | 1,0 | 0,5 | 0,3 | 0,983 | 160/160 | 0 |
+| `valse_quebecoise` | 1,0 | 83,1 | 1,7 / 7,3 | 4,8 | 1,6 | 1,0 | 0,5 | 0,964 | 160/160 | 0 |
+| `marche_britannique_coloniale` | 0,0 | 99,3 | 0,1 / 0,0 | 0,5 | 0,0 | 0,1 | 0,0 | 0,998 | 160/160 | 0 |
+| `marche_britannique_coloniale` | 0,5 | 98,0 | 0,1 / 0,0 | 1,4 | 0,0 | 0,4 | 0,0 | 0,992 | 160/160 | 0 |
+| `marche_britannique_coloniale` | 1,0 | 96,5 | 0,3 / 0,0 | 2,6 | 0,0 | 0,6 | 0,0 | 0,989 | 160/160 | 0 |
+
+Lecture : la part variée passe de **0,7–9 %** (arousal 0) à **3,5–27 %** (arousal 1) selon le
+profil, le reel québécois variant le plus et la marche le moins. Les cadences (dernière attaque de
+chaque phrase, 160 par cellule) portent la même classe de hauteur que la mélodie **dans 100 %
+des cas** ; **0 collision de seconde** aux temps forts sur les 15 cellules. Les tierces et sixtes
+sont rares parce qu'elles n'existent qu'à la dernière mesure de phrase, avant la porteuse commune.
+L'agrément « autre » est bas car V3b ne propose que les porteuses éligibles (durée, contexte, taux).
+
+**Niveaux** — `measure_mix.py --binary target/release/harmonium-cli --stage after --bars 66
+--check-acceptance --output /tmp/harmonium-hetero/mix` (66 mesures : la 2ᵉ voix entre à la mesure
+34) : **aucun échec d'acceptation**, mélanges identiques à leur second rendu. Mélodie − 2ᵉ voix
+sur le 2ᵉ tour seul (RMS des mesures 34 à 64), dB :
+
+| Profil | Mélodie − 2ᵉ voix | Mélodie − accords | Mélodie − basse |
+|---|---:|---:|---:|
+| reel québécois | 10,9 | 8,3 | 8,0 |
+| reel acadien | 11,4 | 8,4 | 6,9 |
+| gigue québécoise | 11,4 | 8,3 | 8,3 |
+| valse québécoise | 18,8 | 8,4 | 14,2 |
+| marche | 13,6 | — | — |
+
+Tous ≥ 4 dB (cible : 2ᵉ voix −12 à −16 dB sous le violon au réglage de piste). Les écarts
+aux accompagnements sont ceux de V5b ; la 2ᵉ voix ne les change pas.
+
+**Crête, aucun ajustement de `[mix]` nécessaire** (règle : ≤ −1,5 dBFS au pire, aucun échantillon ≥ 1) :
+
+- Émotions maximales : `measure_ornaments.py peaks --binary target/release/harmonium-cli --output
+  /tmp/harmonium-hetero` — graines 1 à 5 × sept profils, 66 mesures, deux tours, automation
+  constante intensity = arousal = density = tension = feet = 1, GeneralUser-GS + `harmonium_trad.sf2` :
+  reel québécois −2,50, reel acadien −2,54, gigue québécoise −3,08, valse −4,11, **marche −1,59**
+  (marge la plus courte, déjà −1,62 avant V4 : la crête vient de la mélodie et des pieds), gigue
+  britannique −2,27, hornpipe −1,88 dBFS.
+- Sets longs : 3 graines × 7 profils, **400 mesures**, `--automation` neutre (intensity = arousal =
+  density = tension 0,5, valence 0, feet 1), sans bpm explicite : pire crête reel acadien **−1,67**,
+  gigue britannique −1,91, reel québécois −2,28, valse −2,76, gigue québécoise −3,05, hornpipe −4,35,
+  marche −4,52 dBFS ; 0 échantillon ≥ 1 ; la 2ᵉ voix joue 800 à 2 200 notes par rendu (0 pour les
+  profils sans 2ᵉ voix).
+
+**Rendus d'écoute** (hors dépôt, seed 3, 66 mesures, deux tours, GeneralUser-GS + pieds, arousal 0,5,
+densité 0,5, valence 0,3, tension 0,4, mêmes automations avant/après) :
+`/tmp/harmonium-hetero/{before,after}/{reel_quebecois,gigue_quebecoise,valse_quebecoise,
+marche_britannique_coloniale}.wav` ; « avant » = binaire `--release` de `main`. Pistes 0 à 4 de la
+vérité **identiques** avant/après, premier tour **octet pour octet identique** (la 2ᵉ voix entre à
+la mesure 34, 35 pour la valse), 212, 154, 150 et 119 notes de 2ᵉ voix. **Non écoutés par le
+propriétaire : aucun ADR d'écoute n'est pris.**
+
+**Contrôles.** Contrats V4 (`harmonium_core/tests/heterophony_contract_tests.rs`, sept tests) :
+200 airs par profil avec cadences identiques, tessiture, zéro seconde aux temps forts ;
+déterminisme et pistes 0 à 4 inchangées ; fréquences par opération dans les bornes configurées
+(octaves et silences faibles, 200 airs) ; tierces/sixtes seulement sur sons d'accord de cadence ;
+`plain`/`unison`/`ornament` ; multiplicateur d'émotion et filtres de position ; sections hors bornes
+rejetées par le chargeur. `cargo test --workspace --no-fail-fast` : **482 réussis, 0 échec, 2
+ignorés (59 suites)** ; `cargo fmt` propre ; `cargo clippy --workspace` : 121 avertissements
+`harmonium_core` contre 126 sur `main`, aucun nouveau hors tests ; pas d'`unwrap`/`expect` ajouté
+hors tests. Les tests de reprise (`second_ending_*`, `style_profile_tests`, `trad_reel_*`) neutralisent
+`[heterophony]` comme `[performance]` et `[ornaments]` : la seconde voix varie à chaque passage
+par construction.
+
 ## 5. Accompagnement humain
 
 - **À faire** : accords grattés (décalage des cordes), basse avec notes de

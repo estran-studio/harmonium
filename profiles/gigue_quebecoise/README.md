@@ -124,3 +124,13 @@ de chaque set seulement. Rapports observé / indépendance *jig → jig* de The 
 
 `last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+Deuxième violon GM 40, tour 2, −12 dB, pan −0,22 ; davantage d'unissons que le
+reel, peu de silences et de déplacements d'octave pour garder les groupes ternaires.
+Même prudence historique : [Ornstein, 1982](https://cjtm.icaap.org/content/10/v10art2.html)
+situe l'accordéon québécois à la fin du XIXe siècle, après la période du jeu.
+Le duo et ses poids sont des hypothèses d'écoute, pas une mesure d'ensemble du corpus ABC.
+Neutre : section absente. [Schéma commun](../README.md#hétérophonie).
+

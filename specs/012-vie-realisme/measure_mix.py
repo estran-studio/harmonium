@@ -22,7 +22,6 @@ import tomllib
 
 import numpy as np
 
-TRACKS = ("Melody", "Chords", "Bass", "Heel", "Toe")
 GM = "/Users/william.quintal/Project/bascanada/harmonium/assets/GeneralUser-GS.sf2"
 FEET = "/Users/william.quintal/Project/bascanada/harmonium/assets/harmonium_trad.sf2"
 
@@ -82,6 +81,10 @@ def main():
     profiles = sorted(p.parent for p in args.profiles_root.glob("*/profile.toml"))
     if len(profiles) != 7:
         raise ValueError(f"Sept profils attendus, trouvés : {len(profiles)}")
+    TRACKS = tuple(dict.fromkeys(
+        track for profile in profiles
+        for track in tomllib.loads((profile / "profile.toml").read_text())["mix"]["tracks"]
+    ))
     temporary = tempfile.TemporaryDirectory(prefix="harmonium-mix-dry-")
     dry_profiles = {}
     baseline_profiles = {}

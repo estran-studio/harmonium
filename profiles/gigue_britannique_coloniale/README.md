@@ -194,3 +194,14 @@ de chaque set seulement. Rapports *jig → jig* de The Session (51 672 transitio
 
 `last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+**Pas de seconde voix distribuée** : `[heterophony]` et programme secondaire absents.
+Le violon reste seul devant l'accompagnement léger. Les sources des airs ne prouvent
+pas un ensemble fixe ni une flûte ou un accordéon systématique ;
+[Pete Cooper, notes des English Fiddle Tunes](https://www.petecooper.com/eftnotes.htm)
+documente des lignées et manuscrits de violoneux, pas un taux de doublure.
+Une variante vivante peut ajouter un deuxième violon, entrée au tour 2 et mix en retrait,
+avec le [schéma générique](../README.md#hétérophonie), sans changer l'algorithme.
+

@@ -208,3 +208,14 @@ de chaque set seulement. Rapports *hornpipe → hornpipe* de The Session (7 291 
 
 `last_dark` neutre : l'effet de position n'est pas mesuré pour ce type. Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+**Pas de seconde voix distribuée** : section et programme absents. La précision
+du trait pointé reste au violon seul ; aucun corpus d'ensemble ne justifie une
+doublure obligatoire. [Pete Cooper, English Fiddle Tunes](https://www.petecooper.com/eftnotes.htm)
+documente le répertoire et ses sources individuelles, pas une instrumentation
+coloniale commune à tous les hornpipes. Valeur vivante optionnelle : deuxième violon,
+entrée au tour 2, majorité d'unissons et niveau ≥4 dB RMS sous la mélodie mesurée ;
+voir le [schéma générique](../README.md#hétérophonie).
+
