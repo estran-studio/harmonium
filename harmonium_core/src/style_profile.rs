@@ -293,7 +293,8 @@ pub struct ProfilePart {
     pub link_previous: bool,
     #[serde(default)]
     pub rhythm: Vec<PositionRhythm>,
-    /// Omission : protéger la dernière mesure ; [] : aucune protection.
+    /// Mesures sans aucun ornement (cadences). Omission : protéger la dernière mesure ;
+    /// [] : aucune protection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ornament_protected_bars: Option<Vec<usize>>,
 }
@@ -328,8 +329,6 @@ pub struct ProfileForm {
     pub next_same_weight: u32,
     #[serde(default = "default_one")]
     pub next_relative_weight: u32,
-    #[serde(default = "default_ornament_min_steps")]
-    pub ornament_min_steps: usize,
     #[serde(default = "default_two_units")]
     pub cadence_min_units: usize,
     #[serde(default = "default_half")]
@@ -387,9 +386,6 @@ fn default_half() -> f32 {
 }
 fn default_one() -> u32 {
     1
-}
-fn default_ornament_min_steps() -> usize {
-    3
 }
 fn default_two_units() -> usize {
     2
@@ -461,6 +457,8 @@ pub struct StyleProfile {
     pub mix: crate::mix::ProfileMix,
     #[serde(default)]
     pub performance: crate::performance::Performance,
+    #[serde(default)]
+    pub ornaments: crate::ornaments::Ornaments,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -626,6 +624,7 @@ impl StyleProfile {
     pub fn validate(&self) -> Result<(), ProfileError> {
         self.mix.validate()?;
         self.performance.validate(self.meter.steps_per_bar)?;
+        self.ornaments.validate()?;
         check(
             !self.meta.id.is_empty()
                 && self
@@ -732,11 +731,6 @@ impl StyleProfile {
         check_weights(
             [self.form.next_same_weight, self.form.next_relative_weight].into_iter(),
             "form.next_same_weight",
-        )?;
-        check(
-            (2..=256).contains(&self.form.ornament_min_steps),
-            "form.ornament_min_steps",
-            "attendu 2..256 pas",
         )?;
         check(
             self.form.cadence_min_units > 0

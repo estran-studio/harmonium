@@ -24,6 +24,7 @@ use crate::{
         HarmonyPlan,
         jazz::{GrammarStyle, SteedmanGrammar},
     },
+    ornaments::BarContext,
     params::MusicalParams,
     theory::{PitchClass, chord::Chord, lydian_chromatic::LydianChromaticConcept},
     timeline::{
@@ -54,6 +55,8 @@ pub struct ActiveTune {
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
     pub performance_seed: u64,
+    /// Graine des tirages d'ornements de l'air (0 si aucun type ne tire).
+    pub ornament_seed: u64,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
@@ -322,6 +325,11 @@ impl TradGenerator {
             self.fill_tour_measure(&tune, &position, &mut measure);
         }
 
+        let written: Vec<usize> = if self.profile.ornaments.is_inert() {
+            Vec::new()
+        } else {
+            measure.notes_for_track(TrackId::Melody).iter().map(|n| n.duration_steps).collect()
+        };
         self.apply_dynamics(&mut measure);
         self.fit_jazz_melody(&mut measure, &tune, &position);
         if !is_intro && !self.profile.performance.is_neutral() {
@@ -345,6 +353,9 @@ impl TradGenerator {
                 ],
                 &mut performance_rng,
             );
+        }
+        if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
+            self.apply_ornaments(&mut measure, &tune, &position, &written);
         }
 
         measure
@@ -1007,55 +1018,69 @@ impl TradGenerator {
                 }
             }
         }
-        // Ornement déterministe d'une tenue : aucun nouveau tirage ni mutation
-        // du plan. Le degré adjacent appartient toujours au mode de l'air.
-        let passing = d.density_passing.eval(p.rhythm_density);
-        if passing <= 0.0 {
-            return;
-        }
-        let Some(position) = measure.position else {
-            return;
-        };
+    }
+
+    /// Ornements idiomatiques de la mélodie (`[ornaments]`), après l'interprétation.
+    fn apply_ornaments(
+        &mut self,
+        measure: &mut Measure,
+        tune: &ActiveTune,
+        position: &TunePosition,
+        written: &[usize],
+    ) {
         let part = &self.profile.form.parts[position.part.0];
-        if position.is_intro()
-            || part
-                .ornament_protected_bars
-                .as_ref()
-                .map_or(position.bar_in_strain == part.roles.len(), |bars| {
-                    bars.contains(&position.bar_in_strain)
-                })
-        {
-            return;
-        }
-        let Some(plan) = self.tunes.get(&position.tune_index).map(|t| &t.plan) else {
-            return;
+        let protected = part
+            .ornament_protected_bars
+            .as_ref()
+            .map_or(position.bar_in_strain == part.roles.len(), |bars| {
+                bars.contains(&position.bar_in_strain)
+            });
+        let (_, end) = self.phrase_window(tune, position);
+        let params = &self.tuning.profile.melody.params;
+        let context = BarContext {
+            key: tune.plan.key,
+            mode: tune.plan.mode,
+            tessitura: (params.tessitura_min, params.tessitura_max),
+            bar_in_part: self.copy_source_bar(tune, position),
+            steps_per_pulse: self.profile.meter.steps_per_pulse,
+            phrase_end_bar: position.bar_in_strain == end,
+            protected,
+            repeat: position.pass > 1 || position.tour > 1,
+            arousal: self.musical_params.arousal,
+            density: self.musical_params.rhythm_density,
+            bar_index: measure.index,
+            seed: tune.ornament_seed,
         };
-        if let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) {
-            let original_count = notes.len();
-            for index in 0..original_count {
-                let note = &notes[index];
-                if note.duration_steps < self.profile.form.ornament_min_steps
-                    || (note.start_step as f32 / measure.steps as f32) >= passing
-                {
-                    continue;
+        let next_note_id = &mut self.next_note_id;
+        self.profile.ornaments.apply(measure, &context, written, &mut || {
+            let id = *next_note_id;
+            *next_note_id += 1;
+            id
+        });
+    }
+
+    /// Mesure de la partie dont les taux par mesure s'appliquent : une copie exacte
+    /// (`CopyOf`, `CopyOfPart`) emprunte celle de sa source, pour porter les mêmes
+    /// ornements qu'elle.
+    fn copy_source_bar(&self, tune: &ActiveTune, position: &TunePosition) -> usize {
+        let mut bar = position.bar_in_strain;
+        let mut part = position.part.0;
+        let mut role = tune.plan.bar_role(self.performed_bar(position)).role;
+        for _ in 0..8 {
+            match role {
+                ImposedRole::CopyOf(source) => bar = usize::from(source),
+                ImposedRole::CopyOfPart { part: source_part, bar: source } => {
+                    part = source_part;
+                    bar = usize::from(source);
                 }
-                let mut ornament = note.clone();
-                ornament.start_step += note.duration_steps - 1;
-                ornament.duration_steps = 1;
-                let next_pitch = (note.pitch.saturating_add(1)
-                    ..=note.pitch.saturating_add(3).min(127))
-                    .find(|&pitch| plan.mode.contains_midi(plan.key, pitch));
-                let Some(pitch) = next_pitch else {
-                    continue;
-                };
-                notes[index].duration_steps -= 1;
-                ornament.pitch = pitch;
-                ornament.id = self.next_note_id;
-                self.next_note_id += 1;
-                notes.push(ornament);
+                _ => break,
             }
-            notes.sort_by_key(|note| note.start_step);
+            let Some(next) = tune.plan.roles_for_part(part).get(bar.wrapping_sub(1)) else {
+                break;
+            };
+            role = *next;
         }
+        bar
     }
 
     /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`Guitarist`]
@@ -1253,6 +1278,21 @@ impl TradGenerator {
 
         // Tirer l'intro (P1-T11)
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
+        // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
+        // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
+        let ornament_seed = if self.profile.ornaments.needs_seed() {
+            crate::ornaments::tune_seed(
+                tune_index,
+                (0..plan.material_bars()).flat_map(|i| {
+                    fiddle
+                        .notes_for_bar(plan.representative_bar(i))
+                        .into_iter()
+                        .map(|n| (n.pitch, n.start_step, n.duration_steps))
+                }),
+            )
+        } else {
+            0
+        };
 
         let bright_mode = dynamics
             .parallel_modes
@@ -1266,6 +1306,7 @@ impl TradGenerator {
             harmony,
             feet_humanize,
             performance_seed,
+            ornament_seed,
             intro_info,
             initial_mode: plan.mode,
             initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,

@@ -31,6 +31,7 @@ fn choice(roles: &[(ImposedRole, u32)]) -> ProfileRole {
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.ornaments = Default::default();
     p.arrangement = ReelArrangement::from_start(2, Default::default());
     p.melody.key_modes = vec![KeyModeWeight { key: 2, mode: Mode::Dorian, weight: 1 }];
     p.melody.cells = CellBank {

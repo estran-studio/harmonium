@@ -32,7 +32,7 @@ impl Curve {
         self.0.last().map_or(first[1], |p| p[1])
     }
 
-    fn validate(&self, name: &str, min: f32, max: f32) -> Result<(), String> {
+    pub(crate) fn validate(&self, name: &str, min: f32, max: f32) -> Result<(), String> {
         if self.0.len() < 2
             || self.0.first().is_none_or(|p| p[0] != 0.0)
             || self.0.last().is_none_or(|p| p[0] != 1.0)
@@ -106,7 +106,6 @@ pub struct StyleDynamics {
     pub brightness_accent: Curve,
     pub density_feet: Curve,
     pub density_chop: Curve,
-    pub density_passing: Curve,
     /// Seuils d'entrée des pistes selon la densité, après les plafonds du jeu.
     pub density_tracks: Vec<TrackThreshold>,
     pub chop_patterns: Vec<Vec<usize>>,
@@ -160,7 +159,6 @@ impl Default for StyleDynamics {
                         brightness_accent: empty(),
                         density_feet: empty(),
                         density_chop: empty(),
-                        density_passing: empty(),
                         density_tracks: Vec::new(),
                         chop_patterns: Vec::new(),
                         tension_offbeat: empty(),
@@ -243,7 +241,6 @@ impl StyleDynamics {
             ("brightness_accent", &self.brightness_accent, -32.0, 32.0),
             ("density_feet", &self.density_feet, -2.0, 2.0),
             ("density_chop", &self.density_chop, -8.0, 8.0),
-            ("density_passing", &self.density_passing, 0.0, 1.0),
             ("tension_offbeat", &self.tension_offbeat, -32.0, 32.0),
             ("tension_duration", &self.tension_duration, 0.1, 2.0),
             ("tension_dominant", &self.tension_dominant, 0.0, 1.0),

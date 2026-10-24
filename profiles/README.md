@@ -183,6 +183,95 @@ généraux, non preuves historiques des sept traditions :
 Mesures reproductibles : `specs/012-vie-realisme/measure_performance.py`,
 MIDI + vérité pour 20 seeds/profil, tension et arousal à 0/1.
 
+## Ornements
+
+`[ornaments]` décrit les agréments idiomatiques ; un seul chemin va du taux du profil
+aux notes publiées, la note de passage de densité émotionnelle en fait partie
+(`[ornaments.types.passing]`, qui remplace `dynamics.density_passing` et
+`form.ornament_min_steps`). **Section absente, types absents ou `enabled = false`,
+`rate_scale = 0` : aucun tirage, flux identique à celui d'un profil sans ornements.**
+Les ornements sont réalisés **après** l'interprétation ci-dessus : ils composent avec son
+décalage, son gate et sa respiration, sans les remplacer.
+
+```toml
+[ornaments]
+rate_scale = 4.0          # facteur global sur tous les taux écrits
+repeat_variation = 0.0    # 0 : une mesure copiée/rejouée porte les mêmes ornements
+
+[ornaments.types.roll]
+written_per_100_notes = 0.689826
+per_100_notes_by_bar = [1.023166, 0.583255, 1.167532, 0.410754, 1.060606, 0.797922, 0.689299, 0.2083]
+min_carrier_eighths = 2.0
+arousal_low_multiplier = 0.5   # à arousal 0 ; 1,0 : neutre
+arousal_high_multiplier = 1.5  # à arousal 1
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.344225
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]     # cordes à vide (MIDI) du violon
+
+[ornaments.types.passing]      # densité : aucun tirage
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+```
+
+Exemple de syntaxe : les valeurs distribuées sont celles du labo (DS-T10), voir les README
+de profil. Types : `grace_single`, `grace_multiple`, `roll`, `turn`, `triplet_repeated`,
+`double_stop`, `chord`, `trill`, `passing`.
+
+| Paramètre | Bornes / effet audible | Mécanique | Vivant, point de départ |
+|---|---|---|---|
+| `rate_scale` | 0..10, multiplie tous les taux. Les transcriptions sous-notent : taux écrit = plancher | `1` | `4` aux sept profils, à valider à l'oreille |
+| `repeat_variation` | 0..1 : probabilité qu'une mesure d'une passe ou d'un tour 2+ tire ses ornements indépendamment de sa source. À 0, les copies (`CopyOf`, `CopyOfPart`) et les reprises ont les mêmes ornements tant que la mélodie écrite est la même | `0` | `0` ; 0,3 pour un jeu qui ne se répète pas |
+| `written_per_100_notes` | 0..100 pour 100 notes de la mélodie de la mesure | `0` | Corpus ABC (plancher écrit) |
+| `per_100_notes_by_bar` | Jusqu'à 64 taux, mesure 1 de la partie en premier ; au-delà ou vide : `written_per_100_notes`. Une copie exacte emprunte la mesure de sa source | `[]` | Forme du corpus positionné (≥ 30 occurrences dans des parties de huit mesures), niveau ramené au taux global ; sinon taux global seul |
+| `min_carrier_eighths` | 0..64 croches, durée **écrite** minimale de la porteuse (durée totale remplacée pour les figures) | `0` (un pas) | Minimum observé si peu d'occurrences ; sinon plus petite durée dont le taux par note atteint 10 % du meilleur |
+| `arousal_low_multiplier`, `arousal_high_multiplier` | 0..4, taux × interpolation linéaire à l'arousal brut (0 → 1) | `1`, `1` | Neutres : le corpus n'annote pas l'arousal |
+| `intervals` | `repeated`, `step` (≤ 2 demi-tons), `leap` : intervalle avec la note précédente de la mesure ; vide = tous ; la première note de la mesure est exclue dès que la liste n'est pas vide | `[]` | — |
+| `beats` | `strong` (début de pulse du profil), `weak` | `[]` | — |
+| `phrase_end` | `any`, `never`, `only` : dernière mesure de la phrase (`parts.phrase_ends`) | `any` | — |
+| `velocity_scale` | 0,1..1, vélocité des notes ajoutées (appogiatures, voisines, seconde corde) | `0.8` | 0,7..0,9 |
+| `span` | Appogiatures : durée totale avant la porteuse, 0,05..0,49 pas | `0.3` | 0,4 (simple), 0,49 (multiple) |
+| `count` | `grace_multiple` : 2..4 notes | `2` | `2` |
+| `strings` | `double_stop`, `chord` : 2..8 cordes à vide MIDI croissantes | requis | `[55,62,69,76]` (violon) ; type désactivé pour un fifre |
+| `min_interval`, `max_interval` | `double_stop`, `chord` : demi-tons entre la porteuse et chaque note ajoutée | `3`, `12` | `chord` : `max_interval = 24` |
+| `density_curve` | `passing` seulement : part de la mesure (0..1) qui reçoit la note de passage selon la densité | requis | `[[0,0],[0.5,0],[1,1]]` |
+
+Réalisation, dans la durée jouée de la porteuse (millièmes de pas, ± 0,49 pas de la grille,
+donc dans les bornes et le chemin du lecteur de l'interprétation) :
+
+- **Appogiature(s)** : avant la porteuse, qui reste **sur la grille** ; elles prennent leur
+  temps sur la note précédente de la mesure, écourtée d'autant (respiration composable), ou
+  sur un silence ; si la note précédente n'a pas ≥ 0,25 pas à rendre, ou si elle est dans une
+  autre mesure, l'ornement n'est pas posé (une mesure déjà publiée ne change pas). Hauteur :
+  voisine diatonique du mode actif, dans la tessiture, différente de la note précédente.
+- **Rouleau** : porteuse, voisine haute, porteuse, voisine basse, porteuse (36 / 16 / 16 / 16 /
+  16 %). **Turn** : voisine haute, porteuse, voisine basse, porteuse. **Trille** : porteuse et
+  voisine haute en alternance, nombre impair de notes (≥ 5, une note ≈ 0,2 pas).
+- **Triolet de notes répétées** : trois notes égales de la porteuse, séparées par 10 % de silence.
+- **Double corde / accord** : seconde (et troisième) note simultanée, même piste, même durée et
+  même timing que la porteuse : corde à vide voisine de la corde de la porteuse, dans le mode,
+  l'intervalle demandé et la tessiture ; la double corde essaie aussi une tierce diatonique
+  sous la porteuse. Sans note jouable, la porteuse reste seule.
+- **Note de passage** : inchangée (dernier pas de la tenue, voisine diatonique haute, sans tirage).
+- Une note porte **au plus un** ornement ; la note de passage passe avant les types tirés ; une
+  figure impossible (voisine hors mode ou tessiture) laisse la porteuse intacte. Les mesures
+  d'intro et d'outro et les mesures protégées n'en reçoivent pas.
+
+**Probabilité.** Pour chaque mesure, l'espérance du type vaut
+`taux (par mesure) × rate_scale × multiplicateur d'arousal / 100 × notes de la mesure`, répartie
+également sur les porteuses permises (durée écrite, contextes) ; une porteuse tire au plus une fois.
+Le taux reste donc « pour 100 notes de la mélodie » quelle que soit la part de notes éligibles,
+comme dans le corpus. Les tirages dérivent d'une graine propre à l'air, calculée **sans tirage**
+depuis son matériel écrit : ni l'intro, ni les tirages suivants, ni la mélodie écrite ne changent
+quand on active les ornements, et un même air porte les mêmes ornements quelle que soit la mesure
+déjà générée (seek). Les tirages d'une note ne dépendent que de sa mesure écrite (hauteurs,
+positions), pas de la durée jouée : à émotions constantes une reprise a les mêmes ornements ; si
+les émotions changent entre deux passes, la même figure s'étire avec la durée jouée.
+
+Mesures reproductibles : `specs/012-vie-realisme/measure_ornaments.py` (`corpus`, `rates`,
+`wav`, `peaks`, `midi`).
+
 ## Règles de phrase
 
 Le profil décide des répétitions ; le moteur ne suppose ni huit mesures, ni
@@ -218,8 +307,7 @@ la résolution `per_tune` et les contraintes de registre antérieures.
 | `form.next_same_weight`, `next_relative_weight` | Poids du prochain air : même couleur ou relatif diatonique ; somme positive dans u32 | `1`, `0` | `1`, `1` (défaut) |
 | `parts.rhythm` | Distribution de durées aux positions choisies, voir ci-dessous | Un motif unique | Plusieurs motifs aux poids de corpus |
 | `parts.second_ending` | Variante de la dernière mesure à la dernière passe de la partie | Omettre, ou `"CadTonic"` | Distribution tonique/quinte/autre |
-| `parts.ornament_protected_bars` | Mesures où l'ornement de densité émotionnelle est interdit ; omission : dernière mesure ; `[]` : aucune | `[4,8]` | `[]` |
-| `form.ornament_min_steps` | Durée minimale pour scinder une tenue en note + passage d'un pas, 2..256 pas de grille | `256` désactive sur les petites grilles | `3` (défaut) |
+| `parts.ornament_protected_bars` | Mesures sans aucun ornement (cadences), tous types de `[ornaments]` ; omission : dernière mesure ; `[]` : aucune | `[4,8]` | `[]` |
 | `melody.params.max_continuity_step_distance`, `continuity_max_retries` | Distance diatonique préférée entre cellules et nombre d'essais ; contraintes souples, tessiture prioritaire | `2`, `16` | `7`, `4` |
 
 Une variation conserve le mode et la tessiture. `repeated_notes` remplace une

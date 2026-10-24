@@ -1,5 +1,6 @@
 //! Contrats musicaux du pilotage continu, observés sur les snapshots.
 use harmonium_core::{
+    ornaments::OrnamentKind,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
@@ -17,6 +18,7 @@ fn generator() -> (TradGenerator, ChaCha8Rng) {
         profile: {
             let mut p = TuningParams::default().profile;
             p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
             p
         },
         ..Default::default()

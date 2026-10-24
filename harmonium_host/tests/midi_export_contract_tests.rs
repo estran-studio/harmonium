@@ -42,6 +42,7 @@ fn render_reel(
     if mechanical {
         let mut profile = composer.profile().clone();
         profile.performance = Default::default();
+        profile.ornaments = Default::default();
         composer.set_profile(profile)?;
     }
 

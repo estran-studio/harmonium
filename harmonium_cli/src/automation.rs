@@ -173,7 +173,7 @@ mod tests {
         assert_eq!(a.at_bar(100).intensity, Some(1.0));
     }
 
-    fn stream(text: &str, seed: u64) -> Result<Vec<MeasureSnapshot>> {
+    fn stream(text: &str, seed: u64, ornaments: bool) -> Result<Vec<MeasureSnapshot>> {
         let automation = Automation::from_toml(text)?;
         // Le transport factice ne remplace pas le générateur : il avance la
         // même position atomique que le playback pour tester son contrat pur.
@@ -194,6 +194,12 @@ mod tests {
             profile: {
                 let mut p = TuningParams::default().profile;
                 p.arrangement = ReelArrangement::from_start(3, Default::default());
+                if !ornaments {
+                    // Seule la note de passage de densité existait avant V3b.
+                    p.ornaments.types.retain(|kind, _| {
+                        *kind == harmonium_core::ornaments::OrnamentKind::Passing
+                    });
+                }
                 p
             },
             ..Default::default()
@@ -212,8 +218,15 @@ mod tests {
     #[test]
     fn same_seed_and_file_produce_identical_snapshots_and_keep_repeats() -> Result<()> {
         let text = include_str!("../../demos/automation_monte.toml");
-        let first = stream(text, 1)?;
-        let second = stream(text, 1)?;
+        // Les ornements tirés sont déterministes ; ils suivent la durée jouée, qui varie
+        // avec les émotions : l'identité exacte des reprises se vérifie sans eux.
+        let ornamented = stream(text, 1, true)?;
+        assert_eq!(
+            serde_json::to_string(&ornamented)?,
+            serde_json::to_string(&stream(text, 1, true)?)?
+        );
+        let first = stream(text, 1, false)?;
+        let second = stream(text, 1, false)?;
         assert_eq!(serde_json::to_string(&first)?, serde_json::to_string(&second)?);
         let pitches = |bar: usize| {
             first
@@ -269,6 +282,10 @@ mod tests {
                     use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                     let mut tuning = harmonium_core::TuningParams::default();
                     tuning.profile.performance = Default::default();
+                    // Seule la note de passage de densité existait sur main.
+                    tuning.profile.ornaments.types.retain(|kind, _| {
+                        *kind == harmonium_core::ornaments::OrnamentKind::Passing
+                    });
                     for part in &mut tuning.profile.form.parts {
                         part.second_ending = None;
                         part.rhythm.clear();

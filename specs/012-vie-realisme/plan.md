@@ -684,7 +684,240 @@ sont inchangés.
   et par mesure, durée porteuse minimale observée, schéma `[ornaments]`
   proposé (`engine_proposal`). Taux écrits = plancher (transcriptions
   sous-notées) ; arousal non mesurable dans l'ABC (multiplicateurs neutres).
-  Reste V3b : génération dans le moteur, après le point 2.
+  V3b (moteur) : fait, voir ci-dessous.
+
+### Décisions V3b
+
+Schéma et unités : [`profiles/README.md`](../../profiles/README.md#ornements) ; code :
+`harmonium_core/src/ornaments/` (`mod.rs` schéma et validation, `realize.rs` réalisation),
+branché dans `TradGenerator::generate_measure` après l'interprétation V2.
+
+- **Une seule façon : la note de passage devient un type.** `[ornaments.types.passing]`
+  (courbe de densité + durée porteuse minimale) remplace `dynamics.density_passing` et
+  `form.ornament_min_steps`, supprimés ; `parts.ornament_protected_bars` reste, et protège
+  désormais **tous** les types (cadence : aucun ornement dans la mesure, même additif, pour que
+  la dernière note de la phrase reste celle de l'air). Une seule passe décide par note, donc
+  jamais deux ornements sur la même note : la note de passage (sans tirage) passe avant les
+  types tirés, un tirage unique `u` choisit au plus un type par porteuse (intervalles cumulés
+  des probabilités). **Conséquence écrite** : section `[ornaments]` absente ⇒ plus de note de
+  passage (elle vivait dans `dynamics.toml`) ; les sept profils la déclarent (sauf la marche,
+  dont la courbe était nulle). Le passage est réalisé **après** l'interprétation (il ne reçoit
+  donc plus de gate/décalage tirés, et la respiration de la porteuse est replafonnée sur sa nouvelle durée) ;
+  à temps égal la note écrite précède la note ajoutée.
+- **Appogiatures : sur la note précédente, pas sur la porteuse.** La porteuse reste sur la
+  grille (le geste de danse, `BeatInfo` et le transport ne bougent pas) ; l'appogiature la
+  précède de `span` pas (≤ 0,49, la borne d'attaque de V2, donc le chemin existant du lecteur :
+  attaque négative empruntée à la mesure préchargée) et sa fin tombe **exactement** sur
+  l'attaque de la porteuse. La note précédente de la mesure est écourtée de la même durée par
+  `breath` (additif, composable avec la respiration de fin de phrase) ; si elle n'a pas
+  ≥ 0,25 pas à rendre, l'ornement n'est pas posé. La première note d'une mesure n'a pas de
+  précédente accessible (mesure déjà publiée) : son appogiature recouvre la queue de la note
+  précédente dans la limite de la release de la banque, aucune note publiée n'est modifiée.
+- **Sous-pas par décalage/gate.** Chaque note ajoutée garde `start_step` sur la grille la plus
+  proche et un décalage |offset| ≤ 0,5 pas ; sa durée = `durée_en_pas × gate` (un pas
+  entier de durée écrite, gate en millièmes). Les figures partagent la **durée jouée** de la
+  porteuse (gate et respiration V2 compris) : rouleau 36/16/16/16/16 %, turn 14/18/14/54 %
+  (voisine haute, porteuse, voisine basse, porteuse), trille ≈ 0,2 pas par note en nombre
+  impair, triolet 3 × 1/3 avec 10 % de silence. Les voisines sont diatoniques dans le **mode
+  actif** (mode parallèle compris) et la tessiture du profil ; sinon la porteuse reste seule.
+- **Double corde / accord** : cordes à vide du profil (`strings`, donnée) : note simultanée sur
+  la corde voisine de celle de la porteuse (dans le mode, l'intervalle et la tessiture
+  demandés), plus tierce diatonique au doigt sous la porteuse pour la double corde ; même
+  durée, même timing, même piste. Fifre (marche) : type désactivé, donnée.
+- **Probabilité** : l'espérance du type dans une mesure vaut `taux × rate_scale × multiplicateur
+  d'arousal / 100 × notes de la mesure`, répartie sur les porteuses permises (durée **écrite**,
+  contextes), plafonnée à 1. Le taux reste donc « pour 100 notes de la mélodie » comme dans le
+  corpus, même quand la durée minimale exclut la plupart des notes (les rouleaux du corpus sont
+  sur 475 noires ou noires pointées sur 501 : répartir sur toutes les croches les aurait
+  déplacés). Arousal : multiplicateurs `low` / `high` par type, interpolation linéaire sur
+  l'arousal **brut** (comme V2), bornés 0..4, **neutres** dans les sept profils.
+- **Déterminisme sans tirage.** Aucune lecture du `ChaCha8Rng` du générateur : la graine de
+  l'air est un hachage (SplitMix64) de son matériel écrit (hauteur, position, durée de chaque
+  mesure distincte, indice de l'air), calculée seulement si un type tire ; chaque porteuse tire
+  dans un `ChaCha8Rng` propre `(graine, contenu de la mesure, pas)`. Raisons : un tirage sur le
+  flux de l'air déplacerait l'intro et les airs suivants (avant/après impossible à comparer,
+  contrat `intro_and_tour_same_melody` cassé) ; tout désactivé ⇒ **aucun tirage, flux
+  identique** (vérifié sur le flux complet, identifiants de notes compris). La mesure `n` est la
+  même après un seek.
+- **Copies, reprises, variation.** Les tirages d'une porteuse ne dépendent que de la mesure
+  **écrite** (hauteurs et positions) et du taux de la mesure-source (`CopyOf`/`CopyOfPart`
+  suivis récursivement) : une copie exacte, une reprise ou un second tour portent les mêmes
+  ornements ; une variation de P3-T3 (`varied_end`, `octave`…) change la mesure écrite, donc
+  ses ornements. `ornaments.repeat_variation` (0 distribué) libère en plus les passes et tours
+  2+ avec cette probabilité. Limite : les émotions changent la **durée jouée** (`fiddle_duration`,
+  tension) ; la décision (éligibilité) suit la durée écrite, mais la figure s'étire avec la durée
+  jouée, donc deux passes à émotions différentes n'ont pas les mêmes positions de notes (le
+  contrat d'identité exacte des reprises sous automation se vérifie sans ornements tirés).
+- **Valeurs des sept profils.** Taux écrits et par mesure du labo (DS-T10), `rate_scale = 4`
+  identique partout (les taux sont des planchers ; avec 1 le reel québécois n'a qu'un ornement
+  toutes les ~10 mesures, à peine audible), à valider à l'oreille. Écarts motivés avec
+  `engine_proposal` : (a) taux par mesure seulement pour les types à ≥ 30 occurrences dans des
+  parties de huit mesures reconnues, forme du corpus positionné, niveau du taux global (la valse
+  a 105 doubles cordes dont **une** positionnée : sa table par mesure la mettait toute en m.8,
+  protégée) ; (b) durée porteuse minimale = minimum observé si l'effectif < 30, sinon plus petite
+  durée dont le taux par note atteint 10 % du meilleur (classes d'au moins 5 occurrences) :
+  rouleaux et doubles cordes du reel québécois et rouleaux acadiens passent de 1/2, 1 et 1/3 à
+  2 croches ; (c) le minimum du triolet est le total remplacé (3 × la première note du labo) ;
+  (d) double corde et accord désactivés pour la marche (fifre monophonique) ; (e) types sans
+  occurrence désactivés. Provenance et tableaux : README de chaque profil.
+- **Limites assumées.** La mesure protégée (dernière de chaque partie) n'a aucun ornement : le
+  taux réalisé vaut 7/8 du taux configuré et la m.8 du corpus (double corde en cadence) n'est pas
+  reproduite. Les contextes (`intervals`, `beats`, `phrase_end`) sont implémentés et testés mais
+  **ouverts** dans les profils : le labo ne mesure pas de taux par contexte pour ces types.
+  L'export MusicXML écrit les notes en séquence (comme pour les accords de guitare) : les notes
+  simultanées ou sous-pas de la mélodie y sont inexactes ; non traité ici. Le MIDI statique et
+  enregistré les porte (MIDI enregistré : dérive de ticks de V2, `recorder.rs` hors périmètre).
+- `TUNING_VERSION = 16`. Régénérés : `profile_d2_main.json`,
+  `snapshot_stream_reel_seed42_8bars.json`. **`profile_d2_fixed.json` n'est pas modifié** : le
+  test retient seulement `passing` (équivalent de l'ancien comportement : ni `[performance]`,
+  ni ornements tirés). Goldens sans ornement tiré : WAV de `main` (`725067b`) et du binaire
+  courant avec `[ornaments]` retiré des profils, 7 profils × graines 1, 3, 5, banques GM + pieds :
+  **21 / 21 identiques octet pour octet**.
+
+### Mesures V3b
+
+Mesuré le 2026-10-23, branche `wquintal/vie-v3b-ornaments`. Script durable
+`specs/012-vie-realisme/measure_ornaments.py` (venv et code du labo, binaire `--release`,
+banques GM + `harmonium_trad`) :
+
+```sh
+export PYTHONPATH=/Users/william.quintal/Project/bascanada/harmonium_lab/src
+PY=/Users/william.quintal/Project/bascanada/harmonium_lab/.venv/bin/python
+cargo build --release -p harmonium-cli
+$PY specs/012-vie-realisme/measure_ornaments.py corpus                              # taux des profils = recalcul du labo
+$PY specs/012-vie-realisme/measure_ornaments.py --binary target/release/harmonium-cli rates
+$PY specs/012-vie-realisme/measure_ornaments.py --binary target/release/harmonium-cli --seeds 100 \
+    --output /tmp/harmonium-ornaments-100 rates                                     # effectif plus grand
+$PY specs/012-vie-realisme/measure_ornaments.py --binary target/release/harmonium-cli {peaks,midi,wav}
+```
+
+- `corpus` : recalcule DS-T10 avec `harmonium_lab.trad.ornaments.run_ornaments` (code du labo) :
+  **taux globaux et par mesure des sept profils = recalcul**, références versionnées = recalcul.
+- `rates` : 7 profils × 20 graines × arousal 0 / 0,5 / 1 (valence 0,3, densité 0,2, tension 0,4),
+  34 mesures, 2 tours ; un export de référence **sans `[ornaments]`** et un par type activé
+  (seul dans la section) : comme l'air ne dépend pas des ornements, la différence des deux
+  vérités isole le type (notes ajoutées / porteuses réécrites ; 2 540 exports à 20 graines,
+  12 700 à 100). Comptage
+  sur les **mesures distinctes** (une copie exacte porte les mêmes ornements : compter deux fois
+  doublerait la variance) hors mesure protégée ; attendu = Σ mesures de
+  `min(taux de la mesure × échelle × multiplicateur / 100 × notes, porteuses éligibles)` avec les
+  durées écrites d'un export à intensité 0,5 / tension 0. Verdict : `ok` = rapport dans 0,9–1,1 ;
+  `†` effectif faible = attendu dans l'intervalle de Poisson exact à 95 % de l'observé ; `‡` = hors
+  cible. **Aucune occurrence dans une mesure protégée** (compteur à 0 dans les 99 cellules).
+
+**Résultat à 20 graines** (spec) : sur 99 cellules (type × profil × arousal), 15 `ok`, 82 `†`,
+2 `‡`. À 100 graines : 31 `ok`, 62 `†`, 6 `‡` (5 % attendus par construction d'un intervalle à
+95 %, avec des types qui partagent leur tirage `u` : leurs écarts sont corrélés). **Agrégé sur les
+99 cellules à 100 graines : 3 579 observées pour 3 621 attendues, rapport 0,988** (arousal 0 :
+0,948 ; 0,5 : 0,988 ; 1 : 1,031 ; types additifs 0,999, types réécrits 0,978). Les types à gros
+effectif sont dans ±10 points relatifs ; les autres tiennent dans l'intervalle des occurrences
+(effectifs de 0 à 30 occurrences, comme le corpus). 100 graines, compte observé / attendu
+(rapport) ; `†` effectif faible, `‡` hors cible :
+
+| Profil | Type | Corpus /100 | Configuré /100 | Min (croches) | arousal 0 | arousal 0,5 | arousal 1 | /100 notes (a 0,5, mesures ouvertes) |
+|---|---|---:|---:|---:|---|---|---|---:|
+| `reel_quebecois` | grace_single | 0.185 | 0.738 | 0.5 | 41/45.6 (0.90)† | 38/45.4 (0.84)† | 37/44.5 (0.83)† | 0.550 |
+| `reel_quebecois` | grace_multiple | 0.047 | 0.187 | 1 | 9/13.0 (0.69)† | 14/12.9 (1.08) | 10/12.7 (0.79)† | 0.203 |
+| `reel_quebecois` | double_stop | 0.344 | 1.377 | 2 | 47/43.4 (1.08) | 44/41.4 (1.06) | 41/43.4 (0.94) | 0.637 |
+| `reel_quebecois` | roll | 0.690 | 2.759 | 2 | 103/110.6 (0.93) | 110/102.9 (1.07) | 121/108.5 (1.11)† | 1.593 |
+| `reel_quebecois` | turn | 0.004 | 0.017 | 1 | 2/1.1 (1.74)† | 0/1.1 (0.00)† | 1/1.1 (0.89)† | 0.000 |
+| `reel_quebecois` | triplet_repeated | 0.182 | 0.727 | 1 | 46/49.4 (0.93) | 45/49.1 (0.92) | 36/47.9 (0.75)† | 0.652 |
+| `reel_quebecois` | trill | 0.010 | 0.039 | 1 | 4/2.7 (1.49)† | 3/2.7 (1.13)† | 3/2.6 (1.15)† | 0.043 |
+| `gigue_quebecoise` | grace_single | 0.207 | 0.827 | 1 | 39/43.1 (0.90) | 32/43.0 (0.74)† | 51/41.6 (1.23)† | 0.616 |
+| `gigue_quebecoise` | grace_multiple | 0.033 | 0.131 | 1 | 2/6.8 (0.29)† | 5/6.8 (0.74)† | 6/6.6 (0.91) | 0.096 |
+| `gigue_quebecoise` | double_stop | 0.076 | 0.305 | 1 | 9/15.9 (0.57)† | 13/15.8 (0.82)† | 15/15.3 (0.98) | 0.250 |
+| `gigue_quebecoise` | roll | 0.207 | 0.827 | 3 | 10/8.0 (1.24)† | 8/6.3 (1.26)† | 4/7.7 (0.52)† | 0.154 |
+| `valse_quebecoise` | grace_single | 0.073 | 0.293 | 1 | 12/14.6 (0.82)† | 12/13.4 (0.89)† | 9/12.7 (0.71)† | 0.262 |
+| `valse_quebecoise` | grace_multiple | 0.012 | 0.049 | 1 | 0/2.4 (0.00)† | 2/2.2 (0.89)† | 3/2.1 (1.41)† | 0.044 |
+| `valse_quebecoise` | double_stop | 1.283 | 5.133 | 1 | 242/255.6 (0.95) | 244/235.0 (1.04) | 224/222.7 (1.01) | 5.329 |
+| `valse_quebecoise` | chord | 0.086 | 0.342 | 2 | 7/12.3 (0.57)† | 8/9.8 (0.82)† | 4/10.7 (0.37)‡ | 0.175 |
+| `valse_quebecoise` | roll | 0.061 | 0.244 | 3 | 0/3.8 (0.00)‡ | 2/2.4 (0.82)† | 1/3.4 (0.29)† | 0.044 |
+| `valse_quebecoise` | triplet_repeated | 0.061 | 0.244 | 2 | 4/8.8 (0.46)† | 4/7.0 (0.57)† | 5/7.6 (0.66)† | 0.087 |
+| `reel_acadien` | grace_single | 0.273 | 1.091 | 1 | 62/64.4 (0.96) | 72/64.1 (1.12)† | 82/63.3 (1.30)‡ | 1.027 |
+| `reel_acadien` | grace_multiple | 0.102 | 0.407 | 1 | 28/28.8 (0.97) | 41/28.5 (1.44)‡ | 38/28.2 (1.35)† | 0.585 |
+| `reel_acadien` | double_stop | 0.125 | 0.499 | 1 | 36/35.4 (1.02) | 48/35.0 (1.37)‡ | 45/34.6 (1.30)† | 0.685 |
+| `reel_acadien` | roll | 0.878 | 3.512 | 2 | 147/154.8 (0.95) | 132/146.5 (0.90) | 153/153.0 (1.00) | 1.882 |
+| `reel_acadien` | triplet_repeated | 0.573 | 2.292 | 1 | 192/183.0 (1.05) | 183/181.4 (1.01) | 190/179.6 (1.06) | 2.610 |
+| `reel_acadien` | trill | 0.028 | 0.111 | 2 | 5/4.8 (1.05) | 7/4.5 (1.54)† | 9/4.7 (1.91)† | 0.100 |
+| `marche_britannique_coloniale` | roll | 0.247 | 0.987 | 2 | 45/44.8 (1.00) | 39/44.7 (0.87)† | 48/44.5 (1.08) | 0.817 |
+| `gigue_britannique_coloniale` | grace_single | 0.049 | 0.194 | 1 | 16/10.4 (1.53)† | 8/10.4 (0.77)† | 11/10.4 (1.06) | 0.150 |
+| `gigue_britannique_coloniale` | grace_multiple | 0.011 | 0.043 | 2 | 1/1.1 (0.94) | 1/1.0 (1.05) | 3/1.0 (2.89)† | 0.019 |
+| `gigue_britannique_coloniale` | double_stop | 0.059 | 0.238 | 1 | 17/12.8 (1.33)† | 9/12.7 (0.71)† | 13/12.7 (1.03) | 0.168 |
+| `gigue_britannique_coloniale` | chord | 0.062 | 0.248 | 1 | 16/13.3 (1.20)† | 9/13.3 (0.68)† | 8/13.3 (0.60)† | 0.168 |
+| `gigue_britannique_coloniale` | roll | 0.019 | 0.076 | 3 | 0/0.4 (0.00)† | 0/0.3 (0.00)† | 1/0.4 (2.50)† | 0.000 |
+| `gigue_britannique_coloniale` | triplet_repeated | 0.003 | 0.011 | 1 | 0/0.6 (0.00)† | 0/0.6 (0.00)† | 1/0.6 (1.74)† | 0.000 |
+| `gigue_britannique_coloniale` | trill | 0.005 | 0.022 | 2 | 1/0.5 (1.88)† | 1/0.5 (2.09)† | 3/0.5 (5.78)‡ | 0.019 |
+| `hornpipe_britannique_coloniale` | double_stop | 0.022 | 0.087 | 2 | 2/3.5 (0.58)† | 4/3.2 (1.27)† | 4/3.4 (1.19)† | 0.058 |
+| `hornpipe_britannique_coloniale` | triplet_repeated | 0.327 | 1.310 | 2 | 36/49.8 (0.72)† | 34/42.9 (0.79)† | 46/47.3 (0.97) | 0.491 |
+
+**Arousal** : les multiplicateurs distribués sont neutres, donc le taux réalisé ne suit pas
+l'arousal (colonnes ci-dessus égales à l'effectif près) ; la pente est une donnée à régler à
+l'oreille. Elle est prouvée par contrat : multiplicateurs 0,2 → 3,0, taux réalisés dans le
+rapport 15 ± 4 entre arousal 0 et 1, flux identique entre arousals si neutres.
+
+**Par mesure de la partie** (100 graines, trois arousals poolés, mesures distinctes ; les
+copies `CopyOf` des m.5–7 sont absorbées par leur source) : observé / attendu, m.1 à m.7 (m.8
+protégée : 0 par construction).
+
+| Profil / type | m.1 | m.2 | m.3 | m.4 | m.5 | m.6 | m.7 |
+|---|---|---|---|---|---|---|---|
+| reel québécois / rouleau | 102/92.2 | 29/39.9 | 75/65.5 | 63/55.8 | 19/18.6 | 16/20.7 | 30/29.3 |
+| reel québécois / triolet | 32/37.1 | 22/26.3 | 35/32.2 | 7/8.8 | 13/15.1 | 5/10.8 | 13/16.3 |
+| reel québécois / double corde | 45/39.7 | 4/13.4 | 15/13.0 | 55/47.4 | 6/6.2 | 1/4.0 | 6/4.6 |
+| reel québécois / appogiature | 22/22.7 | 25/31.0 | 5/3.9 | 36/35.4 | 6/7.6 | 7/12.9 | 15/21.9 |
+| reel acadien / rouleau | 103/105.5 | 77/76.8 | 68/71.0 | 92/104.7 | 26/21.4 | 36/37.2 | 30/37.7 |
+| reel acadien / triolet | 118/137.2 | 86/85.9 | 178/160.6 | 43/38.5 | 43/34.6 | 36/31.3 | 61/55.8 |
+| hornpipe britannique / triolet | 46/54.7 | 23/28.3 | 17/22.1 | 0/0.0 | 13/15.8 | 17/19.1 | 0/0.0 |
+
+Seul écart net : la double corde du reel québécois en m.2 (4 pour 13,4 attendues, ≈ 0,3 % sous
+l'hypothèse nulle) alors que m.4 est au-dessus : probablement des porteuses de m.2 sans corde à vide
+jouable dans le mode (la réalisation s'abstient) ; non investigué.
+
+**Vérifications du flux et du lecteur** (7 profils, banques GM + pieds) :
+
+| Contrôle | Résultat |
+|---|---|
+| MIDI enregistré = vérité (5 graines, 34 mesures, notes de mélodie par (hauteur, vélocité)) | **0 note manquante** sur 6 270 notes |
+| WAV deux fois, même graine (reel, gigue, valse québécois, avant et après) | SHA-256 identiques deux à deux |
+| Crête, 5 graines × 7 profils, 66 mesures, automation constante intensité = arousal = densité = tension = pieds = 1 | **−2,55 … −1,62 dBFS** (reel québécois −1,80 ; gigue québécoise −2,00 ; valse −2,24 ; reel acadien −2,55 ; marche −1,62 ; gigue britannique −2,30 ; hornpipe −1,88), 0 échantillon ≥ 1, **aucun ajustement de gain nécessaire** (critère −1,5) |
+| Crête neutre, mêmes graines | −5,97 … −2,67 dBFS |
+
+Écoute (hors dépôt) : `/tmp/harmonium-ornaments/{before,after}/<profil>-neutral-03.wav`
+(`reel_quebecois`, `gigue_quebecoise`, `valse_quebecoise` ; seed 3, 34 mesures, deux tours,
+arousal 0,5 ; *avant* = profil sans `[ornaments]`, qui est le flux d'avant V3b). Notes de mélodie
+avant → après : reel 225 → 247 (14 mesures sur 34 ornées, copies comprises), gigue 178 → 182
+(4 mesures), valse 141 → 145 (4 mesures) : les gigues et la valse sont très peu ornées
+(planchers × 4), le reel l'est nettement. Écoute attendue : petites coupures avant la note
+(appogiatures), rouleaux sur les noires, doubles cordes à vide ; **à valider à l'oreille**
+avant de relever `rate_scale`. Les SoundFonts libres ont des attaques de violon de 250–360 ms
+(point 6) : des notes de 15–40 ms s'y entendent surtout comme un grain ou un accent, pas comme
+des hauteurs.
+
+Contrats de flux (`harmonium_core/tests/ornaments_contract_tests.rs`, 14 tests, sur 200 airs
+pour les fréquences) : sections inertes ⇒ flux complet identique (identifiants de notes compris,
+sept profils × 2 graines × 100 mesures) ; fréquence réalisée de chaque type dans 90–110 % du
+taux configuré (chord : ≥ 70 %, triple corde parfois injouable) ; `rate_scale` ; taux par
+mesure ; aucune note ajoutée hors d'une porteuse de durée écrite ≥ minimum (huit types) et
+tessiture respectée ; décalage ≥ −0,49 pas et notes sur la grille ; appogiature finissant sur la
+porteuse sans chevauchement de la note précédente ; double corde même timing, corde à vide ou
+tierce, 3–12 demi-tons ; arousal 0,2 → 3,0 ⇒ rapport 15 ± 4 et flux égal si neutre ;
+déterminisme ; copies (`CopyOf`) et reprises identiques, libérées par `repeat_variation` ;
+mesures protégées intactes, filtres `intervals` / `phrase_end` ; ligne écrite conservée (hauteur et
+position de chaque note) pour tous les types sauf le turn ; 15 valeurs ou combinaisons hors bornes
+rejetées avec le nom du champ, plus un champ inconnu.
+
+`cargo test --workspace --no-fail-fast` : **421 réussis, 0 échec, 2 ignorés (47 suites)** ;
+`cargo fmt --all -- --check` réussi ; `cargo clippy --workspace --lib --bins` : **162
+avertissements, comme `main` (162), aucun nouveau** ; aucun `unwrap`/`expect` ni code dans le
+callback audio (la réalisation est sur le thread principal, dans `generate_measure`).
+Tests adaptés, pas affaiblis : les fixtures de neuf fichiers qui lisent la mélodie **écrite**
+(cadences, rythme, copies, entropie, intro, MIDI droit, grille du handoff, jazz) neutralisent
+`[ornaments]` comme elles neutralisent déjà `[performance]` ; trois fichiers de densité/mode
+gardent seulement `passing` (le comportement qu'ils testent) ; le test d'automation du CLI
+vérifie le déterminisme avec les ornements et l'identité exacte des reprises sans eux (voir
+« Copies, reprises, variation »). Le test des copies de l'hôte (`m.5 == m.1`) a prouvé le besoin
+du taux de la mesure-source : sans lui, un taux par mesure différent rendait les copies
+différentes.
 
 ## 4. Hétérophonie
 

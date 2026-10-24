@@ -1,13 +1,16 @@
 //! Paramètres de structure : effets audibles et frontières sur le contrat public.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    ornaments::{OrnamentKind, OrnamentRule},
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::{
         PositionRhythm, ProfileRole, RhythmPattern, RoleResolution, VariationOperation,
         WeightedRole,
     },
-    trad::{Cell, CellBank, CellRole, ImposedRole, ReelArrangement, TradGenerator},
+    trad::{
+        Cell, CellBank, CellRole, ImposedRole, ReelArrangement, TradGenerator, dynamics::Curve,
+    },
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -32,6 +35,7 @@ fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.ornaments = Default::default();
     p.arrangement = ReelArrangement::from_start(2, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
@@ -268,19 +272,24 @@ fn invalid_structure_values_name_the_field() {
 #[test]
 fn density_ornament_protection_and_minimum_duration_are_profile_rules() {
     let mut p = fixture();
-    p.dynamics.density_passing.0 = vec![[0.0, 1.0], [1.0, 1.0]];
+    let passing = |min: f32| OrnamentRule {
+        min_carrier_eighths: min,
+        density_curve: Some(Curve(vec![[0.0, 1.0], [1.0, 1.0]])),
+        ..Default::default()
+    };
+    p.ornaments.types.insert(OrnamentKind::Passing, passing(1.5));
     let protected = stream(&p, 7, 8);
     p.form.parts[0].ornament_protected_bars = Some(vec![]);
     let unprotected = stream(&p, 7, 8);
     assert_ne!(ending(&protected[7]).0, ending(&unprotected[7]).0);
-    p.form.ornament_min_steps = 256;
+    p.ornaments.types.insert(OrnamentKind::Passing, passing(64.0));
     let disabled = stream(&p, 7, 8);
     assert_eq!(ending(&protected[7]).0, ending(&disabled[7]).0);
     assert!(melody(&protected[3]).iter().any(|n| n.2 == 1));
     assert!(melody(&disabled[3]).iter().all(|n| n.2 >= 2));
-    p.form.ornament_min_steps = 1;
-    assert_eq!(p.validate().unwrap_err().field, "form.ornament_min_steps");
-    p.form.ornament_min_steps = 3;
+    p.ornaments.types.insert(OrnamentKind::Passing, passing(65.0));
+    assert_eq!(p.validate().unwrap_err().field, "ornaments.types.passing.min_carrier_eighths");
+    p.ornaments.types.insert(OrnamentKind::Passing, passing(1.5));
     p.form.parts[0].ornament_protected_bars = Some(vec![0]);
     assert_eq!(p.validate().unwrap_err().field, "form.parts[0].ornament_protected_bars");
 }
@@ -339,6 +348,7 @@ fn distributed_rhythmic_entropy_recovers_the_pre_phrase_form() {
     for profile in StyleProfile::distributed() {
         let mut current = profile.clone();
         current.arrangement = ReelArrangement::from_start(1, Default::default());
+        current.ornaments = Default::default();
         let mut before = current.clone();
         for part in &mut before.form.parts {
             part.rhythm.clear();
