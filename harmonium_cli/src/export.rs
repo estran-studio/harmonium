@@ -114,7 +114,8 @@ pub fn run(
     composer.set_writehead_lookahead(initial_bars + 16);
     composer.generate_bars(initial_bars);
     let mut automated_measures = Vec::new();
-    for snapshot in composer.take_snapshots() {
+    let initial_snapshots = composer.take_snapshots();
+    for snapshot in &initial_snapshots {
         automated_measures.push(serde_json::json!({
             "bar": snapshot.index,
             "intensity": composer.musical_params().intensity,
@@ -139,21 +140,38 @@ pub fn run(
             mp.time_signature.numerator,
             mp.time_signature.denominator
         );
-        let bars_per_tune = composer.profile().form.bars_per_tour() * composer.tours_per_tune();
         // La génération initiale est bornée par la timeline : ne lister que les
-        // airs dont la première mesure existe.
-        let generated_bars = automated_measures.len();
-        for tune_start_bar in (1..=generated_bars).step_by(bars_per_tune) {
-            if let Some((plan, _)) = composer.profile_bar_info(tune_start_bar) {
-                println!(
-                    "  Tune {} (bars {}..={}): {} {:?}",
-                    (tune_start_bar - 1) / bars_per_tune + 1,
-                    tune_start_bar,
-                    tune_start_bar + bars_per_tune - 1,
-                    harmonium_core::trad::pitch_class_name(plan.key),
-                    plan.mode
-                );
+        // airs dont la première mesure existe, avec les positions publiées (intro comprise).
+        let mut tunes: Vec<(harmonium_core::trad::TunePosition, usize, usize)> = Vec::new();
+        for snapshot in &initial_snapshots {
+            let Some(position) = snapshot.position else { continue };
+            match tunes.last_mut() {
+                Some((first, _, last_bar)) if first.tune_index == position.tune_index => {
+                    *last_bar = snapshot.index;
+                }
+                _ => tunes.push((position, snapshot.index, snapshot.index)),
             }
+        }
+        if mp.end_after_tour {
+            // L'export à durée fixe ne génère que l'air 1 (+ outro) : le reste est silence.
+            tunes.truncate(1);
+        }
+        for (position, first_bar, last_bar) in tunes {
+            let rank = if position.tunes_in_set == 0 {
+                format!("{}", position.tune_in_set)
+            } else {
+                format!("{}/{}", position.tune_in_set, position.tunes_in_set)
+            };
+            println!(
+                "  Tune {} (bars {}..={}): {} {:?} — set {}, air {}",
+                position.tune_index + 1,
+                first_bar,
+                last_bar,
+                harmonium_core::trad::pitch_class_name(position.key),
+                position.mode,
+                position.set_index + 1,
+                rank
+            );
         }
     }
     let has_recordings = record_wav.is_some() || record_midi.is_some() || record_musicxml.is_some();

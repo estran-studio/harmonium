@@ -225,6 +225,16 @@ impl TradGenerator {
                     &self.profile.form,
                 );
                 position.tune_index = tune_idx;
+                if let Some((set_index, set)) = self.set_of(tune_idx) {
+                    position.set_index = set_index;
+                    position.tune_in_set = set.tune_in_set(tune_idx);
+                    position.tunes_in_set = set.tunes();
+                } else {
+                    // Air pas encore construit : set provisoire, l'air ouvre un nouveau set.
+                    position.set_index = self.sets.len();
+                    position.tune_in_set = 1;
+                    position.tunes_in_set = 0;
+                }
                 return position;
             }
 
@@ -245,24 +255,20 @@ impl TradGenerator {
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
             TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
         };
-        let entered = self.tuning.profile.arrangement.allows(
-            track,
-            position,
-            self.is_first_in_set(position.tune_index),
-            &self.profile.form,
-        ) || self.played_intro(track, position.tune_index);
+        let entered = self.tuning.profile.arrangement.allows(track, position, &self.profile.form)
+            || self.played_intro(track, position.tune_index);
         flag && entered
             && self.tuning.profile.dynamics.allows(track, self.musical_params.rhythm_density)
     }
 
-    /// Set de l'air `tune_index`, s'il est déjà tiré.
-    fn set_of(&self, tune_index: usize) -> Option<&SetPlan> {
-        self.sets.iter().rev().find(|set| set.contains(tune_index))
+    /// Set de l'air `tune_index` et son indice dans la session, s'il est déjà tiré.
+    fn set_of(&self, tune_index: usize) -> Option<(usize, &SetPlan)> {
+        self.sets.iter().enumerate().rev().find(|(_, set)| set.contains(tune_index))
     }
 
     /// Vrai si l'air `tune_index` ouvre un set : intro complète et entrées progressives.
     fn is_first_in_set(&self, tune_index: usize) -> bool {
-        self.set_of(tune_index).map_or(tune_index == 0, |set| set.first_tune() == tune_index)
+        self.set_of(tune_index).map_or(tune_index == 0, |(_, set)| set.first_tune() == tune_index)
     }
 
     /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
@@ -1425,7 +1431,10 @@ impl TradGenerator {
     ) -> (PitchClass, Mode) {
         let candidates = candidates(&self.tuning.profile, valence);
         let set = &self.tuning.profile.set;
-        let planned = self.set_of(tune_index).filter(|set| set.first_tune() != tune_index);
+        let planned = self
+            .set_of(tune_index)
+            .map(|(_, set)| set)
+            .filter(|set| set.first_tune() != tune_index);
         let (prev, last, u) = match (prev_key_mode, planned) {
             (Some(prev), Some(plan)) => {
                 let tune_in_set = plan.tune_in_set(tune_index);

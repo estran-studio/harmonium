@@ -136,6 +136,10 @@ fn tune_colors(snapshots: &[MeasureSnapshot]) -> Vec<(u8, Mode)> {
     colors
 }
 
+fn json(snapshots: &[MeasureSnapshot]) -> String {
+    serde_json::to_string(snapshots).unwrap_or_default()
+}
+
 fn all_ones() -> SetKey {
     SetKey::default()
 }
@@ -269,4 +273,258 @@ fn last_dark_keeps_the_last_tune_of_a_set_bright() {
         dark_neutral > 10,
         "le contrôle (last_dark = 1) doit produire des derniers airs sombres"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Position publiée : set_index, tune_in_set, tunes_in_set
+// ---------------------------------------------------------------------------
+
+use harmonium_core::{timeline::TrackId, trad::TunePosition};
+
+fn positions(snapshots: &[MeasureSnapshot]) -> Vec<TunePosition> {
+    snapshots.iter().filter_map(|s| s.position).collect()
+}
+
+/// Un `(tune_index, set_index, tune_in_set, tunes_in_set)` par air, dans l'ordre.
+fn tunes_of(snapshots: &[MeasureSnapshot]) -> Vec<(usize, usize, usize, usize)> {
+    let mut tunes: Vec<(usize, usize, usize, usize)> = Vec::new();
+    for p in positions(snapshots) {
+        let tune = (p.tune_index, p.set_index, p.tune_in_set, p.tunes_in_set);
+        if tunes.last().map(|t| t.0) != Some(p.tune_index) {
+            tunes.push(tune);
+        }
+    }
+    tunes
+}
+
+#[test]
+fn set_position_walks_each_set_without_gap_or_return() {
+    let tuning = tuning(|p| {
+        p.set.length = vec![SetLength { tunes: 3, weight: 2 }, SetLength { tunes: 2, weight: 1 }];
+    });
+    for seed in 1..=8 {
+        let all = positions(&session(seed, &tuning, NEUTRAL, 400));
+        let first = all[0];
+        assert_eq!(
+            (first.tune_index, first.set_index, first.tune_in_set),
+            (0, 0, 1),
+            "seed {seed}"
+        );
+        for pair in all.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            assert!((1..=MAX_SET_TUNES).contains(&a.tunes_in_set), "seed {seed}: {a:?}");
+            if a.tune_index == b.tune_index {
+                assert_eq!(
+                    (a.set_index, a.tune_in_set, a.tunes_in_set),
+                    (b.set_index, b.tune_in_set, b.tunes_in_set),
+                    "seed {seed}: changement dans un air"
+                );
+            } else if a.tune_in_set < a.tunes_in_set {
+                assert_eq!(b.tune_index, a.tune_index + 1, "seed {seed}");
+                assert_eq!(
+                    (b.set_index, b.tune_in_set, b.tunes_in_set),
+                    (a.set_index, a.tune_in_set + 1, a.tunes_in_set),
+                    "seed {seed}: trou ou retour dans le set"
+                );
+            } else {
+                assert_eq!(a.tune_in_set, a.tunes_in_set, "seed {seed}: set dépassé");
+                assert_eq!(b.tune_index, a.tune_index + 1, "seed {seed}");
+                assert_eq!(
+                    (b.set_index, b.tune_in_set),
+                    (a.set_index + 1, 1),
+                    "seed {seed}: le set suivant doit recommencer à 1"
+                );
+            }
+        }
+        assert!(all.last().is_some_and(|p| p.set_index >= 1), "seed {seed}: moins de deux sets");
+    }
+}
+
+#[test]
+fn set_length_follows_the_configured_distribution() {
+    let weights = [(2usize, 45u32), (3, 44), (4, 7), (5, 4)];
+    let configured = tuning(|p| {
+        p.set.length = weights.iter().map(|&(tunes, weight)| SetLength { tunes, weight }).collect();
+    });
+    let seeds = 500u64;
+    let mut counts = [0usize; 6];
+    for seed in 1..=seeds {
+        let first = positions(&session(seed, &configured, NEUTRAL, 1))[0];
+        counts[first.tunes_in_set] += 1;
+    }
+    let total: u32 = weights.iter().map(|&(_, weight)| weight).sum();
+    for &(tunes, weight) in &weights {
+        let expected = f64::from(weight) / f64::from(total);
+        let observed = counts[tunes] as f64 / seeds as f64;
+        // Tolérance : trois écarts-types d'un tirage binomial sur 500 graines (≈ 0,067 à p = 0,45).
+        let tolerance = 3.0 * (expected * (1.0 - expected) / seeds as f64).sqrt();
+        assert!(
+            (observed - expected).abs() <= tolerance,
+            "{tunes} airs : {observed:.3} contre {expected:.3} ± {tolerance:.3}"
+        );
+    }
+    assert_eq!(counts[0] + counts[1], 0, "longueur hors distribution");
+
+    let singles = tuning(|p| p.set.length = vec![SetLength { tunes: 1, weight: 1 }]);
+    for seed in 1..=20 {
+        let all = positions(&session(seed, &singles, NEUTRAL, 3 * 33));
+        assert!(all.iter().all(|p| p.tunes_in_set == 1 && p.tune_in_set == 1), "seed {seed}");
+        assert_eq!(all.last().map(|p| p.set_index), all.last().map(|p| p.tune_index));
+    }
+}
+
+#[test]
+fn same_seed_gives_the_same_sets_and_seek_replays_them() {
+    let tuning = tuning(|p| p.set.length = vec![SetLength { tunes: 3, weight: 1 }]);
+    let run = |seed: u64| session(seed, &tuning, NEUTRAL, 300);
+    for seed in [1, 2, 3] {
+        let (a, b) = (run(seed), run(seed));
+        assert_eq!(json(&a), json(&b), "seed {seed}: flux différents");
+        let shape = |s: &[MeasureSnapshot]| -> Vec<_> {
+            positions(s).iter().map(|p| (p.set_index, p.tune_in_set, p.key, p.mode)).collect()
+        };
+        assert_eq!(shape(&a), shape(&b));
+        assert_ne!(json(&run(seed + 100)), json(&a), "deux graines identiques ?");
+    }
+
+    // Un rejeu silencieux jusqu'à la mesure n redonne le flux continu.
+    let meter = &tuning.profile.meter;
+    let mut params = MusicalParams::default();
+    params.bpm = meter.default_bpm;
+    params.set_swing_ratio(meter.default_swing_ratio);
+    params.time_signature = meter.time_signature;
+    let continuous = run(5);
+    for target in [40usize, 101, 140] {
+        let mut rng = ChaCha8Rng::seed_from_u64(5);
+        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        generator.silent_advance(target, &mut rng);
+        let replay: Vec<_> = (target..=300)
+            .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
+            .collect();
+        assert_eq!(json(&replay), json(&continuous[target - 1..]), "seek à la mesure {target}");
+    }
+}
+
+#[test]
+fn a_valence_change_keeps_the_set_plan_and_follows_the_new_candidates() {
+    let tuning = tuning(|p| p.set.length = vec![SetLength { tunes: 5, weight: 1 }]);
+    let meter = &tuning.profile.meter;
+    let mut params = MusicalParams::default();
+    params.bpm = meter.default_bpm;
+    params.set_swing_ratio(meter.default_swing_ratio);
+    params.time_signature = meter.time_signature;
+    let color_input = tuning.profile.dynamics.valence_input(-0.6);
+    let dark: Vec<(u8, Mode)> = tuning
+        .profile
+        .dynamics
+        .color
+        .iter()
+        .filter(|c| c.weight.eval(color_input) > 0.0)
+        .map(|c| (c.key, c.mode))
+        .collect();
+
+    let mut changed_airs = 0;
+    for seed in 1..=12 {
+        let control = tunes_of(&session(seed, &tuning, NEUTRAL, 400));
+
+        // Le jeu prend la valence −0,6 pendant l'air 2 puis jette les airs encore futurs.
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        let mut stream: Vec<MeasureSnapshot> = Vec::new();
+        let mut bar = 1;
+        let change_bar = loop {
+            let snapshot =
+                MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng));
+            let tune = snapshot.position.map_or(0, |p| p.tune_index);
+            stream.push(snapshot);
+            if tune == 1
+                && stream.iter().filter_map(|s| s.position).filter(|p| p.tune_index == 1).count()
+                    == 20
+            {
+                break bar;
+            }
+            bar += 1;
+        };
+        let mut hot = params.clone();
+        hot.harmony_valence = -0.6;
+        generator.update_params(hot);
+        generator.invalidate_future(change_bar);
+        stream.extend(
+            (change_bar + 1..=400)
+                .map(|b| MeasureSnapshot::from_measure(&generator.generate_measure(b, &mut rng))),
+        );
+        let after = tunes_of(&stream);
+
+        let common = control.len().min(after.len());
+        assert!(common >= 8, "seed {seed}: {common} airs seulement");
+        assert_eq!(control[..common], after[..common], "seed {seed}: plan du set modifié");
+        let colors = tune_colors(&stream);
+        let before = tune_colors(&session(seed, &tuning, NEUTRAL, 400));
+        assert_eq!(colors[..2], before[..2], "seed {seed}: airs déjà construits modifiés");
+        for (index, color) in colors.iter().enumerate().skip(2) {
+            assert!(
+                dark.contains(color),
+                "seed {seed}, air {index}: {color:?} hors [[color]] à −0,6"
+            );
+            changed_airs += usize::from(
+                !tuning.profile.melody.key_modes.iter().any(|c| (c.key, c.mode) == *color),
+            );
+        }
+    }
+    assert!(
+        changed_airs > 0,
+        "aucune tonalité propre à la valence −0,6 : le contrôle est sans portée"
+    );
+}
+
+#[test]
+fn a_profile_without_set_is_one_endless_set() {
+    let endless = tuning(|p| p.set = Default::default());
+    let snapshots = session(3, &endless, 0.6, 3 * 34);
+    let all = positions(&snapshots);
+    assert!(all.iter().all(|p| p.set_index == 0 && p.tunes_in_set == 0), "pas de set fini");
+    assert!(all.iter().all(|p| p.tune_in_set == p.tune_index + 1), "tune_in_set compte les airs");
+    // Intro complète et entrées progressives au seul premier air de la session.
+    let intro_bars =
+        |tune: usize| all.iter().filter(|p| p.tune_index == tune && p.is_intro()).count();
+    assert!(intro_bars(0) >= 1);
+    assert_eq!(intro_bars(1), 1, "le 2ᵉ air n'a que la levée");
+    let second_tour = snapshots
+        .iter()
+        .find(|s| s.position.is_some_and(|p| p.tune_index == 1 && !p.is_intro()))
+        .ok_or("2ᵉ air absent");
+    let playing = |snapshot: &MeasureSnapshot, track: TrackId| {
+        snapshot.notes.iter().any(|n| n.track == track.channel())
+    };
+    let first_bar = second_tour.map(|s| (playing(s, TrackId::Bass), playing(s, TrackId::Heel)));
+    assert_eq!(first_bar, Ok((true, true)), "toutes les pistes dès A1 au 2ᵉ air");
+}
+
+#[test]
+fn old_snapshots_without_set_fields_still_load() -> TestResult {
+    let tuning = tuning(|p| p.set.length = vec![SetLength { tunes: 2, weight: 1 }]);
+    let snapshots = session(2, &tuning, NEUTRAL, 40);
+    let mut json = serde_json::to_value(&snapshots)?;
+    for snapshot in json.as_array_mut().ok_or("flux attendu")? {
+        let position = snapshot
+            .get_mut("position")
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("position attendue")?;
+        for field in ["set_index", "tune_in_set", "tunes_in_set"] {
+            assert!(position.remove(field).is_some(), "{field} absent du JSON publié");
+        }
+    }
+    let old: Vec<MeasureSnapshot> = serde_json::from_value(json)?;
+    for (old, new) in old.iter().zip(&snapshots) {
+        let (Some(old), Some(new)) = (old.position, new.position) else {
+            return Err("position".into());
+        };
+        assert_eq!((old.set_index, old.tune_in_set, old.tunes_in_set), (0, 0, 0));
+        assert_eq!(
+            (old.tune_index, old.tour, old.key, old.mode),
+            (new.tune_index, new.tour, new.key, new.mode)
+        );
+    }
+    assert_eq!(harmonium_core::tuning::TUNING_VERSION, 19);
+    Ok(())
 }

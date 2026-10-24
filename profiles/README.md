@@ -572,6 +572,13 @@ mesurés sur 205 transitions de pistes enregistrées (échantillon dominé par l
 Longueurs de set : The Session, sets de 2 airs ou plus. Rien n'est mesuré sur la pratique québécoise
 des sets : les valeurs sont des bornes de répertoire, l'écoute fixera le réglage.
 
+**Position publiée.** `MeasureSnapshot.position` (`TunePosition`) porte `set_index` (0-based, numéro
+du set dans la session), `tune_in_set` (**1-based**, « air n° k du set » ; 1 pour le premier air) et
+`tunes_in_set` (longueur tirée, constante dans le set ; **0** pour un set sans fin, où `tune_in_set`
+compte les airs de la session). `tune_index` reste l'indice global. Les trois champs ont une valeur
+par défaut à la lecture : un JSON de snapshot antérieur à V7b se relit. L'export CLI les affiche
+(« set 2, air 1/3 ») et les écrit dans `measures[].measure.position` du JSON.
+
 ## Règles de phrase
 
 Le profil décide des répétitions ; le moteur ne suppose ni huit mesures, ni

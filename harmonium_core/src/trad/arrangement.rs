@@ -64,8 +64,8 @@ impl Part {
 
 /// Position structurée d'une mesure dans la suite d'airs d'une session.
 ///
-/// Conventions : `tune_index` est 0-based (comme `ActiveTune::tune_index`) ;
-/// `tour`, `pass` et `bar_in_strain` sont 1-based, comme les numéros de mesure
+/// Conventions : `tune_index` et `set_index` sont 0-based (comme `ActiveTune::tune_index`) ;
+/// `tune_in_set`, `tour`, `pass` et `bar_in_strain` sont 1-based, comme les numéros de mesure
 /// du contrat. `bar_in_intro` vaut 0 pour les mesures de tour.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TunePosition {
@@ -73,6 +73,16 @@ pub struct TunePosition {
     pub section: Section,
     /// Indice 0-based de l'air dans la session.
     pub tune_index: usize,
+    /// Indice 0-based du set dans la session.
+    #[serde(default)]
+    pub set_index: usize,
+    /// Rang 1-based de l'air dans son set (1 : premier air, intro complète). Dans un set sans
+    /// fin (`tunes_in_set == 0`), compte les airs de la session.
+    #[serde(default)]
+    pub tune_in_set: usize,
+    /// Longueur du set, tirée au début du set et constante dans le set ; `0` : set sans fin.
+    #[serde(default)]
+    pub tunes_in_set: usize,
     /// Tour de l'air (`1..=tours`). 0 pour les mesures d'intro.
     pub tour: usize,
     /// Nombre de tours de cet air (`tour == tours` : dernier tour).
@@ -124,6 +134,9 @@ impl TunePosition {
         Self {
             section: if intro { Section::Intro } else { Section::Tour },
             tune_index: zero / cycle,
+            set_index: 0,
+            tune_in_set: zero / cycle + 1,
+            tunes_in_set: 0,
             tour: if intro { 0 } else { (zero % cycle) / form.bars_per_tour() + 1 },
             tours,
             part: Part(part),
@@ -588,21 +601,15 @@ impl ReelArrangement {
         self.entries.get(track).is_some()
     }
 
-    /// Vrai si l'arrangement autorise `track` à jouer à `position`. `first_in_set` :
-    /// l'air est le premier de son set (entrées progressives) ; les suivants voient toutes
-    /// les pistes dès A1.
+    /// Vrai si l'arrangement autorise `track` à jouer à `position`. Seul le premier air d'un set
+    /// (`tune_in_set == 1`) a des entrées progressives ; les suivants voient toutes les pistes
+    /// dès A1.
     ///
     /// Ne tient pas compte des drapeaux de jeu (`enable_*`), qui sont des
     /// plafonds appliqués par le générateur. Les pistes sont autorisées
     /// pendant l'intro selon [`IntroInfo::tracks_active_during_intro`].
     #[must_use]
-    pub fn allows(
-        &self,
-        track: TrackId,
-        position: &TunePosition,
-        first_in_set: bool,
-        form: &ProfileForm,
-    ) -> bool {
+    pub fn allows(&self, track: TrackId, position: &TunePosition, form: &ProfileForm) -> bool {
         let Some(entry) = self.entry_opt(track) else {
             return false;
         };
@@ -611,7 +618,7 @@ impl ReelArrangement {
         if position.is_intro() {
             return true;
         }
-        if !first_in_set {
+        if position.tune_in_set > 1 {
             return true;
         }
         let last_tour = self.tours_per_tune.max(1);
@@ -689,6 +696,9 @@ mod tests {
             TunePosition {
                 section: Section::Tour,
                 tune_index: 0,
+                set_index: 0,
+                tune_in_set: 1,
+                tunes_in_set: 0,
                 tour: 1,
                 tours: 3,
                 part: Part(0),
@@ -819,7 +829,6 @@ mod tests {
                 super::super::Mode::Ionian,
                 &crate::StyleProfile::default().form
             ),
-            true,
             &crate::StyleProfile::default().form
         ));
         table.tours_per_tune = 1;
@@ -834,7 +843,6 @@ mod tests {
                 super::super::Mode::Ionian,
                 &crate::StyleProfile::default().form
             ),
-            true,
             &crate::StyleProfile::default().form
         ));
     }
