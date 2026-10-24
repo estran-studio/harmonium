@@ -1,5 +1,6 @@
 //! Contrat : la même ligne change de mode parallèle aux frontières musicales.
 use harmonium_core::{
+    ornaments::OrnamentKind,
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::TrackId,
@@ -15,6 +16,7 @@ use rand_chacha::ChaCha8Rng;
 fn tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement = ReelArrangement::from_start(3, Default::default());
+    tuning.profile.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
     tuning.profile.dynamics.color = vec![ColorChoice {
         key: 2,
         mode: Mode::Ionian,

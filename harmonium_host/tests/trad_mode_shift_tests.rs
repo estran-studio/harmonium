@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
+    ornaments::OrnamentKind,
     timeline::TrackId,
     trad::{Mode, ReelArrangement},
     tuning::TuningParams,
@@ -18,6 +19,7 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
         profile: {
             let mut p = TuningParams::default().profile;
             p.arrangement = ReelArrangement::from_start(3, Default::default());
+            p.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
             p
         },
         ..Default::default()

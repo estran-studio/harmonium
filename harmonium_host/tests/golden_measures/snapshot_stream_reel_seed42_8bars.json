@@ -2740,11 +2740,59 @@
         "track": 0,
         "pitch": 86,
         "start_step": 8,
-        "duration_steps": 4,
+        "duration_steps": 2,
         "velocity": 107,
         "performance": {
           "offset": -50,
-          "gate": 970,
+          "gate": 699,
+          "breath": 0
+        }
+      },
+      {
+        "track": 0,
+        "pitch": 88,
+        "start_step": 9,
+        "duration_steps": 1,
+        "velocity": 86,
+        "performance": {
+          "offset": 347,
+          "gate": 621,
+          "breath": 0
+        }
+      },
+      {
+        "track": 0,
+        "pitch": 86,
+        "start_step": 10,
+        "duration_steps": 1,
+        "velocity": 86,
+        "performance": {
+          "offset": -32,
+          "gate": 620,
+          "breath": 0
+        }
+      },
+      {
+        "track": 0,
+        "pitch": 85,
+        "start_step": 11,
+        "duration_steps": 1,
+        "velocity": 86,
+        "performance": {
+          "offset": -412,
+          "gate": 621,
+          "breath": 0
+        }
+      },
+      {
+        "track": 0,
+        "pitch": 86,
+        "start_step": 11,
+        "duration_steps": 1,
+        "velocity": 86,
+        "performance": {
+          "offset": 209,
+          "gate": 621,
           "breath": 0
         }
       },

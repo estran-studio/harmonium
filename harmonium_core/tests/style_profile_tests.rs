@@ -333,6 +333,7 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
+        profile.ornaments = Default::default();
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();

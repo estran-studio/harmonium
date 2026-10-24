@@ -524,3 +524,51 @@ tension_detach = 0.10
 arousal_accent = 4.0
 valence_velocity = 0.0
 density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/acadienne-reel.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.272643
+per_100_notes_by_bar = [0.250697, 0.119354, 0.299874, 0.357616, 0.361655, 0.117242, 0.11185, 0.562856]
+min_carrier_eighths = 1.0
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.grace_multiple]
+written_per_100_notes = 0.101664
+min_carrier_eighths = 1.0
+span = 0.49
+count = 2
+velocity_scale = 0.7
+
+[ornaments.types.roll]
+written_per_100_notes = 0.878004
+per_100_notes_by_bar = [0.925868, 1.152847, 1.09045, 0.677303, 1.095923, 0.999219, 0.762617, 0.319805]
+min_carrier_eighths = 2.0
+velocity_scale = 0.8
+
+[ornaments.types.triplet_repeated]
+written_per_100_notes = 0.573013
+per_100_notes_by_bar = [0.87311, 0.498811, 1.169705, 0.249096, 0.839697, 0.408321, 0.545364, 0.0]
+min_carrier_eighths = 1.0
+velocity_scale = 0.9
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.124769
+min_carrier_eighths = 1.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8
+
+[ornaments.types.trill]
+written_per_100_notes = 0.027726
+min_carrier_eighths = 2.0
+velocity_scale = 0.8

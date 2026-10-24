@@ -27,6 +27,7 @@ arousal_accent = 5.0
 fn generator(performance: Performance, tension: f32, arousal: f32) -> TradGenerator {
     let mut profile = StyleProfile::builtin().clone();
     profile.performance = performance;
+    profile.ornaments = Default::default();
     for part in &mut profile.form.parts {
         part.phrase_ends = vec![3, 8];
     }

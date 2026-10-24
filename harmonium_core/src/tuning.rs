@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{style_profile::StyleProfile, trad::harmony::ChordDegree};
 
-/// Version du contrat : valeurs DS-T9b des profils britanniques (parseur ABC corrigé).
-pub const TUNING_VERSION: u32 = 15;
+/// Version du contrat : ornements idiomatiques `[ornaments]` (V3b).
+pub const TUNING_VERSION: u32 = 16;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

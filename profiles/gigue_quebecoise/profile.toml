@@ -305,3 +305,38 @@ tension_detach = 0.10
 arousal_accent = 4.0
 valence_velocity = 0.0
 density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/quebecoise-jig.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.206657
+min_carrier_eighths = 1.0
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.grace_multiple]
+written_per_100_notes = 0.03263
+min_carrier_eighths = 1.0
+span = 0.49
+count = 2
+velocity_scale = 0.7
+
+[ornaments.types.roll]
+written_per_100_notes = 0.206657
+min_carrier_eighths = 3.0
+velocity_scale = 0.8
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.076137
+min_carrier_eighths = 1.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8

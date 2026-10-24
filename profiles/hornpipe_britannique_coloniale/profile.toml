@@ -310,3 +310,26 @@ tension_detach = 0.10
 arousal_accent = 4.0
 valence_velocity = 0.0
 density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/britannique_coloniale-hornpipe.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.triplet_repeated]
+written_per_100_notes = 0.327439
+per_100_notes_by_bar = [0.795435, 0.443847, 0.342677, 0.0, 0.604161, 0.433392, 0.0, 0.0]
+min_carrier_eighths = 2.0
+velocity_scale = 0.9
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.021829
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8

@@ -311,3 +311,13 @@ tension_detach = 0.10
 arousal_accent = 4.0
 valence_velocity = 0.0
 density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/britannique_coloniale-march.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.roll]
+written_per_100_notes = 0.246792
+min_carrier_eighths = 2.0
+velocity_scale = 0.8
