@@ -90,3 +90,27 @@ et [phrasé/articulation, système KTH 2006](https://doi.org/10.2478/v10053-008-
 Sans `[performance]`, ou avec tous ses effets à zéro, le flux antérieur est
 conservé sans tirage supplémentaire ; basse, accords et pieds non retouchés.
 Schéma et unités : [Interprétation](../README.md#interprétation).
+
+## Ornements V3b
+
+Source : `harmonium_lab/references/ornaments/quebecoise-jig.json` (DS-T10, `engine_proposal`), recalculé par
+`measure_ornaments.py corpus`. Taux écrits = **planchers** (les transcriptions sous-notent) ; `rate_scale = 4` les relève
+identiquement pour tous les types, valeur d'écoute à valider. Multiplicateurs d'arousal neutres : le corpus n'annote pas l'arousal.
+Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est repris que pour les types à ≥ 30 occurrences dans des parties de huit mesures reconnues.
+
+| Type | Occurrences (positionnées) | /100 notes (plancher) | /100 notes × échelle | Taux par mesure | Durée porteuse min. (croches) |
+|---|---:|---:|---:|---|---:|
+| `grace_single` | 19 (7) | 0.207 | 0.827 | non | 1 |
+| `grace_multiple` | 3 (0) | 0.033 | 0.131 | non | 1 |
+| `roll` | 19 (17) | 0.207 | 0.827 | non | 3 |
+| `turn` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `triplet_repeated` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `double_stop` | 7 (5) | 0.076 | 0.305 | non | 1 |
+| `chord` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `trill` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+
+`passing` : note de passage de densité émotionnelle (ancien `dynamics.density_passing`), inchangée : courbe `[[0,0],[0.5,0],[1,1]]`, tenue ≥ 1,5 croche, sans tirage.
+
+Effectifs faibles (≤ 19 occurrences par type) : taux global seulement, pas de taux par mesure.
+
+Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).

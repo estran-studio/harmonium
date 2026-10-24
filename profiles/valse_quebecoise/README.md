@@ -93,3 +93,27 @@ et [phrasé/articulation, système KTH 2006](https://doi.org/10.2478/v10053-008-
 Sans `[performance]`, ou avec tous ses effets à zéro, le flux antérieur est
 conservé sans tirage supplémentaire ; basse, accords et pieds non retouchés.
 Schéma et unités : [Interprétation](../README.md#interprétation).
+
+## Ornements V3b
+
+Source : `harmonium_lab/references/ornaments/quebecoise-waltz.json` (DS-T10, `engine_proposal`), recalculé par
+`measure_ornaments.py corpus`. Taux écrits = **planchers** (les transcriptions sous-notent) ; `rate_scale = 4` les relève
+identiquement pour tous les types, valeur d'écoute à valider. Multiplicateurs d'arousal neutres : le corpus n'annote pas l'arousal.
+Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est repris que pour les types à ≥ 30 occurrences dans des parties de huit mesures reconnues.
+
+| Type | Occurrences (positionnées) | /100 notes (plancher) | /100 notes × échelle | Taux par mesure | Durée porteuse min. (croches) |
+|---|---:|---:|---:|---|---:|
+| `grace_single` | 6 (0) | 0.073 | 0.293 | non | 1 |
+| `grace_multiple` | 1 (0) | 0.012 | 0.049 | non | 1 |
+| `roll` | 5 (0) | 0.061 | 0.244 | non | 3 |
+| `turn` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `triplet_repeated` | 5 (5) | 0.061 | 0.244 | non | 2 (3 × 2/3) |
+| `double_stop` | 105 (1) | 1.283 | 5.133 | non | 1 |
+| `chord` | 7 (0) | 0.086 | 0.342 | non | 2 |
+| `trill` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+
+`passing` : note de passage de densité émotionnelle (ancien `dynamics.density_passing`), inchangée : courbe `[[0,0],[0.5,0],[1,1]]`, tenue ≥ 1,5 croche, sans tirage.
+
+La double corde (105 occurrences, 1,28 pour 100 notes) domine, mais une seule est dans une partie de huit mesures reconnue : pas de taux par mesure (la table du labo la place presque toute en m.8, protégée).
+
+Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).

@@ -157,3 +157,27 @@ et [phrasé/articulation, système KTH 2006](https://doi.org/10.2478/v10053-008-
 Sans `[performance]`, ou avec tous ses effets à zéro, le flux antérieur est
 conservé sans tirage supplémentaire ; basse, accords et pieds non retouchés.
 Schéma et unités : [Interprétation](../README.md#interprétation).
+
+## Ornements V3b
+
+Source : `harmonium_lab/references/ornaments/acadienne-reel.json` (DS-T10, `engine_proposal`), recalculé par
+`measure_ornaments.py corpus`. Taux écrits = **planchers** (les transcriptions sous-notent) ; `rate_scale = 4` les relève
+identiquement pour tous les types, valeur d'écoute à valider. Multiplicateurs d'arousal neutres : le corpus n'annote pas l'arousal.
+Le taux par mesure (forme du corpus positionné, niveau du taux global) n'est repris que pour les types à ≥ 30 occurrences dans des parties de huit mesures reconnues.
+
+| Type | Occurrences (positionnées) | /100 notes (plancher) | /100 notes × échelle | Taux par mesure | Durée porteuse min. (croches) |
+|---|---:|---:|---:|---|---:|
+| `grace_single` | 59 (37) | 0.273 | 1.091 | oui | 1 |
+| `grace_multiple` | 22 (17) | 0.102 | 0.407 | non | 1 |
+| `roll` | 190 (104) | 0.878 | 3.512 | oui | 2 (observé 1/3) |
+| `turn` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `triplet_repeated` | 124 (55) | 0.573 | 2.292 | oui | 1 (3 × 1/3) |
+| `double_stop` | 27 (1) | 0.125 | 0.499 | non | 1 |
+| `chord` | 0 (0) | 0.000 | — | — | aucune occurrence : désactivé |
+| `trill` | 6 (0) | 0.028 | 0.111 | non | 2 |
+
+`passing` : note de passage de densité émotionnelle (ancien `dynamics.density_passing`), inchangée : courbe `[[0,0],[0.5,0],[1,1]]`, tenue ≥ 1,5 croche, sans tirage.
+
+Le triolet de notes répétées (124) est plus fréquent que dans les autres reels.
+
+Le triolet est donné en durée totale remplacée (le labo donne la première note après subdivision). `min_carrier_eighths` est le minimum observé quand l'effectif est faible ; au-delà de 30 occurrences, la plus petite durée dont le taux par note atteint 10 % du meilleur (les rouleaux du corpus sont sur des noires et des noires pointées, pas sur des croches). Schéma : [Ornements](../README.md#ornements).
