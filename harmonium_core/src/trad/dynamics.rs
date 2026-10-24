@@ -108,7 +108,6 @@ pub struct StyleDynamics {
     pub density_chop: Curve,
     /// Seuils d'entrée des pistes selon la densité, après les plafonds du jeu.
     pub density_tracks: Vec<TrackThreshold>,
-    pub chop_patterns: Vec<Vec<usize>>,
     pub tension_offbeat: Curve,
     pub tension_duration: Curve,
     pub tension_dominant: Curve,
@@ -160,7 +159,6 @@ impl Default for StyleDynamics {
                         density_feet: empty(),
                         density_chop: empty(),
                         density_tracks: Vec::new(),
-                        chop_patterns: Vec::new(),
                         tension_offbeat: empty(),
                         tension_duration: empty(),
                         tension_dominant: empty(),
@@ -263,11 +261,6 @@ impl StyleDynamics {
             if self.color.iter().map(|c| c.weight.eval(x)).sum::<f32>() <= 0.0 {
                 return Err("color: poids total nul".into());
             }
-        }
-        if !self.chop_patterns.is_empty()
-            && self.chop_patterns.iter().any(|p| p.is_empty() || p.windows(2).any(|s| s[0] >= s[1]))
-        {
-            return Err("chop_patterns: motifs non vides, pas croissants requis".into());
         }
         for (index, threshold) in self.density_tracks.iter().enumerate() {
             if !threshold.minimum.is_finite()

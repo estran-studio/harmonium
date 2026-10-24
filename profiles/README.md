@@ -13,7 +13,7 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »). |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight`. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"` ou `"jazz_functional"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; modes ionian, mixolydian, dorian, aeolian. Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). |
-| `[accompaniment]` | `strong_steps`, poids de vote et `tie_priority`, `bass_steps`, `chop_steps` en pas ; durées, vélocités et tessitures de basse/guitare. Le registre de basse jazz doit couvrir au moins 12 hauteurs consécutives. Pas d'option de voicing parcimonieux à ce stade (voir l'inventaire Legacy). |
+| `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[arrangement]` | `tours_per_tune`, `intro_each_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. |
@@ -24,6 +24,236 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Accompagnement
+
+Le vote harmonique est inchangé. Deux voix remplacent les anciens champs plats
+et les motifs de `dynamics` ; aucun alias de compatibilité. Migration V5b-1 :
+les sept profils, dont la marche sans section harmonique, gardent le même flux.
+
+```toml
+[accompaniment.bass]
+low = 40
+high = 50
+hits = [
+  { step = 0, degree = "root", duration = 4, velocity = 78 },
+  { step = 8, degree = "fifth_if_held", duration = 4, velocity = 78 },
+]
+[accompaniment.chords]
+center = 60
+max_drift = 6
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 4, duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, duration = 1, velocity = 72 }, { step = 12, duration = 1, velocity = 72 }] },
+]
+```
+
+`degree` : `root`, `fifth`, `fifth_if_held` (quinte si l'accord n'a pas
+changé depuis le créneau précédent, ou au premier créneau de la mesure).
+Les coups sont ordonnés par `step`, uniques dans chaque voix/motif, dans la
+mesure ; durée positive entièrement dans la mesure, vélocité 1..127.
+Le registre basse est MIDI ordonné ; le modèle jazz exige douze hauteurs
+consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
+`default_pattern` est utilisé lorsque les courbes `chop_intensity + density_chop`
+valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
+
+### Notes de passage de basse
+
+`walk_low` / `walk_high` élargissent `low` / `high` pour les seules approches ;
+omission : fenêtre des coups. `[accompaniment.bass.passing]` est optionnel :
+absence, poids tous nuls ou courbe nulle ⇒ aucun tirage, flux inchangé.
+
+```toml
+[accompaniment.bass.passing]
+none_weight = 4
+density = [[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+arousal_low_multiplier = 0.5
+arousal_high_multiplier = 1.5
+avoid_melody_intervals = [1, 6, 11]
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 2, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+```
+
+Les poids applicables sont multipliés par `density(rhythm_density) × phrase(phase)`
+et le multiplicateur interpolé à l'arousal brut (défaut 1/1) ; `none_weight`
+reste fixe. Les courbes couvrent 0..1, sorties finies 0..4. `before` est une
+liste strictement décroissante de distances en pas avant la prochaine cible
+de basse, y compris au-delà de la barre. `scale_step` : voisin diatonique
+de la cible côté départ ; `chromatic` : demi-ton ; `scale_walk` : voisins
+successifs dans le mode actif. Aucun détour ni répétition de hauteur.
+`chord_change_inside_bar` restreint la règle à un changement d'accord intérieur.
+Les durées ne recouvrent ni la note suivante ni la cible ; le coup précédent
+est écourté si nécessaire. Pas de passage sur un coup de basse ni un temps
+fort. Le veto contre les intervalles modulo 12 lit la mélodie qui sonne ;
+il est revérifié après les ornements. Les passages reçoivent la dynamique et
+l'interprétation V2 de la piste Bass comme les autres notes.
+
+Poids entiers : somme positive dans u32, au plus 64 règles ; `duration > 0`,
+`velocity_delta` −127..127, `min_leap` 0..127. Règle impossible : abstention.
+Les tirages réutilisent la graine de matériel de V3b, dans un domaine basse
+distinct par mesure et attaque : ni mélodie, ni pieds, ni air suivant déplacé.
+Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille** :
+marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
+hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
+
+### Accords grattés
+
+`chords.strings` (3..6, défaut 3) complète la triade par octaves en montant.
+Chaque coup porte `stroke = "block" | "down" | "up"` (défaut `block`) et
+`probability` (0..1, défaut 1). Zéro/1 : aucun tirage de présence ; entre les
+deux : un tirage dérivé par attaque. `down` va du grave à l'aigu ; `up` ne
+joue que les `up_strings` les plus aiguës, dans l'ordre inverse. Dans le
+snapshot, l'ordre du Vec et des identifiants est toujours l'ordre d'attaque.
+
+```toml
+[accompaniment.chords.strum]
+down_gap_ms = 6.0
+up_gap_ms = 4.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 230.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
+```
+
+| Champ | Bornes / mécanique |
+|---|---|
+| `down_gap_ms`, `up_gap_ms` | 0..40 ms entre cordes ; 0 : plaqué. |
+| `gap_jitter` | 0..0,8, uniforme symétrique par écart, sur le RNG dérivé de l'attaque. |
+| `up_strings` | 2..`strings`. |
+| `anchor` | 0..1 : première corde / centre de l'étalement / dernière corde sur l'attaque V2. |
+| `tempo_exponent` | 0..1 : écart × `(ref_bpm / tempo)^exposant` ; 0 : ms fixes, 1 : geste relatif au tempo. |
+| `ref_bpm` | 1..1000, fini. |
+| `max_spread_ratio` | 0..0,4 de la distance au coup suivant du motif, retour à la mesure suivante compris. |
+| `velocity_slope`, `velocity_jitter` | 0..20 unités MIDI ; bonus décroissant de la première à la dernière corde, puis jitter individuel, **avant V2**. |
+
+Le grattage est composé **après V2** en millièmes de pas. Pour conserver l'ordre,
+le geste entier est réduit si nécessaire pour tenir dans ±490 ou le plafond
+de voisinage ; aucune corde n'est clampée indépendamment des autres.
+`strum` absent ou coup `block` : aucun décalage ni jitter V5, mais `strings`
+reste la polyphonie écrite. Mécanique historique : trois sons, pas de `strum`,
+probabilités 1, mêmes vélocités/motifs. V2 tire désormais articulation et jitter
+**par attaque** sur chaque piste (contexte = hauteur la plus grave de l'attaque
+précédente) ; gate/respiration communs, vélocités individuelles conservées.
+La validation croisée jitter/écart de V5a est donc inutile : un jitter V2 commun
+ne peut pas inverser les cordes. Les approches modales et gestes de cordes
+sont refusés avec `jazz_functional`, dont le chemin conserve ses accords absolus.
+
+Les ms sont converties avec le tempo nominal de la mesure ; swing et rampes
+du lecteur réutilisent ensuite ce décalage dans la durée gelée de chaque pas,
+comme V2 (pas d'horloge murale ni de second ordonnanceur audio).
+Les six ensembles harmoniques gardent guitare nylon et basse acoustique :
+écarts descendants 6/7/8/9/10 ms selon le profil, valeurs de départ de l'étude.
+Reels : montées douces optionnelles à haute densité ; gigues : bas-haut-bas ;
+valse et hornpipe : montée rare. La marche reste sans accompagnement tonal.
+
+### Recettes piano et accordéon
+
+Ces snippets **remplacent les deux voix** et les deux programmes correspondants
+dans un profil complet ; ils ne s'ajoutent pas aux tables existantes.
+Les tests chargent ces snippets exacts avec le chargeur public. Les sept profils
+distribués gardent leurs instruments : aucune mesure de corpus ni écoute ne
+justifie encore de remplacer leur guitare/basse par un autre ensemble.
+
+**Piano main gauche, basse-accord (« stride » de veillée)** :
+
+```toml
+# recette: piano_main_gauche
+[instruments]
+chords_program = 0
+bass_program = 0
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 34
+walk_high = 50
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 82, doubling = ["octave"] },
+  { step = 8, degree = "fifth_if_held", duration = 3, velocity = 82, doubling = ["octave"] },
+]
+[accompaniment.bass.passing]
+none_weight = 3
+density = [[0.0, 0.0], [0.5, 0.8], [1.0, 1.2]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 4, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+[accompaniment.chords]
+voicing = "close_triad"
+center = 58
+max_drift = 5
+strings = 3
+default_pattern = 0
+patterns = [{ hits = [
+  { step = 4, stroke = "block", duration = 2, velocity = 62 },
+  { step = 12, stroke = "block", duration = 2, velocity = 58 },
+] }]
+```
+
+`doubling` est une liste de doublures uniques `octave` / `tenth`, vide par
+défaut. `tenth` remplace l'octave par la dixième diatonique au-dessus de la
+note de basse (deux voisins dans le mode, puis une octave). Les doublures
+partagent attaque, durée, vélocité et interprétation ; la marche reste une
+ligne simple entre les cibles **graves**, pas entre leurs doublures aiguës.
+Le chargeur rejette une tessiture qui ferait dépasser MIDI 127.
+Pour la variante basse-dixième, remplacer `["octave"]` par `["tenth"]`.
+Pour une gigue de Cape Breton : coups de basse 0/6, accords 2/4/8/10 ;
+adapter durées et grille au profil, pas au nom d'une recette.
+
+**Accordéon basse-accord, mélodéon à deux basses** :
+
+```toml
+# recette: accordeon_basse_accord
+[instruments]
+chords_program = 21
+bass_program = 21
+
+[accompaniment.bass]
+low = 36
+high = 47
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 70 },
+  { step = 8, degree = "fifth_if_held", duration = 3, velocity = 70 },
+]
+[accompaniment.chords]
+voicing = "fixed_triad"
+center = 58
+max_drift = 0
+low = 52
+high = 64
+strings = 3
+default_pattern = 0
+patterns = [{ hits = [
+  { step = 4, stroke = "block", duration = 2, velocity = 56 },
+  { step = 12, stroke = "block", duration = 2, velocity = 56 },
+] }]
+```
+
+`fixed_triad` choisit toujours le même renversement le plus grave dans
+`low..high`, indépendamment de l'accord précédent ; fenêtre MIDI ordonnée
+couvrant au moins douze hauteurs. `close_triad` reste le défaut, avec conduite
+de voix autour de `center` / `max_drift`. Le mélodéon n'a ni grattage ni marche ;
+pour un accordéon à davantage de basses, une règle de passage faible suffit.
+Sources, prudence sur les extrapolations et repères historiques :
+[étude V5a, §2 et §5.3](../specs/012-vie-realisme/accompagnement-etude.md).
+Ces programmes GM ont une énergie différente : mesurer à nouveau les pistes
+seules avec `measure_mix.py` avant de distribuer un profil qui adopte la recette.
+
+
+
+
 
 ## Mixage
 
@@ -154,7 +384,7 @@ individuels citent les comptages utilisés et les choix non mesurables.
 | `rules[].weight` | Poids fini 0..1 000 000 ; tirage parmi **toutes** les règles applicables, addition des poids, pas de priorité implicite. Aucun poids positif : note inchangée. | `0` | Poids de marques écrites conditionnés par position/durée/contexte |
 | `rules[].steps` | Positions 0-based dans la mesure ; vide = toutes. | `[]` | Positions de temps/demi-temps du corpus, ramenées à la grille du profil |
 | `rules[].min_duration`, `max_duration` | Durée écrite en pas, bornes inclusives ; minimum omis = 0, maximum omis = sans plafond. | `0`, omis | Réserver une règle liée aux tenues, détachée aux notes courtes |
-| `rules[].context` | `any`, `repeated`, `ascending`, `descending` ; intervalle avec l'attaque précédente de la même piste **dans la mesure**, première attaque = `any`. | `any` | Poids conditionnels sur répétitions ou contour |
+| `rules[].context` | `any`, `repeated`, `ascending`, `descending` ; intervalle entre les hauteurs les plus graves de deux attaques de la même piste **dans la mesure**, première attaque = `any`. Un accord partage ce contexte, sans intervalle fictif entre ses cordes. | `any` | Poids conditionnels sur répétitions ou contour |
 | `rules[].shorten` | Fraction 0..0,8 retranchée à la durée ; pas de gate caché dans l'articulation. | `0` | Détaché : 0,15..0,25 ; lié : 0 |
 | `rules[].accent` | Ajout de vélocité 0..20 unités MIDI, après la dynamique existante. | `0` | 2..4 pour `Accent` |
 | `phrase` | Points `[phase 0..1, delta −20..20]`, phases strictement croissantes ; interpolation linéaire, extrémités constantes. Phase calculée à l'attaque sur la phrase configurée, pas sur tout l'air. | `[]` ou deltas nuls | −2 → +2 → −3 |

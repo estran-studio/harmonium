@@ -55,8 +55,8 @@ pub struct ActiveTune {
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
     pub performance_seed: u64,
-    /// Graine des tirages d'ornements de l'air (0 si aucun type ne tire).
-    pub ornament_seed: u64,
+    /// Graine dérivée du matériel écrit, commune aux ornements et à l'accompagnement.
+    pub material_seed: u64,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
@@ -324,6 +324,9 @@ impl TradGenerator {
         } else {
             self.fill_tour_measure(&tune, &position, &mut measure);
         }
+        if !is_intro && !is_outro {
+            self.apply_bass_passing(&mut measure, &tune, &position);
+        }
 
         let written: Vec<usize> = if self.profile.ornaments.is_inert() {
             Vec::new()
@@ -354,11 +357,87 @@ impl TradGenerator {
                 &mut performance_rng,
             );
         }
+        if let Some(a) = &self.profile.accompaniment {
+            let offset = if is_intro {
+                0.0
+            } else {
+                self.profile.dynamics.chop_intensity.eval(self.musical_params.intensity)
+                    + self.profile.dynamics.density_chop.eval(self.musical_params.rhythm_density)
+            };
+            let seed =
+                crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
+            super::strum::apply(&mut measure, &a.chords, &a.chords.pattern(offset).hits, seed);
+        }
         if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
         }
+        if !is_intro
+            && !is_outro
+            && let Some(a) = &self.profile.accompaniment
+        {
+            super::bass_passing::veto_final(&mut measure, &a.bass);
+        }
 
         measure
+    }
+
+    fn apply_bass_passing(
+        &mut self,
+        measure: &mut Measure,
+        tune: &ActiveTune,
+        position: &TunePosition,
+    ) {
+        let Some(a) = &self.profile.accompaniment else {
+            return;
+        };
+        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert())
+            || !matches!(tune.harmony, HarmonyPlan::TradFunctional(_))
+        {
+            return;
+        }
+        let bar = self.performed_bar(position);
+        let chords = self.chords_for_bar(tune, bar);
+        let next_target = a
+            .bass
+            .hits
+            .first()
+            .filter(|_| bar + 1 < self.profile.form.bars_per_tour() * position.tours)
+            .map(|hit| {
+                let next = self.chords_for_bar(tune, bar + 1);
+                (
+                    hit.step,
+                    super::accomp::bass_hit_pitch(
+                        &next,
+                        tune.plan.key,
+                        tune.plan.mode,
+                        a,
+                        hit,
+                        self.profile.harmony.steps_per_chord,
+                    ),
+                )
+            });
+        let (start, end) = self.phrase_window(tune, position);
+        let span = (end - start).max(1) as f32;
+        let context = super::bass_passing::PassingContext {
+            key: tune.plan.key,
+            mode: tune.plan.mode,
+            seed: tune.material_seed,
+            bar,
+            phase: (position.bar_in_strain - 1 - start) as f32 / span,
+            phrase_bars: span,
+            density: self.musical_params.rhythm_density,
+            arousal: self.musical_params.arousal,
+            strong_steps: &a.strong_steps,
+            chords: &chords,
+            steps_per_chord: self.profile.harmony.steps_per_chord,
+            next_target,
+        };
+        let id = &mut self.next_note_id;
+        super::bass_passing::apply(measure, &a.bass, &context, &mut || {
+            let next = *id;
+            *id += 1;
+            next
+        });
     }
 
     /// Mesures `[début, fin)` (0-based dans la partie) de la phrase qui contient
@@ -529,6 +608,10 @@ impl TradGenerator {
                 if self.track_active_in_intro(TrackId::Chords, intro) {
                     let tonic = TradChord { degree: ChordDegree::I, quality: ChordQuality::Major };
                     let chords = vec![tonic; steps / self.profile.harmony.steps_per_chord];
+                    let seed = crate::ornaments::mix(
+                        tune.material_seed,
+                        self.performed_bar(position) as u64,
+                    );
                     let next_note_id = &mut self.next_note_id;
                     let mut next_id = || {
                         let id = *next_note_id;
@@ -543,6 +626,7 @@ impl TradGenerator {
                             plan.mode,
                             accompaniment,
                             self.profile.harmony.steps_per_chord,
+                            seed,
                             &mut next_id,
                         ) {
                             measure.add_note(TrackId::Chords, note);
@@ -716,29 +800,27 @@ impl TradGenerator {
             if !self.track_active(track, position) {
                 continue;
             }
-            let (steps, duration, velocity) = if track == TrackId::Chords {
-                (
-                    &accompaniment.chop_steps,
-                    accompaniment.chop_duration_steps,
-                    accompaniment.chop_velocity,
-                )
-            } else {
-                (
-                    &accompaniment.bass_steps,
-                    accompaniment.bass_duration_steps,
-                    accompaniment.bass_velocity,
-                )
-            };
-            for &step in steps {
+            let bass_hits = &accompaniment.bass.hits;
+            let chord_hits =
+                &accompaniment.chords.patterns[accompaniment.chords.default_pattern].hits;
+            let count = if track == TrackId::Chords { chord_hits.len() } else { bass_hits.len() };
+            for index in 0..count {
+                let (step, duration, velocity) = if track == TrackId::Chords {
+                    let h = &chord_hits[index];
+                    (h.step, h.duration, h.velocity)
+                } else {
+                    let h = &bass_hits[index];
+                    (h.step, h.duration, h.velocity)
+                };
                 let chord = &chords[step / period];
                 let intervals =
                     if track == TrackId::Chords { chord.chord_type.intervals() } else { &[0] };
                 for &interval in intervals {
                     let pc = (chord.root + interval) % 12;
                     let (center, low, high) = if track == TrackId::Chords {
-                        (accompaniment.guitar_center, 0, 127)
+                        (accompaniment.chords.center, 0, 127)
                     } else {
-                        (accompaniment.bass_low, accompaniment.bass_low, accompaniment.bass_high)
+                        (accompaniment.bass.low, accompaniment.bass.low, accompaniment.bass.high)
                     };
                     let pitch = nearest_pitch([pc], center, low, high);
                     let note = TimelineNote {
@@ -1049,7 +1131,7 @@ impl TradGenerator {
             arousal: self.musical_params.arousal,
             density: self.musical_params.rhythm_density,
             bar_index: measure.index,
-            seed: tune.ornament_seed,
+            seed: tune.material_seed,
         };
         let next_note_id = &mut self.next_note_id;
         self.profile.ornaments.apply(measure, &context, written, &mut || {
@@ -1095,29 +1177,18 @@ impl TradGenerator {
         let d = &self.tuning.profile.dynamics;
         let chop_offset = d.chop_intensity.eval(self.musical_params.intensity)
             + d.density_chop.eval(self.musical_params.rhythm_density);
-        let steps = if chop_offset != 0.0 {
-            let pattern =
-                (1.0 + chop_offset).round().clamp(0.0, (d.chop_patterns.len() - 1) as f32) as usize;
-            &d.chop_patterns[pattern]
-        } else {
-            &harmony.chop_steps
-        };
+        let hits = &harmony.chords.pattern(chop_offset).hits;
         let mut guitarist = Guitarist::new();
-        let mut dummy_id = 0u64;
-        let mut dummy_next = || {
-            dummy_id += 1;
-            dummy_id
-        };
         for b in strain_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
-            let _ = guitarist.chop_bar_on_steps(
+            guitarist.advance_bar(
                 &c,
                 tune.plan.key,
                 tune.plan.mode,
                 harmony,
-                steps,
+                hits,
                 self.profile.harmony.steps_per_chord,
-                &mut dummy_next,
+                crate::ornaments::mix(tune.material_seed, b as u64),
             );
         }
         let chords = self.chords_for_bar(tune, bar_in_tour);
@@ -1127,13 +1198,14 @@ impl TradGenerator {
             *next_note_id += 1;
             id
         };
-        guitarist.chop_bar_on_steps(
+        guitarist.chop_bar_on_hits(
             &chords,
             tune.plan.key,
             tune.plan.mode,
             harmony,
-            steps,
+            hits,
             self.profile.harmony.steps_per_chord,
+            crate::ornaments::mix(tune.material_seed, bar_in_tour as u64),
             &mut next_id,
         )
     }
@@ -1280,7 +1352,10 @@ impl TradGenerator {
         let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
         // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
         // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
-        let ornament_seed = if self.profile.ornaments.needs_seed() {
+        let material_seed = if self.profile.ornaments.needs_seed()
+            || self.profile.accompaniment.as_ref().is_some_and(|a| {
+                a.bass.passing.as_ref().is_some_and(|p| !p.is_inert()) || a.chords.needs_seed()
+            }) {
             crate::ornaments::tune_seed(
                 tune_index,
                 (0..plan.material_bars()).flat_map(|i| {
@@ -1306,7 +1381,7 @@ impl TradGenerator {
             harmony,
             feet_humanize,
             performance_seed,
-            ornament_seed,
+            material_seed,
             intro_info,
             initial_mode: plan.mode,
             initial_dark: plan.mode.is_minor() && valence < dynamics.dark_below,
@@ -1601,13 +1676,6 @@ mod tests {
         assert!((m1.swing_ratio - 0.56).abs() < f32::EPSILON);
         assert!((m1.tempo - 230.0).abs() < f32::EPSILON);
         assert!(!m1.chord_context.chord_name.is_empty());
-
-        // Arrangement plat : les 5 pistes sont peuplées dès la mesure 1 en densité de pieds 1
-        assert!(!m1.notes_for_track(TrackId::Melody).is_empty());
-        assert_eq!(m1.notes_for_track(TrackId::Chords).len(), 6);
-        assert_eq!(m1.notes_for_track(TrackId::Bass).len(), 2);
-        assert_eq!(m1.notes_for_track(TrackId::Heel).len(), 4);
-        assert_eq!(m1.notes_for_track(TrackId::Toe).len(), 4);
     }
 
     #[test]

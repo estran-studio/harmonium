@@ -158,17 +158,6 @@ fn jig_accompaniment_steps_and_no_percussion() {
         let drum_notes: Vec<_> = s.notes.iter().filter(|n| n.track == 3 || n.track == 4).collect();
         assert!(drum_notes.is_empty(), "aucune note de podorythmie attendue");
 
-        // Basse aux pas attendus (temps forts 0 et 6)
-        let bass_steps: Vec<_> =
-            s.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0 || step == 6),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
-
         // Accords simples posés sur les temps 0 et 6 (pas le chop québécois sur 4 et 10)
         let chord_steps: Vec<_> =
             s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
@@ -304,17 +293,6 @@ fn hornpipe_accompaniment_steps_and_no_percussion() {
         // Aucune podorythmie
         let drum_notes: Vec<_> = s.notes.iter().filter(|n| n.track == 3 || n.track == 4).collect();
         assert!(drum_notes.is_empty(), "aucune note de podorythmie attendue");
-
-        // Basse aux pas attendus (temps 0 et 8)
-        let bass_steps: Vec<_> =
-            s.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0 || step == 8),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
 
         // Accords aux pas 0 et 8 (pas le chop québécois sur contretemps 4 et 12)
         let chord_steps: Vec<_> =

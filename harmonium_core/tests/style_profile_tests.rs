@@ -11,6 +11,9 @@ use rand_chacha::ChaCha8Rng;
 fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.accompaniment.as_mut().unwrap().bass.passing = None;
+    p.accompaniment.as_mut().unwrap().chords.strum = None;
+    p.accompaniment.as_mut().unwrap().chords.strings = 3;
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -53,14 +56,28 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     p.form.sequence = vec![2, 0, 1, 0, 2];
     p.harmony.steps_per_chord = 12;
     if let Some(a) = &mut p.accompaniment {
-        a.bass_steps = vec![0, 6];
-        a.chop_steps = vec![3, 9];
+        for (hit, step) in a.bass.hits.iter_mut().zip([0, 6]) {
+            hit.step = step;
+        }
+        let prototype = a.chords.patterns[0].hits[0].clone();
+        a.chords.patterns = [vec![3], vec![3, 9], vec![0, 3, 6, 9]]
+            .into_iter()
+            .map(|steps| harmonium_core::trad::accomp_profile::ChordPattern {
+                hits: steps
+                    .into_iter()
+                    .map(|step| {
+                        let mut hit = prototype.clone();
+                        hit.step = step;
+                        hit
+                    })
+                    .collect(),
+            })
+            .collect();
         a.strong_steps = vec![0, 6];
     }
     for pattern in &mut p.percussion.patterns {
         pattern.hits = vec![FootHit::heel(0), FootHit::toe(3), FootHit::heel(6), FootHit::toe(9)];
     }
-    p.dynamics.chop_patterns = vec![vec![3], vec![3, 9], vec![0, 3, 6, 9]];
     p.arrangement = ReelArrangement::from_start(1, Part(p.form.sequence[0]));
     p.validate()?;
     Ok(p)
@@ -194,16 +211,6 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
             }
         }
 
-        let bass_steps: Vec<_> =
-            snap.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0 || step == 6),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
-
         let chord_steps: Vec<_> =
             snap.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {
@@ -291,17 +298,6 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
             }
         }
 
-        // Accompagnement oom-pah-pah : basse au pas 0, accords aux pas 4 et 8
-        let bass_steps: Vec<_> =
-            snap.notes.iter().filter(|n| n.track == 2).map(|n| n.start_step).collect();
-        if !bass_steps.is_empty() {
-            assert!(
-                bass_steps.iter().all(|&step| step == 0),
-                "pas basse inattendus: {:?}",
-                bass_steps
-            );
-        }
-
         let chord_steps: Vec<_> =
             snap.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {
@@ -334,6 +330,9 @@ fn fixed_roles_gigue_valse_notes_identical_to_main() -> Result<(), Box<dyn std::
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
         profile.ornaments = Default::default();
+        profile.accompaniment.as_mut().unwrap().bass.passing = None;
+        profile.accompaniment.as_mut().unwrap().chords.strum = None;
+        profile.accompaniment.as_mut().unwrap().chords.strings = 3;
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();

@@ -1,10 +1,16 @@
 //! Profil actif et paramètres des modèles musicaux.
 use serde::{Deserialize, Serialize};
 
-use crate::{style_profile::StyleProfile, trad::harmony::ChordDegree};
+use crate::{
+    style_profile::StyleProfile,
+    trad::{
+        accomp_profile::{BassVoice, ChordVoice},
+        harmony::ChordDegree,
+    },
+};
 
-/// Version du contrat : ornements idiomatiques `[ornaments]` (V3b).
-pub const TUNING_VERSION: u32 = 16;
+/// Version du contrat : grattage additif après V2 et gestes par attaque (V5b-3).
+pub const TUNING_VERSION: u32 = 18;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -31,41 +37,26 @@ impl Default for ReelFiddleParams {
 
 /// Harmonisation, tessitures et motifs d'accompagnement du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TradHarmonyParams {
     pub strong_steps: Vec<usize>,
     pub strong_weight: u32,
     pub weak_weight: u32,
     pub tie_priority: Vec<ChordDegree>,
-    pub bass_steps: Vec<usize>,
-    pub bass_duration_steps: usize,
-    pub bass_velocity: u8,
-    pub bass_low: u8,
-    pub bass_high: u8,
-    pub chop_steps: Vec<usize>,
-    pub chop_duration_steps: usize,
-    pub chop_velocity: u8,
-    pub guitar_center: u8,
-    pub guitar_max_drift: u8,
+    pub bass: BassVoice,
+    pub chords: ChordVoice,
 }
 impl Default for TradHarmonyParams {
     fn default() -> Self {
         match StyleProfile::default().accompaniment {
             Some(a) => a,
             None => Self {
-                strong_steps: vec![0, 4, 8, 12],
-                strong_weight: 2,
-                weak_weight: 1,
+                strong_steps: Vec::new(),
+                strong_weight: 0,
+                weak_weight: 0,
                 tie_priority: Vec::new(),
-                bass_steps: vec![0, 8],
-                bass_duration_steps: 4,
-                bass_velocity: 80,
-                bass_low: 36,
-                bass_high: 59,
-                chop_steps: vec![4, 12],
-                chop_duration_steps: 2,
-                chop_velocity: 70,
-                guitar_center: 60,
-                guitar_max_drift: 6,
+                bass: BassVoice::default(),
+                chords: ChordVoice::default(),
             },
         }
     }

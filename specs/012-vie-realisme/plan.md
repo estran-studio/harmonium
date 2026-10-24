@@ -934,6 +934,223 @@ différentes.
 - **Vérifier** : écart entre cordes d'un même accord, part de notes de
   passage, aucune fausse note contre la mélodie aux temps forts.
 
+### Décisions V5b-0 — composition et déterminisme
+
+Lecture du code fusionné sur `main` `649c684` (V2, V3b et RT1) :
+
+- `Performance::apply` affecte `NotePerformance.offset` et tire encore par note.
+  Le grattage passe **après V2**, additionne ses décalages en millièmes de pas et
+  conserve la borne ±490 et le lecteur d'événements préparés existant. Aucun
+  calcul, tirage ni allocation ajouté au callback, intégralement gardé depuis RT1.
+- Les accords sont interprétés **par attaque** (`Chords`, `start_step`) : contexte
+  de l'attaque précédente, un jitter et une articulation pour toutes ses cordes ;
+  gate et respiration communs. La vélocité de chaque corde reste individuelle.
+  Ce changement entre avec le grattage, pas avec la migration neutre du schéma.
+- La graine d'air est déjà dérivée sans tirage du matériel mélodique par
+  `ornaments::tune_seed` (SplitMix64). L'accompagnement réutilise cette graine et
+  ce mélangeur, avec des domaines voix/mesure/attaque distincts dans ChaCha8Rng :
+  **pas de deuxième mécanisme ni de tirage sur le RNG séquentiel**. La graine
+  est calculée si les ornements ou l'accompagnement en ont besoin. Ainsi les
+  décisions de mélodie, intro, pieds et airs suivants restent inchangées.
+- V5b-1 remplace les champs plats et `dynamics.chop_patterns`, sans activer de
+  passage ni de grattage : version 16 et goldens inchangés. V5b-2 puis V5b-3
+  versionnent explicitement leurs changements de flux ; la référence historique
+  `profile_d2_fixed.json` conserve un accompagnement mécanique explicite.
+- Les valeurs musicales restent des hypothèses de départ de l'étude V5a, pas un
+  ADR d'écoute. V5b-5 (labo) et V5b-6 (écoute propriétaire) ne sont pas réalisés.
+
+Navigation LSP tentée puis serveur rechargé : rust-analyzer quitte avec code 0
+avant initialisation. Repli : inventaire exhaustif des consommateurs et
+compilation des crates ; aucune preuve LSP revendiquée.
+
+### Mesures V5b
+
+**V5b-1 — migration neutre.** Schéma séparé en `trad/accomp_profile.rs`,
+réalisation existante adaptée, sept profils et fixture jazz migrés ; anciens
+champs et motifs de dynamique supprimés. Binaire `--release` de main conservé
+dans `/tmp/harmonium-accomp/baseline/`, profils inclus. Exports réels GM + pieds,
+seed 3, 100 mesures par profil : **700 snapshots complets identiques**, avant
+contre schéma migré (y compris mélodie, pieds, identifiants et performance).
+Trois WAV de référence (reel, gigue, valse québécois, seed 3, 34 mesures, deux
+tours) préparés dans `/tmp/harmonium-accomp/before/`. `TUNING_VERSION = 16`
+inchangé ; SHA-256 de `profile_d2_fixed.json` :
+`2960f927a50d0f0108c89de8f82993e531cebd9d7f02276fa37a9eca6437fec2`.
+
+**V5b-2 — passages.** `trad/bass_passing.rs` : règles pondérées, approches
+diatoniques/chromatiques, fenêtre élargie, phase de phrase et densité/arousal
+en données. Aucune approche sur les coups ou temps forts ; durée du coup
+précédent raccourcie si nécessaire. Veto sur la mélodie à l'attaque, puis
+revérification du flux après les ornements ; notes ordinaires interprétées
+par V2. Graine de matériel unique et sous-domaines par voix/mesure/attaque.
+`TUNING_VERSION = 17` ; références courantes régénérées, référence D2 fixe
+inchangée (accompagnement de passage explicitement absent dans cette fixture).
+
+Script durable `measure_accomp.py` : 20 seeds × 7 profils × arousal 0 / 0,5 / 1,
+34 mesures, deux tours, densité constante 0,5 ; compare les vérités de main
+avec les mêmes automations. Première mesure : frontières avec passage à arousal
+0,5 = reel québécois 37,0 %, reel acadien 33,1 %, gigue québécoise 33,8 %,
+gigue britannique 28,2 %, hornpipe 18,6 %, valse 1,2 % (cadence seule), marche 0.
+Reel québécois : poids d'abstention augmenté de 4 à 5 pour viser 25–35 %
+après veto, plutôt que de prétendre que les poids donnent une fréquence garantie.
+Après recalage : **30,6 %** des frontières du reel québécois à arousal 0,5
+(15,9 % à 0 ; 35,5 % à 1), mesures dans
+`/tmp/harmonium-accomp/passing-final/rates/measurements.json`.
+**Aucun conflit de passage** ; taux de conflit aux temps forts exactement celui
+de main pour les 21 cellules profil/arousal (0–3,0 %). Mélodie, Heel et Toe
+comparés note pour note : identiques, sur les 420 paires d'exports.
+
+Sept contrats dédiés passent : bornes/erreurs de chargement ; tables inertes,
+flux complet et aucun tirage (100 mesures) ; pistes voisines et basse forte
+inchangées ; trois mouvements, tessiture, approche sans répétition et veto
+(20 graines × 64 mesures) ; déterminisme et invalidation ; densité et arousal.
+La migration précédente passait également `cargo test --workspace` :
+430 réussis, deux ignorés, 50 suites. Référence clippy hors tests de main
+archivé (`649c684`) : 162 avertissements, enregistrés pour comparaison finale.
+
+**V5b-3 — grattage.** `trad/strum.rs`, schéma de cordes et coups dans
+`trad/accomp_profile.rs`, triades doublées par octaves et coups montants dans
+`trad/accomp.rs`. Le rejeu de conduite de voix n'alloue plus de notes jetables.
+Les tirages de présence, vélocité et écart ont des domaines séparés de la même
+graine de matériel ; aucun tirage séquentiel ajouté. V2 interprète maintenant
+chaque attaque en bloc (jitter, articulation, gate et respiration), puis V5
+ajoute le geste dans ±490. Un geste trop large est réduit **en entier** :
+pas de saturation indépendante qui inverserait ou superposerait des cordes.
+Le jitter V2 par attaque remplace la validation croisée jitter/écart proposée
+quand V2 était encore par note. `TUNING_VERSION = 18`, deux goldens courants
+régénérés dans cette étape ; D2 fixe reste mécanique et inchangé.
+
+Mêmes 420 paires d'exports, après grattage :
+
+| Profil | Écart de cordes à arousal 0,5 (ms), min–max | Étalement moyen (ms) | Erreurs d'ordre |
+|---|---:|---:|---:|
+| reel québécois | 4,17–7,81 | 18,04 | 0 |
+| reel acadien | 4,20–7,81 | 18,10 | 0 |
+| gigue québécoise | 4,86–9,11 | 20,95 | 0 |
+| gigue britannique | 5,57–10,46 | 23,86 | 0 |
+| valse québécoise | 6,29–11,76 | 27,01 | 0 |
+| hornpipe britannique | 6,99–13,01 | 30,18 | 0 |
+| marche britannique | — | — | 0 |
+
+Résultats : `/tmp/harmonium-accomp/strum/rates/measurements.json` (intervalles
+des passages inclus). Les voisins Melody/Heel/Toe restent identiques à main ;
+conflits de passage et erreurs d'ordre nuls, conflits forts inchangés.
+
+**Contrats V5a §5.8.** Treize tests de `accompaniment_contract_tests` couvrent
+chargement, neutralité/rejeu, passages, voisins, cordes descendantes/montantes
+sur 200 mesures et trois tempos, ms/arrondi, ancre, plafonds, atomicité V2
+(jitter 0,1 pas, supérieur à l'ancien seuil), présence pondérée et MIDI statique.
+Pour l'ancre, la formule de moyenne est vérifiée avec jitter nul : avec un
+tirage indépendant **par écart**, la moyenne arithmétique des cordes n'est pas
+nécessairement le milieu des deux extrêmes ; les ancres 0/1 fixent bien la
+première/dernière corde, 0,5 le milieu de l'étalement. Cette distinction corrige
+le test 5 de l'étude sans changer le geste proposé.
+Le test 8 est vérifié relativement à main, plus strict que le plafond corpus+3.
+Les tests historiques de structure/répétition neutralisent explicitement les
+nouveaux gestes ; les assertions incidentes d'ancien nombre de notes sont
+retirées, pas réécrites pour épingler quatre cordes.
+
+`cargo test -p harmonium_core --no-fail-fast` : 314 réussis, un ignoré,
+23 suites. MIDI enregistré réel : `cargo test --release -p harmonium
+--test recorded_midi_exact_tests` (20 seeds × trois profils × deux tensions,
+plus swing/rampe) : deux tests réussis. Lecteur RT :
+`performance_playback_tests`, trois réussis ; nouveau scénario de cordes
+positives à la fin de mesure, négatives au début suivant et basse traversant
+la barre/retrigger : attaques aux frames 15000, 15100, 15150, 15200, 15850,
+15900, 15950, 17000 et fins de basse 17000/21000 (jamais l'ancienne fin 19000).
+Tout passe par les événements préparés et la garde globale RT1, aucun code
+de callback modifié.
+
+**V5b-4 — recettes et mix.** Recettes TOML complètes dans `profiles/README.md`
+(piano main gauche programme 0 ; accordéon basse-accord programme 21), sans
+identifiant de recette dans le moteur. `doubling = ["octave"]` / `["tenth"]`,
+conduite de voix ou `fixed_triad` : seuls les champs changent. Les passages
+prennent la voix grave de chaque attaque comme source/cible et écourtent
+toutes ses doublures ensemble ; V2 leur donne le même gate et jitter.
+L'invariant fondamentale/quinte porte sur cette voix grave, pas sur la tierce
+d'une dixième ajoutée. Trois tests chargent les snippets exacts du README :
+octaves/dixièmes et marches entre cibles graves, boutons fixes et absence de
+marche/grattage, erreurs de tessiture/doublure/voicing. Exports réels GM + pieds
+des deux recettes : WAV/MIDI/vérité dans `/tmp/harmonium-accomp/recipes/`.
+Aucun instrument distribué changé ; les données ne justifient pas ce choix
+sans écoute. Valeurs omises neutres : goldens V18 passent sans régénération.
+
+`measure_mix.py` relancé sur le binaire final à 34 puis 66 mesures, seed 3,
+deux tours, banques GM + pieds. Pistes seules, mélanges, contre-épreuves sèches
+et doublons déterministes dans `/tmp/harmonium-accomp/mix{,-66}/after/`.
+À 34 mesures, les pieds de plusieurs profils ne sont pas encore entrés ;
+66 mesures les exercent au second tour. Les Heel britanniques ne sont que
+l'accent final, et leurs Toe sont absents, pas une podorythmie mesurée.
+Le rapport 34 signale seulement l'ancien plancher de crête −6 dBFS du
+hornpipe (−6,21, sans saturation), déjà subordonné par la revue V1 à la marge
+en jeu ; le rapport 66 n'a **aucun échec d'acceptation**.
+
+| Profil | Mélodie − accords, 66 m. (dB) | Mélodie − basse (dB) | Mélodie − pied actif, min. (dB) | Pire crête max-émotions (dBFS) |
+|---|---:|---:|---:|---:|
+| reel québécois | 7,88 | 8,86 | 23,78 | −1,53 |
+| reel acadien | 8,05 | 8,33 | 20,23 | −3,04 |
+| gigue québécoise | 7,67 | 8,46 | 27,14 | −2,00 |
+| gigue britannique | 8,36 | 10,68 | 36,68 | −2,11 |
+| valse québécoise | 8,90 | 14,80 | 32,47 | −1,63 |
+| hornpipe britannique | 12,70 | 16,10 | 41,92 | −1,88 |
+| marche britannique | — | — | 22,46 | −1,62 |
+
+Crêtes : cinq seeds **1 à 5** × sept profils, 66 mesures, deux tours, automation
+constante **intensity = arousal = density = tension = feet = 1**, valence 0.
+**Zéro échantillon ≥1**, toutes les crêtes ≤−1,5 dBFS ; les gains de bus et de
+pistes restent donc inchangés. Marge la plus courte : 0,03 dB sur ce relevé,
+pas une garantie pour toutes les banques/graines. Les écarts de pistes sont
+tous >4 dB (pieds actifs également >8), malgré l'énergie des quatrièmes cordes.
+Les sept mélanges 34/66 sont chacun identiques à leur second rendu.
+
+Rendus d'écoute demandés, sans normalisation : `/tmp/harmonium-accomp/before/`
+et `/tmp/harmonium-accomp/after/`, `reel_quebecois.wav`,
+`gigue_quebecoise.wav`, `valse_quebecoise.wav` ; seed 3, 34 mesures, deux tours,
+GeneralUser-GS + harmonium_trad, arousal 0,5, **densité 0,5**, valence 0,3,
+tension 0,4 identiques avant/après (la densité 0,2 masquerait les accords par
+le seuil d'entrée existant). Les intros/entrées restent celles du seed ;
+ces fichiers ne prétendent pas faire entendre des pieds encore non arrangés.
+**Aucune écoute ni ADR musical effectué** ; V5b-5 et V5b-6 restent hors tâche.
+
+**Défaut de banque corrigé (préexistant).** oxisynth 0.1.0 cherche un préset avec
+`banknum.saturating_sub(offset)` : avec la banque de pieds chargée à l'offset 1,
+une demande banque 0 / programme 0 (piano GM) tombait sur le préset 0 des pieds
+(accords muets, basse jouée avec les samples de pieds). Les sept profils
+distribués n'utilisent pas le programme 0 et n'étaient pas touchés. Correction
+à l'initialisation seulement (`SynthBackend::new`, hors callback) : les numéros de
+banque des en-têtes `phdr` de la banque de pieds sont translatés de
+`FEET_BANK_OFFSET` et la banque est chargée sans offset oxisynth ; samples,
+programmes et routage inchangés. Tests : piano GM non masqué avec pieds chargés,
+banques mal formées rejetées. Interrompu par la limite Codex juste avant son
+commit, terminé et vérifié par le coordinateur (449 tests, fmt).
+
+Reproduction (Python du labo avec numpy ; `before` requiert le binaire et
+les profils de main `649c684`, voir options du script) :
+
+```sh
+cargo build --release -p harmonium-cli
+PY=/Users/william.quintal/Project/bascanada/harmonium_lab/.venv/bin/python
+$PY specs/012-vie-realisme/measure_accomp.py --binary target/release/harmonium-cli rates
+$PY specs/012-vie-realisme/measure_accomp.py --binary target/release/harmonium-cli peaks
+$PY specs/012-vie-realisme/measure_accomp.py --binary target/release/harmonium-cli --stage after wav
+$PY specs/012-vie-realisme/measure_mix.py --binary target/release/harmonium-cli \
+  --stage after --bars 66 --output /tmp/harmonium-accomp/mix-66
+```
+
+Rapport final : `/tmp/harmonium-accomp/rates/measurements.json` (20 seeds par
+profil et arousal 0/0,5/1, intervalles de cibles, ligne de basse, approches,
+ordres/montées/descentes/écarts et bornes), `peaks/peaks.json`,
+`mix-66/after/measurements.json`, `after/wav.json`. Clippy hors tests :
+**162 avertissements sur main, 162 après, aucun nouveau** (comparaison par
+fichier/code/message, journaux `clippy-{before,after}.jsonl` hors dépôt).
+`cargo fmt --all -- --check` réussi. SHA-256 D2 fixe toujours identique à
+celui consigné en V5b-1 ; aucune nouvelle instruction audio ni aucun
+`unwrap`/`expect` dans les nouveaux chemins de production.
+
+
+
+
+
+
 ## 6. Timbre du violon
 
 - **Constat** : attaques de 250–360 ms dans les 4 SF2 libres comparées,

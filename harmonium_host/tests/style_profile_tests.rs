@@ -18,17 +18,18 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
         profile.meter.default_swing_ratio = 0.5;
         profile.harmony.steps_per_chord *= 2;
         if let Some(a) = &mut profile.accompaniment {
-            a.bass_steps.iter_mut().for_each(|s| *s *= 2);
-            a.chop_steps.iter_mut().for_each(|s| *s *= 2);
+            for hit in &mut a.bass.hits {
+                hit.step *= 2;
+                hit.duration *= 2;
+            }
+            for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
+                hit.step *= 2;
+                hit.duration *= 2;
+            }
             a.strong_steps.iter_mut().for_each(|s| *s *= 2);
-            a.bass_duration_steps *= 2;
-            a.chop_duration_steps *= 2;
         }
         for hit in profile.percussion.patterns.iter_mut().flat_map(|p| &mut p.hits) {
             hit.step *= 2;
-        }
-        for step in profile.dynamics.chop_patterns.iter_mut().flatten() {
-            *step *= 2;
         }
         profile.arrangement = ReelArrangement::from_start(1, Part(profile.form.sequence[0]));
         profile.arrangement.intro = IntroConfig::none();

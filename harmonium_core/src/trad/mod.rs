@@ -1,6 +1,8 @@
 //! Génération traditionnelle : algorithmes génériques, données dans le profil actif.
 pub mod accomp;
+pub mod accomp_profile;
 pub mod arrangement;
+mod bass_passing;
 pub mod cells;
 pub mod dynamics;
 pub mod feet;
@@ -9,6 +11,7 @@ pub mod generator;
 pub mod harmony;
 pub mod mode;
 pub mod plan;
+mod strum;
 pub use accomp::{Guitarist, bass_bar};
 pub use arrangement::{
     ArrangementError, EntryPoint, IntroConfig, IntroForm, IntroInfo, IntroRole, MAX_TOURS, Part,

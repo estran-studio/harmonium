@@ -28,8 +28,8 @@ struct Capture {
 impl AudioRenderer for Capture {
     fn handle_event(&mut self, event: AudioEvent) {
         let note = match event {
-            AudioEvent::NoteOn { note, channel: 0, .. } => Some((true, note)),
-            AudioEvent::NoteOff { note, channel: 0 } => Some((false, note)),
+            AudioEvent::NoteOn { note, .. } => Some((true, note)),
+            AudioEvent::NoteOff { note, .. } => Some((false, note)),
             _ => None,
         };
         if let Some((on, pitch)) = note {
@@ -151,4 +151,71 @@ fn prepared_playhead_path_is_allocation_free_under_debug_allocator() {
     let finished = playhead.take_finished();
     exit_audio_context();
     assert!(finished.is_some());
+}
+
+#[test]
+fn prepared_strum_and_bass_walk_cross_the_bar_under_rt_allocator() {
+    let (mut tx, rx) = rtrb::RingBuffer::<TaggedMeasure>::new(16);
+    let (return_tx, _return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(64);
+    let (_commands, commands) = rtrb::RingBuffer::<PlaybackCommand>::new(16);
+    let (_live, live) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
+    let (reports, _reports) = rtrb::RingBuffer::new(128);
+    let recorded = Arc::new(std::array::from_fn(|_| AtomicU64::new(0)));
+    let initial = TransportClock::initial(8000);
+    let (clock_tx, _clock_rx) = triple_buffer::TripleBuffer::new(&initial).split();
+    for bar in 1..=3 {
+        let mut m = Measure::new(bar, TimeSignature::new(4, 4), 120.0, 16);
+        m.pulse = PulseSpec { steps_per_pulse: 4, pulses_per_bar: 4 };
+        if bar == 1 {
+            m.add_note(TrackId::Bass, note(1, 43, 15, 4, 0, 1000));
+            for (id, pitch, offset) in [(2, 48, 100), (3, 52, 150), (4, 55, 200)] {
+                m.add_note(TrackId::Chords, note(id, pitch, 15, 1, offset, 1000));
+            }
+        } else if bar == 2 {
+            for (id, pitch, offset) in [(5, 57, -150), (6, 60, -100), (7, 64, -50)] {
+                m.add_note(TrackId::Chords, note(id, pitch, 0, 1, offset, 1000));
+            }
+            m.add_note(TrackId::Bass, note(8, 43, 1, 4, 0, 1000));
+        }
+        m.prepare_playback();
+        assert!(tx.push(TaggedMeasure { epoch: 0, measure: Box::new(m) }).is_ok());
+    }
+    let mut engine = PlaybackEngine::new(
+        8000.0,
+        Box::new(Capture { frame: 0, index: 0, events: recorded.clone() }),
+        rx,
+        return_tx,
+        commands,
+        live,
+        reports,
+        Arc::new(AtomicU64::new(pack(1, 0))),
+        clock_tx,
+    );
+    let mut buffer = [0.0; 128];
+    // process_buffer est entièrement sous RtGuard depuis RT1.
+    for _ in 0..600 {
+        engine.process_buffer(&mut buffer, 2, Instant::now());
+    }
+    let log: Vec<_> = recorded
+        .iter()
+        .map(|e| e.load(Ordering::Relaxed))
+        .take_while(|&e| e != 0)
+        .map(|e| (e >> 8, e & 128 != 0, (e & 127) as u8))
+        .collect();
+    let on: Vec<_> = log.iter().filter(|e| e.1).map(|e| (e.0, e.2)).collect();
+    assert_eq!(
+        on,
+        [
+            (15000, 43),
+            (15100, 48),
+            (15150, 52),
+            (15200, 55),
+            (15850, 57),
+            (15900, 60),
+            (15950, 64),
+            (17000, 43)
+        ]
+    );
+    let bass_off: Vec<_> = log.iter().filter(|e| !e.1 && e.2 == 43).map(|e| e.0).collect();
+    assert_eq!(bass_off, [17000, 21000]); // L'ancienne fin à 19000 ne coupe pas le retrigger.
 }
