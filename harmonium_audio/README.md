@@ -51,6 +51,33 @@ L'export pur `timeline_to_midi(timeline, &profile.mix)` / `write_midi` reçoit
 explicitement le même mix et écrit ces CC avant les notes de chaque piste.
 Il retourne les erreurs d'encodage à l'appelant.
 
+### Isolation de la banque de pieds et du piano GM
+
+`SynthBackend::new` prépare la banque de pieds **avant** le démarrage audio :
+seuls les numéros de banques des en-têtes de presets SF2 (`pdta/phdr`) sont
+translatés de `FEET_BANK_OFFSET`. Samples, programmes et routage restent
+inchangés ; la banque préparée est chargée sans offset oxisynth. Les en-têtes
+tronqués et le dépassement de banque sont rejetés, sans saturation.
+
+Cause : oxisynth 0.1.0 soustrait ses offsets avec `saturating_sub` pendant la
+recherche des presets. La banque de pieds chargée en dernier, native 0 /
+programme 0 avec offset 1, répondait donc aussi à **banque 0 / programme 0** :
+le piano GM devenait un preset de pieds, souvent silencieux hors de leur
+tessiture. Des banques natives distinctes évitent ce masquage sans changer
+le callback, les événements ou les routes Heel/Toe (banque 1, canaux 3/4).
+Cette préparation concerne la banque dédiée du constructeur ; le traitement
+historique des événements génériques `LoadFont` n'est pas modifié.
+
+La préparation inclut l'en-tête terminal : la banque fournie le laisse sans
+nom `EOP`, et `soundfont` 0.1.0 l'importe aussi comme un preset vide. Le laisser
+en banque native 0 recréerait donc un piano silencieux malgré la translation
+du preset de pieds.
+
+Le contrat `gm_piano_is_not_masked_by_the_feet_font` charge deux vraies SF2
+de test, distingue leurs presets et vérifie que le PCM du programme 0 /
+banque 0 est identique à celui de la banque GM seule, tandis que Heel/Toe
+conservent le preset dédié en banque 1.
+
 ### `realtime`
 
 `RTCheckAllocator`: debug-build allocation tracker that panics on allocations and deallocations inside the audio callback. Contexts nest (`enter_audio_context` / `exit_audio_context` form a depth counter); `PlaybackEngine::process_buffer` holds one for the whole call.
