@@ -934,6 +934,36 @@ différentes.
 - **Vérifier** : écart entre cordes d'un même accord, part de notes de
   passage, aucune fausse note contre la mélodie aux temps forts.
 
+### Décisions V5b-0 — composition et déterminisme
+
+Lecture du code fusionné sur `main` `649c684` (V2, V3b et RT1) :
+
+- `Performance::apply` affecte `NotePerformance.offset` et tire encore par note.
+  Le grattage passe **après V2**, additionne ses décalages en millièmes de pas et
+  conserve la borne ±490 et le lecteur d'événements préparés existant. Aucun
+  calcul, tirage ni allocation ajouté au callback, intégralement gardé depuis RT1.
+- Les accords sont interprétés **par attaque** (`Chords`, `start_step`) : contexte
+  de l'attaque précédente, un jitter et une articulation pour toutes ses cordes ;
+  gate et respiration communs. La vélocité de chaque corde reste individuelle.
+  Ce changement entre avec le grattage, pas avec la migration neutre du schéma.
+- La graine d'air est déjà dérivée sans tirage du matériel mélodique par
+  `ornaments::tune_seed` (SplitMix64). L'accompagnement réutilise cette graine et
+  ce mélangeur, avec des domaines voix/mesure/attaque distincts dans ChaCha8Rng :
+  **pas de deuxième mécanisme ni de tirage sur le RNG séquentiel**. La graine
+  est calculée si les ornements ou l'accompagnement en ont besoin. Ainsi les
+  décisions de mélodie, intro, pieds et airs suivants restent inchangées.
+- V5b-1 remplace les champs plats et `dynamics.chop_patterns`, sans activer de
+  passage ni de grattage : version 16 et goldens inchangés. V5b-2 puis V5b-3
+  versionnent explicitement leurs changements de flux ; la référence historique
+  `profile_d2_fixed.json` conserve un accompagnement mécanique explicite.
+- Les valeurs musicales restent des hypothèses de départ de l'étude V5a, pas un
+  ADR d'écoute. V5b-5 (labo) et V5b-6 (écoute propriétaire) ne sont pas réalisés.
+
+Navigation LSP tentée puis serveur rechargé : rust-analyzer quitte avec code 0
+avant initialisation. Repli : inventaire exhaustif des consommateurs et
+compilation des crates ; aucune preuve LSP revendiquée.
+
+
 ## 6. Timbre du violon
 
 - **Constat** : attaques de 250–360 ms dans les 4 SF2 libres comparées,
