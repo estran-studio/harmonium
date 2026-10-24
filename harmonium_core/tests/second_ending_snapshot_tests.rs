@@ -12,6 +12,8 @@ use rand_chacha::ChaCha8Rng;
 fn stream(mut profile: StyleProfile, seed: u64, bars: usize, outro: bool) -> Vec<MeasureSnapshot> {
     // Une clôture de set peut remplacer la volta ; sa priorité est couverte séparément.
     profile.set = Default::default();
+    // La seconde voix varie à chaque passage ; ce contrat compare des mesures de reprise.
+    profile.heterophony = None;
     if let Some(a) = &mut profile.accompaniment {
         a.bass.passing = None;
         a.chords.strum = None;

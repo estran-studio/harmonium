@@ -11,7 +11,7 @@ use crate::params::{PlaybackParams, PulseSpec, TimeSignature};
 /// Lightweight snapshot of a note for score rendering (e.g., VexFlow).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NoteSnapshot {
-    /// Track: 0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe
+    /// Track: 0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe, 5=Countermelody
     pub track: u8,
     /// MIDI note number (0-127)
     pub pitch: u8,
@@ -137,7 +137,7 @@ pub struct NoteEvent {
     /// MIDI velocity (0-127)
     pub velocity: u8,
 
-    /// MIDI channel (0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe)
+    /// MIDI channel (0=Melody, 1=Chords, 2=Bass, 3=Heel, 4=Toe, 5=Countermelody)
     pub channel: u8,
 
     /// true = NoteOn, false = NoteOff

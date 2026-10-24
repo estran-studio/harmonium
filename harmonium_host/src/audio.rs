@@ -83,7 +83,7 @@ pub fn create_timeline_stream(
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     // Create renderer: every logical channel on SoundFont bank 0
-    let default_routing = vec![0; 5];
+    let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
     let inner_backend: Box<dyn AudioRenderer> =
         Box::new(SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing));
 
@@ -199,7 +199,7 @@ pub fn create_offline_engine(
 
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
-    let default_routing = vec![0; 5];
+    let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
     let inner_backend: Box<dyn AudioRenderer> =
         Box::new(SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing));
 

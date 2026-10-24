@@ -15,11 +15,11 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `[harmony]` | `model = "trad_functional"` ou `"jazz_functional"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; modes ionian, mixolydian, dorian, aeolian. Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
-| `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
+| `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
-| `[mix]` | Gain de bus, salle, niveaux/placement/envois des cinq pistes et EQ stéréo ; schéma et bornes ci-dessous. |
+| `[mix]` | Gain de bus, salle, niveaux/placement/envois par piste et EQ stéréo ; schéma et bornes ci-dessous. |
 | `[set]` (`set.toml`) | Longueur, tonalités, raccords, clôture, rampe par air et mémoire signature ; section « Forme longue (set) » ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
@@ -255,6 +255,103 @@ seules avec `measure_mix.py` avant de distribuer un profil qui adopte la recette
 
 
 
+
+## Hétérophonie
+
+`Countermelody` est une seconde lecture de `Melody`, canal logique/MIDI **5**,
+pas une nouvelle mélodie tirée. `TrackId::ALL` est la liste canonique des six pistes
+pour snapshots, audio, export, solo et commandes de transport ; les canaux 0..4 ne bougent pas.
+Le REPL agit sur le canal 5 avec `set gain 5 <gain>`, `set mute 5` / `set unmute 5`.
+`--solo-track Countermelody` isole cette voix sans changer les notes générées.
+
+**Valeur neutre : section `[heterophony]` absente**, donc aucune note secondaire,
+aucun tirage supplémentaire et flux des autres pistes identique à main V20.
+Une section explicite demande programme et entrée d'arrangement ; les champs
+sont obligatoires sauf les filtres de chaque règle. Valeur vivante prudente :
+entrée au deuxième tour, unisson dominant, rares notes simplifiées/ornées et
+niveau mesuré au moins 4 dB RMS sous le violon.
+
+```toml
+[instruments]
+melody_program = 40
+countermelody_program = 40
+percussion_bank = 128
+percussion_program = 0
+
+[heterophony]
+source = "Melody"
+octave = 0
+low = 55
+high = 88
+arousal_low = 0.5
+arousal_high = 1.5
+density_low = 0.7
+density_high = 1.3
+operations = [
+  { operation = "unison", weight = 80 },
+  { operation = "plain", weight = 8 },
+  { operation = "ornament", weight = 8, phrase_end = "never" },
+  { operation = "simplify", weight = 5, beats = ["weak"], phrase_end = "never" },
+  { operation = "octave", weight = 2 },
+  { operation = "third", weight = 3, phrase_end = "only" },
+  { operation = "sixth", weight = 2, phrase_end = "only" },
+  { operation = "rest", weight = 2, beats = ["weak"], bars = [2, 6] },
+]
+
+[mix.tracks.Countermelody]
+level_db = -12.0
+pan = -0.22
+reverb_send = 0.16
+
+[performance.tracks.Countermelody]
+jitter = 0.025
+phrase = [[0.0, 0.98], [0.7, 1.02], [1.0, 0.94]]
+breath = 0.08
+```
+
+Ajouter `Countermelody = { tour = 2, part = 0, pass = 1 }` à `[entries]` du
+fichier d'arrangement, ou `[arrangement.entries]` en inline. Les entrées sont
+réappliquées au premier air de chaque set, comme pour les autres pistes.
+Pas de doublure pendant une intro ; une clôture tenue peut être doublée.
+
+| Champ | Bornes et effet |
+|---|---|
+| `source` | `Melody` seulement ; pas de suivi cyclique ou harmonisation de basse. |
+| `octave` | −2..2, décalage de base en octaves ; repli par octaves dans la tessiture. |
+| `low`, `high` | MIDI 0..127, fenêtre ordonnée couvrant au moins une octave ; les ornements V3b respectent la même fenêtre. |
+| `arousal_low/high`, `density_low/high` | Finis 0..4, non décroissants ; facteur linéaire de chaque axe brut, produit borné à 16 sur les poids autres qu'unisson. L'unisson garde son poids fixe. |
+| `operations` | 1..64 règles, somme des poids positive dans u32 ; unisson inconditionnel de poids positif obligatoire. |
+| `operation` | `unison`, `plain`, `ornament`, `simplify`, `octave`, `third`, `sixth`, `rest`. |
+| `weight` | Poids relatif parmi les règles dont tous les filtres sont vrais, pas un pourcentage de modifications garanties. |
+| `beats` | `strong` / `weak` selon la pulse du profil ; vide = tous. |
+| `phrase_end` | `any`, `never`, `only` : dernière mesure de la phrase déclarée dans le profil. |
+| `bars` | Positions 1-based 1..64 dans la partie ; vide = toutes. |
+
+`unison` conserve la porteuse et réutilise les règles V3b avec le domaine de graine
+commun ; `plain` explicite l'abstention d'ornement. `ornament` utilise ces **mêmes
+règles V3b**, mais une graine de matériel dérivée distincte pour sa porteuse.
+Les changements du matériel voisin et d'éligibilité peuvent modifier le tirage
+d'unisson : seule une mesure identique conserve exactement son choix d'agrément.
+Un tirage peut s'abstenir (durée, contexte, taux) ; pas de second moteur d'ornements.
+`simplify` tient la note jusqu'à la prochaine pulse/changement d'accord en omettant
+le trait intermédiaire, hors cadence. `octave` propose +12 demi-tons.
+`third` / `sixth` montent de deux/cinq degrés du mode actif, en cadence seulement
+et sur un son de l'accord présent ; la **dernière porteuse de phrase reste commune**.
+`rest` omet une attaque faible seulement. Une opération impossible laisse l'unisson.
+
+Variations avant dynamique et interprétation V2 ; ornements après V2 ; veto final
+contre toute seconde mineure/majeure (y compris composée) avec la mélodie
+autour des temps forts, tenues et notes ajoutées comprises : la voix secondaire
+s'abstient, jamais de modification de l'harmonie ou de la mélodie principale.
+Le timing vient uniquement de `[performance.tracks.Countermelody]`, appliqué sur
+le chemin V2 existant. Tous les choix sont faits avant publication sur le principal ;
+aucune allocation ni RNG ajouté au callback.
+
+Les poids distribués sont des propositions d'arrangement à écouter, **pas des taux
+d'hétérophonie mesurés dans le corpus monodique ABC**. Reels québécois/acadien et gigue
+québécoise : second violon ; valse : accordéon de veillée moderne (anachronisme explicite
+pour 1837) ; marche : second fifre ; gigue/hornpipe britanniques : pas de seconde voix,
+faute de source d'ensemble suffisante. Provenance et réserves dans chaque README.
 
 ## Mixage
 

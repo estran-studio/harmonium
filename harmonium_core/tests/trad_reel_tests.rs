@@ -23,6 +23,7 @@ fn flat_tuning() -> TuningParams {
             p.arrangement = ReelArrangement::from_start(1, Default::default());
             p.performance = Default::default();
             p.ornaments = Default::default();
+            p.heterophony = None;
             // Les contrats de set ont leur propre flux avec raccords et clôture.
             p.set = Default::default();
             p.accompaniment.as_mut().unwrap().bass.passing = None;

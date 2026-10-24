@@ -33,15 +33,10 @@ const GM_HIHAT: u8 = 42;
 
 /// Convert a ScoreTimeline to a Standard MIDI File byte vector.
 ///
-/// Produces a Type 1 MIDI file with 5 tracks:
-/// - Track 0: Tempo/time signature meta events
-/// - Track 1: Melody (MIDI channel 0)
-/// - Track 2: Chords (MIDI channel 1)
-/// - Track 3: Bass (MIDI channel 2)
-/// - Track 4: Drums (MIDI channel 9, heel + toe combined)
+/// Produces parallel tracks from the canonical track list, plus a tempo map.
 pub fn timeline_to_midi(
     timeline: &ScoreTimeline,
-    mix: &crate::mix::ProfileMix,
+    profile: &crate::StyleProfile,
 ) -> std::io::Result<Vec<u8>> {
     let measures = timeline.measures();
     if measures.is_empty() {
@@ -54,35 +49,23 @@ pub fn timeline_to_midi(
     // Track 0: tempo map + time signatures
     smf.tracks.push(build_tempo_track(measures));
 
-    // Track 1: Melody (channel 0)
-    smf.tracks.push(build_instrument_track(
-        measures,
-        TrackId::Melody,
-        TrackId::Melody.channel(),
-        "Melody",
-        mix.tracks.melody.midi(),
-    ));
-
-    // Track 2: Chords (channel 1)
-    smf.tracks.push(build_instrument_track(
-        measures,
-        TrackId::Chords,
-        TrackId::Chords.channel(),
-        "Chords",
-        mix.tracks.chords.midi(),
-    ));
-
-    // Track 3: Bass (channel 2)
-    smf.tracks.push(build_instrument_track(
-        measures,
-        TrackId::Bass,
-        TrackId::Bass.channel(),
-        "Bass",
-        mix.tracks.bass.midi(),
-    ));
-
-    // Track 4: Drums (channel 9, combining heel + toe)
-    smf.tracks.push(build_drum_track(measures, mix.tracks.toe.midi()));
+    for track in TrackId::ALL {
+        if track == TrackId::Heel {
+            smf.tracks.push(build_drum_track(measures, profile.mix.tracks.toe.midi()));
+            continue;
+        }
+        if track == TrackId::Toe {
+            continue;
+        }
+        smf.tracks.push(build_instrument_track(
+            measures,
+            track,
+            track.channel(),
+            track.name(),
+            profile.mix.tracks.get(track).midi(),
+            profile.instruments.program(track),
+        ));
+    }
 
     let mut buf = Vec::new();
     smf.write_std(&mut buf)?;
@@ -92,10 +75,10 @@ pub fn timeline_to_midi(
 /// Write a ScoreTimeline to a MIDI file.
 pub fn write_midi(
     timeline: &ScoreTimeline,
-    mix: &crate::mix::ProfileMix,
+    profile: &crate::StyleProfile,
     path: &Path,
 ) -> std::io::Result<()> {
-    let bytes = timeline_to_midi(timeline, mix)?;
+    let bytes = timeline_to_midi(timeline, profile)?;
     std::fs::write(path, bytes)
 }
 
@@ -194,6 +177,7 @@ fn build_instrument_track(
     channel: u8,
     name: &'static str,
     mix: crate::mix::MidiTrackMix,
+    program: Option<u8>,
 ) -> Vec<TrackEvent<'static>> {
     let mut events: Vec<(u32, TrackEventKind<'static>)> = Vec::new();
 
@@ -242,6 +226,15 @@ fn build_instrument_track(
         kind: TrackEventKind::Meta(MetaMessage::TrackName(name.as_bytes())),
     });
     track.extend(mix_events(channel, mix));
+    if let Some(program) = program {
+        track.push(TrackEvent {
+            delta: 0.into(),
+            kind: TrackEventKind::Midi {
+                channel: channel.into(),
+                message: MidiMessage::ProgramChange { program: program.into() },
+            },
+        });
+    }
 
     let mut prev_tick: u32 = 0;
     for (tick, kind) in events {
@@ -513,7 +506,7 @@ mod tests {
     #[test]
     fn test_empty_timeline_produces_valid_midi() {
         let timeline = ScoreTimeline::new(10);
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         assert!(!bytes.is_empty());
         // Should start with MIDI header "MThd"
         assert_eq!(&bytes[0..4], b"MThd");
@@ -522,13 +515,10 @@ mod tests {
     #[test]
     fn test_single_measure_roundtrip() {
         let timeline = make_test_timeline();
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
 
         // Parse it back
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
-
-        // Should have 5 tracks: tempo + melody + chords + bass + drums
-        assert_eq!(smf.tracks.len(), 5);
 
         // Verify header
         assert_eq!(smf.header.format, Format::Parallel);
@@ -538,7 +528,7 @@ mod tests {
     #[test]
     fn test_note_counts() {
         let timeline = make_test_timeline();
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // Count NoteOn events per track (excluding track 0 which is tempo)
@@ -567,7 +557,7 @@ mod tests {
     #[test]
     fn test_tempo_meta_event() {
         let timeline = make_test_timeline();
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // Track 0 should have a tempo event for 120 BPM = 500000 μs/quarter
@@ -583,7 +573,7 @@ mod tests {
     #[test]
     fn test_time_signature_meta_event() {
         let timeline = make_test_timeline();
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // Track 0 should have 4/4 time signature
@@ -596,7 +586,7 @@ mod tests {
     #[test]
     fn test_drum_channel() {
         let timeline = make_test_timeline();
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // All MIDI events in drum track should be on channel 9
@@ -628,7 +618,7 @@ mod tests {
             timeline.push_measure(measure);
         }
 
-        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin().mix).unwrap();
+        let bytes = timeline_to_midi(&timeline, &crate::StyleProfile::builtin()).unwrap();
         let smf = Smf::parse(&bytes).expect("generated MIDI should parse");
 
         // 4 notes across 4 measures
@@ -648,14 +638,15 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test_output.mid");
 
-        write_midi(&timeline, &crate::StyleProfile::builtin().mix, &path)
+        write_midi(&timeline, &crate::StyleProfile::builtin(), &path)
             .expect("should write MIDI file");
         assert!(path.exists());
 
         // Read back and verify
         let bytes = std::fs::read(&path).unwrap();
         let smf = Smf::parse(&bytes).expect("written file should parse");
-        assert_eq!(smf.tracks.len(), 5);
+        // Tempo, une piste par logique, pieds regroupés en une seule percussion.
+        assert_eq!(smf.tracks.len(), TrackId::ALL.len());
 
         // Cleanup
         std::fs::remove_dir_all(&dir).ok();

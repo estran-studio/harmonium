@@ -9,9 +9,8 @@ use crate::{
     },
 };
 
-/// Version du contrat : sets complets (V7c) — raccords, clôture, rampe par air
-/// et retour du matériel signature des sets précédents.
-pub const TUNING_VERSION: u32 = 20;
+/// Version du contrat : seconde voix mélodique hétérophonique (V4).
+pub const TUNING_VERSION: u32 = 21;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -22,6 +22,7 @@ fn flat_tuning() -> TuningParams {
             p.arrangement = ReelArrangement::from_start(1, Default::default());
             p.performance = Default::default();
             p.ornaments = Default::default();
+            p.heterophony = None;
             // La forme et l'accompagnement sont testés sans raccord ni clôture de set.
             p.set = Default::default();
             let a = p.accompaniment.as_mut().unwrap();

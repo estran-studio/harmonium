@@ -98,7 +98,7 @@ pub struct Playhead {
     candidates: Vec<PreparedEvent>,
     events: Vec<StepEvent>,
     pending: Vec<Spill>,
-    active: [[Option<u64>; 128]; 5],
+    active: [[Option<u64>; 128]; TrackId::ALL.len()],
     anticipated_bar: Option<usize>,
     clamp_opening: bool,
 }
@@ -125,7 +125,7 @@ impl Playhead {
             candidates: Vec::with_capacity(EVENT_CAP),
             events: Vec::with_capacity(EVENT_CAP),
             pending: Vec::with_capacity(EVENT_CAP),
-            active: [[None; 128]; 5],
+            active: [[None; 128]; TrackId::ALL.len()],
             anticipated_bar: None,
             clamp_opening: true,
         }
@@ -282,7 +282,7 @@ impl Playhead {
         self.position = MusicalPosition::new(bar, 1, 0);
         self.pending.clear();
         self.events.clear();
-        self.active = [[None; 128]; 5];
+        self.active = [[None; 128]; TrackId::ALL.len()];
         self.anticipated_bar = None;
         self.clamp_opening = true;
     }

@@ -100,13 +100,14 @@ impl Candidate<'_> {
 pub(super) fn apply(
     rules: &Ornaments,
     measure: &mut Measure,
+    track: TrackId,
     ctx: &BarContext,
     written: &[usize],
     next_id: &mut dyn FnMut() -> NoteId,
 ) -> bool {
     let steps = measure.steps;
     let steps_per_eighth = measure.steps_per_quarter() as f32 / 2.0;
-    let Some(slot) = measure.tracks.get_mut(&TrackId::Melody) else { return false };
+    let Some(slot) = measure.tracks.get_mut(&track) else { return false };
     if slot.is_empty() || steps == 0 {
         return false;
     }
@@ -203,6 +204,7 @@ pub(super) fn apply(
             && coverage > 0.0
             && (note.start_step as f32 / steps as f32) < coverage
             && c.permits(&note, note.duration_steps, prev, ctx)
+            && written.get(i).is_none_or(|duration| *duration > 0)
         {
             chosen = Some(c);
         } else {
@@ -221,7 +223,12 @@ pub(super) fn apply(
                 .map(|(c, p)| (c, *p))
                 .collect();
             if !applicable.is_empty() {
-                let mut r = ChaCha8Rng::seed_from_u64(bar_seed);
+                let seed = if ctx.independent_steps.contains(&note.start_step) {
+                    mix(bar_seed, 0x4845_544F)
+                } else {
+                    bar_seed
+                };
+                let mut r = ChaCha8Rng::seed_from_u64(seed);
                 r.set_stream(note.start_step as u64);
                 let u = r.next_f32();
                 let mut cumulative = 0.0;
@@ -253,7 +260,7 @@ pub(super) fn apply(
         // À temps égal, la note écrite précède la note ajoutée (identifiants croissants).
         out.sort_by_key(|n| (onset(n), n.id));
     }
-    if let Some(slot) = measure.tracks.get_mut(&TrackId::Melody) {
+    if let Some(slot) = measure.tracks.get_mut(&track) {
         *slot = out;
     }
     changed

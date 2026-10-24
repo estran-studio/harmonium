@@ -582,8 +582,9 @@ impl PlaybackEngine {
         // Check loop region
         if let Some((start_bar, end_bar)) = self.loop_region {
             if self.playhead.current_bar() > end_bar {
-                for ch in 0..5u8 {
-                    self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
+                for track in harmonium_core::timeline::TrackId::ALL {
+                    self.renderer
+                        .handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
                 }
                 {
                     let _rt = RtGuard::enter();
@@ -1114,8 +1115,9 @@ impl PlaybackEngine {
                 PlaybackCommand::SetOutputMute(muted) => {
                     self.output_muted = muted;
                     if muted {
-                        for ch in 0..5u8 {
-                            self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
+                        for track in harmonium_core::timeline::TrackId::ALL {
+                            self.renderer
+                                .handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
                         }
                     }
                 }
@@ -1124,8 +1126,9 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::Seek(bar) => {
                     let target_bar = bar.max(1);
-                    for ch in 0..5u8 {
-                        self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
+                    for track in harmonium_core::timeline::TrackId::ALL {
+                        self.renderer
+                            .handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
                     }
                     {
                         let _rt = RtGuard::enter();
@@ -1141,8 +1144,9 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
-                    for ch in 0..5u8 {
-                        self.renderer.handle_event(AudioEvent::AllNotesOff { channel: ch });
+                    for track in harmonium_core::timeline::TrackId::ALL {
+                        self.renderer
+                            .handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
                     }
                     {
                         let _rt = RtGuard::enter();

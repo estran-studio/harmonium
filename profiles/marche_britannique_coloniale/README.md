@@ -163,3 +163,15 @@ Le triolet est donné en durée totale remplacée (le labo donne la première no
 décompte de tambour de `[intro]` (rôle `percussion`, 1 mesure), comme avant V7b (`intro_each_tune`). Aucun facteur de
 tonalité (pas de logique d'enchaînement mesurable : aucun set britannique n'existe en accès libre). Schéma :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+Deuxième fifre (timbre GM 72), tour 2, −14 dB, pan +0,18. Unisson très majoritaire,
+ornements indépendants rares ; la tierce de cadence est une possibilité de l'arrangement,
+non une fréquence historique démontrée. Tessiture 62..96 MIDI, même tonique et fins
+de phrase que le premier fifre.
+[City of Alexandria, Fife and Drum Corps](https://www.alexandriava.gov/museums/fife-and-drum-corps)
+documente le couple fifre/tambour par compagnie : doubler le fifre représente
+le rassemblement des compagnies, pas un deuxième musicien obligé dans chaque compagnie.
+Neutre : section absente. [Schéma commun](../README.md#hétérophonie).
+

@@ -34,19 +34,20 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 /// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
 pub const FEET_BANK_OFFSET: u32 = 1;
 
-/// Programmes des trois pistes mélodiques, résolus depuis le profil
+/// Programmes des pistes à hauteur définie, résolus depuis la liste canonique.
 /// (sur la pile : utilisable dans le callback sans allouer).
 #[must_use]
 pub fn gm_programs_for_profile(
     instruments: &harmonium_core::style_profile::ProfileInstruments,
-) -> arrayvec::ArrayVec<(u8, u8), 3> {
+) -> arrayvec::ArrayVec<(u8, u8), { harmonium_core::timeline::TrackId::ALL.len() }> {
+    use harmonium_core::timeline::TrackId;
     let mut progs = arrayvec::ArrayVec::new();
-    progs.push((0, instruments.melody_program));
-    if let Some(chords) = instruments.chords_program {
-        progs.push((1, chords));
-    }
-    if let Some(bass) = instruments.bass_program {
-        progs.push((2, bass));
+    for track in TrackId::ALL {
+        if !matches!(track, TrackId::Heel | TrackId::Toe)
+            && let Some(program) = instruments.program(track)
+        {
+            progs.push((track.channel(), program));
+        }
     }
     progs
 }
@@ -292,14 +293,8 @@ impl VoiceManager {
         &mut self,
         instruments: &harmonium_core::style_profile::ProfileInstruments,
     ) {
-        for (channel, program) in [
-            (0, Some(instruments.melody_program)),
-            (1, instruments.chords_program),
-            (2, instruments.bass_program),
-        ] {
-            if let Some(program) = program {
-                self.set_channel_program(channel, program);
-            }
+        for (channel, program) in gm_programs_for_profile(instruments) {
+            self.set_channel_program(usize::from(channel), program);
         }
         let bank = self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
         for channel in [3, 4] {

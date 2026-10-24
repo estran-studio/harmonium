@@ -197,6 +197,7 @@ steps_per_chord = 16
 
 [instruments]
 melody_program = 72
+countermelody_program = 72
 percussion_bank = 128
 percussion_program = 0
 
@@ -322,3 +323,30 @@ rate_scale = 4.0
 written_per_100_notes = 0.246792
 min_carrier_eighths = 2.0
 velocity_scale = 0.8
+
+[mix.tracks.Countermelody]
+level_db = -14.0
+pan = 0.18
+reverb_send = 0.04
+
+[performance.tracks.Countermelody]
+jitter = 0.015
+phrase = [[0.0, 1.0], [1.0, 0.98]]
+breath = 0.05
+
+[heterophony]
+source = "Melody"
+octave = 0
+low = 62
+high = 96
+arousal_low = 0.5
+arousal_high = 1.2
+density_low = 0.8
+density_high = 1.2
+operations = [
+  { operation = "unison", weight = 92 },
+  { operation = "ornament", weight = 3, phrase_end = "never" },
+  { operation = "plain", weight = 5 },
+  { operation = "simplify", weight = 2, phrase_end = "never" },
+  { operation = "third", weight = 6, phrase_end = "only" },
+]

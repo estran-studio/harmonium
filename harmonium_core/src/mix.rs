@@ -53,10 +53,24 @@ pub struct MixTracks {
     pub heel: TrackMix,
     #[serde(rename = "Toe")]
     pub toe: TrackMix,
+    #[serde(rename = "Countermelody", default)]
+    pub countermelody: TrackMix,
 }
 impl MixTracks {
-    pub const fn all(self) -> [TrackMix; 5] {
-        [self.melody, self.chords, self.bass, self.heel, self.toe]
+    pub fn all(self) -> [TrackMix; crate::timeline::TrackId::ALL.len()] {
+        crate::timeline::TrackId::ALL.map(|track| self.get(track))
+    }
+
+    pub const fn get(self, track: crate::timeline::TrackId) -> TrackMix {
+        use crate::timeline::TrackId;
+        match track {
+            TrackId::Melody => self.melody,
+            TrackId::Chords => self.chords,
+            TrackId::Bass => self.bass,
+            TrackId::Heel => self.heel,
+            TrackId::Toe => self.toe,
+            TrackId::Countermelody => self.countermelody,
+        }
     }
 }
 
@@ -88,7 +102,7 @@ pub struct ProfileMix {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PreparedMix {
     pub room: MixRoom,
-    pub tracks: [MidiTrackMix; 5],
+    pub tracks: [MidiTrackMix; crate::timeline::TrackId::ALL.len()],
     /// [b0, b1, b2, a1, a2], normalisés par a0.
     pub eq: [[f32; 5]; 2],
     pub master_gain: f32,
@@ -131,9 +145,8 @@ impl ProfileMix {
         ] {
             range(&format!("mix.room.{name}"), value, 0.0, 1.0)?;
         }
-        for (name, track) in
-            ["Melody", "Chords", "Bass", "Heel", "Toe"].into_iter().zip(self.tracks.all())
-        {
+        for (id, track) in crate::timeline::TrackId::ALL.into_iter().zip(self.tracks.all()) {
+            let name = id.name();
             if !track.level_db.is_finite() || track.level_db > 0.0 {
                 return Err(ProfileError {
                     field: format!("mix.tracks.{name}.level_db"),

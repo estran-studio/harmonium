@@ -257,11 +257,16 @@ mod tests {
     /// interprétation neutralisés, rôles historiques).
     #[test]
     fn profile_d2_main_note_reference() -> Result<()> {
-        profile_note_reference(false)?;
-        profile_note_reference(true)
+        profile_note_reference(false, false)?;
+        profile_note_reference(true, false)
     }
 
-    fn profile_note_reference(fixed_roles: bool) -> Result<()> {
+    #[test]
+    fn profile_without_heterophony_keeps_main_v20_notes() -> Result<()> {
+        profile_note_reference(false, true)
+    }
+
+    fn profile_note_reference(fixed_roles: bool, without_heterophony: bool) -> Result<()> {
         let automation = Automation::from_toml(include_str!("../../demos/automation_combat.toml"))?;
         let mut runs = Vec::new();
         let mut count = 0;
@@ -278,11 +283,17 @@ mod tests {
                     Default::default(),
                     seed,
                 );
+                if without_heterophony {
+                    let mut tuning = harmonium_core::TuningParams::default();
+                    tuning.profile.heterophony = None;
+                    composer.set_tuning(tuning);
+                }
 
                 if fixed_roles {
                     use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                     let mut tuning = harmonium_core::TuningParams::default();
                     tuning.profile.performance = Default::default();
+                    tuning.profile.heterophony = None;
                     if let Some(a) = &mut tuning.profile.accompaniment {
                         a.bass.passing = None;
                         a.chords.strings = 3;
@@ -335,8 +346,19 @@ mod tests {
                 }));
             }
         }
+        if without_heterophony {
+            // FNV-1a du champ `runs` de main 20b50c4, 5 seeds × neutre/combat × 100 mesures.
+            let hash = serde_json::to_vec(&runs)?.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+                (h ^ u64::from(*b)).wrapping_mul(0x100_0000_01b3)
+            });
+            assert_eq!(
+                hash, 0xfe50_4ad0_6fcd_cbc9,
+                "sans heterophony : notes différentes de main V20"
+            );
+            return Ok(());
+        }
         let actual = serde_json::json!({
-            "source": if fixed_roles { format!("TUNING_VERSION:{}:fixed_roles", harmonium_core::tuning::TUNING_VERSION) } else { format!("TUNING_VERSION:{}", harmonium_core::tuning::TUNING_VERSION) },
+            "source": if fixed_roles { "TUNING_VERSION:20:fixed_roles".to_string() } else { format!("TUNING_VERSION:{}", harmonium_core::tuning::TUNING_VERSION) },
             "runs": runs
         });
         let filename = if fixed_roles { "profile_d2_fixed.json" } else { "profile_d2_main.json" };

@@ -124,3 +124,16 @@ de chaque set seulement. Rapports observé / indépendance *reel → reel* de Th
 
 `last_dark` 0,80 : le dernier air d'un set finit plus souvent en majeur (28,9 % de modes mineurs contre 36,2 % aux deux premiers airs de 19 771 sets de 3 reels). Valeurs de répertoire, pas de la pratique du style : à régler à l'écoute. Schéma et effet à l'oreille :
 [profiles/README.md](../README.md#forme-longue-set).
+
+## Hétérophonie V4
+
+Deuxième violon GM 40, entrée au tour 2 du premier air de chaque set, −12 dB,
+pan −0,22. L'unisson domine ; tenues à la place de traits et ornements V3b
+indépendants aèrent la reprise. La dernière porteuse de chaque phrase reste commune.
+Choix prudent pour ne pas attribuer l'accordéon au Québec de 1837 :
+[Lisa Ornstein, CJTM 1982](https://cjtm.icaap.org/content/10/v10art2.html)
+décrit une tradition principalement violonistique avant la fin du XIXe siècle et
+date l'arrivée du bouton/accordéon de cette période tardive. Le duo de violons
+et les poids de variation sont une proposition d'arrangement, pas des fréquences historiques mesurées.
+Neutre : retirer `[heterophony]`. Schéma : [Hétérophonie](../README.md#hétérophonie).
+
