@@ -115,13 +115,16 @@ def db(value: float) -> float:
 
 
 def export(binary: Path, profile_dir: Path, wav: Path, args: argparse.Namespace,
-           bars: int, automation: Path | None = None, seed: int | None = None) -> None:
+           bars: int, automation: Path | None = None, seed: int | None = None,
+           truth: Path | None = None) -> None:
     seed = args.seed if seed is None else seed
     cmd = [str(binary), "--export", "--profile", str(profile_dir), "--seed", str(seed),
            "--bars", str(bars), "--tours", "2", "--soundfont", str(args.soundfont),
            "--feet-soundfont", str(args.feet_soundfont), "--record-wav", str(wav)]
     if automation is not None:
         cmd += ["--automation", str(automation)]
+    if truth is not None:
+        cmd += ["--record-truth", str(truth)]
     subprocess.run(cmd, check=True, capture_output=True, timeout=900)
 
 
@@ -226,6 +229,137 @@ def build_progression(args: argparse.Namespace, tmp: Path) -> list[dict]:
     return report
 
 
+COMPARATOR_PROFILES = ("reel_quebecois", "valse_quebecoise", "gigue_quebecoise")
+LAYER_LABELS = {
+    "mixage": "Mixage (salle, placement, niveaux)",
+    "interpretation": "Interprétation (décalages, liaisons, nuances)",
+    "ornements": "Ornements",
+    "accompagnement": "Accompagnement (basse qui marche, accords grattés)",
+    "deuxieme_voix": "2ᵉ voix",
+}
+
+
+def build_comparator(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Une boucle par combinaison de couches (2⁵), toutes alignées à l'échantillon près.
+
+    Les décalages d'interprétation ne déplacent pas les barres (grille publiée) : la même fenêtre de
+    mesures, découpée aux `bar_start_frames` de la vérité, est donc alignée dans toutes les versions.
+    La page HTML les joue en même temps et n'entend qu'une combinaison : on bascule sans perdre le fil.
+    """
+    out = args.output / "comparateur"
+    out.mkdir(parents=True, exist_ok=True)
+    report, index = [], {"layers": [{"id": layer, "label": LAYER_LABELS[layer]} for layer in PROGRESSION],
+                         "profiles": []}
+    for profile in COMPARATOR_PROFILES:
+        source = ROOT / "profiles" / profile
+        text = (source / "profile.toml").read_text(encoding="utf-8")
+        renders = {}
+        for mask in range(1 << len(PROGRESSION)):
+            removed = tuple(p for bit, layer in enumerate(PROGRESSION) if not mask >> bit & 1
+                            for p in LAYERS[layer])
+            variant = tmp / "comparateur" / profile / str(mask)
+            shutil.copytree(source, variant)
+            (variant / "profile.toml").write_text(strip_sections(text, removed), encoding="utf-8")
+            wav, truth = tmp / f"cmp-{profile}-{mask}.wav", tmp / f"cmp-{profile}-{mask}.json"
+            export(args.binary, variant, wav, args, args.bars, truth=truth)
+            renders[mask] = (read_wav(wav), json.loads(truth.read_text(encoding="utf-8")))
+        full = len(renders) - 1
+        (_, rate), truth_full = renders[full]
+        # Fenêtre : à partir de la première mesure où la 2ᵉ voix joue (toutes les couches audibles).
+        second_voice = [m["bar"] for m in truth_full["measures"]
+                        if any(n["track"] == 5 for n in m["measure"]["notes"])]
+        first = min(second_voice) if second_voice else 1
+        starts = truth_full["bar_start_frames"]
+        window = (starts[str(first)], starts[str(first + args.loop_bars)])
+        files = {}
+        for mask, ((samples, _), truth) in renders.items():
+            if (truth["bar_start_frames"][str(first)], truth["bar_start_frames"][str(first + args.loop_bars)]) != window:
+                raise SystemExit(f"{profile}/{mask} : barres décalées, boucles non alignées")
+            loop = samples[window[0]:window[1]]
+            gain = 10.0 ** ((-20.0 - db(float(np.sqrt(np.mean(loop ** 2))))) / 20.0)
+            name = f"{profile}-{mask:02d}.wav"
+            write_wav16(out / name, loop * gain, rate)
+            files[str(mask)] = name
+        index["profiles"].append({"id": profile, "bars": [first, first + args.loop_bars - 1],
+                                  "seconds": round((window[1] - window[0]) / rate, 2), "files": files})
+        report.append({"kit": "comparateur", "profile": profile, "bars": [first, first + args.loop_bars - 1],
+                       "seconds": round((window[1] - window[0]) / rate, 2), "versions": len(files)})
+    (out / "index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (out / "comparateur.html").write_text(COMPARATOR_HTML, encoding="utf-8")
+    return report
+
+
+COMPARATOR_HTML = """<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Harmonium — comparateur de couches</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:720px;margin:2em auto;padding:0 1em;line-height:1.5}
+button{font-size:1.1em;padding:.4em 1.2em;margin-right:.5em}
+label{display:block;font-size:1.15em;margin:.35em 0;cursor:pointer}
+input[type=checkbox]{transform:scale(1.4);margin-right:.6em}
+#etat{color:#666;margin-top:1em}
+</style></head><body>
+<h1>Comparateur de couches</h1>
+<p>La même boucle tourne en continu. Coche ou décoche une couche : le changement est immédiat, au même
+moment de la musique. Toutes les versions ont le même volume moyen.</p>
+<p><label for="profil" style="display:inline">Air : </label><select id="profil"></select></p>
+<div id="couches"></div>
+<p><button id="jouer">▶ Jouer</button><button id="arreter">■ Arrêter</button>
+<button id="tout">Tout</button><button id="rien">Rien</button></p>
+<div id="etat">Chargement…</div>
+<script>
+const ctx = new AudioContext();
+let index, voices = [], playing = false, startAt = 0;
+const etat = document.getElementById('etat');
+function mask() {
+  return index.layers.reduce((m, l, i) => m | (document.getElementById(l.id).checked ? 1 << i : 0), 0);
+}
+function applyMask() {
+  const m = mask(), t = ctx.currentTime;
+  voices.forEach((v, i) => { v.gain.gain.cancelScheduledValues(t);
+    v.gain.gain.setTargetAtTime(i === m ? 1 : 0, t, 0.015); });
+  etat.textContent = playing ? 'Version ' + m + ' — ' + index.layers.filter((l, i) => m >> i & 1)
+    .map(l => l.label.split(' (')[0]).join(' + ') : etat.textContent;
+}
+async function load(profileId) {
+  stop();
+  const p = index.profiles.find(x => x.id === profileId);
+  etat.textContent = 'Chargement de ' + profileId + '… (32 versions)';
+  const buffers = await Promise.all(Object.keys(p.files).sort((a, b) => a - b).map(async k =>
+    ctx.decodeAudioData(await (await fetch(p.files[k])).arrayBuffer())));
+  voices = buffers.map(b => ({buffer: b, gain: ctx.createGain(), src: null}));
+  voices.forEach(v => { v.gain.gain.value = 0; v.gain.connect(ctx.destination); });
+  etat.textContent = 'Prêt : mesures ' + p.bars[0] + ' à ' + p.bars[1] + ' (' + p.seconds + ' s en boucle).';
+}
+function play() {
+  if (playing || !voices.length) return;
+  ctx.resume(); startAt = ctx.currentTime + 0.1;
+  voices.forEach(v => { v.src = ctx.createBufferSource(); v.src.buffer = v.buffer; v.src.loop = true;
+    v.src.connect(v.gain); v.src.start(startAt); });
+  playing = true; applyMask();
+}
+function stop() {
+  voices.forEach(v => { if (v.src) { v.src.stop(); v.src.disconnect(); v.src = null; } });
+  playing = false;
+}
+(async () => {
+  index = await (await fetch('index.json')).json();
+  const box = document.getElementById('couches');
+  index.layers.forEach(l => { const lab = document.createElement('label');
+    lab.innerHTML = '<input type="checkbox" id="' + l.id + '" checked>' + l.label; box.appendChild(lab);
+    lab.querySelector('input').addEventListener('change', applyMask); });
+  const sel = document.getElementById('profil');
+  index.profiles.forEach(p => sel.add(new Option(p.id.replace('_', ' '), p.id)));
+  sel.addEventListener('change', () => load(sel.value));
+  document.getElementById('jouer').onclick = play;
+  document.getElementById('arreter').onclick = stop;
+  document.getElementById('tout').onclick = () => { index.layers.forEach(l => document.getElementById(l.id).checked = true); applyMask(); };
+  document.getElementById('rien').onclick = () => { index.layers.forEach(l => document.getElementById(l.id).checked = false); applyMask(); };
+  await load(sel.value);
+})();
+</script></body></html>
+"""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/harmonium-cli")
@@ -237,11 +371,16 @@ def main() -> int:
                         help="nombre de seeds essayées par kit (on garde la plus audible)")
     parser.add_argument("--bars", type=int, default=66)
     parser.add_argument("--set-bars", type=int, default=300)
+    parser.add_argument("--loop-bars", type=int, default=16, help="longueur de la boucle du comparateur")
+    parser.add_argument("--kits", default="ab,progression,comparateur,sets",
+                        help="kits à produire, séparés par des virgules")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="harmonium-kits-") as name:
         tmp = Path(name)
-        report = build_ab_kits(args, tmp) + build_progression(args, tmp) + build_sets(args, tmp)
+        builders = {"ab": build_ab_kits, "progression": build_progression,
+                    "comparateur": build_comparator, "sets": build_sets}
+        report = [row for kit in args.kits.split(",") for row in builders[kit](args, tmp)]
     (args.output / "kits.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                                            encoding="utf-8")
     for row in report:
