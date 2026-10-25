@@ -1728,3 +1728,21 @@ snapshots change pour ces deux profils à graine égale (MIDI différent aux gra
 - Côté propriétaire : déposer les enregistrements dans
   `harmonium_lab/samples/feet/own/{heel,toe}/`, puis `make trad-sf2`
   (pipeline prêt). Mesure des niveaux pieds/violon (point 1) après.
+
+## Écoute du propriétaire
+
+**2026-10-24, kits régénérés au moteur `2708230`** (`harmonium_lab/target/ecoute/`) : « J'ai de la
+misère à sentir toutes les nuances de chacune des additions, mais les sets finals sont quand même
+bien. »
+
+Lecture : le **résultat d'ensemble est validé à l'oreille** (sets complets de reel, gigue et valse
+québécois) ; les couches prises une à une (interprétation, ornements, accompagnement, 2ᵉ voix,
+mixage) ne se distinguent pas nettement en A/B, ce qui est cohérent avec les valeurs prudentes
+mesurées (attaques ±1–3 ms, gate 0,96, ornements ≈ 1 %, 2ᵉ voix ≥ 10,9 dB sous le violon).
+Décisions :
+
+- Les valeurs actuelles des sept profils restent la référence (pas de retour en arrière, pas
+  d'augmentation à l'aveugle).
+- Aucun ADR par couche tant qu'une couche n'est pas entendue isolément. Pour y aider : kit
+  `progression/` (même air, 0 = moteur nu, puis une couche ajoutée à la fois) — si une couche ne
+  change rien même là, on pourra en proposer une version plus marquée.

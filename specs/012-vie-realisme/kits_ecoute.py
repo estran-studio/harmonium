@@ -193,6 +193,39 @@ def build_sets(args: argparse.Namespace, tmp: Path) -> list[dict]:
     return report
 
 
+# Ordre d'ajout des couches dans la progression (du moteur nu au moteur complet).
+PROGRESSION = ("mixage", "interpretation", "ornements", "accompagnement", "deuxieme_voix")
+PROGRESSION_PROFILES = ("reel_quebecois", "valse_quebecoise")
+
+
+def build_progression(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Même air, couches ajoutées une à une : 0 = nu, 5 = complet (fichiers nommés, pas à l'aveugle)."""
+    out = args.output / "progression"
+    out.mkdir(parents=True, exist_ok=True)
+    report = []
+    for profile in PROGRESSION_PROFILES:
+        source = ROOT / "profiles" / profile
+        text = (source / "profile.toml").read_text(encoding="utf-8")
+        for step in range(len(PROGRESSION) + 1):
+            removed = tuple(p for layer in PROGRESSION[step:] for p in LAYERS[layer])
+            variant = tmp / "progression" / profile / str(step)
+            shutil.copytree(source, variant)
+            (variant / "profile.toml").write_text(strip_sections(text, removed), encoding="utf-8")
+            wav = tmp / f"prog-{profile}-{step}.wav"
+            export(args.binary, variant, wav, args, args.bars)
+            samples, rate = read_wav(wav)
+            gain = 10.0 ** ((-20.0 - db(float(np.sqrt(np.mean(samples ** 2))))) / 20.0)
+            label = "nu" if step == 0 else "+" + PROGRESSION[step - 1]
+            write_wav16(out / f"{profile}-{step}-{label.lstrip('+')}.wav", samples * gain, rate)
+            report.append({"kit": "progression", "profile": profile, "step": step, "label": label,
+                           "seconds": round(len(samples) / rate, 1)})
+    (out / "question.txt").write_text(
+        "Écouter 0 → 5 dans l'ordre : 0 = moteur nu, chaque fichier ajoute une couche "
+        "(mixage, interprétation, ornements, accompagnement, 2ᵉ voix). "
+        "Laquelle s'entend ? Laquelle ne change rien pour toi ?\n", encoding="utf-8")
+    return report
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/harmonium-cli")
@@ -208,7 +241,7 @@ def main() -> int:
     args.output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="harmonium-kits-") as name:
         tmp = Path(name)
-        report = build_ab_kits(args, tmp) + build_sets(args, tmp)
+        report = build_ab_kits(args, tmp) + build_progression(args, tmp) + build_sets(args, tmp)
     (args.output / "kits.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                                            encoding="utf-8")
     for row in report:
