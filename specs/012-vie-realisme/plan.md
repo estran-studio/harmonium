@@ -1746,3 +1746,17 @@ Décisions :
 - Aucun ADR par couche tant qu'une couche n'est pas entendue isolément. Pour y aider : kit
   `progression/` (même air, 0 = moteur nu, puis une couche ajoutée à la fois) — si une couche ne
   change rien même là, on pourra en proposer une version plus marquée.
+
+**2026-10-24, comparateur de couches** (`ecoute/comparateur/`, boucles de 16 mesures au 2ᵉ tour,
+bascule instantanée, volume moyen égalisé) :
+
+- **Accompagnement (V5b) : validé** — « le plus facile à entendre, c'est vraiment mieux avec ».
+  ADR : notes de passage de basse et grattage des accords retenus avec les valeurs actuelles des
+  profils (passage visé 25–35 % des transitions au reel/gigue, grattage 4–6 ms entre cordes).
+- **2ᵉ voix (V4) : entendue un peu** (« ça change un peu la mélodie ») : c'est l'effet voulu d'une
+  hétérophonie discrète (2ᵉ violon à l'unisson, −12 dB, au reel et à la gigue ; accordéon −16 dB à la
+  valse). Pas de changement tant que le propriétaire ne la juge ni trop forte ni inutile.
+- **Mixage (V1) : différence à peine perçue** dans le comparateur. Attendu : le comparateur égalise le
+  volume moyen (le gain de bus, l'effet le plus évident de V1, y est neutralisé) ; il reste la salle
+  (retour réverbéré −16 à −22 dB sous le son direct) et le placement gauche-droite, qui s'entendent
+  surtout au casque. Aucune décision tant qu'une version plus marquée n'a pas été comparée.
