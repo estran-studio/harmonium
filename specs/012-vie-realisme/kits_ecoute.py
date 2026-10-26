@@ -239,6 +239,21 @@ LAYER_LABELS = {
 }
 
 
+def seamless_loop(samples: np.ndarray, start: int, end: int, rate: int, fade_ms: float = 40.0) -> np.ndarray:
+    """Boucle sans clic : le début reçoit, en fondu à puissance constante, la suite réelle de la fin.
+
+    À la reprise, le lecteur passe de `samples[end - 1]` à `loop[0]` ; comme `loop[0:n]` commence par
+    `samples[end:end + n]` (la musique qui suivait vraiment), il n'y a pas de saut d'échantillon.
+    """
+    loop = samples[start:end].copy()
+    n = min(int(rate * fade_ms / 1000.0), len(samples) - end, len(loop))
+    if n <= 0:
+        raise SystemExit("boucle sans suite disponible : rendre quelques mesures de plus")
+    phase = np.linspace(0.0, np.pi / 2.0, n)[:, None]
+    loop[:n] = loop[:n] * np.sin(phase) + samples[end:end + n] * np.cos(phase)
+    return loop
+
+
 def build_comparator(args: argparse.Namespace, tmp: Path) -> list[dict]:
     """Une boucle par combinaison de couches (2⁵), toutes alignées à l'échantillon près.
 
@@ -275,7 +290,7 @@ def build_comparator(args: argparse.Namespace, tmp: Path) -> list[dict]:
         for mask, ((samples, _), truth) in renders.items():
             if (truth["bar_start_frames"][str(first)], truth["bar_start_frames"][str(first + args.loop_bars)]) != window:
                 raise SystemExit(f"{profile}/{mask} : barres décalées, boucles non alignées")
-            loop = samples[window[0]:window[1]]
+            loop = seamless_loop(samples, window[0], window[1], rate)
             gain = 10.0 ** ((-20.0 - db(float(np.sqrt(np.mean(loop ** 2))))) / 20.0)
             name = f"{profile}-{mask:02d}.wav"
             write_wav16(out / name, loop * gain, rate)
