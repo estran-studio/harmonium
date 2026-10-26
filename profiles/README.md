@@ -6,6 +6,27 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 `from_toml` lit un profil autonome avec toutes les banques inline.
 
 | Section | Champs / sens |
+## Profils distribués
+
+| Profil | Tradition et corpus | Mètre, tempo | Instruments | Pieds | 2ᵉ voix |
+|---|---|---|---|---|---|
+| `reel_quebecois` | Québec ; 574 reels | 2/2, 230 | violon, guitare, basse | oui | violon |
+| `gigue_quebecoise` | Québec ; 88 gigues | 6/8, 172,5 | violon, guitare, basse | oui | violon |
+| `valse_quebecoise` | Québec ; 67 valses | 3/4, 145 | violon, guitare, basse | oui | accordéon |
+| `reel_acadien` | Acadie ; 169 reels | 2/2, 228 | violon, guitare, basse | oui | violon |
+| `marche_britannique_coloniale` | britannique colonial ; 25 marches | 2/2, 108 | fifre | caisse | fifre |
+| `gigue_britannique_coloniale` | britannique colonial ; 365 gigues | 6/8, 156 | violon, guitare, basse | non | non |
+| `hornpipe_britannique_coloniale` | britannique colonial ; 78 hornpipes | 4/4, 92 | violon, guitare, basse | non | non |
+| `gigue_acadienne` (R1) | Acadie ; 55 gigues | 6/8, 180 | violon, **piano** | oui | violon |
+| `reel_britannique_coloniale` (R1) | britannique colonial ; 493 reels | 2/2, 208 | violon, guitare, basse | non | non |
+| `valse_britannique_coloniale` (R1) | britannique colonial ; 60 valses | 3/4, 138 | violon, guitare, basse | non | non |
+
+Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois
+derniers (phase 013, R1) sont construits par le même chemin — références du labo, `mine-cells`, formules de
+[Source des réglages distribués](#source-des-réglages-distribués-p3-t1-contrat-11) — par
+`specs/013-moteur-dans-le-jeu/r1_profils.py` (`selftest` rejoue les formules sur quatre profils existants) ;
+mesures et limites dans le plan 013, section R1.
+
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
 | `[files]` | `cells`, `feet`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
