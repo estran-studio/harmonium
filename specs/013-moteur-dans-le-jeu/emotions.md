@@ -300,6 +300,12 @@ une seule joue à la fois et la suivante reprend à la même mesure et à la mê
 au début de la mesure suivante, soit tout de suite). Le volume n'est pas égalisé (la force fait partie
 de l'effet) ; une case permet de l'égaliser pour écouter le reste.
 
+L'air est construit au neutre puis l'émotion s'applique dès la mesure 2 : c'est ce que fera le jeu en cours d'air,
+donc **la même mélodie** dans toutes les versions, aux ornements ajoutés et au mode sombre près (valence « bas » :
+59 à 73 % des notes identiques au neutre). Corollaire : la tonalité et le registre de la valence, qui ne changent
+qu'à l'air suivant, **ne s'entendent pas** dans le comparateur (seuls le mode, à la phrase, et la force s'y
+entendent) ; leur mesure est dans le tableau de la valence.
+
 ## Mots utilisés
 
 - **Mesure** : un « tour » de la musique (en reel, ≈ 1 s ; en valse, ≈ 1,2 s). **Phrase** : 4 mesures. **Air** : la mélodie en
