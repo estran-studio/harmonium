@@ -1775,3 +1775,9 @@ du moteur (décalages ×5, dispersion ×4, courbe de phrase ×4, respiration ×3
 normales ×6 ; ornements `rate_scale` 10 ; salle ×2,2, envois ×2,5, panoramique ×2,5). Si la version
 marquée est entendue et préférée, une valeur intermédiaire sera proposée ; si elle n'apporte rien,
 la couche peut rester discrète ou être retirée.
+
+**ADR 2026-10-26 — clôture des réglages de la phase** : après le comparateur marqué, le propriétaire
+décide de **garder mixage, interprétation et ornements tels quels** (valeurs distribuées, discrètes),
+comme l'accompagnement (validé), la 2ᵉ voix et les sets. Le violon reste GeneralUser GS. Les points
+1 à 7 sont clos ; restent 8 (voix) et 9 (vrais pieds), qui attendent des enregistrements du
+propriétaire.
