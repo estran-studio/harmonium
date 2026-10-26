@@ -34,8 +34,10 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
         profile.arrangement = ReelArrangement::from_start(1, Part(profile.form.sequence[0]));
         profile.arrangement.intro = IntroConfig::none();
         let meter = profile.meter.clone();
-        let step_frames = (44100.0 * 60.0 / f64::from(meter.default_bpm) / 8.0) as u64;
-        let expected_pulse_frames = step_frames * meter.steps_per_pulse as u64;
+        // Pulse exacte du plan (pas par noire doublés : 8), arrondie à la frame.
+        let expected_pulse_frames = (44100.0 * 60.0 / f64::from(meter.default_bpm) / 8.0
+            * meter.steps_per_pulse as f64)
+            .round() as u64;
         let (mut composer, mut playback, mut commands, _reports, mut clock, _recordings) =
             create_offline_engine(None, None, 44100.0)?;
         composer.set_profile(profile)?;
@@ -57,7 +59,8 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
             if state.position.bar == 1 {
                 last_step = last_step.max(state.position.step);
                 saw_last_pulse |= usize::from(state.pulse_in_bar) + 1 == pulses_per_bar;
-                assert_eq!(state.next_pulse_frame - state.pulse_start_frame, expected_pulse_frames);
+                let pulse_frames = state.next_pulse_frame - state.pulse_start_frame;
+                assert!(pulse_frames.abs_diff(expected_pulse_frames) <= 1, "{pulse_frames}");
             } else if state.position.bar == 2 {
                 saw_second_bar = true;
                 break;

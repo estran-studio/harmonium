@@ -211,6 +211,7 @@ fn beat_info_from_clock_phase_and_timing() {
         buffer_start_frame: 0,
         buffer_start_instant: anchor,
         sample_rate,
+        ..TransportClock::initial(sample_rate)
     };
 
     let frame_to_instant =

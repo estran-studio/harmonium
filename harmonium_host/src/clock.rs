@@ -10,6 +10,8 @@
 
 use std::time::{Duration, Instant};
 
+use harmonium_core::time_plan::Flicks;
+
 use crate::playback::TransportPosition;
 
 /// Predictive clock published by the audio callback, lock-free.
@@ -39,6 +41,15 @@ pub struct TransportClock {
     pub buffer_start_instant: Instant,
     /// Samples per second, for frame ↔ time conversions.
     pub sample_rate: u32,
+    /// Global frame where the step in `position` started (its notes' frame).
+    pub step_start_frame: u64,
+    /// Instant of that step in the shared time plan (`harmonium_core::time_plan`),
+    /// along the played measures: what the simulation computes for the same step.
+    pub plan_instant: Flicks,
+    /// Measured gap between the playhead and the plan, in frames: `step_start_frame`
+    /// minus the plan's frame for `plan_instant` (anchored at the first played step).
+    /// Non-zero after an underflow; published, never corrected silently.
+    pub plan_gap_frames: i64,
 }
 
 impl TransportClock {
@@ -56,6 +67,9 @@ impl TransportClock {
             buffer_start_frame: 0,
             buffer_start_instant: Instant::now(),
             sample_rate,
+            step_start_frame: 0,
+            plan_instant: Flicks::ZERO,
+            plan_gap_frames: 0,
         }
     }
 }
@@ -82,6 +96,9 @@ pub struct BeatInfo {
     pub next_pulse_at: Instant,
     /// Duration of the current pulse.
     pub pulse_period: Duration,
+    /// Playhead gap with the shared time plan, in frames (see
+    /// [`TransportClock::plan_gap_frames`]).
+    pub plan_gap_frames: i64,
 }
 
 impl BeatInfo {
@@ -123,6 +140,7 @@ impl BeatInfo {
             next_pulse_frame: clock.next_pulse_frame,
             next_pulse_at,
             pulse_period,
+            plan_gap_frames: clock.plan_gap_frames,
         }
     }
 }

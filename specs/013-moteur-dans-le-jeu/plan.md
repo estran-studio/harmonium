@@ -55,6 +55,8 @@ flowchart LR
   datées), fonction pure « temps musical à la frame N » utilisable par la simulation, suivi par le
   playhead avec mesure et correction de l'écart (dérive horloge audio / horloge du jeu), latence
   audio. Contrat de snapshot et de `BeatInfo` adaptés ; proposition d'amendement du principe II.
+  Étude, recommandation et texte d'amendement : `horloge-etude.md` ; prototype
+  `harmonium_core::time_plan` (plan entier suivi par le playback, écart publié, correction isolée).
 - **J4 — Carte des 4 émotions** : ce que chacune fait par profil (tempo, dynamique, mode, densité,
   articulation…), plages utiles, recouvrements ; documentation pour le jeu et comparateur d'écoute
   (même boucle, une émotion à la fois). Corriger si deux émotions se confondent à l'oreille.

@@ -14,7 +14,7 @@ use std::{
 use arrayvec::ArrayString;
 use harmonium_core::{
     log,
-    params::{EngineParams, MusicalParams, SessionConfig, TimeSignature},
+    params::{MusicalParams, SessionConfig, TimeSignature},
     theory::chord::{Chord, ChordType},
     timeline::Writehead,
     trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
@@ -25,14 +25,14 @@ use rand_chacha::ChaCha8Rng;
 use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
 use crate::{
-    mapper::EmotionMapper,
+    mapper::GameControls,
     playback::{TaggedMeasure, unpack},
 };
 
 /// Main-thread music composer. Generates measures synchronously.
 ///
 /// This struct owns the generation pipeline: Generator, Writehead,
-/// MusicalParams, EmotionMapper, and the measure ring buffer producer.
+/// MusicalParams, GameControls, and the measure ring buffer producer.
 /// It reads the packed transport position via an `Arc<AtomicU64>` shared
 /// with PlaybackEngine.
 pub struct MusicComposer {
@@ -65,14 +65,9 @@ pub struct MusicComposer {
     // Seed + init params (for deterministic seek replay)
     session_seed: u64,
 
-    // BPM override (user-set BPM persists through emotion changes)
-    bpm_override: Option<f32>,
-    emotion_mapped_bpm: f32,
-
-    // Emotion mode
-    emotion_mapper: EmotionMapper,
-    emotion_mode: bool,
-    cached_emotions: EngineParams,
+    // Game controls: emotions, emotion mode, direct-tempo override (shared
+    // semantics with the time plan's dated commands).
+    controls: GameControls,
 
     // Report cache (chord info from last generated measure)
     last_chord_name: ArrayString<64>,
@@ -199,11 +194,7 @@ impl MusicComposer {
             rng,
             sample_rate,
             session_seed,
-            bpm_override: None,
-            emotion_mapped_bpm: bpm,
-            emotion_mapper: EmotionMapper::new(),
-            emotion_mode: false,
-            cached_emotions: EngineParams::default(),
+            controls: GameControls::new(bpm),
             last_chord_name: ArrayString::from(&Chord::new(key_pc, ChordType::Major).name())
                 .unwrap_or_default(),
             last_chord_root_offset: 0,
@@ -251,7 +242,7 @@ impl MusicComposer {
                 if let Some(existing) = self.writehead.timeline.get_measure(bar_idx) {
                     let mut snapshot =
                         harmonium_core::report::MeasureSnapshot::from_measure(existing);
-                    snapshot.composition_bpm = self.emotion_mapped_bpm;
+                    snapshot.composition_bpm = self.controls.emotion_mapped_bpm();
                     self.pending_measure_snapshots.push(snapshot);
                 }
                 self.writehead.current_bar = bar_idx + 1;
@@ -271,7 +262,7 @@ impl MusicComposer {
             self.last_chord_is_minor = measure.chord_context.is_minor;
 
             let mut snapshot = harmonium_core::report::MeasureSnapshot::from_measure(&measure);
-            snapshot.composition_bpm = self.emotion_mapped_bpm;
+            snapshot.composition_bpm = self.controls.emotion_mapped_bpm();
             self.pending_measure_snapshots.push(snapshot);
 
             self.writehead.commit_measure(measure);
@@ -441,8 +432,7 @@ impl MusicComposer {
     /// (see `take_pending_drop`).
     pub fn reset(&mut self) {
         self.musical_params = MusicalParams::default();
-        self.bpm_override = None;
-        self.emotion_mapped_bpm = self.musical_params.bpm;
+        self.controls.reset_tempo(self.musical_params.bpm);
         self.writehead.reset();
         self.set_tuning(TuningParams::default());
         self.generator.update_params(self.musical_params.clone());
@@ -482,7 +472,7 @@ impl MusicComposer {
         let target_bar = target_bar.max(1);
 
         // 1. Re-seed RNG from session seed (past initial key/scale draws)
-        let mut rng = Self::seeded_rng_past_init(self.session_seed);
+        let mut rng = harmonium_core::time_plan::score::session_rng(self.session_seed);
         // 3. Reset generator to initial state
         self.generator.reset_to_initial();
 
@@ -502,14 +492,6 @@ impl MusicComposer {
         self.bump_epoch(target_bar);
 
         log::info(&format!("Deterministic seek to bar {target_bar}"));
-    }
-
-    fn seeded_rng_past_init(session_seed: u64) -> ChaCha8Rng {
-        use rand::Rng;
-        let mut rng = ChaCha8Rng::seed_from_u64(session_seed);
-        let _ = rng.gen_range(0..7usize);
-        let _ = rng.gen_range(0..2usize);
-        rng
     }
 
     /// Fixe la graine utilisée au prochain rejeu déterministe.
@@ -551,17 +533,18 @@ impl MusicComposer {
 
     /// Tempo direct du jeu : désactive l'offset émotionnel et la rampe de set.
     pub fn set_bpm(&mut self, bpm: f32) {
-        let clamped = bpm.clamp(40.0, 300.0);
-        self.bpm_override = Some(clamped);
-        self.musical_params.bpm = clamped;
-        self.musical_params.bpm_explicit = true;
+        self.controls.set_bpm(bpm, &mut self.musical_params);
     }
 
     /// Rend le tempo aux émotions et à la rampe de set.
     pub fn reset_bpm(&mut self) {
-        self.bpm_override = None;
-        self.musical_params.bpm = self.emotion_mapped_bpm;
-        self.musical_params.bpm_explicit = false;
+        self.controls.reset_bpm(&mut self.musical_params);
+    }
+
+    /// Applique une commande du plan de temps partagé avec la même sémantique que le plan
+    /// (`SharedTimePlan`) : à appeler avant de générer la mesure à laquelle elle est datée.
+    pub fn apply_score_command(&mut self, command: harmonium_core::time_plan::score::ScoreCommand) {
+        command.apply(&mut self.controls, &mut self.musical_params, &self.generator.tuning);
     }
 
     pub fn set_time_signature(&mut self, numerator: usize, denominator: usize) {
@@ -579,13 +562,8 @@ impl MusicComposer {
     fn apply_profile_defaults(&mut self) {
         let profile = &self.generator.tuning.profile;
         let meter = &profile.meter;
-        self.musical_params.bpm = meter.default_bpm;
-        self.emotion_mapped_bpm = meter.default_bpm;
-        self.bpm_override = None;
-        self.musical_params.bpm_explicit = false;
-        self.musical_params.set_swing_ratio(meter.default_swing_ratio);
-        self.musical_params.time_signature = meter.time_signature;
-        self.musical_params.pulse = Some(meter.pulse_spec());
+        self.musical_params.apply_profile_meter(profile);
+        self.controls.reset_tempo(meter.default_bpm);
         self.musical_params.profile_mix = profile.mix.prepare(self.sample_rate);
         self.config.bpm = meter.default_bpm;
         self.config.steps = meter.steps_per_bar;
@@ -656,46 +634,27 @@ impl MusicComposer {
     // === Emotion mode ===
 
     pub fn use_emotion_mode(&mut self) {
-        self.emotion_mode = true;
+        self.controls.set_emotion_mode(true);
         log::info("MusicComposer: switched to Emotion mode");
     }
 
     pub fn use_direct_mode(&mut self) {
-        self.emotion_mode = false;
+        self.controls.set_emotion_mode(false);
         log::info("MusicComposer: switched to Direct mode");
     }
 
     pub fn is_emotion_mode(&self) -> bool {
-        self.emotion_mode
+        self.controls.is_emotion_mode()
     }
 
+    /// Only stores params — does NOT sync the generator: `invalidate_future()` or
+    /// `invalidate_after_preview()` do it, so already-generated bars are preserved.
     pub fn set_emotions(&mut self, arousal: f32, valence: f32, density: f32, tension: f32) {
-        if !self.emotion_mode {
-            return;
-        }
-
-        self.cached_emotions.arousal = arousal;
-        self.cached_emotions.valence = valence;
-        self.cached_emotions.density = density;
-        self.cached_emotions.tension = tension;
-
-        let mut new_params = self.musical_params.clone();
-        self.emotion_mapper.apply_dynamics(
-            &self.cached_emotions,
-            &self.generator.tuning.profile.dynamics,
-            self.generator.tuning.profile.meter.default_bpm,
-            &mut new_params,
+        self.controls.set_emotions(
+            [arousal, valence, density, tension],
+            &self.generator.tuning.profile,
+            &mut self.musical_params,
         );
-        // Store emotion-mapped BPM, then apply override if set
-        self.emotion_mapped_bpm = new_params.bpm;
-        if let Some(override_bpm) = self.bpm_override {
-            new_params.bpm = override_bpm;
-        }
-
-        // Only store params — do NOT sync the generator here.
-        // The generator gets synced explicitly by invalidate_after_preview()
-        // or invalidate_future() so that already-generated bars are preserved.
-        self.musical_params = new_params;
     }
 
     // === Writehead controls ===
@@ -867,10 +826,10 @@ impl MusicComposer {
         self.last_chord_is_minor
     }
     pub fn bpm_override(&self) -> Option<f32> {
-        self.bpm_override
+        self.controls.bpm_override()
     }
     pub fn emotion_mapped_bpm(&self) -> f32 {
-        self.emotion_mapped_bpm
+        self.controls.emotion_mapped_bpm()
     }
     pub fn musical_params(&self) -> &MusicalParams {
         &self.musical_params

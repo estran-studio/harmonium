@@ -12,6 +12,7 @@ pub mod performance;
 pub mod report;
 pub mod style_profile;
 pub mod theory;
+pub mod time_plan;
 pub mod timeline;
 pub mod trad;
 pub mod tuning;
