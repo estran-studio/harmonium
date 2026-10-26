@@ -1325,6 +1325,11 @@ celui consigné en V5b-1 ; aucune nouvelle instruction audio ni aucun
   Attend l'écoute du propriétaire avant intégration (banque violon par
   profil, licence dans `assets/README.md`). Couches VSCO p/f à vélocité 80 :
   écart de 25–30 dB à vérifier avec les vélocités du moteur.
+- **ADR (écoute du propriétaire, 2026-10-26)** : comparateur synchronisé à l'aveugle des 7 violons
+  (`harmonium_lab/target/fiddle_compare/comparateur.html`, numéros seuls, même volume) ⇒ choix du
+  **n° 03 = GeneralUser GS 2.0.3**, le violon actuel du moteur (programme GM 40). Les candidats à
+  attaque courte (VSCO 2 CE, FluidR3 raccourci) ne sont pas retenus : l'attaque mesurée plus lente ne
+  gêne pas à l'oreille. Aucune intégration nécessaire ; point 6 clos.
 
 ## 7. Forme longue
 
@@ -1760,3 +1765,5 @@ bascule instantanée, volume moyen égalisé) :
   volume moyen (le gain de bus, l'effet le plus évident de V1, y est neutralisé) ; il reste la salle
   (retour réverbéré −16 à −22 dB sous le son direct) et le placement gauche-droite, qui s'entendent
   surtout au casque. Aucune décision tant qu'une version plus marquée n'a pas été comparée.
+
+**2026-10-26, violons** : n° 03 choisi à l'aveugle = GeneralUser GS, le violon actuel (voir point 6).
