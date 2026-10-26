@@ -79,8 +79,8 @@ def main():
     root = args.output.resolve() / args.stage
     root.mkdir(parents=True, exist_ok=True)
     profiles = sorted(p.parent for p in args.profiles_root.glob("*/profile.toml"))
-    if len(profiles) != 7:
-        raise ValueError(f"Sept profils attendus, trouvés : {len(profiles)}")
+    if len(profiles) < 7:
+        raise ValueError(f"Au moins sept profils attendus, trouvés : {len(profiles)}")
     TRACKS = tuple(dict.fromkeys(
         track for profile in profiles
         for track in tomllib.loads((profile / "profile.toml").read_text())["mix"]["tracks"]

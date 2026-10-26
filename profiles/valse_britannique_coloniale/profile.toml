@@ -1,0 +1,392 @@
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "valse_britannique_coloniale"
+name = "Valse britannique coloniale"
+tradition = "Musique britannique coloniale, bals de garnison et salons d'Amérique du Nord britannique, c. 1760–1840"
+tags = ["valse", "waltz", "britannique", "coloniale", "violon", "1837", "garnison", "bal"]
+corpus = "harmonium_lab: corpus britannique_coloniale (2026-10-22+1025, 60 airs de type waltz : 58 nottingham, 2 cahusac); provenance dans corpus/sources.md et le manifeste du labo"
+
+[meter]
+time_signature = { numerator = 3, denominator = 4 }
+steps_per_bar = 12
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 3
+default_swing_ratio = 0.5
+default_bpm = 138.0
+min_bpm = 126.0
+max_bpm = 150.0
+
+[form]
+sequence = [0, 0, 1, 1]
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [4, 2], weight = 490 },
+      { durations = [3, 1, 2], weight = 207 },
+      { durations = [4, 1, 1], weight = 97 },
+      { durations = [3, 1, 1, 1], weight = 57 },
+      { durations = [2, 1, 1, 1, 1], weight = 53 },
+      { durations = [2, 4], weight = 25 },
+      { durations = [2, 3, 1], weight = 21 },
+      { durations = [2, 2, 1, 1], weight = 16 },
+      { durations = [1, 3, 2], weight = 14 },
+      { durations = [1, 1, 2, 2], weight = 13 },
+      { durations = [1, 5], weight = 10 },
+      { durations = [1, 1, 1, 1, 2], weight = 5 },
+      { durations = [1, 1, 2, 1, 1], weight = 5 },
+      { durations = [2, 1, 1, 2], weight = 5 },
+      { durations = [5, 1], weight = 4 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [4, 2], weight = 490 },
+      { durations = [3, 1, 2], weight = 207 },
+      { durations = [4, 1, 1], weight = 97 },
+      { durations = [3, 1, 1, 1], weight = 57 },
+      { durations = [2, 1, 1, 1, 1], weight = 53 },
+      { durations = [2, 4], weight = 25 },
+      { durations = [2, 3, 1], weight = 21 },
+      { durations = [2, 2, 1, 1], weight = 16 },
+      { durations = [1, 3, 2], weight = 14 },
+      { durations = [1, 1, 2, 2], weight = 13 },
+      { durations = [1, 5], weight = 10 },
+      { durations = [1, 1, 1, 1, 2], weight = 5 },
+      { durations = [1, 1, 2, 1, 1], weight = 5 },
+      { durations = [2, 1, 1, 2], weight = 5 },
+      { durations = [5, 1], weight = 4 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 200 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 2, weight = 2 }, { degrees = -2, weight = 1 }, { degrees = -3, weight = 1 }, { degrees = 1, weight = 1 }] } }, weight = 1000 }, { role = { VariedEndOf = 1 }, weight = 400 }, { role = "Free", weight = 8400 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 400 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = -3, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 6, weight = 1 }] } }, weight = 1400 }, { role = { VariedEndOf = 1 }, weight = 400 }, { role = "Free", weight = 7800 }] },
+  { choose = [{ role = "CadTonic", weight = 1200 }, { role = "CadHalf", weight = 6400 }, { role = "CadOpen", weight = 2400 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 2000 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 2 }, { degrees = -2, weight = 1 }, { degrees = -3, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 4, weight = 1 }, { degrees = 7, weight = 1 }] } }, weight = 1400 }, { role = { VariedEndOf = 1 }, weight = 600 }, { role = "Free", weight = 6000 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 1400 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 2 }, { degrees = -3, weight = 1 }, { degrees = -4, weight = 1 }] } }, weight = 800 }, { role = { VariedEndOf = 2 }, weight = 1000 }, { role = "Free", weight = 6800 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 600 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = -1, weight = 1 }, { degrees = -3, weight = 1 }, { degrees = -6, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 2, weight = 1 }, { degrees = 4, weight = 1 }, { degrees = 5, weight = 1 }] } }, weight = 1400 }, { role = { VariedEndOf = 3 }, weight = 400 }, { role = "Free", weight = 7600 }] },
+  { choose = [{ role = "CadTonic", weight = 200 }, { role = "CadHalf", weight = 7800 }, { role = "CadOpen", weight = 2000 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 7 }, { role = "CadFifth", weight = 4 }, { role = "CadOther", weight = 6 }] }
+[[form.parts]]
+name = "B"
+melody_center_offset = 2
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [4, 2], weight = 490 },
+      { durations = [3, 1, 2], weight = 207 },
+      { durations = [4, 1, 1], weight = 97 },
+      { durations = [3, 1, 1, 1], weight = 57 },
+      { durations = [2, 1, 1, 1, 1], weight = 53 },
+      { durations = [2, 4], weight = 25 },
+      { durations = [2, 3, 1], weight = 21 },
+      { durations = [2, 2, 1, 1], weight = 16 },
+      { durations = [1, 3, 2], weight = 14 },
+      { durations = [1, 1, 2, 2], weight = 13 },
+      { durations = [1, 5], weight = 10 },
+      { durations = [1, 1, 1, 1, 2], weight = 5 },
+      { durations = [1, 1, 2, 1, 1], weight = 5 },
+      { durations = [2, 1, 1, 2], weight = 5 },
+      { durations = [5, 1], weight = 4 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [4, 2], weight = 490 },
+      { durations = [3, 1, 2], weight = 207 },
+      { durations = [4, 1, 1], weight = 97 },
+      { durations = [3, 1, 1, 1], weight = 57 },
+      { durations = [2, 1, 1, 1, 1], weight = 53 },
+      { durations = [2, 4], weight = 25 },
+      { durations = [2, 3, 1], weight = 21 },
+      { durations = [2, 2, 1, 1], weight = 16 },
+      { durations = [1, 3, 2], weight = 14 },
+      { durations = [1, 1, 2, 2], weight = 13 },
+      { durations = [1, 5], weight = 10 },
+      { durations = [1, 1, 1, 1, 2], weight = 5 },
+      { durations = [1, 1, 2, 1, 1], weight = 5 },
+      { durations = [2, 1, 1, 2], weight = 5 },
+      { durations = [5, 1], weight = 4 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 196 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 3 }, { degrees = 1, weight = 2 }, { degrees = 2, weight = 2 }, { degrees = -2, weight = 1 }, { degrees = -3, weight = 1 }] } }, weight = 1765 }, { role = { VariedEndOf = 1 }, weight = 196 }, { role = "Free", weight = 7843 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 784 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 2 }, { degrees = -2, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = 1, weight = 1 }, { degrees = 3, weight = 1 }, { degrees = 6, weight = 1 }] } }, weight = 1765 }, { role = { VariedEndOf = 1 }, weight = 196 }, { role = "Free", weight = 7255 }] },
+  { choose = [{ role = "CadTonic", weight = 980 }, { role = "CadHalf", weight = 7255 }, { role = "CadOpen", weight = 1765 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1176 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 1 }, { degrees = -4, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 2, weight = 1 }, { degrees = 5, weight = 1 }] } }, weight = 980 }, { role = { VariedEndOf = 1 }, weight = 1176 }, { role = "Free", weight = 6668 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 588 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 2 }, { degrees = -2, weight = 2 }, { degrees = -3, weight = 1 }] } }, weight = 980 }, { role = { VariedEndOf = 2 }, weight = 1176 }, { role = "Free", weight = 7256 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 368 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = -3, weight = 1 }] } }, weight = 184 }, { role = { VariedEndOf = 3 }, weight = 368 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 612 }, { role = "Free", weight = 8468 }] },
+  { choose = [{ role = "CadTonic", weight = 1176 }, { role = "CadHalf", weight = 6667 }, { role = "CadOpen", weight = 2157 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 5 }, { role = "CadFifth", weight = 1 }, { role = "CadOther", weight = 1 }] }
+
+[melody]
+cell_units = 6
+strong_units = [0, 2, 4]
+weak_units = [1, 3, 5]
+key_modes = [
+  { key = 7, mode = "ionian", weight = 8 },
+  { key = 2, mode = "ionian", weight = 7 },
+  { key = 0, mode = "ionian", weight = 2 },
+  { key = 9, mode = "aeolian", weight = 1 },
+  { key = 5, mode = "ionian", weight = 2 },
+]
+
+[melody.params]
+weight_role_run = 4
+weight_role_arp = 3
+weight_role_turn = 3
+max_continuity_step_distance = 2
+continuity_max_retries = 16
+melody_center_midi = 71
+tonic_midi_min = 66
+tonic_midi_max = 77
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 94
+strong_eighth_velocity_offset = 12
+even_eighth_velocity_offset = -10
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 12
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="II",quality="Minor"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 4, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 40
+high = 50
+walk_low = 38
+walk_high = 52
+hits = [{ step = 0, degree = "root", duration = 4, velocity = 78 }]
+
+[accompaniment.bass.passing]
+none_weight = 4
+density = [[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]
+phrase = [[0.0, 0.0], [0.74, 0.0], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+arousal_low_multiplier = 0.5
+arousal_high_multiplier = 1.5
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 2, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+
+[accompaniment.chords]
+center = 60
+max_drift = 6
+strings = 4
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 4, stroke = "down", duration = 2, velocity = 72 }] },
+  { hits = [{ step = 4, stroke = "down", duration = 2, velocity = 72 }, { step = 8, stroke = "down", duration = 2, velocity = 72 }] },
+  { hits = [{ step = 2, stroke = "down", duration = 2, velocity = 66 }, { step = 4, stroke = "down", duration = 2, velocity = 72 }, { step = 6, stroke = "down", duration = 2, velocity = 66 }, { step = 8, stroke = "down", duration = 2, velocity = 72 }] },
+  { hits = [{ step = 2, stroke = "down", duration = 2, velocity = 66 }, { step = 4, stroke = "down", duration = 2, velocity = 72 }, { step = 6, stroke = "down", duration = 2, velocity = 66 }, { step = 8, stroke = "down", duration = 2, velocity = 72 }, { step = 10, stroke = "up", duration = 2, velocity = 54, probability = 0.1 }] },
+]
+
+[accompaniment.chords.strum]
+down_gap_ms = 9.0
+up_gap_ms = 6.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 138.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
+
+[instruments]
+melody_program = 40
+chords_program = 24
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+
+[mix]
+master_db = 12.0
+[mix.room]
+room_size = 0.4
+damping = 0.55
+width = 0.75
+level = 0.28
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.2
+presence_q = 0.8
+[mix.tracks.Melody]
+level_db = 0.0
+pan = -0.03
+reverb_send = 0.18
+[mix.tracks.Chords]
+level_db = -5.0
+pan = 0.35
+reverb_send = 0.24
+[mix.tracks.Bass]
+level_db = -8.0
+pan = 0.0
+reverb_send = 0.08
+[mix.tracks.Heel]
+level_db = -6.0
+pan = -0.05
+reverb_send = 0.1
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.05
+reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.015, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0]
+jitter = 0.015
+phrase = [[0.0, -2.0], [0.5, 3.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.12
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 2.0
+# DS-T10b : 73 marques Linked / 1783 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 4.269006
+steps = [0]
+min_duration = 3
+max_duration = 12
+context = "any"
+# DS-T10b : 1 marques Linked / 107 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.970874
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+# DS-T10b : 3 marques Detached / 107 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 2.912621
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+shorten = 0.20
+# DS-T10b : 3 marques Linked / 39 porteuses ; 2|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 8.333333
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Linked / 253 porteuses ; 4|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.796813
+steps = [4]
+min_duration = 3
+max_duration = 12
+context = "ascending"
+# DS-T10b : 2 marques Linked / 318 porteuses ; 4|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.632911
+steps = [4]
+min_duration = 3
+max_duration = 12
+context = "descending"
+# DS-T10b : 2 marques Linked / 33 porteuses ; 4|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 6.451613
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 3 marques Linked / 54 porteuses ; 4|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 5.882353
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Linked / 47 porteuses ; 4|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 4.444444
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/britannique_coloniale-waltz.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.058525
+min_carrier_eighths = 0.5
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.double_stop]
+written_per_100_notes = 2.536091
+per_100_notes_by_bar = [2.315876, 3.46102, 2.721398, 2.681793, 2.60369, 2.921065, 2.428023, 1.155863]
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8
+
+[ornaments.types.chord]
+written_per_100_notes = 0.019508
+min_carrier_eighths = 6.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 24
+velocity_scale = 0.75

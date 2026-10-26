@@ -41,7 +41,10 @@ REFERENCES = {'reel_quebecois': 'quebecoise-reel', 'gigue_quebecoise': 'quebecoi
               'valse_quebecoise': 'quebecoise-waltz', 'reel_acadien': 'acadienne-reel',
               'marche_britannique_coloniale': 'britannique_coloniale-march',
               'gigue_britannique_coloniale': 'britannique_coloniale-jig',
-              'hornpipe_britannique_coloniale': 'britannique_coloniale-hornpipe'}
+              'hornpipe_britannique_coloniale': 'britannique_coloniale-hornpipe',
+              # R1 (phase 013) : nouveaux styles
+              'gigue_acadienne': 'acadienne-jig', 'reel_britannique_coloniale': 'britannique_coloniale-reel',
+              'valse_britannique_coloniale': 'britannique_coloniale-waltz'}
 LISTEN = ['reel_quebecois', 'gigue_quebecoise', 'valse_quebecoise']
 # Notes ajoutées par occurrence pour les types additifs ; None : porteuse réécrite.
 ADDED = {'grace_single': 1, 'grace_multiple': 2, 'double_stop': 1, 'chord': 2,
@@ -451,8 +454,10 @@ def run_corpus(args):
 
 
 def main():
+    global REFERENCES
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('mode', choices=['rates', 'wav', 'peaks', 'midi', 'corpus'])
+    parser.add_argument('--profiles', nargs='*', choices=list(REFERENCES), help='sous-ensemble des profils (défaut : tous)')
     parser.add_argument('--binary', type=Path)
     parser.add_argument('--output', type=Path, default=Path('/tmp/harmonium-ornaments'))
     parser.add_argument('--profiles-root', type=Path, default=Path('profiles'))
@@ -462,6 +467,8 @@ def main():
     parser.add_argument('--jobs', type=int, default=6)
     parser.add_argument('--reuse', action='store_true')
     args = parser.parse_args()
+    if args.profiles:
+        REFERENCES = {name: REFERENCES[name] for name in args.profiles}
     if args.mode != 'corpus' and args.binary is None:
         parser.error('--binary requis')
     {'rates': run_rates, 'wav': run_wav, 'peaks': run_peaks, 'midi': run_midi,

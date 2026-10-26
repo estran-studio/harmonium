@@ -57,7 +57,9 @@ QUESTIONS = {
     "accompagnement": "Basse et guitare plus humaines ? Grattage trop lent ou trop rapide ?",
     "deuxieme_voix": "La 2ᵉ voix (entrée au 2ᵉ tour) aide-t-elle ? Trop forte ?",
 }
-SET_PROFILES = ("reel_quebecois", "gigue_quebecoise", "valse_quebecoise")
+SET_PROFILES = ("reel_quebecois", "gigue_quebecoise", "valse_quebecoise",
+                # R1 (phase 013) : nouveaux styles, à écouter en sets complets
+                "gigue_acadienne", "reel_britannique_coloniale", "valse_britannique_coloniale")
 NEUTRAL_AUTOMATION = """[[keys]]
 bar = 1
 intensity = 0.5
