@@ -540,6 +540,17 @@ impl Default for MusicalParams {
 }
 
 impl MusicalParams {
+    /// Défauts de tempo et de mètre du profil (tempo nominal, swing, signature, pulse) :
+    /// seule source pour le composer et le plan partagé (`time_plan::score`).
+    pub fn apply_profile_meter(&mut self, profile: &crate::StyleProfile) {
+        let meter = &profile.meter;
+        self.bpm = meter.default_bpm;
+        self.bpm_explicit = false;
+        self.set_swing_ratio(meter.default_swing_ratio);
+        self.time_signature = meter.time_signature;
+        self.pulse = Some(meter.pulse_spec());
+    }
+
     /// Créer des paramètres pour un test/debug avec rythme désactivé
     #[must_use]
     pub fn melody_only() -> Self {
