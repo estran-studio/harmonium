@@ -1,0 +1,50 @@
+# Forme longue : un set est une suite d'airs de ce profil (même mètre, même forme).
+# Schéma et effet à l'oreille : profiles/README.md#forme-longue-set.
+
+# Nombre d'airs d'un set : distribution pondérée (The Session, 105 959 sets de 2 airs ou plus :
+# 2 airs 45,2 %, 3 : 44,3 %, 4 : 6,8 %, 5 et plus : 3,8 %, repliés sur 5).
+length = [
+  { tunes = 2, weight = 45 },
+  { tunes = 3, weight = 44 },
+  { tunes = 4, weight = 7 },
+  { tunes = 5, weight = 4 },
+]
+
+# Facteurs sur le poids de base de chaque tonalité candidate selon sa classe de transition
+# depuis l'air précédent. Rapports observé / indépendance, jig → jig (The Session) : mêmes valeurs que la gigue québécoise, aucune mesure par tradition.
+[key]
+same      = 1.21   # même tonique, même mode
+parallel  = 0.90   # même tonique, autre mode
+relative  = 0.98   # même collection diatonique, autre tonique
+fifth_up  = 0.97   # tonique +7 demi-tons
+fourth_up = 1.06   # tonique +5
+step_up   = 0.79   # tonique +2
+step_down = 0.74   # tonique −2
+other     = 0.95   # autre
+last_dark = 1.00   # neutre : effet de position non mesuré pour ce type
+
+# Raccords comme la gigue québécoise (appel de percussion d'une mesure) : à valider à l'oreille.
+[[transitions]]
+kind = "direct"
+weight = 70
+[[transitions]]
+kind = "call"
+weight = 20
+bars = 1
+[[transitions]]
+kind = "held"
+weight = 10
+
+[end]
+outro = true
+gap_bars = [{ bars = 0, weight = 1 }]
+
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 6.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.08]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+ceiling_bpm = 192.0
+
+[signature]
+return_rate = 0.17
+memory = 3

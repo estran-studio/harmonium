@@ -1,0 +1,778 @@
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "reel_britannique_coloniale"
+name = "Reel britannique colonial"
+tradition = "Musique britannique coloniale, bals de garnison et danses de campagne d'Amérique du Nord britannique, c. 1760–1840"
+tags = ["reel", "britannique", "coloniale", "violon", "1837", "garnison", "danse", "country dance"]
+corpus = "harmonium_lab: corpus britannique_coloniale (2026-10-22+1025, 493 airs de type reel : 479 nottingham, 8 cahusac, 6 amrev); provenance dans corpus/sources.md et le manifeste du labo"
+
+[meter]
+time_signature = { numerator = 2, denominator = 2 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 8
+pulses_per_bar = 2
+default_swing_ratio = 0.5
+default_bpm = 208.0
+min_bpm = 192.0
+max_bpm = 224.0
+
+[form]
+sequence = [0, 0, 1, 1]
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [2, 2, 2, 1, 1], weight = 535 },
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 429 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 420 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 386 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 347 },
+      { durations = [4, 2, 2], weight = 326 },
+      { durations = [3, 1, 2, 2], weight = 317 },
+      { durations = [2, 2, 4], weight = 243 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 215 },
+      { durations = [2, 1, 1, 2, 2], weight = 210 },
+      { durations = [6, 2], weight = 179 },
+      { durations = [2, 2, 3, 1], weight = 166 },
+      { durations = [6, 1, 1], weight = 130 },
+      { durations = [2, 4, 2], weight = 119 },
+      { durations = [4, 3, 1], weight = 119 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 92 },
+      { durations = [1, 1, 1, 1, 4], weight = 88 },
+      { durations = [2, 2, 1, 1, 2], weight = 77 },
+      { durations = [4, 2, 1, 1], weight = 69 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 53 },
+      { durations = [1, 1, 2, 2, 2], weight = 53 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 48 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 48 },
+      { durations = [1, 1, 2, 4], weight = 42 },
+      { durations = [3, 1, 2, 1, 1], weight = 40 },
+      { durations = [1, 2, 1, 2, 2], weight = 36 },
+      { durations = [2, 6], weight = 33 },
+      { durations = [4, 1, 1, 1, 1], weight = 31 },
+      { durations = [2, 1, 1, 4], weight = 30 },
+      { durations = [2, 4, 1, 1], weight = 29 },
+      { durations = [3, 1, 3, 1], weight = 27 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 23 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 23 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 16 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 16 },
+      { durations = [4, 1, 1, 2], weight = 16 },
+      { durations = [1, 3, 2, 2], weight = 12 },
+      { durations = [1, 2, 1, 3, 1], weight = 11 },
+      { durations = [1, 1, 2, 3, 1], weight = 9 },
+      { durations = [2, 2, 1, 3], weight = 9 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 8 },
+      { durations = [2, 1, 1, 3, 1], weight = 8 },
+      { durations = [1, 2, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 3], weight = 6 },
+      { durations = [1, 3, 3, 1], weight = 5 },
+      { durations = [2, 1, 2, 1, 2], weight = 5 },
+      { durations = [1, 2, 1, 4], weight = 4 },
+      { durations = [2, 2, 1, 2, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 3 },
+      { durations = [2, 3, 1, 1, 1], weight = 3 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 2 },
+      { durations = [1, 1, 4, 2], weight = 2 },
+      { durations = [1, 2, 2, 2, 1], weight = 2 },
+      { durations = [1, 3, 1, 3], weight = 2 },
+      { durations = [1, 1, 1, 2, 1, 2], weight = 1 },
+      { durations = [1, 3, 4], weight = 1 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [3, 3, 2], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [2, 2, 2, 1, 1], weight = 535 },
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 429 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 420 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 386 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 347 },
+      { durations = [4, 2, 2], weight = 326 },
+      { durations = [3, 1, 2, 2], weight = 317 },
+      { durations = [2, 2, 4], weight = 243 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 215 },
+      { durations = [2, 1, 1, 2, 2], weight = 210 },
+      { durations = [6, 2], weight = 179 },
+      { durations = [2, 2, 3, 1], weight = 166 },
+      { durations = [6, 1, 1], weight = 130 },
+      { durations = [2, 4, 2], weight = 119 },
+      { durations = [4, 3, 1], weight = 119 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 92 },
+      { durations = [1, 1, 1, 1, 4], weight = 88 },
+      { durations = [2, 2, 1, 1, 2], weight = 77 },
+      { durations = [4, 2, 1, 1], weight = 69 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 53 },
+      { durations = [1, 1, 2, 2, 2], weight = 53 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 48 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 48 },
+      { durations = [1, 1, 2, 4], weight = 42 },
+      { durations = [3, 1, 2, 1, 1], weight = 40 },
+      { durations = [1, 2, 1, 2, 2], weight = 36 },
+      { durations = [2, 6], weight = 33 },
+      { durations = [4, 1, 1, 1, 1], weight = 31 },
+      { durations = [2, 1, 1, 4], weight = 30 },
+      { durations = [2, 4, 1, 1], weight = 29 },
+      { durations = [3, 1, 3, 1], weight = 27 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 23 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 23 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 16 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 16 },
+      { durations = [4, 1, 1, 2], weight = 16 },
+      { durations = [1, 3, 2, 2], weight = 12 },
+      { durations = [1, 2, 1, 3, 1], weight = 11 },
+      { durations = [1, 1, 2, 3, 1], weight = 9 },
+      { durations = [2, 2, 1, 3], weight = 9 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 8 },
+      { durations = [2, 1, 1, 3, 1], weight = 8 },
+      { durations = [1, 2, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 3], weight = 6 },
+      { durations = [1, 3, 3, 1], weight = 5 },
+      { durations = [2, 1, 2, 1, 2], weight = 5 },
+      { durations = [1, 2, 1, 4], weight = 4 },
+      { durations = [2, 2, 1, 2, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 3 },
+      { durations = [2, 3, 1, 1, 1], weight = 3 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 2 },
+      { durations = [1, 1, 4, 2], weight = 2 },
+      { durations = [1, 2, 2, 2, 1], weight = 2 },
+      { durations = [1, 3, 1, 3], weight = 2 },
+      { durations = [1, 1, 1, 2, 1, 2], weight = 1 },
+      { durations = [1, 3, 4], weight = 1 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [3, 3, 2], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 551 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 7 }, { degrees = -1, weight = 2 }, { degrees = -4, weight = 2 }, { degrees = -3, weight = 1 }, { degrees = 2, weight = 1 }, { degrees = 3, weight = 1 }] } }, weight = 351 }, { role = { VariedEndOf = 1 }, weight = 451 }, { role = "Free", weight = 8647 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1554 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 8 }, { degrees = -1, weight = 5 }, { degrees = -2, weight = 2 }, { degrees = -4, weight = 2 }, { degrees = 3, weight = 2 }, { degrees = 2, weight = 1 }] } }, weight = 501 }, { role = { VariedEndOf = 1 }, weight = 827 }, { role = "Free", weight = 7118 }] },
+  { choose = [{ role = "CadTonic", weight = 526 }, { role = "CadHalf", weight = 3910 }, { role = "CadOpen", weight = 5564 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 6416 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 9 }, { degrees = -3, weight = 4 }, { degrees = 2, weight = 2 }, { degrees = -4, weight = 1 }, { degrees = 3, weight = 1 }] } }, weight = 426 }, { role = { VariedEndOf = 1 }, weight = 351 }, { role = "Free", weight = 2807 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 4962 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 4 }, { degrees = -3, weight = 4 }, { degrees = -2, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 7, weight = 1 }] } }, weight = 276 }, { role = { VariedEndOf = 2 }, weight = 1404 }, { role = "Free", weight = 3358 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 1554 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = -1, weight = 2 }, { degrees = -3, weight = 1 }] } }, weight = 75 }, { role = { VariedEndOf = 3 }, weight = 1429 }, { role = "Free", weight = 6942 }] },
+  { choose = [{ role = "CadTonic", weight = 1579 }, { role = "CadHalf", weight = 3885 }, { role = "CadOpen", weight = 4536 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 250 }, { role = "CadFifth", weight = 21 }, { role = "CadOther", weight = 42 }] }
+[[form.parts]]
+name = "B"
+melody_center_offset = 1
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [2, 2, 2, 1, 1], weight = 535 },
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 429 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 420 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 386 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 347 },
+      { durations = [4, 2, 2], weight = 326 },
+      { durations = [3, 1, 2, 2], weight = 317 },
+      { durations = [2, 2, 4], weight = 243 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 215 },
+      { durations = [2, 1, 1, 2, 2], weight = 210 },
+      { durations = [6, 2], weight = 179 },
+      { durations = [2, 2, 3, 1], weight = 166 },
+      { durations = [6, 1, 1], weight = 130 },
+      { durations = [2, 4, 2], weight = 119 },
+      { durations = [4, 3, 1], weight = 119 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 92 },
+      { durations = [1, 1, 1, 1, 4], weight = 88 },
+      { durations = [2, 2, 1, 1, 2], weight = 77 },
+      { durations = [4, 2, 1, 1], weight = 69 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 53 },
+      { durations = [1, 1, 2, 2, 2], weight = 53 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 48 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 48 },
+      { durations = [1, 1, 2, 4], weight = 42 },
+      { durations = [3, 1, 2, 1, 1], weight = 40 },
+      { durations = [1, 2, 1, 2, 2], weight = 36 },
+      { durations = [2, 6], weight = 33 },
+      { durations = [4, 1, 1, 1, 1], weight = 31 },
+      { durations = [2, 1, 1, 4], weight = 30 },
+      { durations = [2, 4, 1, 1], weight = 29 },
+      { durations = [3, 1, 3, 1], weight = 27 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 23 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 23 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 16 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 16 },
+      { durations = [4, 1, 1, 2], weight = 16 },
+      { durations = [1, 3, 2, 2], weight = 12 },
+      { durations = [1, 2, 1, 3, 1], weight = 11 },
+      { durations = [1, 1, 2, 3, 1], weight = 9 },
+      { durations = [2, 2, 1, 3], weight = 9 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 8 },
+      { durations = [2, 1, 1, 3, 1], weight = 8 },
+      { durations = [1, 2, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 3], weight = 6 },
+      { durations = [1, 3, 3, 1], weight = 5 },
+      { durations = [2, 1, 2, 1, 2], weight = 5 },
+      { durations = [1, 2, 1, 4], weight = 4 },
+      { durations = [2, 2, 1, 2, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 3 },
+      { durations = [2, 3, 1, 1, 1], weight = 3 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 2 },
+      { durations = [1, 1, 4, 2], weight = 2 },
+      { durations = [1, 2, 2, 2, 1], weight = 2 },
+      { durations = [1, 3, 1, 3], weight = 2 },
+      { durations = [1, 1, 1, 2, 1, 2], weight = 1 },
+      { durations = [1, 3, 4], weight = 1 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [3, 3, 2], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [2, 2, 2, 1, 1], weight = 535 },
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 429 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 420 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 386 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 347 },
+      { durations = [4, 2, 2], weight = 326 },
+      { durations = [3, 1, 2, 2], weight = 317 },
+      { durations = [2, 2, 4], weight = 243 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 215 },
+      { durations = [2, 1, 1, 2, 2], weight = 210 },
+      { durations = [6, 2], weight = 179 },
+      { durations = [2, 2, 3, 1], weight = 166 },
+      { durations = [6, 1, 1], weight = 130 },
+      { durations = [2, 4, 2], weight = 119 },
+      { durations = [4, 3, 1], weight = 119 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 92 },
+      { durations = [1, 1, 1, 1, 4], weight = 88 },
+      { durations = [2, 2, 1, 1, 2], weight = 77 },
+      { durations = [4, 2, 1, 1], weight = 69 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 53 },
+      { durations = [1, 1, 2, 2, 2], weight = 53 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 48 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 48 },
+      { durations = [1, 1, 2, 4], weight = 42 },
+      { durations = [3, 1, 2, 1, 1], weight = 40 },
+      { durations = [1, 2, 1, 2, 2], weight = 36 },
+      { durations = [2, 6], weight = 33 },
+      { durations = [4, 1, 1, 1, 1], weight = 31 },
+      { durations = [2, 1, 1, 4], weight = 30 },
+      { durations = [2, 4, 1, 1], weight = 29 },
+      { durations = [3, 1, 3, 1], weight = 27 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 23 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 23 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 16 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 16 },
+      { durations = [4, 1, 1, 2], weight = 16 },
+      { durations = [1, 3, 2, 2], weight = 12 },
+      { durations = [1, 2, 1, 3, 1], weight = 11 },
+      { durations = [1, 1, 2, 3, 1], weight = 9 },
+      { durations = [2, 2, 1, 3], weight = 9 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 8 },
+      { durations = [2, 1, 1, 3, 1], weight = 8 },
+      { durations = [1, 2, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 1, 2], weight = 7 },
+      { durations = [3, 1, 1, 3], weight = 6 },
+      { durations = [1, 3, 3, 1], weight = 5 },
+      { durations = [2, 1, 2, 1, 2], weight = 5 },
+      { durations = [1, 2, 1, 4], weight = 4 },
+      { durations = [2, 2, 1, 2, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 3 },
+      { durations = [2, 3, 1, 1, 1], weight = 3 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 2 },
+      { durations = [1, 1, 4, 2], weight = 2 },
+      { durations = [1, 2, 2, 2, 1], weight = 2 },
+      { durations = [1, 3, 1, 3], weight = 2 },
+      { durations = [1, 1, 1, 2, 1, 2], weight = 1 },
+      { durations = [1, 3, 4], weight = 1 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [3, 3, 2], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 352 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 13 }, { degrees = 1, weight = 8 }, { degrees = -2, weight = 2 }, { degrees = -3, weight = 1 }] } }, weight = 603 }, { role = { VariedEndOf = 1 }, weight = 477 }, { role = "Free", weight = 8568 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1709 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 15 }, { degrees = 1, weight = 10 }, { degrees = -2, weight = 4 }, { degrees = 2, weight = 3 }, { degrees = -3, weight = 2 }, { degrees = 3, weight = 1 }] } }, weight = 879 }, { role = { VariedEndOf = 1 }, weight = 955 }, { role = "Free", weight = 6457 }] },
+  { choose = [{ role = "CadTonic", weight = 503 }, { role = "CadHalf", weight = 4271 }, { role = "CadOpen", weight = 5226 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 4824 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -2, weight = 5 }, { degrees = -1, weight = 2 }, { degrees = -7, weight = 1 }, { degrees = 3, weight = 1 }] } }, weight = 226 }, { role = { VariedEndOf = 1 }, weight = 226 }, { role = "Free", weight = 4724 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 3744 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -2, weight = 2 }, { degrees = -1, weight = 1 }, { degrees = 1, weight = 1 }, { degrees = 4, weight = 1 }] } }, weight = 126 }, { role = { VariedEndOf = 2 }, weight = 1156 }, { role = "Free", weight = 4974 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 686 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = -1, weight = 1 }, { degrees = -6, weight = 1 }, { degrees = -7, weight = 1 }, { degrees = 4, weight = 1 }] } }, weight = 67 }, { role = { VariedEndOf = 3 }, weight = 652 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 3342 }, { role = "Free", weight = 5253 }] },
+  { choose = [{ role = "CadTonic", weight = 1809 }, { role = "CadHalf", weight = 3643 }, { role = "CadOpen", weight = 4548 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 129 }, { role = "CadFifth", weight = 17 }, { role = "CadOther", weight = 21 }] }
+
+[melody]
+cell_units = 8
+strong_units = [0, 4]
+weak_units = [1, 3, 5, 7]
+key_modes = [
+  { key = 2, mode = "ionian", weight = 8 },
+  { key = 7, mode = "ionian", weight = 7 },
+  { key = 9, mode = "ionian", weight = 2 },
+  { key = 0, mode = "ionian", weight = 2 },
+  { key = 9, mode = "aeolian", weight = 1 },
+]
+
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 5
+weight_role_turn = 3
+max_continuity_step_distance = 2
+continuity_max_retries = 16
+melody_center_midi = 71
+tonic_midi_min = 66
+tonic_midi_max = 77
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 94
+strong_eighth_velocity_offset = 12
+even_eighth_velocity_offset = -10
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 16
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="II",quality="Minor"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV", "II"]
+
+[accompaniment.bass]
+low = 40
+high = 50
+walk_low = 38
+walk_high = 52
+hits = [
+  { step = 0, degree = "root", duration = 6, velocity = 72 },
+  { step = 8, degree = "fifth_if_held", duration = 6, velocity = 72 },
+]
+
+[accompaniment.bass.passing]
+none_weight = 4
+density = [[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+arousal_low_multiplier = 0.5
+arousal_high_multiplier = 1.5
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 2, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+
+# Accords tenus sur les deux pulsations de la blanche (pas de contretemps) : convention, comme le hornpipe et la gigue
+# britanniques ; aucune source ne décrit l'accompagnement des reels de bal coloniaux (étude V5a §2.1).
+[accompaniment.chords]
+center = 60
+max_drift = 6
+strings = 4
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 0, stroke = "down", duration = 8, velocity = 60 }] },
+  { hits = [{ step = 0, stroke = "down", duration = 6, velocity = 62 }, { step = 8, stroke = "down", duration = 6, velocity = 60 }] },
+  { hits = [{ step = 0, stroke = "down", duration = 3, velocity = 62 }, { step = 4, stroke = "down", duration = 3, velocity = 54 }, { step = 8, stroke = "down", duration = 3, velocity = 60 }, { step = 12, stroke = "down", duration = 3, velocity = 54 }] },
+]
+
+[accompaniment.chords.strum]
+down_gap_ms = 8.0
+up_gap_ms = 6.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 208.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
+
+[instruments]
+melody_program = 40
+chords_program = 24
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[mix]
+master_db = 13.5
+[mix.room]
+room_size = 0.4
+damping = 0.55
+width = 0.75
+level = 0.28
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.2
+presence_q = 0.8
+[mix.tracks.Melody]
+level_db = 0.0
+pan = -0.03
+reverb_send = 0.18
+[mix.tracks.Chords]
+level_db = -5.0
+pan = 0.35
+reverb_send = 0.24
+[mix.tracks.Bass]
+level_db = -8.0
+pan = 0.0
+reverb_send = 0.08
+[mix.tracks.Heel]
+level_db = -6.0
+pan = -0.05
+reverb_send = 0.1
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.05
+reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.025, 0.0, 0.0125, 0.0, 0.0125, 0.0, 0.0125, 0.0, -0.025, 0.0, 0.0125, 0.0, 0.0125, 0.0, 0.0125, 0.0]
+jitter = 0.025
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.1
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0, 8]
+accent = 2.0
+# DS-T10b : 111 marques Linked / 6653 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.696729
+steps = [0]
+min_duration = 3
+max_duration = 16
+context = "any"
+# DS-T10b : 9 marques Linked / 3629 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.248619
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+# DS-T10b : 42 marques Linked / 1447 porteuses ; 12|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 2.989324
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 37 marques Linked / 1683 porteuses ; 12|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 2.247874
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 2 marques Linked / 354 porteuses ; 12|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.568182
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 2 marques Linked / 1561 porteuses ; 12|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.128287
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 5 marques Linked / 1844 porteuses ; 12|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.272183
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Detached / 1844 porteuses ; 12|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.108873
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 6 marques Linked / 335 porteuses ; 12|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.823708
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 4 marques Linked / 1977 porteuses ; 14|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.202943
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Detached / 1977 porteuses ; 14|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.101471
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 2 marques Linked / 1983 porteuses ; 14|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.100959
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 1 marques Linked / 173 porteuses ; 14|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.581395
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 8 marques Linked / 93 porteuses ; 2|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 9.411765
+steps = [2]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 3 marques Linked / 39 porteuses ; 2|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 8.333333
+steps = [2]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 2 marques Linked / 1536 porteuses ; 2|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.130378
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Linked / 1722 porteuses ; 2|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.116279
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 1 marques Linked / 203 porteuses ; 2|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.495050
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 2 marques Linked / 1151 porteuses ; 4|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.174064
+steps = [4]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 1 marques Linked / 1653 porteuses ; 4|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.060533
+steps = [4]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 3 marques Linked / 1722 porteuses ; 4|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.174520
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 1 marques Linked / 1850 porteuses ; 4|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.054083
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 5 marques Linked / 691 porteuses ; 4|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.728863
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 5 marques Linked / 65 porteuses ; 6|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 8.333333
+steps = [6]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 5 marques Linked / 2079 porteuses ; 6|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.241080
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 5 marques Linked / 2393 porteuses ; 6|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.209380
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 4 marques Linked / 368 porteuses ; 6|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.098901
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 9 marques Linked / 1900 porteuses ; 8|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.475939
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 17 marques Linked / 2380 porteuses ; 8|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.719424
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 7 marques Linked / 1231 porteuses ; 8|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.571895
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 5 marques Linked / 1092 porteuses ; 8|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.459982
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 1 marques Linked / 1182 porteuses ; 8|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.084674
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "descending"
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/britannique_coloniale-reel.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.009753
+min_carrier_eighths = 1.0
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.triplet_repeated]
+written_per_100_notes = 0.009753
+min_carrier_eighths = 2.0
+velocity_scale = 0.9
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.294542
+per_100_notes_by_bar = [0.478412, 0.380868, 0.292513, 0.302741, 0.248282, 0.200581, 0.093352, 0.359587]
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8
+
+[ornaments.types.chord]
+written_per_100_notes = 0.003901
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 24
+velocity_scale = 0.75
+
+[ornaments.types.trill]
+written_per_100_notes = 0.001951
+min_carrier_eighths = 2.0
+velocity_scale = 0.8

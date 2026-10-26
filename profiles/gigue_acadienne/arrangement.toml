@@ -1,0 +1,29 @@
+# Arrangement de la gigue acadienne : tours d'un air, entrées progressives et intros idiomatiques.
+
+tours_per_tune = 3
+
+[entries]
+Melody = { tour = 1, part = 0, pass = 1 }
+Chords = { tour = 1, part = 0, pass = 2 }
+Bass = { tour = 1, part = 0, pass = 2 }
+Heel = { tour = 2, part = 0, pass = 1 }
+Toe = { tour = 2, part = 0, pass = 1 }
+Countermelody = { tour = 2, part = 0, pass = 1 }
+
+[intro]
+pickup_eighths = 2
+
+[[intro.forms]]
+role = "percussion"
+weight = 3
+bars = 1
+
+[[intro.forms]]
+role = "tail"
+weight = 2
+bars = 2
+
+[[intro.forms]]
+role = "vamp"
+weight = 1
+bars = 2

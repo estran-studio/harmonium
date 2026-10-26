@@ -521,5 +521,5 @@ fn distributed_profiles_round_trip_and_carry_their_corpus_rates() {
         profile.validate().unwrap();
         with_types += usize::from(!profile.ornaments.types.is_empty());
     }
-    assert_eq!(with_types, 7);
+    assert_eq!(with_types, 10);
 }

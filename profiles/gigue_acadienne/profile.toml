@@ -1,0 +1,346 @@
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "gigue_acadienne"
+name = "Gigue acadienne"
+tradition = "Acadie / Maritimes (Nouveau-Brunswick, Île-du-Prince-Édouard, Cap-Breton / Chéticamp, Îles-de-la-Madeleine), répertoire traditionnel de violon, de piano et de podorythmie"
+tags = ["gigue", "jig", "acadien", "acadie", "maritimes", "violon", "piano", "podorythmie"]
+corpus = "harmonium_lab: corpus acadienne (2026-10-22+270, 55 airs de type jig : 55 thesession); provenance dans corpus/sources.md et le manifeste du labo"
+
+[meter]
+time_signature = { numerator = 6, denominator = 8 }
+steps_per_bar = 12
+steps_per_unit = 2
+steps_per_pulse = 6
+pulses_per_bar = 2
+default_swing_ratio = 0.5
+default_bpm = 180.0
+min_bpm = 168.0
+max_bpm = 192.0
+
+[form]
+sequence = [0, 0, 1, 1]
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [1, 1, 1, 2, 1], weight = 185 },
+      { durations = [2, 1, 1, 1, 1], weight = 98 },
+      { durations = [3, 1, 1, 1], weight = 68 },
+      { durations = [2, 1, 2, 1], weight = 47 },
+      { durations = [1, 1, 1, 3], weight = 37 },
+      { durations = [3, 2, 1], weight = 34 },
+      { durations = [1, 2, 2, 1], weight = 8 },
+      { durations = [5, 1], weight = 6 },
+      { durations = [4, 1, 1], weight = 5 },
+      { durations = [1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 1, 3], weight = 1 },
+      { durations = [3, 1, 2], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [1, 1, 1, 2, 1], weight = 185 },
+      { durations = [2, 1, 1, 1, 1], weight = 98 },
+      { durations = [3, 1, 1, 1], weight = 68 },
+      { durations = [2, 1, 2, 1], weight = 47 },
+      { durations = [1, 1, 1, 3], weight = 37 },
+      { durations = [3, 2, 1], weight = 34 },
+      { durations = [1, 2, 2, 1], weight = 8 },
+      { durations = [5, 1], weight = 6 },
+      { durations = [4, 1, 1], weight = 5 },
+      { durations = [1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 1, 3], weight = 1 },
+      { durations = [3, 1, 2], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { SequenceOf = { bar = 1, shift = [{ degrees = 4, weight = 1 }] } }, weight = 200 }, { role = { VariedEndOf = 1 }, weight = 1000 }, { role = "Free", weight = 8800 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 2000 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 1 }, { degrees = 1, weight = 1 }] } }, weight = 400 }, { role = { VariedEndOf = 1 }, weight = 1400 }, { role = "Free", weight = 6200 }] },
+  { choose = [{ role = "CadHalf", weight = 200 }, { role = "CadOpen", weight = 9800 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 7200 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 1 }, { degrees = 4, weight = 1 }] } }, weight = 400 }, { role = { VariedEndOf = 1 }, weight = 200 }, { role = "Free", weight = 2200 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 3600 }, { role = { VariedEndOf = 2 }, weight = 4000 }, { role = "Free", weight = 2400 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 600 }, { role = { VariedEndOf = 3 }, weight = 1400 }, { role = "Free", weight = 8000 }] },
+  { choose = [{ role = "CadTonic", weight = 1600 }, { role = "CadHalf", weight = 600 }, { role = "CadOpen", weight = 7800 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 22 }, { role = "CadFifth", weight = 3 }, { role = "CadOther", weight = 23 }] }
+[[form.parts]]
+name = "B"
+melody_center_offset = 2
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [1, 1, 1, 2, 1], weight = 185 },
+      { durations = [2, 1, 1, 1, 1], weight = 98 },
+      { durations = [3, 1, 1, 1], weight = 68 },
+      { durations = [2, 1, 2, 1], weight = 47 },
+      { durations = [1, 1, 1, 3], weight = 37 },
+      { durations = [3, 2, 1], weight = 34 },
+      { durations = [1, 2, 2, 1], weight = 8 },
+      { durations = [5, 1], weight = 6 },
+      { durations = [4, 1, 1], weight = 5 },
+      { durations = [1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 1, 3], weight = 1 },
+      { durations = [3, 1, 2], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [1, 1, 1, 2, 1], weight = 185 },
+      { durations = [2, 1, 1, 1, 1], weight = 98 },
+      { durations = [3, 1, 1, 1], weight = 68 },
+      { durations = [2, 1, 2, 1], weight = 47 },
+      { durations = [1, 1, 1, 3], weight = 37 },
+      { durations = [3, 2, 1], weight = 34 },
+      { durations = [1, 2, 2, 1], weight = 8 },
+      { durations = [5, 1], weight = 6 },
+      { durations = [4, 1, 1], weight = 5 },
+      { durations = [1, 2, 1, 1, 1], weight = 1 },
+      { durations = [2, 1, 3], weight = 1 },
+      { durations = [3, 1, 2], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 3 }, { degrees = -1, weight = 1 }] } }, weight = 816 }, { role = { VariedEndOf = 1 }, weight = 612 }, { role = "Free", weight = 8572 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 2449 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -5, weight = 1 }] } }, weight = 204 }, { role = { VariedEndOf = 1 }, weight = 1429 }, { role = "Free", weight = 5918 }] },
+  { choose = [{ role = "CadTonic", weight = 204 }, { role = "CadHalf", weight = 408 }, { role = "CadOpen", weight = 9388 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 5102 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -3, weight = 1 }] } }, weight = 204 }, { role = { VariedEndOf = 1 }, weight = 408 }, { role = "Free", weight = 4286 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 3469 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 1 }] } }, weight = 204 }, { role = { VariedEndOf = 2 }, weight = 2041 }, { role = "Free", weight = 4286 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 200 }, { role = { VariedEndOf = 3 }, weight = 300 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 5102 }, { role = "Free", weight = 4398 }] },
+  { choose = [{ role = "CadTonic", weight = 1020 }, { role = "CadHalf", weight = 612 }, { role = "CadOpen", weight = 8368 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 24 }, { role = "CadFifth", weight = 2 }, { role = "CadOther", weight = 10 }] }
+
+[melody]
+cell_units = 6
+strong_units = [0, 3]
+weak_units = [1, 2, 4, 5]
+key_modes = [
+  { key = 2, mode = "ionian", weight = 6 },
+  { key = 7, mode = "ionian", weight = 5 },
+  { key = 9, mode = "ionian", weight = 5 },
+  { key = 0, mode = "ionian", weight = 2 },
+  { key = 4, mode = "dorian", weight = 2 },
+]
+
+[melody.params]
+weight_role_run = 4
+weight_role_arp = 3
+weight_role_turn = 3
+max_continuity_step_distance = 2
+continuity_max_retries = 16
+melody_center_midi = 71
+tonic_midi_min = 66
+tonic_midi_max = 77
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 94
+strong_eighth_velocity_offset = 12
+even_eighth_velocity_offset = -10
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 12
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 6]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 34
+walk_high = 50
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 82, doubling = ["octave"] },
+  { step = 6, degree = "fifth_if_held", duration = 3, velocity = 82, doubling = ["octave"] },
+]
+
+[accompaniment.bass.passing]
+none_weight = 3
+density = [[0.0, 0.0], [0.5, 0.8], [1.0, 1.2]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 4, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+
+# Recette « piano main gauche » de profiles/README.md, grille de gigue : basse sur 1 et 4 (pas 0 et 6),
+# accords sur 2-3 et 5-6 (pas 2, 4, 8, 10) ; chaque pulsation s'entend (pratique cap-bretonnaise, étude V5a §2).
+[accompaniment.chords]
+voicing = "close_triad"
+center = 58
+max_drift = 5
+strings = 3
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 4, stroke = "block", duration = 2, velocity = 60 }, { step = 10, stroke = "block", duration = 2, velocity = 56 }] },
+  { hits = [{ step = 2, stroke = "block", duration = 2, velocity = 56 }, { step = 4, stroke = "block", duration = 2, velocity = 62 }, { step = 8, stroke = "block", duration = 2, velocity = 56 }, { step = 10, stroke = "block", duration = 2, velocity = 62 }] },
+]
+
+[instruments]
+melody_program = 40
+countermelody_program = 40
+chords_program = 0
+bass_program = 0
+percussion_bank = 128
+percussion_program = 0
+
+[mix]
+master_db = 15.0
+[mix.room]
+room_size = 0.38
+damping = 0.58
+width = 0.7
+level = 0.28
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.3
+presence_q = 0.8
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.04
+reverb_send = 0.16
+[mix.tracks.Chords]
+level_db = -5.0
+pan = -0.35
+reverb_send = 0.22
+[mix.tracks.Bass]
+level_db = -8.0
+pan = 0.0
+reverb_send = 0.08
+[mix.tracks.Heel]
+level_db = -6.0
+pan = -0.06
+reverb_send = 0.1
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.015, 0.0, 0.0075, 0.0, 0.0075, 0.0, -0.015, 0.0, 0.0075, 0.0, 0.0075, 0.0]
+jitter = 0.015
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.08
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0, 6]
+accent = 2.0
+# DS-T10b : 10 marques Linked / 344 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 2.994012
+steps = [0]
+min_duration = 3
+max_duration = 12
+context = "any"
+# DS-T10b : 1 marques Linked / 159 porteuses ; 6|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.632911
+steps = [6]
+min_duration = 3
+max_duration = 12
+context = "repeated"
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/acadienne-jig.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.393443
+min_carrier_eighths = 1.0
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.grace_multiple]
+written_per_100_notes = 0.262295
+min_carrier_eighths = 0.5
+span = 0.49
+count = 2
+velocity_scale = 0.7
+
+[ornaments.types.roll]
+written_per_100_notes = 0.409836
+min_carrier_eighths = 2.0
+velocity_scale = 0.8
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.393443
+min_carrier_eighths = 1.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8
+
+[mix.tracks.Countermelody]
+level_db = -12.0
+pan = 0.22
+reverb_send = 0.18
+
+[performance.tracks.Countermelody]
+jitter = 0.03
+phrase = [[0.0, 0.98], [0.7, 1.02], [1.0, 0.94]]
+breath = 0.08
+
+[heterophony]
+source = "Melody"
+octave = 0
+low = 55
+high = 88
+arousal_low = 0.5
+arousal_high = 1.5
+density_low = 0.7
+density_high = 1.3
+operations = [
+  { operation = "unison", weight = 76 },
+  { operation = "ornament", weight = 10, phrase_end = "never" },
+  { operation = "plain", weight = 8 },
+  { operation = "simplify", weight = 6, phrase_end = "never" },
+  { operation = "octave", weight = 2 },
+  { operation = "third", weight = 2, phrase_end = "only" },
+  { operation = "sixth", weight = 1, phrase_end = "only" },
+  { operation = "rest", weight = 2, beats = ["weak"], phrase_end = "never" },
+]

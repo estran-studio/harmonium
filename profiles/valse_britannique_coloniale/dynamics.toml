@@ -1,0 +1,65 @@
+# Pilotage continu de la valse britannique coloniale par les émotions (Arousal, Tension, Valence, Density).
+neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
+mode_shift_boundary = "phrase"
+dark_below = -0.3
+bright_above = 0.1
+parallel_modes = [
+  { bright = "ionian", dark = "aeolian", weight = 3 },
+  { bright = "ionian", dark = "dorian", weight = 1 },
+  { bright = "mixolydian", dark = "dorian", weight = 1 },
+]
+arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
+tension_intensity = [[0.0, -0.03], [0.3, 0.0], [1.0, 0.10]]
+tempo_offset = [[0.0, -6.0], [0.5, 0.0], [1.0, 8.0]]
+melody_velocity = [[0.0, 0.75], [0.5, 1.0], [1.0, 1.25]]
+guitar_velocity = [[0.0, 0.70], [0.5, 1.0], [1.0, 0.85]]
+bass_velocity = [[0.0, 0.80], [0.5, 1.0], [1.0, 1.0]]
+feet_velocity = [[0.0, 1.0], [1.0, 1.0]]
+feet_intensity = [[0.0, 0.0], [1.0, 0.0]]
+fiddle_duration = [[0.0, 1.10], [0.5, 1.0], [1.0, 0.85]]
+strong_accent = [[0.0, -3.0], [0.5, 0.0], [1.0, 6.0]]
+chop_intensity = [[0.0, -0.5], [0.5, 0.0], [1.0, 0.5]]
+run_weight = [[0.0, 0.6], [0.5, 1.0], [1.0, 1.8]]
+arp_weight = [[0.0, 0.6], [0.5, 1.0], [1.0, 2.2]]
+turn_weight = [[0.0, 1.5], [0.5, 1.0], [1.0, 0.6]]
+
+color_register = [[0.0, -4.0], [0.65, 0.0], [1.0, 4.0]]
+brightness_accent = [[0.0, -6.0], [0.65, 0.0], [1.0, 8.0]]
+density_feet = [[0.0, 0.0], [1.0, 0.0]]
+density_chop = [[0.0, -0.5], [0.5, 0.0], [1.0, 0.5]]
+density_tracks = [
+  { track = "Melody", minimum = 0.0 },
+  { track = "Bass", minimum = 0.15 },
+  { track = "Chords", minimum = 0.25 },
+]
+
+tension_offbeat = [[0.0, -2.0], [0.3, 0.0], [1.0, 16.0]]
+tension_duration = [[0.0, 1.05], [0.3, 1.0], [1.0, 0.80]]
+tension_dominant = [[0.0, 0.0], [0.3, 0.0], [1.0, 0.70]]
+tension_chord_duration = [[0.0, 1.0], [0.3, 1.0], [1.0, 1.3]]
+
+[[color]]
+key = 7
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 4.0], [1.0, 6.0]]
+
+[[color]]
+key = 2
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 3.5], [1.0, 5.2]]
+
+[[color]]
+key = 0
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 1.0], [1.0, 1.5]]
+
+[[color]]
+key = 9
+mode = "aeolian"
+weight = [[0.0, 0.8], [0.5, 0.1], [1.0, 0.0]]
+
+[[color]]
+key = 5
+mode = "ionian"
+weight = [[0.0, 0.1], [0.5, 1.0], [1.0, 1.5]]
