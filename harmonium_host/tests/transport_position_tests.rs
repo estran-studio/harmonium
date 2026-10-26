@@ -31,11 +31,13 @@ use harmonium_audio::backend::AudioRenderer;
 use harmonium_core::{events::AudioEvent, params::TimeSignature, timeline::Measure};
 
 const SAMPLE_RATE: f64 = 44100.0;
-const BPM: f32 = 120.0;
-/// 44100 * 60 / 120 / 4 — samples per grid step at 120 bpm in 4/4.
-const SAMPLES_PER_STEP: usize = 5512;
-/// ~43 reads per step — far faster than a beat.
-const READ_EVERY: usize = 128;
+const BPM: f32 = 126.0;
+/// 44100 * 60 / 126 / 4 — a whole number of samples per grid step in 4/4, so
+/// step-sized buffers stay aligned with the plan's exact step instants.
+const SAMPLES_PER_STEP: usize = 5250;
+/// 42 reads per step — far faster than a beat, and a divisor of the step so a
+/// barline always falls on a read (the loop-wrap transient stays observable).
+const READ_EVERY: usize = 125;
 
 fn samples_per_bar() -> usize {
     (SAMPLE_RATE * 60.0 / f64::from(BPM) * 4.0) as usize
@@ -108,7 +110,7 @@ fn make_playback(n_bars: usize) -> Harness {
 }
 
 impl Harness {
-    /// Process `total_samples` in 128-sample chunks, reading the packed
+    /// Process `total_samples` in `READ_EVERY`-sample chunks, reading the packed
     /// position after every chunk — the same cadence as a real-time
     /// scoring loop.
     fn run_sampling(&mut self, total_samples: usize) -> Vec<u64> {

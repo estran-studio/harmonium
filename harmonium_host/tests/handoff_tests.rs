@@ -29,8 +29,9 @@ use harmonium_core::{events::AudioEvent, timeline::TrackId};
 
 const SAMPLE_RATE: f64 = 44100.0;
 const CHANNELS: usize = 2;
-/// Samples per grid step at 120 BPM in 4/4 (matches the engine's truncation).
-const SAMPLES_PER_STEP: usize = 5512;
+/// Samples per grid step at 126 BPM (a whole number: step-sized buffers stay
+/// aligned with the plan's exact step instants).
+const SAMPLES_PER_STEP: usize = 5250;
 const STEPS_PER_BAR: usize = 16;
 
 /// Shared event log: the renderer records every event it receives; the test
@@ -110,7 +111,7 @@ fn make_harness(seed: u64) -> Harness {
     profile.accompaniment.as_mut().unwrap().chords.strum = None;
     assert!(composer.set_profile(profile).is_ok());
     let _ = composer.take_pending_drop();
-    composer.set_bpm(120.0);
+    composer.set_bpm(126.0);
     composer.set_swing_ratio(0.5);
     composer.sync_generator();
     let log = EventLog::default();

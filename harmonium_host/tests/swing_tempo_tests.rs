@@ -4,7 +4,8 @@
 //! features on whole frames: a swung 4/4 pulse is exactly one rounded quarter
 //! (22050 frames at 120 BPM, measure 88200), and a `SetTempo { 240, 8 }` ramp
 //! lands exactly on a 240 BPM quarter (11025 frames) then `ClearTempo`
-//! reverts. The `swing_unit` pure function is also unit-tested.
+//! reverts. Step durations come from the shared time plan
+//! (`harmonium_core::time_plan`), unit-tested there.
 //!
 //! The coincidence tests below drive the engine directly (hand-built measures,
 //! one Lead note per step, recording renderer) and prove the clock/audio
@@ -25,7 +26,7 @@ use harmonium::{
     events::AudioEvent,
     playback::{
         LiveMidiEvent, MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP,
-        TaggedMeasure, pack, swing_unit,
+        TaggedMeasure, pack,
     },
 };
 use harmonium_core::{
@@ -43,23 +44,6 @@ fn quarter_profile() -> harmonium_core::StyleProfile {
     profile.meter.pulses_per_bar = 4;
     profile
 }
-/// Acceptance (2) — the swing unit: at ratio 0.6, 120 BPM, 44100 Hz, the step
-/// durations are exactly [6615, 6615, 4410, 4410] (step starts 0, 13230,
-/// 22050) and the unit sums to the rounded quarter (22050).
-#[test]
-fn swing_unit_has_exact_durations() {
-    let quarter = 22050usize;
-    let unit = swing_unit(quarter, 0.6);
-    assert_eq!(unit, [6615, 6615, 4410, 4410]);
-    assert_eq!(unit[0], 6615);
-    assert_eq!(unit[0] + unit[1], 13230);
-    assert_eq!(unit.iter().sum::<usize>(), quarter);
-
-    // A straight (0.5) unit under a ramp still sums to the rounded quarter.
-    let straight = swing_unit(11025, 0.5);
-    assert_eq!(straight.iter().sum::<usize>(), 11025);
-}
-
 /// Acceptance (2) — on the engine: every swung 4/4 pulse lasts exactly one
 /// quarter (22050 frames at 120 BPM), so a measure lasts 88200 frames.
 #[test]
@@ -156,7 +140,7 @@ fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
         }
     }
 
-    // durations = [pulse0=22048, pulse1=19600, ..., pulse8=11025] — the ramp
+    // durations = [pulse0=22050, pulse1=19600, ..., pulse8=11025] — the ramp
     // is pulses 1..=8 (received during pulse 0).
     let ramp = &durations[1..9];
     for pair in ramp.windows(2) {
@@ -165,7 +149,7 @@ fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
     assert_eq!(ramp[7], 11025, "pulse k+8 must be exactly a quarter at 240 BPM");
 
     // Phase 2: ClearTempo reverts to the measure tempo at the next pulse
-    // boundary (120 BPM, straight = 22048).
+    // boundary (120 BPM: exactly one quarter, 22050 frames).
     let _ = cmd_tx.push(PlaybackCommand::ClearTempo);
     let cleared_duration = loop {
         composer.generate_ahead();
@@ -176,7 +160,7 @@ fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
             break clock.next_pulse_frame - clock.pulse_start_frame;
         }
     };
-    assert_eq!(cleared_duration, 22048, "ClearTempo must revert to the 120 BPM measure tempo");
+    assert_eq!(cleared_duration, 22050, "ClearTempo must revert to the 120 BPM measure tempo");
     Ok(())
 }
 
