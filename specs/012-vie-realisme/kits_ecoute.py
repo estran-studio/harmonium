@@ -19,17 +19,20 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+import tomllib
 import wave
 from pathlib import Path
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
+TABLE_HEADER = re.compile(r"^\s*\[\[?\s*([A-Za-z0-9_.\-]+)\s*\]\]?\s*(#.*)?$")
 
 # Couche → préfixes de sections TOML (dans profile.toml) retirées pour la version « sans ».
 LAYERS: dict[str, tuple[str, ...]] = {
@@ -69,9 +72,9 @@ def strip_sections(text: str, prefixes: tuple[str, ...]) -> str:
     """Retire les tables TOML dont le nom commence par un des préfixes."""
     kept, skip = [], False
     for line in text.splitlines(keepends=True):
-        stripped = line.strip()
-        if stripped.startswith("["):
-            name = stripped.strip("[]").strip()
+        header = TABLE_HEADER.match(line)
+        if header:
+            name = header.group(1)
             skip = any(name == p or name.startswith(p + ".") for p in prefixes)
         if not skip:
             kept.append(line)
@@ -254,28 +257,122 @@ def seamless_loop(samples: np.ndarray, start: int, end: int, rate: int, fade_ms:
     return loop
 
 
+def _fmt(value: object) -> str:
+    """Valeur TOML littérale (nombres, chaînes, tableaux imbriqués)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(round(value, 6)) if isinstance(value, float) else str(value)
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    return "[" + ", ".join(_fmt(v) for v in value) + "]"
+
+
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+
+# Version « marquée » des couches les plus discrètes, dans les bornes de validation du moteur :
+# pour faire entendre ce que fait chaque couche, pas une proposition de valeurs.
+def _mark_table(name: str, table: dict) -> dict:
+    changed = {}
+    if name == "performance.tracks.Melody":
+        if "offsets" in table:
+            changed["offsets"] = [_clamp(x * 5.0, -0.2, 0.2) for x in table["offsets"]]
+        if "jitter" in table:
+            changed["jitter"] = _clamp(table["jitter"] * 4.0, 0.0, 0.1)
+        if "phrase" in table:
+            changed["phrase"] = [[p, _clamp(d * 4.0, -20.0, 20.0)] for p, d in table["phrase"]]
+        if "breath" in table:
+            changed["breath"] = _clamp(table["breath"] * 3.0, 0.0, 0.5)
+    elif name == "performance.tracks.Melody.rules" and table.get("articulation", "Normal") != "Normal":
+        changed["weight"] = _clamp(table.get("weight", 0.0) * 6.0, 0.0, 1_000_000.0)
+        if "shorten" in table:
+            changed["shorten"] = _clamp(table["shorten"] * 2.0, 0.0, 0.8)
+        if "accent" in table:
+            changed["accent"] = _clamp(float(table["accent"]) * 3.0, 0.0, 20.0)
+    elif name == "performance.tracks.Melody.emotions":
+        for key, factor, hi in (("tension_advance", 3.0, 0.2), ("tension_detach", 2.5, 0.4),
+                                ("arousal_accent", 3.0, 20.0)):
+            if key in table:
+                changed[key] = _clamp(table[key] * factor, 0.0, hi)
+    elif name == "ornaments" and "rate_scale" in table:
+        changed["rate_scale"] = 10.0
+    elif name == "mix.room":
+        changed = {"level": _clamp(table.get("level", 0.0) * 2.2, 0.0, 1.0),
+                   "room_size": _clamp(table.get("room_size", 0.0) + 0.25, 0.0, 1.0)}
+    elif name.startswith("mix.tracks."):
+        if "reverb_send" in table:
+            changed["reverb_send"] = _clamp(table["reverb_send"] * 2.5, 0.0, 1.0)
+        if "pan" in table:
+            changed["pan"] = _clamp(table["pan"] * 2.5, -0.9, 0.9)
+    elif name == "mix.eq" and "presence_db" in table:
+        changed["presence_db"] = _clamp(table["presence_db"] * 2.0, -12.0, 12.0)
+    return changed
+
+
+def mark_profile(text: str) -> str:
+    """Applique `_mark_table` table par table, en réécrivant seulement les lignes `clé = valeur` touchées."""
+    out, block, name = [], [], ""
+
+    def flush() -> None:
+        if block:
+            try:
+                table = tomllib.loads("".join(block))
+            except tomllib.TOMLDecodeError:
+                table = {}
+            changed = _mark_table(name, table)
+            for line in block:
+                key = line.split("=", 1)[0].strip() if "=" in line and not line.lstrip().startswith("#") else ""
+                out.append(f"{key} = {_fmt(changed[key])}\n" if key in changed else line)
+            block.clear()
+
+    for line in text.splitlines(keepends=True):
+        header = TABLE_HEADER.match(line)
+        if header:
+            flush()
+            name = header.group(1)
+            out.append(line)
+            continue
+        block.append(line)
+    flush()
+    return "".join(out)
+
+
 def build_comparator(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Comparateur aux valeurs distribuées."""
+    return _build_comparator(args, tmp, "comparateur", marked=False)
+
+
+def build_comparator_marked(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Même comparateur, mixage / interprétation / ornements nettement exagérés (pour les entendre)."""
+    return _build_comparator(args, tmp, "comparateur-marque", marked=True)
+
+
+def _build_comparator(args: argparse.Namespace, tmp: Path, kit: str, marked: bool) -> list[dict]:
     """Une boucle par combinaison de couches (2⁵), toutes alignées à l'échantillon près.
 
     Les décalages d'interprétation ne déplacent pas les barres (grille publiée) : la même fenêtre de
     mesures, découpée aux `bar_start_frames` de la vérité, est donc alignée dans toutes les versions.
     La page HTML les joue en même temps et n'entend qu'une combinaison : on bascule sans perdre le fil.
     """
-    out = args.output / "comparateur"
+    out = args.output / kit
     out.mkdir(parents=True, exist_ok=True)
     report, index = [], {"layers": [{"id": layer, "label": LAYER_LABELS[layer]} for layer in PROGRESSION],
                          "profiles": []}
     for profile in COMPARATOR_PROFILES:
         source = ROOT / "profiles" / profile
         text = (source / "profile.toml").read_text(encoding="utf-8")
+        if marked:
+            text = mark_profile(text)
         renders = {}
         for mask in range(1 << len(PROGRESSION)):
             removed = tuple(p for bit, layer in enumerate(PROGRESSION) if not mask >> bit & 1
                             for p in LAYERS[layer])
-            variant = tmp / "comparateur" / profile / str(mask)
+            variant = tmp / kit / profile / str(mask)
             shutil.copytree(source, variant)
             (variant / "profile.toml").write_text(strip_sections(text, removed), encoding="utf-8")
-            wav, truth = tmp / f"cmp-{profile}-{mask}.wav", tmp / f"cmp-{profile}-{mask}.json"
+            wav, truth = tmp / f"{kit}-{profile}-{mask}.wav", tmp / f"{kit}-{profile}-{mask}.json"
             export(args.binary, variant, wav, args, args.bars, truth=truth)
             renders[mask] = (read_wav(wav), json.loads(truth.read_text(encoding="utf-8")))
         full = len(renders) - 1
@@ -297,10 +394,15 @@ def build_comparator(args: argparse.Namespace, tmp: Path) -> list[dict]:
             files[str(mask)] = name
         index["profiles"].append({"id": profile, "bars": [first, first + args.loop_bars - 1],
                                   "seconds": round((window[1] - window[0]) / rate, 2), "files": files})
-        report.append({"kit": "comparateur", "profile": profile, "bars": [first, first + args.loop_bars - 1],
+        report.append({"kit": kit, "profile": profile, "bars": [first, first + args.loop_bars - 1],
                        "seconds": round((window[1] - window[0]) / rate, 2), "versions": len(files)})
     (out / "index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (out / "comparateur.html").write_text(COMPARATOR_HTML, encoding="utf-8")
+    html = COMPARATOR_HTML if not marked else COMPARATOR_HTML.replace(
+        "<h1>Comparateur de couches</h1>",
+        "<h1>Comparateur de couches — version marquée</h1><p><b>Mixage, interprétation et ornements "
+        "sont volontairement exagérés</b> pour entendre ce que fait chaque couche ; ce ne sont pas les "
+        "réglages du jeu.</p>")
+    (out / "comparateur.html").write_text(html, encoding="utf-8")
     return report
 
 
@@ -466,7 +568,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="harmonium-kits-") as name:
         tmp = Path(name)
         builders = {"ab": build_ab_kits, "progression": build_progression,
-                    "comparateur": build_comparator, "sets": build_sets, "violons": build_fiddles}
+                    "comparateur": build_comparator, "comparateur-marque": build_comparator_marked,
+                    "sets": build_sets, "violons": build_fiddles}
         report = [row for kit in args.kits.split(",") for row in builders[kit](args, tmp)]
     (args.output / "kits.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                                            encoding="utf-8")
