@@ -335,7 +335,7 @@ def markdown(result: dict, bases: dict, seeds: int) -> str:
     lines = ['# Mesures des 4 émotions (généré par `measure_emotions.py`)', '',
              f'{len(bases)} profils × {seeds} graines × (neutre + 4 émotions × 5 niveaux + combinaisons), '
              f'{BARS} mesures, 2 tours, `--automation` constante. Moyennes sur les graines ; '
-             'l\'écart type entre graines est dans `emotions-mesures.json`. '
+             'l’écart type entre graines est dans `emotions-mesures.json` (régénéré par `measure_emotions.py`, non versionné). '
              'Une émotion bouge, les trois autres restent au neutre du profil :', '',
              '| Profil | arousal | valence | densité | tension |', '|---|---:|---:|---:|---:|']
     for name in bases:
@@ -417,7 +417,7 @@ def main() -> None:
     (args.output / 'emotions-mesures.json').write_text(json.dumps(
         {'seeds': args.seeds, 'bars': BARS, 'neutral': bases, 'levels': LEVELS, 'metrics': {
             k: v[0] for k, v in METRICS.items()}, 'results': result},
-        ensure_ascii=False, indent=1, allow_nan=True) + '\n')
+        ensure_ascii=False, separators=(',', ':'), allow_nan=True) + '\n')
     (args.output / 'emotions-mesures.md').write_text(markdown(result, bases, args.seeds))
     worst = max(result[n][label]['crete']['max'] for n in names for label in result[n])
     print(f'crête maximale {worst:.2f} dBFS')

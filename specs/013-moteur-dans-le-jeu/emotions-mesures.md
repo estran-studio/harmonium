@@ -1,6 +1,6 @@
 # Mesures des 4 émotions (généré par `measure_emotions.py`)
 
-7 profils × 20 graines × (neutre + 4 émotions × 5 niveaux + combinaisons), 66 mesures, 2 tours, `--automation` constante. Moyennes sur les graines ; l'écart type entre graines est dans `emotions-mesures.json`. Une émotion bouge, les trois autres restent au neutre du profil :
+7 profils × 20 graines × (neutre + 4 émotions × 5 niveaux + combinaisons), 66 mesures, 2 tours, `--automation` constante. Moyennes sur les graines ; l’écart type entre graines est dans `emotions-mesures.json` (régénéré par `measure_emotions.py`, non versionné). Une émotion bouge, les trois autres restent au neutre du profil :
 
 | Profil | arousal | valence | densité | tension |
 |---|---:|---:|---:|---:|
