@@ -58,6 +58,10 @@ flowchart LR
 - **J4 — Carte des 4 émotions** : ce que chacune fait par profil (tempo, dynamique, mode, densité,
   articulation…), plages utiles, recouvrements ; documentation pour le jeu et comparateur d'écoute
   (même boucle, une émotion à la fois). Corriger si deux émotions se confondent à l'oreille.
+  *Livré (branche `j4-emotions-carte`)* : inventaire et constats `emotions-inventaire.md`, mesures
+  `measure_emotions.py` → `emotions-mesures.{md,json}`, guide du concepteur `emotions.md`, comparateur
+  d'écoute (kit `emotions` de `specs/012-vie-realisme/kits_ecoute.py`), propositions de données
+  `proposition_emotions.py` (P1–P3, non appliquées : J2).
 - **J2 — Émotions avec vitesse de changement** : API `cible + vitesse` (immédiat, rampe sur N
   mesures, à la prochaine phrase…), déterministe, décidée par le jeu ; quelles couches suivent à quelle
   vitesse (accent immédiat, dynamique, densité, mode, air) ; contrat de flux.
