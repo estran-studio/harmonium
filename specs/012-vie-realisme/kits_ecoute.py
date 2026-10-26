@@ -360,6 +360,75 @@ function stop() {
 """
 
 
+def build_fiddles(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Page d'écoute synchronisée du comparatif de violons (`make fiddle-compare`), numéros seuls."""
+    del tmp
+    tunes = sorted(p for p in args.fiddle_dir.iterdir() if p.is_dir() and any(p.glob("0*.wav")))
+    if not tunes:
+        raise SystemExit(f"{args.fiddle_dir} : lancer d'abord `make fiddle-compare` dans le labo")
+    index = {"profiles": [{"id": t.name, "files": {w.stem: f"{t.name}/{w.name}"
+                                                   for w in sorted(t.glob("0*.wav"))}} for t in tunes]}
+    (args.fiddle_dir / "index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n",
+                                                encoding="utf-8")
+    (args.fiddle_dir / "comparateur.html").write_text(FIDDLE_HTML, encoding="utf-8")
+    return [{"kit": "violons", "profile": t.name, "versions": len(index["profiles"][i]["files"])}
+            for i, t in enumerate(tunes)]
+
+
+FIDDLE_HTML = """<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Harmonium — comparateur de violons</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:720px;margin:2em auto;padding:0 1em;line-height:1.5}
+button{font-size:1.1em;padding:.4em 1.2em;margin-right:.5em}
+label{display:inline-block;font-size:1.3em;margin:.3em .8em .3em 0;cursor:pointer}
+input[type=radio]{transform:scale(1.4);margin-right:.4em}
+#etat{color:#666;margin-top:1em}
+</style></head><body>
+<h1>Comparateur de violons</h1>
+<p>Le même vrai reel joue en boucle avec tous les violons en même temps ; on n'en entend qu'un.
+Change de numéro : le violon change au même moment de la musique. Les 8 premières mesures sont le
+violon seul, puis guitare et basse entrent. Même volume pour chaque violon. Note ton numéro préféré
+<b>avant</b> d'ouvrir <code>correspondance.md</code>.</p>
+<p><label for="air" style="display:inline">Air : </label><select id="air"></select></p>
+<div id="violons"></div>
+<p><button id="jouer">▶ Jouer</button><button id="arreter">■ Arrêter</button></p>
+<div id="etat">Chargement…</div>
+<script>
+const ctx = new AudioContext();
+let index, voices = [], names = [], playing = false;
+const etat = document.getElementById('etat');
+function chosen() { const r = document.querySelector('input[name=v]:checked'); return r ? names.indexOf(r.value) : 0; }
+function apply() { const c = chosen(), t = ctx.currentTime;
+  voices.forEach((v, i) => { v.gain.gain.cancelScheduledValues(t); v.gain.gain.setTargetAtTime(i === c ? 1 : 0, t, 0.015); });
+  if (playing) etat.textContent = 'Violon n° ' + names[c]; }
+function stop() { voices.forEach(v => { if (v.src) { v.src.stop(); v.src.disconnect(); v.src = null; } }); playing = false; }
+async function load(id) {
+  stop(); const p = index.profiles.find(x => x.id === id); names = Object.keys(p.files).sort();
+  etat.textContent = 'Chargement…';
+  const box = document.getElementById('violons'); box.innerHTML = '';
+  names.forEach((n, i) => { const lab = document.createElement('label');
+    lab.innerHTML = '<input type="radio" name="v" value="' + n + '"' + (i ? '' : ' checked') + '>' + n;
+    box.appendChild(lab); lab.querySelector('input').addEventListener('change', apply); });
+  const buffers = await Promise.all(names.map(async n => ctx.decodeAudioData(await (await fetch(p.files[n])).arrayBuffer())));
+  voices = buffers.map(b => ({buffer: b, gain: ctx.createGain(), src: null}));
+  voices.forEach(v => { v.gain.gain.value = 0; v.gain.connect(ctx.destination); });
+  etat.textContent = 'Prêt : ' + names.length + ' violons.';
+}
+function play() { if (playing || !voices.length) return; ctx.resume(); const at = ctx.currentTime + 0.1;
+  voices.forEach(v => { v.src = ctx.createBufferSource(); v.src.buffer = v.buffer; v.src.loop = true;
+    v.src.connect(v.gain); v.src.start(at); }); playing = true; apply(); }
+(async () => {
+  index = await (await fetch('index.json')).json();
+  const sel = document.getElementById('air');
+  index.profiles.forEach(p => sel.add(new Option(p.id.replace(/-[0-9a-f]{8}$/, '').replaceAll('-', ' '), p.id)));
+  sel.addEventListener('change', () => load(sel.value));
+  document.getElementById('jouer').onclick = play; document.getElementById('arreter').onclick = stop;
+  await load(sel.value);
+})();
+</script></body></html>
+"""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/harmonium-cli")
@@ -373,13 +442,16 @@ def main() -> int:
     parser.add_argument("--set-bars", type=int, default=300)
     parser.add_argument("--loop-bars", type=int, default=16, help="longueur de la boucle du comparateur")
     parser.add_argument("--kits", default="ab,progression,comparateur,sets",
-                        help="kits à produire, séparés par des virgules")
+                        help="kits à produire, séparés par des virgules (aussi : violons)")
+    parser.add_argument("--fiddle-dir", type=Path,
+                        default=ROOT.parent / "harmonium_lab/target/fiddle_compare",
+                        help="sortie de `make fiddle-compare` (kit violons)")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="harmonium-kits-") as name:
         tmp = Path(name)
         builders = {"ab": build_ab_kits, "progression": build_progression,
-                    "comparateur": build_comparator, "sets": build_sets}
+                    "comparateur": build_comparator, "sets": build_sets, "violons": build_fiddles}
         report = [row for kit in args.kits.split(",") for row in builders[kit](args, tmp)]
     (args.output / "kits.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                                            encoding="utf-8")
