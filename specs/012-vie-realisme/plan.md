@@ -1767,3 +1767,11 @@ bascule instantanée, volume moyen égalisé) :
   surtout au casque. Aucune décision tant qu'une version plus marquée n'a pas été comparée.
 
 **2026-10-26, violons** : n° 03 choisi à l'aveugle = GeneralUser GS, le violon actuel (voir point 6).
+
+**2026-10-26, comparateur corrigé (boucles sans clic)** : « toujours aucune différence » pour
+**mixage, interprétation et ornements**. Aucun ADR pour ces trois couches. Kit
+`ecoute/comparateur-marque/` : mêmes 32 combinaisons, ces trois couches exagérées dans les bornes
+du moteur (décalages ×5, dispersion ×4, courbe de phrase ×4, respiration ×3, articulations non
+normales ×6 ; ornements `rate_scale` 10 ; salle ×2,2, envois ×2,5, panoramique ×2,5). Si la version
+marquée est entendue et préférée, une valeur intermédiaire sera proposée ; si elle n'apporte rien,
+la couche peut rester discrète ou être retirée.
