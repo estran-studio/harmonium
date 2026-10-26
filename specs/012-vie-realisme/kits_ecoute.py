@@ -7,6 +7,10 @@ temporaire du dossier de profil). Même seed, mêmes banques, même durée ; les
 versions sont ramenées au même volume moyen (RMS −20 dBFS) et l'ordre est tiré au
 hasard (graine fixe). La correspondance est écrite à part.
 
+Le kit `emotions` (phase 013, J4 ; `--kits emotions`) est un comparateur des quatre émotions :
+9 versions par air (neutre, puis bas / haut de chaque émotion, les trois autres au neutre), même
+graine, même air, mêmes mesures ; page `emotions/comparateur.html` (voir `build_emotions`).
+
 Exemple :
     cargo build --release -p harmonium-cli
     /Users/william.quintal/Project/bascanada/harmonium_lab/.venv/bin/python \
@@ -477,6 +481,284 @@ function stop() {
 """
 
 
+# ---------------------------------------------------------------- kit « emotions » (phase 013, J4)
+
+EMOTION_PROFILES = ("reel_quebecois", "gigue_quebecoise", "valse_quebecoise",
+                    "marche_britannique_coloniale")
+# La caisse claire (Toe, notes GM 38 et 40) de la marche est muette dans `harmonium_trad.sf2`
+# (mesuré : solo Toe à −130 dBFS) : ses pieds sont rendus avec la banque GM, comme son profil
+# l'attend (`percussion_bank = 128`). Sans cela, densité et arousal ne s'entendraient pas aux pieds.
+GM_FEET_PROFILES = ("marche_britannique_coloniale",)
+EMOTIONS = {
+    "arousal": "Arousal (énergie : tempo, force, remplissage)",
+    "valence": "Valence (clair ↔ sombre)",
+    "density": "Densité (texture : pistes, pieds, accords)",
+    "tension": "Tension (nervosité : contretemps, notes sèches)",
+}
+# Niveau bas / haut de chaque axe : les bornes de l'API (valence : −1 / +1, les autres : 0 / 1).
+EMOTION_EXTREMES = {"arousal": (0.0, 1.0), "valence": (-1.0, 1.0), "density": (0.0, 1.0), "tension": (0.0, 1.0)}
+EMOTION_KEYS = ("arousal", "valence", "density", "tension")
+LOUD_LIMIT = 10.0 ** (-1.0 / 20.0)  # crête maximale du kit : −1 dBFS
+
+
+def neutral_emotions(profile_dir: Path) -> dict[str, float]:
+    """Neutre du profil : les courbes de `dynamics.toml` y valent leur valeur « sans effet »."""
+    dynamics = tomllib.loads((profile_dir / "dynamics.toml").read_text(encoding="utf-8"))
+    knee = next(x for x, y in dynamics["tension_duration"] if abs(y - 1.0) < 1e-9)
+    return {"arousal": 0.5, "valence": dynamics["neutral_valence"], "density": 0.5, "tension": knee}
+
+
+def emotion_automation(base: dict[str, float], target: dict[str, float]) -> str:
+    """Neutre à la mesure 1 (l'air est construit au neutre), cible dès la mesure 2.
+
+    L'air (matériel mélodique, tonalité, registre) se fige à sa construction avec les émotions du
+    moment ; ce que fait ensuite une émotion en cours d'air, c'est ce que le jeu fera entendre. Toutes
+    les versions partagent donc exactement la même mélodie, et seules les couches pilotées changent.
+    """
+    return "".join(f"[[keys]]\nbar = {bar}\n" + "".join(f"{k} = {values[k]}\n" for k in EMOTION_KEYS)
+                   for bar, values in ((1, base), (2, target)))
+
+
+def melody_notes(truth: dict, first: int, last: int) -> set[tuple[int, int, int]]:
+    return {(e["measure"]["index"], n["start_step"], n["pitch"]) for e in truth["measures"]
+            if first <= e["measure"]["index"] < last for n in e["measure"]["notes"] if n["track"] == 0}
+
+
+def build_emotions(args: argparse.Namespace, tmp: Path) -> list[dict]:
+    """Une boucle par (émotion, niveau) : 9 versions par air, même graine, même air, mêmes mesures.
+
+    Le tempo change avec l'arousal (et un peu avec la tension) : les boucles de 16 mesures n'ont donc
+    pas la même durée en secondes, et les jouer en parallèle, comme le comparateur de couches, les
+    ferait dériver. La page ne joue qu'**une** version à la fois et, à chaque changement, reprend la
+    nouvelle version à la **même position musicale** (même mesure, même fraction de mesure) d'après les
+    débuts de mesure publiés dans la vérité (`bar_start_frames`) : soit tout de suite, soit au début
+    de la mesure suivante (réglage par défaut, jonction sans saut de pulse). Le volume n'est pas égalisé
+    version par version (il fait partie de l'effet) : un seul gain par air, choisi pour que la plus
+    forte version reste sous −1 dBFS ; une case « volume égalisé » permet d'écouter le reste.
+    """
+    out = args.output / "emotions"
+    out.mkdir(parents=True, exist_ok=True)
+    report = []
+    index = {"emotions": [{"id": e, "label": label} for e, label in EMOTIONS.items()],
+             "levels": ["bas", "neutre", "haut"], "profiles": []}
+    for profile in EMOTION_PROFILES:
+        source = ROOT / "profiles" / profile
+        base = neutral_emotions(source)
+        render_args = args
+        if profile in GM_FEET_PROFILES:
+            render_args = argparse.Namespace(**{**vars(args), "feet_soundfont": args.soundfont})
+        versions: dict[str, dict[str, float]] = {"neutre": base}
+        for emotion, (low, high) in EMOTION_EXTREMES.items():
+            versions[f"{emotion}-bas"] = {**base, emotion: low}
+            versions[f"{emotion}-haut"] = {**base, emotion: high}
+        renders = {}
+        for key, values in versions.items():
+            automation = tmp / f"emotions-{profile}-{key}.toml"
+            automation.write_text(emotion_automation(base, values), encoding="utf-8")
+            wav, truth = tmp / f"emotions-{profile}-{key}.wav", tmp / f"emotions-{profile}-{key}.json"
+            export(args.binary, source, wav, render_args, args.bars, automation=automation, truth=truth)
+            renders[key] = (read_wav(wav), json.loads(truth.read_text(encoding="utf-8")))
+        (_, rate), reference = renders["neutre"]
+        tour2 = [e["measure"]["index"] for e in reference["measures"]
+                 if e["measure"]["position"] and e["measure"]["position"]["section"] == "Tour"
+                 and e["measure"]["position"]["tour"] == 2]
+        first, last = min(tour2), min(tour2) + args.loop_bars
+        if last > max(tour2) + 1:
+            raise SystemExit(f"{profile} : le 2ᵉ tour est plus court que la boucle")
+        loops, stats = {}, {}
+        for key, ((samples, _), truth) in renders.items():
+            starts = truth["bar_start_frames"]
+            window = (starts[str(first)], starts[str(last)])
+            loop = seamless_loop(samples, window[0], window[1], rate)
+            tempi = [e["measure"]["tempo"] for e in truth["measures"] if first <= e["measure"]["index"] < last]
+            wrap = float(np.max(np.abs(loop[0] - samples[window[1] - 1])))
+            inside = float(np.max(np.abs(np.diff(loop, axis=0))))
+            loops[key] = loop
+            stats[key] = {
+                "seconds": (window[1] - window[0]) / rate, "bpm": sum(tempi) / len(tempi),
+                "bars": [(starts[str(b)] - window[0]) / rate for b in range(first, last + 1)],
+                "rms": float(np.sqrt(np.mean(loop ** 2))), "peak": float(np.max(np.abs(loop))),
+                "wrap_jump": wrap, "max_step": inside,
+                "same_air": len(melody_notes(truth, first, last) & melody_notes(reference, first, last))
+                            / len(melody_notes(reference, first, last)),
+                "measures": sum(1 for e in truth["measures"] if first <= e["measure"]["index"] < last)}
+            if stats[key]["measures"] != args.loop_bars:
+                raise SystemExit(f"{profile}/{key} : {stats[key]['measures']} mesures au lieu de {args.loop_bars}")
+            if wrap > inside:
+                raise SystemExit(f"{profile}/{key} : saut de {wrap:.4f} à la reprise (> {inside:.4f} dans la boucle)")
+        gain = 10.0 ** ((-20.0 - db(stats["neutre"]["rms"])) / 20.0)
+        gain = min(gain, LOUD_LIMIT / max(s["peak"] for s in stats.values()))
+        files = {}
+        for key, loop in loops.items():
+            name = f"{profile}-{key}.wav"
+            write_wav16(out / name, loop * gain, rate)
+            written, _ = read_wav(out / name)  # vérifie le fichier, pas le tampon en mémoire
+            file_peak = float(np.max(np.abs(written)))
+            if file_peak > LOUD_LIMIT * 1.002 or np.count_nonzero(np.abs(written) >= 32767 / 32768) > 0:
+                raise SystemExit(f"{name} : écrêtage ({db(file_peak):.2f} dBFS)")
+            if np.max(np.abs(written[0] - written[-1])) > np.max(np.abs(np.diff(written, axis=0))):
+                raise SystemExit(f"{name} : clic à la reprise de la boucle")
+            s = stats[key]
+            eq = min(stats["neutre"]["rms"] / s["rms"], LOUD_LIMIT / (s["peak"] * gain))
+            files[key] = {"file": name, "seconds": round(s["seconds"], 3), "bpm": round(s["bpm"], 1),
+                          "bars": [round(t, 4) for t in s["bars"]], "eq_gain": round(eq, 4)}
+            report.append({"kit": "emotions", "profile": profile, "version": key, "measures": s["measures"],
+                           "bars": [first, last - 1], "seconds": round(s["seconds"], 2),
+                           "bpm": round(s["bpm"], 1), "peak_dbfs": round(db(file_peak), 2),
+                           "rms_dbfs": round(db(s["rms"] * gain), 2),
+                           "wrap_jump_over_max_step": round(s["wrap_jump"] / s["max_step"], 3),
+                           "same_melody": round(s["same_air"], 3)})
+        index["profiles"].append({"id": profile, "bars": [first, last - 1], "loop_bars": args.loop_bars,
+                                  "neutral": base, "versions": files})
+    (out / "index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (out / "comparateur.html").write_text(EMOTIONS_HTML, encoding="utf-8")
+    return report
+
+
+EMOTIONS_HTML = """<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Harmonium — comparateur des 4 émotions</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:760px;margin:2em auto;padding:0 1em;line-height:1.5}
+button{font-size:1.1em;padding:.4em 1.2em;margin-right:.5em}
+fieldset{margin:.8em 0;padding:.4em .9em}
+label{font-size:1.1em;margin-right:1.2em;cursor:pointer}
+input[type=radio],input[type=checkbox]{transform:scale(1.3);margin-right:.4em}
+#etat,#tempos{color:#555;margin-top:.8em}
+</style></head><body>
+<h1>Comparateur des 4 émotions</h1>
+<p>Le même air (même graine, mêmes mesures) tourne en boucle. Choisis une émotion et un niveau
+(<b>bas</b> / <b>neutre</b> / <b>haut</b>) ; les trois autres restent au neutre. Le tempo change avec
+l'arousal : les boucles n'ont pas la même durée, donc <b>une seule version joue à la fois</b> et la
+nouvelle reprend à la <b>même position musicale</b> (même mesure, même fraction de mesure).</p>
+<p><label for="profil">Air : </label><select id="profil"></select></p>
+<fieldset><legend>Émotion</legend><div id="emotions"></div></fieldset>
+<fieldset><legend>Niveau</legend><div id="niveaux"></div></fieldset>
+<fieldset><legend>Réglages</legend>
+<label><input type="radio" name="bascule" value="mesure" checked>Bascule au début de la mesure suivante</label>
+<label><input type="radio" name="bascule" value="tout">Bascule immédiate (même fraction de mesure)</label><br>
+<label><input type="checkbox" id="egal">Volume égalisé (sinon la force fait partie de l'effet)</label></fieldset>
+<p><button id="jouer">▶ Jouer</button><button id="arreter">■ Arrêter</button></p>
+<div id="etat">Chargement…</div><div id="tempos"></div>
+<script>
+const ctx = new AudioContext();
+let index, prof = null, buffers = {}, active = null, pending = null, playing = false;
+const $ = id => document.getElementById(id);
+const FADE = 0.012;
+const checked = name => document.querySelector('input[name=' + name + ']:checked').value;
+const keyOf = () => checked('niveau') === 'neutre' ? 'neutre' : checked('emotion') + '-' + checked('niveau');
+const gainOf = key => $('egal').checked ? prof.versions[key].eq_gain : 1;
+function commit(now) {
+  if (pending && now >= pending.when) { active = pending; pending = null; }
+}
+function position(voice, now) {
+  const v = prof.versions[voice.key];
+  return (((voice.offset + now - voice.when) % v.seconds) + v.seconds) % v.seconds;
+}
+function locate(v, t) {
+  let i = 0;
+  while (i < v.bars.length - 2 && t >= v.bars[i + 1]) i++;
+  return [i, (t - v.bars[i]) / (v.bars[i + 1] - v.bars[i])];
+}
+function startVoice(key, when, offset) {
+  const src = ctx.createBufferSource(), gain = ctx.createGain();
+  src.buffer = buffers[key]; src.loop = true; gain.gain.value = 0;
+  src.connect(gain); gain.connect(ctx.destination);
+  src.start(when, offset);
+  gain.gain.setTargetAtTime(gainOf(key), when, FADE);
+  return {key, src, gain, when, offset};
+}
+function stopVoice(voice, when) {
+  voice.gain.gain.setTargetAtTime(0, when, FADE);
+  voice.src.stop(when + 0.25);
+  voice.timer = setTimeout(() => voice.gain.disconnect(), (when - ctx.currentTime + 0.5) * 1000);
+}
+function cancelPending(now) {
+  if (!pending) return;
+  pending.src.stop(); pending.gain.disconnect(); pending = null;
+  clearTimeout(active.timer); active.src.stop(now + 7200);
+  active.gain.gain.cancelScheduledValues(now);
+  active.gain.gain.setValueAtTime(gainOf(active.key), now);
+}
+function select() {
+  const key = keyOf();
+  showTempos();
+  if (!playing) return;
+  let now = ctx.currentTime; commit(now); cancelPending(now);
+  if (key === active.key) return;
+  const from = prof.versions[active.key], to = prof.versions[key];
+  let when = now + 0.005, offset;
+  const [bar, phase] = locate(from, position(active, when));
+  if (checked('bascule') === 'tout') {
+    offset = to.bars[bar] + phase * (to.bars[bar + 1] - to.bars[bar]);
+  } else {
+    when += (1 - phase) * (from.bars[bar + 1] - from.bars[bar]);
+    offset = to.bars[bar + 1];
+  }
+  offset %= to.seconds;
+  pending = startVoice(key, when, offset);
+  stopVoice(active, when);
+}
+function showTempos() {
+  const e = checked('emotion'), v = prof.versions;
+  const label = k => v[k].bpm.toFixed(0) + ' BPM, ' + v[k].seconds.toFixed(1) + ' s';
+  $('tempos').textContent = e + ' — bas : ' + label(e + '-bas') + ' · neutre : ' + label('neutre') +
+    ' · haut : ' + label(e + '-haut') + ' (' + prof.loop_bars + ' mesures chacune)';
+}
+function refresh() {
+  if (!playing) return;
+  const now = ctx.currentTime; commit(now);
+  const v = prof.versions[active.key], [bar] = locate(v, position(active, now));
+  $('etat').textContent = 'Joue : ' + active.key + ' — mesure ' + (bar + 1) + '/' + prof.loop_bars +
+    ' (' + v.bpm.toFixed(0) + ' BPM)' + (pending ? ' → ' + pending.key + ' au prochain début de mesure' : '');
+}
+async function load(id) {
+  stop();
+  prof = index.profiles.find(p => p.id === id);
+  $('etat').textContent = 'Chargement de ' + id + '… (9 versions)';
+  buffers = {};
+  await Promise.all(Object.entries(prof.versions).map(async ([k, v]) =>
+    buffers[k] = await ctx.decodeAudioData(await (await fetch(v.file)).arrayBuffer())));
+  $('etat').textContent = 'Prêt : mesures ' + prof.bars[0] + ' à ' + prof.bars[1] + ' de l\\'air.';
+  showTempos();
+}
+function play() {
+  if (playing || !prof) return;
+  ctx.resume();
+  active = startVoice(keyOf(), ctx.currentTime + 0.1, 0);
+  playing = true; refresh();
+}
+function stop() {
+  if (!playing) return;
+  [active, pending].forEach(v => { if (v) { v.src.stop(); v.gain.disconnect(); } });
+  active = pending = null; playing = false;
+}
+function radios(box, name, items, current) {
+  items.forEach(([value, text]) => {
+    const l = document.createElement('label');
+    l.innerHTML = '<input type="radio" name="' + name + '" value="' + value + '"' +
+      (value === current ? ' checked' : '') + '>' + text;
+    l.querySelector('input').addEventListener('change', select); box.appendChild(l);
+  });
+}
+(async () => {
+  index = await (await fetch('index.json')).json();
+  radios($('emotions'), 'emotion', index.emotions.map(e => [e.id, e.label]), 'arousal');
+  radios($('niveaux'), 'niveau', index.levels.map(l => [l, l]), 'neutre');
+  document.querySelectorAll('input[name=bascule]').forEach(r => r.addEventListener('change', () => {}));
+  $('egal').addEventListener('change', () => { if (playing) {
+    const now = ctx.currentTime; commit(now);
+    [active, pending].forEach(v => v && v.gain.gain.setTargetAtTime(gainOf(v.key), now, FADE)); } });
+  const sel = $('profil');
+  index.profiles.forEach(p => sel.add(new Option(p.id.replaceAll('_', ' '), p.id)));
+  sel.addEventListener('change', () => load(sel.value));
+  $('jouer').onclick = play; $('arreter').onclick = stop;
+  setInterval(refresh, 100);
+  await load(sel.value);
+})();
+</script></body></html>
+"""
+
+
 def build_fiddles(args: argparse.Namespace, tmp: Path) -> list[dict]:
     """Page d'écoute synchronisée du comparatif de violons (`make fiddle-compare`), numéros seuls."""
     del tmp
@@ -559,7 +841,8 @@ def main() -> int:
     parser.add_argument("--set-bars", type=int, default=300)
     parser.add_argument("--loop-bars", type=int, default=16, help="longueur de la boucle du comparateur")
     parser.add_argument("--kits", default="ab,progression,comparateur,sets",
-                        help="kits à produire, séparés par des virgules (aussi : violons)")
+                        help="kits à produire, séparés par des virgules (aussi : violons, "
+                             "comparateur-marque, emotions)")
     parser.add_argument("--fiddle-dir", type=Path,
                         default=ROOT.parent / "harmonium_lab/target/fiddle_compare",
                         help="sortie de `make fiddle-compare` (kit violons)")
@@ -569,10 +852,13 @@ def main() -> int:
         tmp = Path(name)
         builders = {"ab": build_ab_kits, "progression": build_progression,
                     "comparateur": build_comparator, "comparateur-marque": build_comparator_marked,
-                    "sets": build_sets, "violons": build_fiddles}
+                    "sets": build_sets, "violons": build_fiddles, "emotions": build_emotions}
         report = [row for kit in args.kits.split(",") for row in builders[kit](args, tmp)]
-    (args.output / "kits.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
-                                           encoding="utf-8")
+    path = args.output / "kits.json"
+    produced = {row["kit"] for row in report}
+    kept = [row for row in json.loads(path.read_text(encoding="utf-8")) if row["kit"] not in produced] \
+        if path.exists() else []  # un kit régénéré remplace ses lignes, les autres restent
+    path.write_text(json.dumps(kept + report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     for row in report:
         print(row)
     return 0
