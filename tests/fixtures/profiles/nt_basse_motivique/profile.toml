@@ -1,0 +1,169 @@
+# Dérivés analytiques, pas une transcription : G0 nt-desert §6.1/7.2,
+# Fläshyn (Jukio Kallio). Timings regroupés ; vélocités synthétiques.
+# 210 noires/min = 140 noires pointées/min ; aucun modèle G2 anticipé.
+[files]
+cells = "cells.toml"
+dynamics = "dynamics.toml"
+
+[meta]
+id = "nt_basse_motivique"
+name = "Fixture basse motivique NT désert"
+tradition = "Contrat synthétique dérivé de G0, non distribué"
+tags = ["test"]
+corpus = "G0 nt-desert README §6.1/7.2 : pédale G# et relance, ostinato D/D# ; seules cellules dérivées"
+
+[meter]
+time_signature = { numerator = 12, denominator = 8 }
+steps_per_bar = 24
+steps_per_unit = 2
+steps_per_pulse = 6
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 210.0
+min_bpm = 180.0
+max_bpm = 240.0
+
+[form]
+sequence = [0, 0, 1, 1]
+[[form.parts]]
+name = "Pedale"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "CadHalf"]
+[[form.parts]]
+name = "Riff"
+melody_center_offset = 0
+roles = ["Open", "CadHalf", "Free", "CadFull", { CopyOf = 1 }, { CopyOf = 2 }, { CopyOf = 3 }, { CopyOf = 4 }]
+
+[melody]
+cell_units = 12
+strong_units = [0, 3, 6, 9]
+weak_units = [1, 2, 4, 5, 7, 8, 10, 11]
+key_modes = [{ key = 2, mode = "phrygian", weight = 1 }]
+[melody.params]
+weight_role_run = 1
+weight_role_arp = 1
+weight_role_turn = 1
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 62
+tonic_midi_max = 74
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 0
+even_eighth_velocity_offset = 0
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 24
+[[harmony.candidates]]
+mode = "phrygian"
+chords = [{ degree = "I", quality = "Minor" }, { degree = "IV", quality = "Minor" }, { degree = "V", quality = "Major" }, { degree = "BVII", quality = "Minor" }]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{ degree = "I", quality = "Major" }, { degree = "IV", quality = "Major" }, { degree = "V", quality = "Minor" }, { degree = "BVII", quality = "Major" }]
+
+[accompaniment]
+strong_steps = [0, 6, 12, 18]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+[accompaniment.bass]
+low = 26
+high = 37
+# Référence D1 placée à 26 : +6 = G#1 (32), indépendante des accords.
+[[accompaniment.bass.motifs]]
+part = "Pedale"
+bars = 4
+reference = "tonic"
+notes = [
+ { step = 0, duration = 72, semitones = 6, velocity = 95, tie = true },
+ # G0 §6.1 : D cinq pas, E un, F# un, G quatre, G# treize.
+ { step = 72, duration = 5, semitones = 0, velocity = 85 },
+ { step = 77, duration = 1, semitones = 2, velocity = 85 },
+ { step = 78, duration = 1, semitones = 4, velocity = 90 },
+ { step = 79, duration = 4, semitones = 5, velocity = 95 },
+ { step = 83, duration = 13, semitones = 6, velocity = 100 },
+]
+# G0 §6.1 : regroupement des positions de l'ostinato, puis de la relance.
+# La référence accord permet de rejouer exactement ces intervalles ailleurs.
+[[accompaniment.bass.motifs]]
+part = "Riff"
+bars = 2
+weight = 3
+reference = "chord_root"
+notes = [
+ { step = 0, duration = 4, semitones = 0, velocity = 95 },
+ { step = 4, duration = 1, semitones = 1, velocity = 85 },
+ { step = 5, duration = 3, semitones = 0, velocity = 90 },
+ { step = 8, duration = 3, semitones = 1, velocity = 85 },
+ { step = 11, duration = 6, semitones = 0, velocity = 95 },
+ { step = 17, duration = 1, semitones = 1, velocity = 85 },
+ { step = 18, duration = 6, semitones = 0, velocity = 95 },
+ { step = 24, duration = 5, semitones = 0, velocity = 95 },
+ { step = 29, duration = 2, semitones = 1, velocity = 85 },
+ { step = 31, duration = 1, semitones = 3, velocity = 85 },
+ { step = 32, duration = 3, semitones = 5, velocity = 90 },
+ { step = 35, duration = 2, semitones = 6, velocity = 95 },
+ { step = 37, duration = 2, semitones = 0, velocity = 90 },
+ { step = 39, duration = 2, semitones = 1, velocity = 85 },
+ { step = 41, duration = 2, semitones = 0, velocity = 90 },
+ { step = 43, duration = 1, semitones = 2, velocity = 85 },
+ { step = 44, duration = 4, semitones = 0, velocity = 95 },
+]
+# Variante synthétique espacée : même mécanisme, choix pondéré réellement audible.
+[[accompaniment.bass.motifs]]
+part = "Riff"
+bars = 2
+weight = 1
+notes = [
+ { step = 0, duration = 12, semitones = 0, velocity = 76 },
+ { step = 12, duration = 12, semitones = 1, velocity = 70 },
+ { step = 24, duration = 18, semitones = 0, velocity = 76 },
+ { step = 42, duration = 6, semitones = 1, velocity = 70 },
+]
+# Sentinelle inéligible : un poids nul ne doit jamais produire cette attaque.
+[[accompaniment.bass.motifs]]
+part = "Riff"
+bars = 2
+weight = 0
+notes = [{ step = 3, duration = 1, semitones = 12, velocity = 1 }]
+
+[accompaniment.chords]
+center = 62
+max_drift = 4
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, duration = 24, velocity = 60 }] }]
+
+[percussion]
+heel_note = 36
+toe_note = 38
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 1.0
+velocity_humanize = 0
+patterns = [
+ { density = 0, euclid = { pulses = 2, steps = 24, rotation = 0 } },
+ { density = 1, euclid = { pulses = 4, steps = 24, rotation = 0 } },
+ { density = 2, euclid = { pulses = 8, steps = 24, rotation = 0 } },
+]
+
+[instruments]
+melody_program = 81
+chords_program = 88
+# Lead 2 (sawtooth), GM 82 ; index zéro, jamais une guitare.
+bass_program = 81
+percussion_bank = 128
+percussion_program = 0
+
+[arrangement]
+tours_per_tune = 2
+[arrangement.entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+[arrangement.intro]
+forms = []
+pickup_eighths = 0

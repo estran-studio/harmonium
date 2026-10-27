@@ -80,6 +80,77 @@ consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
 `default_pattern` est utilisé lorsque les courbes `chop_intensity + density_chop`
 valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
+### Motifs de basse
+
+`bass.motifs` remplace `bass.hits` : les deux sources sont exclusives, puis
+passent par la même réalisation de notes et de doublures. Aucun changement
+pour un profil sans banque de motifs. Modèle requis actuellement :
+`trad_functional` (G2 boucle/pédale n'est pas réimplémenté ici).
+
+```toml
+[accompaniment.bass]
+low = 26
+high = 37
+motifs = [
+  { bars = 2, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 4, semitones = 0, octave = 0, velocity = 95 },
+    { step = 4, duration = 2, semitones = 1, octave = 0, velocity = 85 },
+    { step = 6, duration = 18, semitones = 0, octave = 0, velocity = 90 },
+    { step = 24, duration = 24, degree = 1, octave = 0, velocity = 95 },
+  ] },
+]
+```
+
+Exemple sur une grille de **24 pas par mesure**. `bars` vaut 1..4 (défaut 1) ;
+`step` est absolu depuis le début du motif, `duration` est en pas de la grille
+du profil. Les notes principales sont ordonnées, sans chevauchement ; les
+silences sont les trous entre leurs plages. Chaque note fournit exactement
+un intervalle : `semitones` (−24..24, chromatisme conservé) ou `degree`
+(−14..−1 ou 1..14 : 1 = référence, 2 = prochaine note du mode actif,
+−1 = précédente). Les degrés suivent le mode **de la tonalité**, même si
+la référence est une autre fondamentale. `octave` (−2..2, défaut 0) est
+**relatif**, pas un numéro d'octave MIDI. La référence est d'abord placée par
+`low..high`, puis les intervalles/octaves sont ajoutés, sans repli du contour.
+Le chargeur refuse les dépassements MIDI ; pour les degrés, sa borne
+conservatrice couvre jusqu'à trois demi-tons par pas modal.
+
+`reference = "chord_root"` (défaut) suit la fondamentale au pas d'attaque ;
+`"tonic"` garde la tonique pour un bourdon. Une tenue franchissant une barre
+est découpée en segments publiés avec `Articulation::Tied` sur les suivants :
+le lecteur et l'export MIDI G5 prolongent la même hauteur sans nouvelle attaque.
+Si la référence change, la nouvelle hauteur attaque normalement. `tie = true`
+sur une note demande aussi une liaison avec la fin coïncidente précédente,
+y compris à l'intérieur d'une mesure. Un timbre à sustain et aucune
+interprétation raccourcissant le gate sont nécessaires pour une vraie pédale ;
+la fixture NT utilise **Saw Lead, `bass_program = 81` (0-based)**.
+`doubling = ["octave", "tenth"]` suit les mêmes règles que les coups.
+
+Banque : au plus 256 motifs, poids `u32` (défaut 1), somme positive sans
+débordement ; poids nul = jamais tiré. `part = "A"` filtre par nom de partie ;
+les motifs spécifiques éligibles ont priorité sur les motifs sans `part`.
+Chaque partie doit disposer d'au moins un motif de poids positif.
+Le tirage préfère les motifs entiers qui tiennent avant la fin de partie ;
+sinon il tronque un motif à cette frontière, jamais au-delà.
+
+La sélection est fixée une fois par air, dans un domaine ChaCha8 dérivé du
+matériel écrit, sans déplacer les tirages des autres pistes. Les passes et tours
+rejouent les mêmes tranches. `CopyOf` et `CopyOfPart` copient **une mesure**,
+puis transposent ses intervalles sur l'harmonie de destination. Une copie
+interrompt la tranche courante sans suspendre l'avancée du motif. La seconde fin
+copie sa référence, tire un motif d'une mesure ou conserve la tranche finale.
+`SequenceOf`, `VariedEndOf`, `resolve`, les variations et les préférences
+rythmiques mélodiques ne transforment pas la basse : écrire ses variantes
+dans la banque pondérée. Aucun deuxième moteur de variation mélodique.
+
+Émotions : arrangement et seuils `density_tracks` gardent le contrôle de
+la piste ; `bass_velocity` et `[performance.tracks.Bass]` s'appliquent aux
+notes publiées. La densité ne retire pas d'attaques du riff écrit, et l'arousal
+ne retire pas le motif en cours. `bass.passing`, si présent, garde ses courbes
+densité/phrase/arousal : il approche les cibles du motif, y compris la première
+de la mesure suivante, sans modifier les hauteurs/positions écrites ni les
+soumettre au veto mélodique réservé aux ajouts. Il peut écourter une porteuse.
+Omettre `passing` pour conserver un riff ou une pédale exactement écrits.
+
 ### Notes de passage de basse
 
 `walk_low` / `walk_high` élargissent `low` / `high` pour les seules approches ;
