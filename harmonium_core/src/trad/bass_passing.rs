@@ -70,6 +70,7 @@ fn eligible(
     from: &TimelineNote,
     target: (usize, u8),
     bass: &BassVoice,
+    written_steps: &[usize],
     melody: &[TimelineNote],
     passing: &BassPassing,
     context: &PassingContext<'_>,
@@ -102,7 +103,7 @@ fn eligible(
         };
         step > from.start_step
             && step < steps
-            && !bass.hits.iter().any(|h| h.step == step)
+            && !written_steps.contains(&step)
             && !context.strong_steps.contains(&step)
             && (bass.walk_low.unwrap_or(bass.low)..=bass.walk_high.unwrap_or(bass.high))
                 .contains(&pitch)
@@ -132,6 +133,7 @@ pub(crate) fn apply(
     let mut notes = std::mem::take(slot);
     let melody = measure.notes_for_track(TrackId::Melody);
     let original = notes.len();
+    let written_steps: Vec<usize> = notes.iter().map(|n| n.start_step).collect();
     let mut cursor = 0;
     while cursor < original {
         let index = cursor;
@@ -157,7 +159,7 @@ pub(crate) fn apply(
             continue;
         }
         let valid = |r: &&PassingRule| {
-            eligible(r, from, target, bass, melody, passing, context, measure.steps)
+            eligible(r, from, target, bass, &written_steps, melody, passing, context, measure.steps)
         };
         let weight: f32 = passing.rules.iter().filter(valid).map(|r| r.weight as f32).sum();
         if weight == 0.0 {
@@ -209,7 +211,7 @@ pub(crate) fn apply(
 }
 
 /// Les ornements peuvent ajouter une voix mélodique : leur veto est lu dans le flux final.
-pub(crate) fn veto_final(measure: &mut Measure, bass: &BassVoice) {
+pub(crate) fn veto_final(measure: &mut Measure, bass: &BassVoice, written_steps: &[usize]) {
     let Some(passing) = &bass.passing else {
         return;
     };
@@ -219,7 +221,7 @@ pub(crate) fn veto_final(measure: &mut Measure, bass: &BassVoice) {
     let mut notes = std::mem::take(slot);
     let melody = measure.notes_for_track(TrackId::Melody);
     notes.retain(|n| {
-        bass.hits.iter().any(|h| h.step == n.start_step)
+        written_steps.contains(&n.start_step)
             || !clashes(
                 melody,
                 n.pitch,

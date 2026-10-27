@@ -1,0 +1,31 @@
+# Courbes constantes : contrat exact des notes écrites.
+neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
+mode_shift_boundary = "part"
+dark_below = -0.3
+bright_above = 0.1
+parallel_modes = [{ bright = "ionian", dark = "aeolian", weight = 1 }]
+arousal_intensity = [[0.0, 0.5], [1.0, 0.5]]
+tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, 0.0], [1.0, 0.0]]
+melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
+guitar_velocity = [[0.0, 1.0], [1.0, 1.0]]
+bass_velocity = [[0.0, 1.0], [1.0, 1.0]]
+feet_velocity = [[0.0, 1.0], [1.0, 1.0]]
+feet_intensity = [[0.0, 0.0], [1.0, 0.0]]
+fiddle_duration = [[0.0, 1.0], [1.0, 1.0]]
+strong_accent = [[0.0, 0.0], [1.0, 0.0]]
+chop_intensity = [[0.0, 0.0], [1.0, 0.0]]
+run_weight = [[0.0, 1.0], [1.0, 1.0]]
+arp_weight = [[0.0, 1.0], [1.0, 1.0]]
+turn_weight = [[0.0, 1.0], [1.0, 1.0]]
+color_register = [[0.0, 0.0], [1.0, 0.0]]
+brightness_accent = [[0.0, 0.0], [1.0, 0.0]]
+density_feet = [[0.0, 0.0], [1.0, 0.0]]
+density_chop = [[0.0, 0.0], [1.0, 0.0]]
+density_tracks = []
+tension_offbeat = [[0.0, 0.0], [1.0, 0.0]]
+tension_duration = [[0.0, 1.0], [1.0, 1.0]]
+tension_dominant = [[0.0, 0.0], [1.0, 0.0]]
+tension_chord_duration = [[0.0, 1.0], [1.0, 1.0]]
+color = [{ key = 2, mode = "ionian", weight = [[0.0, 1.0], [1.0, 1.0]] }]

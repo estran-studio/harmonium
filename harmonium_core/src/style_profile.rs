@@ -1102,7 +1102,16 @@ impl StyleProfile {
             }
         }
         if let Some(a) = &self.accompaniment {
-            a.validate_accompaniment(m.steps_per_bar, self.harmony.model == "jazz_functional")?;
+            check(
+                a.bass.motifs.is_empty() || self.harmony.model == "trad_functional",
+                "accompaniment.bass.motifs",
+                "les motifs de basse demandent une harmonie trad_functional",
+            )?;
+            a.validate_accompaniment(
+                m.steps_per_bar,
+                self.harmony.model == "jazz_functional",
+                &self.form.parts,
+            )?;
         } else {
             check(
                 self.harmony.model == "none",

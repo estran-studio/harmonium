@@ -9,7 +9,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 use super::{
-    accomp::{Guitarist, bass_bar},
+    accomp::{BassMotifPlan, Guitarist, bass_bar, bass_motif_bar, first_bass_target},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     cells::Cell,
     feet::{draw_feet_humanize, feet_notes, feet_notes_with_cadence},
@@ -50,8 +50,10 @@ pub struct ActiveTune {
     pub fiddle: FiddleLine,
     /// Modèle harmonique sélectionné par le profil, précalculé par mesure.
     pub harmony: HarmonyPlan,
-    /// Décalages d'humanisation des vélocités des pieds, par position de mesure
-    /// de chaque partie et par pas. Tirés une fois par air, relus aux reprises.
+    /// Plan motivique de la basse pour cet air (vide si la basse utilise `hits`).
+    bass_plan: BassMotifPlan,
+    /// Décalages d'humanisation des vélocités des pieds, par mesure unique de
+    /// chaque partie ; les reprises et les tours relisent les mêmes décalages.
     pub feet_humanize: Vec<Vec<i8>>,
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
@@ -413,6 +415,15 @@ impl TradGenerator {
         } else {
             self.fill_tour_measure(&tune, &position, &mut measure);
         }
+        // Pas des notes écrites (coups ou motif) : seuls les ajouts de passage sont vétoés.
+        let written_bass_steps: Vec<usize> = if !is_intro
+            && !is_outro
+            && self.profile.accompaniment.as_ref().is_some_and(|a| a.bass.passing.is_some())
+        {
+            measure.notes_for_track(TrackId::Bass).iter().map(|n| n.start_step).collect()
+        } else {
+            Vec::new()
+        };
         if !is_intro && !is_outro {
             self.apply_bass_passing(&mut measure, &tune, &position);
         }
@@ -527,7 +538,7 @@ impl TradGenerator {
             && !is_outro
             && let Some(a) = &self.profile.accompaniment
         {
-            super::bass_passing::veto_final(&mut measure, &a.bass);
+            super::bass_passing::veto_final(&mut measure, &a.bass, &written_bass_steps);
         }
 
         measure
@@ -549,25 +560,20 @@ impl TradGenerator {
         }
         let bar = self.performed_bar(position);
         let chords = self.chords_for_bar(tune, bar);
-        let next_target = a
-            .bass
-            .hits
-            .first()
-            .filter(|_| bar + 1 < self.profile.form.bars_per_tour() * position.tours)
-            .map(|hit| {
+        let next_target = (bar + 1 < self.profile.form.bars_per_tour() * position.tours)
+            .then(|| {
                 let next = self.chords_for_bar(tune, bar + 1);
-                (
-                    hit.step,
-                    super::accomp::bass_hit_pitch(
-                        &next,
-                        tune.plan.key,
-                        tune.plan.mode,
-                        a,
-                        hit,
-                        self.profile.harmony.steps_per_chord,
-                    ),
+                first_bass_target(
+                    &tune.bass_plan,
+                    &tune.plan,
+                    bar + 1,
+                    &next,
+                    a,
+                    self.profile.meter.steps_per_bar,
+                    self.profile.harmony.steps_per_chord,
                 )
-            });
+            })
+            .flatten();
         let (start, end) = self.phrase_window(tune, position);
         let span = (end - start).max(1) as f32;
         let context = super::bass_passing::PassingContext {
@@ -903,14 +909,28 @@ impl TradGenerator {
                 id
             };
             if let Some(accompaniment) = &self.tuning.profile.accompaniment {
-                for note in bass_bar(
-                    &chords,
-                    plan.key,
-                    plan.mode,
-                    accompaniment,
-                    self.profile.harmony.steps_per_chord,
-                    &mut next_id,
-                ) {
+                let notes = if let Some(slice) = tune.bass_plan.slice_for_bar(plan, bar_in_tour) {
+                    bass_motif_bar(
+                        slice,
+                        &chords,
+                        plan.key,
+                        plan.mode,
+                        accompaniment,
+                        self.profile.meter.steps_per_bar,
+                        self.profile.harmony.steps_per_chord,
+                        &mut next_id,
+                    )
+                } else {
+                    bass_bar(
+                        &chords,
+                        plan.key,
+                        plan.mode,
+                        accompaniment,
+                        self.profile.harmony.steps_per_chord,
+                        &mut next_id,
+                    )
+                };
+                for note in notes {
                     measure.add_note(TrackId::Bass, note);
                 }
             }
@@ -1581,6 +1601,27 @@ impl TradGenerator {
         } else {
             0
         };
+        let bass_plan = if let Some(source) = source {
+            source.bass_plan.clone()
+        } else if let Some(a) = &self.profile.accompaniment
+            && !a.bass.motifs.is_empty()
+        {
+            let mut bass_rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
+                crate::ornaments::tune_seed(
+                    tune_index,
+                    (0..plan.material_bars()).flat_map(|i| {
+                        fiddle
+                            .notes_for_bar(plan.representative_bar(i))
+                            .into_iter()
+                            .map(|n| (n.pitch, n.start_step, n.duration_steps))
+                    }),
+                ),
+                0x424D_4F54,
+            ));
+            BassMotifPlan::new(&plan, &a.bass, &mut bass_rng)
+        } else {
+            BassMotifPlan::default()
+        };
 
         let bright_mode = dynamics
             .parallel_modes
@@ -1592,6 +1633,7 @@ impl TradGenerator {
             plan: plan.clone(),
             fiddle,
             harmony,
+            bass_plan,
             feet_humanize,
             performance_seed,
             material_seed,

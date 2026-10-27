@@ -2,11 +2,16 @@
 //! en conduite de voix serrée et alternance fondamentale/quinte de la basse.
 
 use super::{
-    accomp_profile::{BassDegree, BassDoubling, ChordHit, ChordVoicing},
+    accomp_profile::{
+        BassDegree, BassDoubling, BassMotif, BassMotifNote, BassReference, BassVoice, ChordHit,
+        ChordVoicing,
+    },
     harmony::TradChord,
     mode::Mode,
+    plan::{ImposedRole, TunePlan},
 };
 use crate::{
+    algo::RngCore,
     theory::PitchClass,
     timeline::{Articulation, NoteId, TimelineNote},
     tuning::TradHarmonyParams,
@@ -44,6 +49,48 @@ pub(crate) fn bass_hit_pitch(
     place_in_range(if fifth { (root + 7) % 12 } else { root }, params.bass.low, params.bass.high)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn push_with_doublings(
+    notes: &mut Vec<TimelineNote>,
+    primary: u8,
+    doublings: &[BassDoubling],
+    step: usize,
+    duration: usize,
+    velocity: u8,
+    articulation: Articulation,
+    key: PitchClass,
+    mode: Mode,
+    next_id: &mut impl FnMut() -> NoteId,
+) {
+    for doubling in std::iter::once(None).chain(doublings.iter().copied().map(Some)) {
+        let pitch = match doubling {
+            None => primary,
+            Some(BassDoubling::Octave) => primary + 12,
+            Some(BassDoubling::Tenth) => {
+                let mut pitch = primary;
+                for _ in 0..2 {
+                    loop {
+                        pitch += 1;
+                        if mode.contains_midi(key, pitch) {
+                            break;
+                        }
+                    }
+                }
+                pitch + 12
+            }
+        };
+        notes.push(TimelineNote {
+            id: next_id(),
+            pitch,
+            start_step: step,
+            duration_steps: duration,
+            velocity,
+            articulation,
+            performance: Default::default(),
+        });
+    }
+}
+
 /// Basse d'une mesure : un coup par entrée du motif du profil.
 #[must_use]
 pub fn bass_bar(
@@ -58,35 +105,285 @@ pub fn bass_bar(
     let mut notes = Vec::with_capacity(capacity);
     for hit in &params.bass.hits {
         let primary = bass_hit_pitch(chords, key, mode, params, hit, steps_per_chord);
-        for doubling in std::iter::once(None).chain(hit.doubling.iter().copied().map(Some)) {
-            let pitch = match doubling {
-                None => primary,
-                Some(BassDoubling::Octave) => primary + 12,
-                Some(BassDoubling::Tenth) => {
-                    let mut pitch = primary;
-                    for _ in 0..2 {
-                        loop {
-                            pitch += 1;
-                            if mode.contains_midi(key, pitch) {
-                                break;
-                            }
-                        }
-                    }
-                    pitch + 12
-                }
-            };
-            notes.push(TimelineNote {
-                id: next_id(),
-                pitch,
-                start_step: hit.step,
-                duration_steps: hit.duration,
-                velocity: hit.velocity,
-                articulation: Articulation::Normal,
-                performance: Default::default(),
-            });
-        }
+        push_with_doublings(
+            &mut notes,
+            primary,
+            &hit.doubling,
+            hit.step,
+            hit.duration,
+            hit.velocity,
+            Articulation::Normal,
+            key,
+            mode,
+            next_id,
+        );
     }
     notes
+}
+
+/// Tranche d'une mesure issue d'un motif de basse (potentiellement multi-mesures).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct BassMotifSlice {
+    motif_index: usize,
+    bar_in_motif: usize,
+}
+
+/// Plan fixé une fois par air : les reprises et tours rejouent les mêmes tranches.
+/// Vide lorsque `bass.motifs` est vide.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct BassMotifPlan {
+    parts: Vec<Vec<BassMotifSlice>>,
+    second_endings: Vec<Option<BassMotifSlice>>,
+}
+
+fn draw_bass_motif(
+    motifs: &[BassMotif],
+    part_name: &str,
+    remaining_bars: usize,
+    rng: &mut dyn RngCore,
+) -> Option<usize> {
+    let eligible = |m: &BassMotif, specific: bool| {
+        m.weight > 0
+            && m.bars <= remaining_bars
+            && if specific { m.part.as_deref() == Some(part_name) } else { m.part.is_none() }
+    };
+    let specific_total: u32 = motifs.iter().filter(|m| eligible(m, true)).map(|m| m.weight).sum();
+    let use_specific = specific_total > 0;
+    let total: u32 = if use_specific {
+        specific_total
+    } else {
+        motifs.iter().filter(|m| eligible(m, false)).map(|m| m.weight).sum()
+    };
+    if total == 0 {
+        return None;
+    }
+    let mut pick = rng.next_range_usize(0..total as usize) as u32;
+    for (index, motif) in motifs.iter().enumerate() {
+        if !eligible(motif, use_specific) {
+            continue;
+        }
+        if pick < motif.weight {
+            return Some(index);
+        }
+        pick -= motif.weight;
+    }
+    None
+}
+
+impl BassMotifPlan {
+    /// Construit une tranche par mesure. Les copies remplacent cette seule mesure,
+    /// sans suspendre le motif en cours ; ses tranches suivantes gardent leur position.
+    /// `SequenceOf` et `VariedEndOf` ne transforment que la mélodie : pour la basse,
+    /// ces rôles poursuivent le motif ou en tirent un comme les autres rôles sans copie.
+    /// Un motif qui ne tient pas dans la fin de partie est tronqué à cette frontière.
+    /// Aucun tirage si `bass.motifs` est vide.
+    #[must_use]
+    pub(crate) fn new(plan: &TunePlan, bass: &BassVoice, rng: &mut dyn RngCore) -> Self {
+        if bass.motifs.is_empty() {
+            return Self::default();
+        }
+        let form = &plan.profile.form;
+        let mut parts: Vec<Vec<BassMotifSlice>> = Vec::with_capacity(form.parts.len());
+        for (part_idx, part) in form.parts.iter().enumerate() {
+            let roles = plan.roles_for_part(part_idx);
+            let mut chosen: Vec<BassMotifSlice> = Vec::with_capacity(roles.len());
+            let mut ongoing: Option<BassMotifSlice> = None;
+            for (bar, role) in roles.iter().enumerate() {
+                let slice = match *role {
+                    ImposedRole::CopyOf(source) => chosen[usize::from(source) - 1],
+                    ImposedRole::CopyOfPart { part: src_part, bar: src_bar } => {
+                        parts[src_part][usize::from(src_bar) - 1]
+                    }
+                    _ => match ongoing {
+                        Some(slice) => slice,
+                        None => {
+                            // Préférer un motif entier ; faute de candidat assez court,
+                            // tronquer un motif éligible plutôt que laisser une fin vide.
+                            let Some(motif_index) =
+                                draw_bass_motif(&bass.motifs, &part.name, roles.len() - bar, rng)
+                                    .or_else(|| {
+                                        draw_bass_motif(&bass.motifs, &part.name, usize::MAX, rng)
+                                    })
+                            else {
+                                unreachable!("chaque partie validée dispose d'un motif de basse");
+                            };
+                            let slice = BassMotifSlice { motif_index, bar_in_motif: 0 };
+                            ongoing = Some(slice);
+                            slice
+                        }
+                    },
+                };
+                chosen.push(slice);
+                ongoing = ongoing.and_then(|mut next| {
+                    next.bar_in_motif += 1;
+                    (next.bar_in_motif < bass.motifs[next.motif_index].bars).then_some(next)
+                });
+            }
+            parts.push(chosen);
+        }
+        let second_endings = (0..form.parts.len())
+            .map(|part_idx| {
+                let role = plan.second_ending_role(part_idx)?;
+                let part = &form.parts[part_idx];
+                let chosen = &parts[part_idx];
+                match role {
+                    ImposedRole::CopyOf(source) => Some(chosen[usize::from(source) - 1]),
+                    ImposedRole::CopyOfPart { part: src_part, bar: src_bar } => {
+                        Some(parts[src_part][usize::from(src_bar) - 1])
+                    }
+                    // Une seconde fin ne démarre jamais un motif multi-mesures :
+                    // tirer une mesure entière ou rejouer la tranche finale d'origine.
+                    _ => draw_bass_motif(&bass.motifs, &part.name, 1, rng)
+                        .map(|motif_index| BassMotifSlice { motif_index, bar_in_motif: 0 })
+                        .or_else(|| chosen.last().copied()),
+                }
+            })
+            .collect();
+        Self { parts, second_endings }
+    }
+
+    /// Tranche de motif jouée à la mesure `bar_in_tour` du tour (`None` : plan vide).
+    #[must_use]
+    pub(crate) fn slice_for_bar(
+        &self,
+        plan: &TunePlan,
+        bar_in_tour: usize,
+    ) -> Option<BassMotifSlice> {
+        if self.parts.is_empty() {
+            return None;
+        }
+        let (part, _, offset, second_ending) = plan.position(bar_in_tour);
+        if second_ending && let Some(ending) = self.second_endings[part] {
+            return Some(ending);
+        }
+        Some(self.parts[part][offset])
+    }
+}
+
+/// Hauteur d'une note de motif : référence placée dans la fenêtre de la basse, puis
+/// `semitones` ajoutés tels quels, ou `degree` en pas diatoniques du mode actif (1 = unisson)
+/// à partir de la référence ; `octave` décale de 12 demi-tons.
+#[allow(clippy::too_many_arguments)]
+fn bass_motif_note_pitch(
+    note: &BassMotifNote,
+    local_step: usize,
+    reference: BassReference,
+    chords: &[TradChord],
+    key: PitchClass,
+    mode: Mode,
+    bass: &BassVoice,
+    steps_per_chord: usize,
+) -> u8 {
+    let ref_pc = match reference {
+        BassReference::ChordRoot => chords[local_step / steps_per_chord].root_pc(key, mode),
+        BassReference::Tonic => key % 12,
+    };
+    let mut pitch =
+        i16::from(place_in_range(ref_pc, bass.low, bass.high)) + 12 * i16::from(note.octave);
+    if let Some(semitones) = note.semitones {
+        pitch += i16::from(semitones);
+    } else if let Some(degree) = note.degree {
+        let degree = i16::from(degree);
+        let direction = if degree > 0 { 1 } else { -1 };
+        for _ in 0..(if degree > 0 { degree - 1 } else { -degree }) {
+            loop {
+                pitch += direction;
+                if !(0..=127).contains(&pitch) || mode.contains_midi(key, pitch as u8) {
+                    break;
+                }
+            }
+        }
+    }
+    // La validation garantit 0..=127 pour toutes les références et tous les modes permis.
+    pitch as u8
+}
+
+/// Basse d'une mesure tirée d'une tranche de motif (`slice`), découpée aux barres
+/// de mesure avec `Articulation::Tied` sur les tenues franchissant la barre.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub(crate) fn bass_motif_bar(
+    slice: BassMotifSlice,
+    chords: &[TradChord],
+    key: PitchClass,
+    mode: Mode,
+    params: &TradHarmonyParams,
+    steps_per_bar: usize,
+    steps_per_chord: usize,
+    next_id: &mut impl FnMut() -> NoteId,
+) -> Vec<TimelineNote> {
+    let motif = &params.bass.motifs[slice.motif_index];
+    let bar_start = slice.bar_in_motif * steps_per_bar;
+    let bar_end = bar_start + steps_per_bar;
+    let mut notes = Vec::new();
+    for note in &motif.notes {
+        let note_end = note.step + note.duration;
+        if note_end <= bar_start || note.step >= bar_end {
+            continue;
+        }
+        let local_start = note.step.saturating_sub(bar_start);
+        let local_end = note_end.min(bar_end) - bar_start;
+        let duration = local_end - local_start;
+        let tied = note.step < bar_start || note.tie;
+        let primary = bass_motif_note_pitch(
+            note,
+            local_start,
+            motif.reference,
+            chords,
+            key,
+            mode,
+            &params.bass,
+            steps_per_chord,
+        );
+        push_with_doublings(
+            &mut notes,
+            primary,
+            &note.doubling,
+            local_start,
+            duration,
+            note.velocity,
+            if tied { Articulation::Tied } else { Articulation::Normal },
+            key,
+            mode,
+            next_id,
+        );
+    }
+    notes
+}
+
+/// Première attaque (pas, hauteur) de la mesure pour l'approche de basse de la mesure précédente.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn first_bass_target(
+    bass_plan: &BassMotifPlan,
+    plan: &TunePlan,
+    bar_in_tour: usize,
+    chords: &[TradChord],
+    params: &TradHarmonyParams,
+    steps_per_bar: usize,
+    steps_per_chord: usize,
+) -> Option<(usize, u8)> {
+    if let Some(slice) = bass_plan.slice_for_bar(plan, bar_in_tour) {
+        let motif = &params.bass.motifs[slice.motif_index];
+        let bar_start = slice.bar_in_motif * steps_per_bar;
+        let bar_end = bar_start + steps_per_bar;
+        let note =
+            motif.notes.iter().find(|n| n.step + n.duration > bar_start && n.step < bar_end)?;
+        let local_start = note.step.saturating_sub(bar_start);
+        let pitch = bass_motif_note_pitch(
+            note,
+            local_start,
+            motif.reference,
+            chords,
+            plan.key,
+            plan.mode,
+            &params.bass,
+            steps_per_chord,
+        );
+        Some((local_start, pitch))
+    } else {
+        let hit = params.bass.hits.first()?;
+        Some((hit.step, bass_hit_pitch(chords, plan.key, plan.mode, params, hit, steps_per_chord)))
+    }
 }
 
 /// Voicings serrés d'une triade : 3 sons ascendants dans moins d'une octave.
