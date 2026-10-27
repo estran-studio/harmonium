@@ -93,11 +93,12 @@ les transcriptions de G0.
 | G5 | fusionnée (`69c1449`) | `g5-nappes.md` |
 | G3 | fusionnée (`98d0e10`) : motifs pondérés dans `BassVoice`, pédale G#1 tenue en scie (GM 81, décision d'écoute) | `g3-basse-motivique.md` |
 | G6 | fusionnée (labo `3fa7eaa`) : `nt_desert.sf2` procédurale CC0, scies 38/81 tenues (excursion < 0,1 dB), kit rock sec | labo `references/nt-desert/banque.md` |
-| G2 | en cours (worktree `g2-harmonie-boucle`) | — |
+| G2 | fusionnée (`12e0530`) : `harmony.model = "loop"`, pédales et boucles d'accords par partie, composée avec G3 | `g2-harmonie-boucle.md` |
+| G7 | en cours (worktree `g7-nt-desert`) | — |
 
-Après fusion de G1, G3, G4, G5 : 529 tests passent, 0 échec ; fmt propre ; clippy sur les
-bibliothèques et binaires sans nouvel avertissement (mêmes emplacements qu'avant la phase). Labo
-après G0 et G6 : 279 tests passent, 27 ignorés.
+Après fusion de G1 à G5 : 535 tests passent, 0 échec ; fmt propre ; clippy sur les bibliothèques
+et binaires sans nouvel avertissement (157, mêmes emplacements qu'avant la phase). Labo après G0
+et G6 : 279 tests passent, 27 ignorés.
 
 Écoute du propriétaire (2026-10-27) : la pédale de *Fläshyn* rendue en GM 38 décroît (−19 dB sur la
 tenue) et laisse la batterie seule ; GM 30 (guitare saturée) « trop étrange » ; **GM 81 scie
