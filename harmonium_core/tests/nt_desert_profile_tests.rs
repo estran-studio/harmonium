@@ -1,4 +1,4 @@
-//! Profil distribué `nt_desert` (phase 014, G7) : désert de Nuclear Throne.
+//! Profil distribué `nt_desert` (phase 014, G7 puis G7c) : désert de Nuclear Throne.
 //! Données seulement ; le contrat est observé dans les snapshots et le
 //! lecteur public, jamais dans un état privé.
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,7 +8,7 @@ use harmonium_core::{
     events::AudioEvent,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    timeline::{Measure, Playhead},
+    timeline::{Articulation, Measure, Playhead},
     trad::TradGenerator,
 };
 use rand::SeedableRng;
@@ -63,18 +63,19 @@ fn charge_par_nom_et_contenu() -> TestResult {
     );
     assert_eq!(named.meter.default_bpm, 210.0, "140 noires pointées par minute");
     let instruments = &named.instruments;
-    assert_eq!(instruments.melody_program, 78, "sifflement");
-    assert_eq!(instruments.chords_program, Some(81), "scie tenue, décision d'écoute");
-    assert_eq!(instruments.bass_program, Some(81), "scie tenue, décision d'écoute");
+    // G7c : le sifflement est retiré (pas de lead dans Fläshyn) ; le programme
+    // 78 reste déclaré car le schéma l'exige, mais ne sonne jamais.
+    assert_eq!(instruments.melody_program, 78, "sifflement déclaré, inutilisé");
+    assert_eq!(instruments.chords_program, Some(89), "nappe chaude, essai G7c");
+    assert_eq!(instruments.bass_program, Some(81), "scie grave, décision d'écoute");
     assert_eq!((instruments.percussion_bank, instruments.percussion_program), (128, 0));
-    // Le sifflement n'entre qu'au pont (partie 2), après 16 mesures (G4).
-    let entries = &named.arrangement.entries;
-    assert_eq!(entries.melody.map(|e| (e.tour, e.part.0, e.pass)), Some((1, 2, 1)));
+    // La mélodie n'a aucune entrée d'arrangement : elle ne joue jamais (G4).
+    assert!(named.arrangement.entries.melody.is_none(), "sifflement retiré (G7c)");
     Ok(())
 }
 
 #[test]
-fn arche_48_melodie_tardive() -> TestResult {
+fn arche_48_sans_melodie() -> TestResult {
     let p = load()?;
     for seed in 1..=5 {
         let snapshots = stream(&p, seed, 64)?;
@@ -83,38 +84,46 @@ fn arche_48_melodie_tardive() -> TestResult {
             let bar = i + 1;
             assert!(!s.notes.is_empty(), "mesure {bar} vide (graine {seed})");
             assert_eq!((s.time_sig_numerator, s.time_sig_denominator), (12, 8));
+            // G7c : aucun sifflement nulle part dans le désert A.
+            assert!(notes(s, 0).is_empty(), "sifflement, mesure {} (graine {seed})", s.index);
         }
-        // A1 + A2 (mes. 1–16) : pas de sifflement ; basse, scie et batterie jouent.
-        for s in &snapshots[0..16] {
-            assert!(notes(s, 0).is_empty(), "sifflement avant le pont, mesure {}", s.index);
-            assert!(!notes(s, 1).is_empty());
+        // A1 (mes. 1–8) : pédale seule sur la nappe, basse, scie et batterie.
+        for s in &snapshots[0..8] {
+            assert_eq!(notes(s, 1).len(), 1, "pédale seule, mesure {}", s.index);
             assert!(!notes(s, 2).is_empty());
         }
-        // Le sifflement est entré au pont (mes. 17–32) et la scie y tient des triades.
-        assert!(
-            snapshots[16..32].iter().any(|s| !notes(s, 0).is_empty()),
-            "sifflement absent du pont"
-        );
-        for s in &snapshots[16..32] {
+        // A2 (mes. 9–16) : triades tenues sur la nappe.
+        for s in &snapshots[8..16] {
             assert_eq!(notes(s, 1).len(), 3, "triade tenue, mesure {}", s.index);
         }
+        // Le pont (mes. 17–32) tient des triades en tessiture médium.
+        for s in &snapshots[16..32] {
+            assert_eq!(notes(s, 1).len(), 3, "triade tenue, mesure {}", s.index);
+            for n in notes(s, 1) {
+                assert!(n.pitch >= 48, "nappe dans le grave, mesure {} : {n:?}", s.index);
+            }
+        }
         // Pont sans batterie ni basse (G7b, comme l'original) : sourdine par
-        // partie en données ; scie et sifflement restent.
+        // partie en données ; la nappe reste seule.
         for s in &snapshots[16..32] {
             assert!(notes(s, 2).is_empty(), "basse au pont, mesure {}", s.index);
             assert!(notes(s, 3).is_empty(), "grosse caisse au pont, mesure {}", s.index);
             assert!(notes(s, 4).is_empty(), "pieds au pont, mesure {}", s.index);
-            assert!(!notes(s, 1).is_empty(), "scie absente au pont, mesure {}", s.index);
+            assert!(!notes(s, 1).is_empty(), "nappe absente au pont, mesure {}", s.index);
         }
         // Batterie et basse présentes avant (A1, A2) et après (B, A1') le pont :
-        // tous les coups de pieds, basse à chaque mesure en A1/A2/A1', une
-        // mesure sur deux en B (données : quasi-absence voulue).
+        // basse à chaque mesure en A1/A2/A1', une mesure sur deux en B
+        // (données : quasi-absence voulue).
         for s in snapshots[0..16].iter().chain(&snapshots[40..48]) {
             assert!(!notes(s, 2).is_empty(), "basse absente, mesure {}", s.index);
         }
         for s in &snapshots[32..48] {
             assert!(!notes(s, 3).is_empty(), "grosse caisse absente, mesure {}", s.index);
-            assert!(!notes(s, 4).is_empty(), "pieds absents, mesure {}", s.index);
+            assert!(
+                notes(s, 4).iter().any(|n| n.pitch == 42),
+                "charleston absent, mesure {}",
+                s.index
+            );
         }
         assert!(
             snapshots[32..40].iter().any(|s| !notes(s, 2).is_empty()),
@@ -158,7 +167,7 @@ fn pedale_liee_une_attaque_sans_orpheline() -> TestResult {
                         if (*channel, *note) == (2, 32) {
                             bass_attacks.push((bar, step));
                         }
-                        if (*channel, *note) == (1, 44) {
+                        if (*channel, *note) == (1, 56) {
                             chords_attacks.push((bar, step));
                         }
                     }
@@ -174,14 +183,15 @@ fn pedale_liee_une_attaque_sans_orpheline() -> TestResult {
     // Pédale G#1 : une attaque pour les mesures 1–3 ; la relance mes. 4/8 ne
     // touche le G# qu'à sa résolution (pas 11), sans réattaque aux barres.
     assert_eq!(bass_attacks, vec![(1, 0), (4, 11), (8, 11)], "{bass_attacks:?}");
-    // Scie G#2 : une attaque pour les huit mesures, liée sans réattaque.
+    // Nappe G#3 (G7c : tessiture médium, deux octaves au-dessus de la basse) :
+    // une attaque pour les huit mesures, liée sans réattaque.
     assert_eq!(chords_attacks, vec![(1, 0)], "{chords_attacks:?}");
     assert!(balance.values().all(|&v| v == 0), "notes orphelines : {balance:?}");
     Ok(())
 }
 
 #[test]
-fn batterie_grille_6_2() -> TestResult {
+fn batterie_groove_pulsations_accents() -> TestResult {
     let p = load()?;
     let snapshots = stream(&p, 1, 16)?;
     for s in &snapshots {
@@ -200,8 +210,14 @@ fn batterie_grille_6_2() -> TestResult {
                     s.index
                 );
             } else {
+                // G7c : charleston sur les pulsations seulement, plus aucun
+                // coup aux pas pairs intermédiaires.
                 assert_eq!(n.pitch, 42, "charleston mes. {} : {n:?}", s.index);
-                assert_eq!(n.start_step % 2, 0);
+                assert!(
+                    [0, 6, 12, 18].contains(&n.start_step),
+                    "charleston hors pulsation mes. {} : {n:?}",
+                    s.index
+                );
             }
         }
     }
@@ -213,7 +229,36 @@ fn batterie_grille_6_2() -> TestResult {
     assert_eq!(snare, BTreeSet::from([2, 10, 14]));
     let hat: BTreeSet<usize> =
         notes(&snapshots[0], 4).iter().filter(|n| n.pitch == 42).map(|n| n.start_step).collect();
-    assert_eq!(hat, (0..24).step_by(2).collect());
+    assert_eq!(hat, BTreeSet::from([0, 6, 12, 18]));
+    // Accents par temps (G7c, essai du propriétaire) : le temps fort sonne
+    // plein et porte l'étiquette d'accent, les autres temps sont à ×0,8.
+    let velocity = |pitch: u8, step: usize| {
+        notes(&snapshots[0], if pitch == 36 { 3 } else { 4 })
+            .iter()
+            .find(|n| n.pitch == pitch && n.start_step == step)
+            .map(|n| (n.velocity, n.articulation))
+    };
+    let (fort, articulation) = velocity(36, 0).expect("grosse caisse au temps fort");
+    assert!(matches!(articulation, Articulation::Accent), "temps fort non accentué");
+    for step in [8, 20] {
+        let (faible, articulation) = velocity(36, step).expect("grosse caisse à accentuer");
+        // Hors temps fort : déclenchement brut, sans étiquette d'accent.
+        assert!(matches!(articulation, Articulation::Trigger), "accent hors temps fort");
+        assert!(fort > faible, "temps fort {fort} <= temps {step} {faible}");
+    }
+    let (fort, _) = velocity(42, 0).expect("charleston au temps fort");
+    for step in [6, 12, 18] {
+        let (faible, _) = velocity(42, step).expect("charleston à accentuer");
+        assert!(fort > faible, "charleston fort {fort} <= temps {step} {faible}");
+    }
+    // Micro-timing (G7c) : des décalages légers sont publiés sur les pieds,
+    // bornés à ±0,02 pas.
+    let mut decales = 0;
+    for n in notes(&snapshots[0], 3).into_iter().chain(notes(&snapshots[0], 4)) {
+        assert!((-20..=20).contains(&n.performance.offset), "décalage hors ±0,02 pas : {n:?}");
+        decales += i32::from(n.performance.offset != 0);
+    }
+    assert!(decales > 0, "micro-timing nul sur toute la mesure 1");
     Ok(())
 }
 
@@ -235,7 +280,7 @@ fn presets_banque_uniquement() -> TestResult {
 }
 
 #[test]
-fn density_basse_ne_laisse_que_la_scie() -> TestResult {
+fn density_basse_ne_laisse_que_la_nappe() -> TestResult {
     let p = load()?;
     p.validate()?;
     let mut par = params(&p);
@@ -245,7 +290,8 @@ fn density_basse_ne_laisse_que_la_scie() -> TestResult {
     let snapshots: Vec<_> = (1..=48)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
         .collect();
-    // Calme façon A Way : sifflement, basse et batterie se taisent, la scie reste.
+    // Calme façon A Way : basse et batterie se taisent, la nappe reste
+    // (le sifflement est retiré en G7c).
     for s in &snapshots {
         assert!(notes(s, 0).is_empty(), "mesure {}", s.index);
         assert!(notes(s, 2).is_empty(), "mesure {}", s.index);

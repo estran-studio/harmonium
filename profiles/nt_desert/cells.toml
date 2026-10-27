@@ -1,6 +1,7 @@
-# Cellules du sifflement : tenues et traits phrygiens épars (12 croches de
-# 12/8 par cellule). Seuls open/run sont employés (arp/turn de poids nul,
-# G4) ; la forme les tait jusqu'au pont (arrangement.toml).
+# Banque de cellules conservée pour le plan interne (G4) : la mélodie est
+# retirée de l'arrangement en G7c (pas de sifflement dans Fläshyn), donc ces
+# cellules ne sonnent jamais. Seuls open/run sont employés (arp/turn de poids
+# nul, G4).
 cells = [
   { role = "open", notes = "1 - - - - - 5 - - - - -", weight = 1 },
   { role = "open", notes = "5 - - - - - 8 - - - - -", weight = 1 },
