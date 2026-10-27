@@ -36,7 +36,29 @@ Constats vérifiés au départ de la phase (moteur `a354125`, jeu `5bdb201a`) :
 
 Conséquence constitutionnelle : le principe II (« la position lue par le jeu vient du playhead ») doit
 être amendé pour le multijoueur : la position de **référence** devient un plan de temps déterministe
-partagé ; le playhead le suit et publie son écart. L'amendement sera rédigé après l'étude J1.
+partagé ; le playhead le suit et publie son écart. **Amendement proposé au § 10 de `horloge-etude.md`,
+décision de William en attente** : la constitution n'est pas amendée.
+
+## Recentrage (décision de William, 2026-10-26 au soir)
+
+Tout se recentre sur « le cœur 30 secondes » du jeu 1837 (une pièce ; bouger, viser, tirer, hache,
+gigue ; deux ennemis). Pour la musique, le seul besoin à court terme est **J5-min**. État des tâches :
+
+| Tâche | État |
+|---|---|
+| J1 horloge partagée | fusionnée (`6954fa1`) |
+| J4 carte des 4 émotions | fusionnée (`74831c3`) |
+| R1 nouveaux styles | fusionnée (`13c484c`), correctif labo DS-T9c fusionné (labo `5d5be8e`) |
+| H1 marge de crête sur la grille d'émotions | fusionnée (`6644938`) : `master_db` baissés de 0,5 à 2 dB, pire crête −1,52 à −2,05 dBFS sur 162 réglages × 5 graines (§ H1) ; niveaux neutres plus bas à écouter |
+| J1b squelette de forme séparé, tirages portables | **reportée** jusqu'à ce que le prologue ait la coop ; note d'arrêt `j1b-note.md` (branche `wquintal/j1b-squelette`) |
+| J2 émotions avec vitesse de changement | **reportée** jusqu'à ce que le prologue ait la coop ; note d'arrêt `j2-note.md` (branche `wquintal/j2-vitesse`) |
+| J3 transitions de style | **reportée** jusqu'à ce que le prologue ait la coop |
+| J5 rebrancher le jeu (complet) | remplacée à court terme par J5-min |
+
+- **J5-min — le moteur actuel joué dans le jeu** : un profil, une émotion fixe, via
+  `create_offline_engine` ; sans J1b, J2 ni J3 (ni horloge partagée dans la simulation). Vit dans le
+  **futur dépôt 1837** (ni `harmonium`, ni `alacod`) et remplace la dépendance morte `harmonium_bevy`
+  d'`alacod` (`crates/game/src/audio/{mod,adaptive}.rs`, feature `harmonium`).
 
 ## Tâches
 
