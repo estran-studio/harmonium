@@ -60,6 +60,16 @@ gigue ; deux ennemis). Pour la musique, le seul besoin à court terme est **J5-m
   **futur dépôt 1837** (ni `harmonium`, ni `alacod`) et remplace la dépendance morte `harmonium_bevy`
   d'`alacod` (`crates/game/src/audio/{mod,adaptive}.rs`, feature `harmonium`).
 
+## Écoute du propriétaire (2026-10-27)
+
+- **Comparateur des émotions (J4) : validé.** « Vraiment bon » : changements mineur/majeur, tempo,
+  tout se fait fluidement, à la mesure suivante comme en instantané. Les 4 émotions sont distinguées à
+  l'oreille (critère d'acceptation de la phase rempli). Les propositions P1–P3 de J4 restent non
+  appliquées : rien ne l'a demandé à l'écoute.
+- **Comparateur des couches exagérées (phase 012) : toutes les couches s'entendent vraiment**
+  (mixage, interprétation, ornements, 2ᵉ voix, accompagnement). Complète l'ADR 012 « peu perçu même
+  exagéré » ; niveaux normaux gardés tels quels (ADR 012), aucun changement demandé.
+
 ## Tâches
 
 ```mermaid
