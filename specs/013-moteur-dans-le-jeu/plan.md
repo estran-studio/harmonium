@@ -236,3 +236,64 @@ fusionner ce commit et de reprendre les comparaisons moteur/corpus déjà citée
 
 Ajoutés à `SET_PROFILES` de `kits_ecoute.py` (sets complets à écouter) ; pas d'écoute du propriétaire : **aucun ADR d'écoute**.
 À régler d'abord à l'oreille : tempos, piano du Cap-Breton appliqué à l'Acadie, accords tenus du reel britannique, swing 0,5. Non fait : hornpipe acadien (29 airs) et marche québécoise (16) quand le corpus grossira.
+
+## H1 — Marge de crête sur toute la grille d'émotions (2026-10-26)
+
+Branche `wquintal/h1-marge`. Les crêtes n'étaient vérifiées qu'à émotions maximales
+ou un axe à la fois : la grille complète (arousal / densité / tension à 0 / 0,5 / 1,
+valence à −1 / neutre du profil / 1, intensité directe à 0,5 / 1 : 162 réglages ;
+66 mesures, 2 tours, graines 1–5, WAV flottant, script durable `measure_marge.py`)
+montre des dépassements à des réglages ordinaires. Banques GM + pieds
+(`harmonium_trad.sf2`, sauf la marche : pieds en GM, caisse claire muette dans
+`harmonium_trad.sf2`).
+
+### Avant / après (pire crête sur la grille, 5 graines ; RMS au neutre du profil)
+
+| Profil | Avant (dBFS) | Après (dBFS) | Bus avant → après | RMS neutre avant → après (dBFS) |
+|---|---:|---:|---|---|
+| `reel_quebecois` | −0,13 | −1,63 | 14,5 → 13,0 | −19,93 → −21,43 |
+| `gigue_quebecoise` | −0,97 | −1,97 | 13,5 → 12,5 | −19,76 → −20,76 |
+| `valse_quebecoise` | +0,05 (6 écrêtés) | −1,95 | 12,0 → 10,0 | −19,62 → −21,62 |
+| `reel_acadien` | −0,39 | −1,89 | 15,5 → 14,0 | −19,10 → −20,60 |
+| `marche_britannique_coloniale` | +0,15 (24 écrêtés) | −1,85 | 15,0 → 13,0 | −13,48 → −15,48 |
+| `gigue_britannique_coloniale` | −0,52 | −1,52 | 16,0 → 15,0 | −17,68 → −18,68 |
+| `hornpipe_britannique_coloniale` | −1,02 | −1,52 | 13,5 → 13,0 | −18,92 → −19,42 |
+| `gigue_acadienne` | +0,20 (14 écrêtés) | −1,80 | 15,0 → 13,0 | −19,11 → −21,11 |
+| `reel_britannique_coloniale` | −1,30 | −1,80 | 13,5 → 13,0 | −19,22 → −19,72 |
+| `valse_britannique_coloniale` | −1,55 | −2,05 | 12,0 → 11,5 | −19,24 → −19,74 |
+
+Zéro échantillon ≥ 1 après, sur les 8 150 rendus. Baisse = besoin arrondi au
+demi-dB supérieur, plancher 0,5 dB près de la limite : la gigue britannique et le
+hornpipe finissent à −1,52, marge fine — à surveiller si la grille gagne des graines.
+Le RMS neutre suit exactement la baisse du bus (gain linéaire) : c'est ce que
+l'écoute du propriétaire jugera. Constantes `master` du générateur `r1_profils.py`
+alignées (un `build` ne régresse pas les trois profils R1).
+
+### Cause des pires cas (solo de chaque piste au pire réglage + graine)
+
+Partout, le mix est à 0–3 dB du solo de mélodie : aucune piste d'accompagnement
+n'est en cause seule, donc `master_db` seul baisse, gains de pistes inchangés.
+Deux motifs reviennent : **tension 0** (9 pires sur 10 : notes ×1,1 deux fois,
+tenues qui s'empilent) et **intensité directe 1 contre un arousal bas**
+(l'intensité force les vélocités maximales pendant que l'arousal reste doux).
+
+| Profil | Pire réglage (graine) | Cause |
+|---|---|---|
+| `reel_quebecois` | arous. 0,5, val. 1, tens. 0, int. 0,5 (gr. 3) | Registre haut (+5 demi-tons) et brillance de la valence 1, tenues empilées à tension 0 ; violon à −0,9, mix à −0,1. |
+| `gigue_quebecoise` | arous. 1, val. −1, dens. 1, tens. 0, int. 1 (gr. 3) | Tout au maximum en registre sombre : vélocités ×1,35, grattage doublé, tenues longues ; violon à −3,7. |
+| `valse_quebecoise` | arous. 0, val. neutre, tens. 0, int. 1 (gr. 2) | Intensité 1 contre arousal 0 : jeu doux mais frappé fort, archets longs qui se recouvrent ; violon à −0,3. |
+| `reel_acadien` | arous. 1, val. −1, tens. 0, int. 1 (gr. 2) | Comme la gigue québécoise, registre bas sombre + pleine force + tenues ; talon à −7,2, le plus présent de la grille. |
+| `marche_britannique_coloniale` | arous. 0, val. −1, tens. 0, int. 1 (gr. 4) | Fifre (−4,1) + caisse GM (−9,3) : deux pistes fortes qui se somment ; seule la marche combine ainsi deux voix. |
+| `gigue_britannique_coloniale` | arous. 0, val. −1, tens. 0, int. 1 (gr. 5) | Intensité 1 contre arousal 0, registre sombre ; sans pieds ni 2ᵉ voix, le violon (−2,5) porte tout. |
+| `hornpipe_britannique_coloniale` | dens. 0, tens. 0,5, int. 1 (gr. 5) | Violon seul (densité 0 : accompagnement muet) à intensité 1 : le solo atteint −1,0. |
+| `gigue_acadienne` | arous. 1, val. 1, dens. 0, tens. 0 (gr. 1) | Piano en registre haut + 2ᵈ violon (−12,7) : à densité 0 il ne reste qu'eux, et le piano (−2,0) écrête. |
+| `reel_britannique_coloniale` | tens. 0, int. 1 (gr. 2) | Accords tenus + violon (−1,6) à intensité 1, tenues empilées ; talon à −11,8. |
+| `valse_britannique_coloniale` | arous. 0, val. −1, tens. 0, int. 1 (gr. 5) | Même recette que les autres cas « intensité contre arousal », registre sombre ; déjà sous la limite avant (−1,55), −0,5 par prudence. |
+
+### Écoute et suite
+
+Pas d'écoute du propriétaire : **aucun ADR d'écoute**. Le neutre perd 0,5 à 2 dB
+de niveau selon le profil (tableau ci-dessus) : si c'est trop creux à l'oreille,
+la solution n'est pas de remonter le bus mais de retravailler les vélocités
+(propositions P1–P2 de J4, en attente d'écoute). Propositions P3 de J4 caduques :
+la grille H1 les remplace (baisses différentes, fondées sur 162 réglages).
