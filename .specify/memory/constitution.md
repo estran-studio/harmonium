@@ -95,7 +95,8 @@ son style d'origine est un défaut.
 ## Périmètre du workspace
 
 - `harmonium_core` — types purs, génération, aucune I/O.
-- `harmonium_audio` — rendu SoundFont (oxisynth), enregistrement WAV/MIDI/MusicXML.
+- `harmonium_audio` — rendu SoundFont (oxisynth) et, derrière l'option de
+  compilation `odin`, synthé Odin (`odin2-core`) ; enregistrement WAV/MIDI/MusicXML.
 - `harmonium_host` — `MusicComposer` (thread principal), `PlaybackEngine`
   (callback cpal), `NativeHandle`, `create_offline_engine`, binaire
   `harmonium` avec contrôle OSC.
@@ -113,8 +114,16 @@ jeu, sur `create_offline_engine`.
 
 - Rust 2024, `unsafe_code = "deny"`, clippy strict. `gen` est réservé.
 - `ChaCha8Rng` est le seul RNG.
-- Synthèse : SoundFont uniquement ; chaque jeu fournit sa banque. Banque de
-  test : `assets/test.sf2`.
+- Synthèse : SoundFont par défaut ; chaque jeu fournit sa banque. Banque de
+  test : `assets/test.sf2`. Le synthé Odin est une option de compilation
+  `odin`, désactivée par défaut : chaque piste d'un profil choisit en données
+  son instrument (programme SoundFont ou preset Odin), et les 4 émotions
+  pilotent le morphing du preset. Même contrainte temps réel que le reste du
+  callback.
+- Licences : Harmonium est sous `MIT OR Apache-2.0`. `odin2-core` est GPLv3
+  (dérivé d'Odin 2) : un binaire compilé avec `odin` est GPL. Seuls les jeux
+  dont le code est public sous GPL activent `odin` ; un jeu fermé (1837)
+  compile sans, en SoundFont, et ne contient aucun code GPL.
 - Tempo exprimé à la noire ; la pulse dansée (blanche en reel, noire
   pointée en gigue) est dérivée dans `BeatInfo`, pas dans le tempo.
 
@@ -125,8 +134,8 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 4.1.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-27
+**Version** : 4.2.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-27
 (moteur tous styles et multi-jeux, fusion en données — principe VIII ;
 sources sous droits analysables, seuls les dérivés entrent au dépôt —
 principe VII ; un seul frontend, `harmonium_studio`, vitrine web et atelier
-natif)
+natif ; synthé Odin en option GPL par piste, licence MIT OR Apache-2.0)

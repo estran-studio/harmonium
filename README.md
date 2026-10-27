@@ -51,3 +51,9 @@ immédiats.
 `MusicComposer` et un `PlaybackEngine` sans ouvrir de périphérique : le jeu
 appelle `playback.process_buffer()` depuis son propre callback audio et
 `composer.generate_ahead()` depuis sa boucle principale.
+
+## Licence
+
+Harmonium est distribué sous `MIT OR Apache-2.0`, au choix (`LICENSE-MIT`, `LICENSE-APACHE`).
+L'option de compilation `odin` (synthé `odin2-core`, dérivé d'Odin 2) est sous GPLv3 : un binaire
+compilé avec elle est GPL. Sans `odin`, le moteur rend en SoundFont et ne contient aucun code GPL.

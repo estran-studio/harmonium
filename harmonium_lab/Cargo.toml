@@ -3,6 +3,7 @@ name = "harmonium_lab"
 version = "0.1.0"
 edition = "2024"
 description = "Musical DNA extraction, benchmarking, and profile rendering for Harmonium"
+license.workspace = true
 
 [lints]
 workspace = true
