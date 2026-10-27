@@ -176,7 +176,20 @@ fn weighted_operations_cadences_repeats_and_determinism_on_200_tunes() {
 }
 #[test]
 fn distributed_copy_and_tonic_weights_reach_snapshots_on_200_tunes() {
-    for profile in StyleProfile::distributed() {
+    // Le test garde la résolution des rôles probabilistes (poids du corpus) :
+    // une boucle à rôles fixes (ex. `nt_desert` en G7) est hors de son propos.
+    let with_choices: Vec<_> = StyleProfile::distributed()
+        .iter()
+        .filter(|p| {
+            p.form.parts.iter().take(2).all(|part| {
+                part.roles.len() > 7
+                    && matches!(part.roles[4], ProfileRole::Choice { .. })
+                    && matches!(part.roles[7], ProfileRole::Choice { .. })
+            })
+        })
+        .collect();
+    assert!(!with_choices.is_empty(), "aucun profil à rôles probabilistes");
+    for profile in with_choices {
         let mut profile = profile.clone();
         profile.performance = Default::default();
         profile.arrangement = ReelArrangement::from_start(1, Default::default());

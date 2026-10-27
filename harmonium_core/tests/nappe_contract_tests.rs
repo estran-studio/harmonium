@@ -232,19 +232,22 @@ fn liaison_opt_in_et_refusee_dans_les_regles_d_interpretation() {
 }
 
 #[test]
-fn aucun_profil_distribue_ne_lie() {
-    // Garde-fou : les 10 profils distribués n'emploient pas `tie`, donc leurs
-    // notes publiées sont inchangées.
+fn seuls_les_profils_a_nappes_lient() {
+    // Garde-fou : les 10 profils trad distribués n'emploient pas `tie`, donc
+    // leurs notes publiées sont inchangées. `nt_desert` (G7) lie sa scie et
+    // sa basse de pédale en données, sans toucher au moteur.
     let distributed = StyleProfile::distributed();
-    assert_eq!(distributed.len(), 10, "dix profils distribués");
+    assert_eq!(distributed.len(), 11, "onze profils distribués");
     for p in distributed {
-        if let Some(a) = &p.accompaniment {
-            assert!(
-                a.chords.patterns.iter().flat_map(|pat| &pat.hits).all(|h| !h.tie),
-                "{} emploie tie",
-                p.meta.id
-            );
+        let tied = p
+            .accompaniment
+            .as_ref()
+            .is_some_and(|a| a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie));
+        if p.meta.id == "nt_desert" {
+            assert!(tied, "nt_desert : scie liée attendue");
+            continue;
         }
+        assert!(!tied, "{} emploie tie", p.meta.id);
         let params = MusicalParams { bpm: p.meter.default_bpm, ..Default::default() };
         for m in stream(p, &params, 1, 16) {
             for track in TrackId::ALL {

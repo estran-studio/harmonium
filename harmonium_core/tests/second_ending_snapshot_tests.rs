@@ -70,7 +70,14 @@ fn ending_weights(role: &ProfileRole) -> [f64; 3] {
 }
 #[test]
 fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tunes() {
-    for distributed in StyleProfile::distributed() {
+    // Le test garde les secondes fins : une boucle sans seconde fin (ex.
+    // `nt_desert` en G7) est hors de son propos.
+    let with_endings: Vec<_> = StyleProfile::distributed()
+        .iter()
+        .filter(|p| p.form.parts.iter().take(2).all(|part| part.second_ending.is_some()))
+        .collect();
+    assert!(!with_endings.is_empty(), "aucun profil à secondes fins");
+    for distributed in with_endings {
         let mut profile = distributed.clone();
         profile.performance = Default::default();
         profile.arrangement = ReelArrangement::from_start(2, Default::default());
