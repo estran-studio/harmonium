@@ -33,7 +33,7 @@ mesures et limites dans le plan 013, section R1.
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »). |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
-| `[harmony]` | `model = "trad_functional"` ou `"jazz_functional"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). |
+| `[harmony]` | `model = "trad_functional"`, `"jazz_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
@@ -46,6 +46,81 @@ mesures et limites dans le plan 013, section R1.
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Harmonie en boucle et pédale
+
+`model = "loop"` impose l'harmonie par partie, sans vote mélodique ni cadence
+ajoutée. Chaque nom de `form.parts` doit avoir exactement une entrée dans
+`harmony.parts` ; les noms inconnus sont refusés. Les autres modèles refusent
+une table `parts` non vide.
+
+```toml
+[harmony]
+model = "loop"
+steps_per_chord = 8
+default_bars_per_chord = 1
+
+[harmony.parts.A]
+kind = "pedal"
+degree = 1
+# neighbor_semitones = 1
+
+[harmony.parts.B]
+kind = "chord_loop"
+chords = [
+  { degree = 1, quality = "Minor", bars = 2 },
+  { semitones = 1, quality = "Major", bars = 2 },
+]
+```
+
+Chaque racine indique **exactement un** champ : `degree` numérique modal
+`1..7` (1 = tonique), ou `semitones` chromatique `0..11` au-dessus de la
+tonique. Les degrés suivent les intervalles du mode actif : le degré 2 vaut
+un demi-ton en phrygien, deux en ionien ; les offsets chromatiques restent
+fixes. Lors d'une bascule de couleur par `dynamics.color` ou `parallel_modes`,
+les degrés sont recalculés dans le nouveau mode. Chaque accord exige une
+qualité explicite `"Major"` ou `"Minor"`, qui ne change pas avec le mode.
+
+`bars` est une durée positive en **mesures entières** ; omission :
+`default_bars_per_chord` (défaut 1). La longueur totale de la boucle doit
+diviser celle de la partie. `steps_per_chord` reste requis et divise la
+mesure : tous les créneaux d'une mesure portent le même accord. Les reprises,
+secondes fins et variations de forme utilisent la même position dans la boucle.
+Pas de changement intra-mesure, d'accord slash ni de turnaround implicite :
+une section distincte porte un éventuel raccord explicite.
+
+`kind = "pedal"` n'accepte ni `quality` ni liste d'accords : c'est une vraie
+fondamentale seule, sans tierce ni quinte, jouée sur `Chords` par les coups
+habituels. `neighbor_semitones = 1..11` ajoute facultativement une seule note,
+à cet intervalle chromatique au-dessus de la fondamentale. Pour une pédale
+tenue, employer un coup `stroke = "block"`, `step = 0`, une `duration` égale
+à `meter.steps_per_bar` et `tie = true` dans chaque motif sélectionnable de
+`accompaniment.chords` (voir « Accords grattés »). Les notes contiguës de même
+hauteur sont liées sans réattaque ; un changement de fondamentale ferme la
+précédente. Éviter gate raccourci, respiration ou décalage sur `Chords` pour
+préserver cette coïncidence. Le registre vient de `accompaniment.chords.center`
+et le timbre de `instruments.chords_program` ; par exemple Saw Lead GM 82
+s'écrit `chords_program = 81` (0-based), avec un registre grave.
+
+Les triades gardent la polyphonie `chords.strings` et la conduite de voix
+existantes ; une pédale seule reste une note, son voisin une dyade, sans
+doublure automatique en octaves. `Bass` suit la fondamentale (ou la quinte
+selon ses coups), sans lui imposer une tenue : la scie continue est sur
+`Chords`, pas sur une basse percussive qui décroît.
+Le voisin reste au-dessus de la pédale, sans renversement de la dyade.
+Avec `voicing = "fixed_triad"`, la fenêtre `low..high` doit couvrir les
+douze fondamentales et ce voisin (`high - low >= 11 + neighbor_semitones`).
+
+Le contexte du premier accord est publié dans les champs habituels du
+snapshot et dans `chord_changes` au pas 0. Les cellules mélodiques fournissent
+toujours rythme et contour ; comme pour le jazz sans `scale_guidance`, leurs
+porteuses sont rapprochées des hauteurs de la sonorité courante avant
+interprétation et ornements. Une pédale pure contraint donc les porteuses à
+sa seule classe de hauteur ; ses ornements restent ceux du mode actif.
+La tension ne substitue pas de dominante aux accords déclarés. Les intros
+vamp et l'outro tonique restent les raccords explicites de l'arrangement ;
+la boucle décrit les mesures du corps de l'air.
+
 
 ## Accompagnement
 
@@ -84,8 +159,8 @@ valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
 `bass.motifs` remplace `bass.hits` : les deux sources sont exclusives, puis
 passent par la même réalisation de notes et de doublures. Aucun changement
-pour un profil sans banque de motifs. Modèle requis actuellement :
-`trad_functional` (G2 boucle/pédale n'est pas réimplémenté ici).
+pour un profil sans banque de motifs. Modèles compatibles :
+`trad_functional` et `loop` ; les motifs suivent aussi les accords et pédales G2.
 
 ```toml
 [accompaniment.bass]

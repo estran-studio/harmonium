@@ -30,18 +30,27 @@ pub enum ChordDegree {
     VI,
     /// Septième mineure (10 demi-tons).
     BVII,
+    /// Fondamentale chromatique résolue par un modèle piloté par données.
+    #[serde(skip)]
+    Semitones(u8),
 }
 
-/// Qualité d'une triade.
+/// Sonorité : triade ou pédale (sans tierce ni quinte ajoutée).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ChordQuality {
     /// Tierce majeure (4 demi-tons).
     Major,
     /// Tierce mineure (3 demi-tons).
     Minor,
+    /// Degré tenu seul.
+    #[serde(skip)]
+    Pedal,
+    /// Degré tenu avec son voisin chromatique supérieur.
+    #[serde(skip)]
+    PedalNeighbor(u8),
 }
 
-/// Triade du répertoire trad : degré du mode et qualité.
+/// Accord relatif à la tonique, partagé par les modèles et l'accompagnement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TradChord {
     pub degree: ChordDegree,
@@ -65,6 +74,7 @@ impl TradChord {
             ChordDegree::V => 7,
             ChordDegree::VI => mode.intervals()[5] as u8,
             ChordDegree::BVII => 10,
+            ChordDegree::Semitones(semitones) => semitones % 12,
         }
     }
 
@@ -74,20 +84,22 @@ impl TradChord {
         (key % 12 + self.root_semitones(mode)) % 12
     }
 
-    /// Demi-tons de la tierce au-dessus de la fondamentale (4 ou 3).
+    /// Intervalles ascendants, sans allocation ; une pédale reste monophonique.
     #[must_use]
-    pub const fn third_semitones(self) -> u8 {
+    pub fn intervals(self) -> arrayvec::ArrayVec<u8, 3> {
         match self.quality {
-            ChordQuality::Major => 4,
-            ChordQuality::Minor => 3,
+            ChordQuality::Major => [0, 4, 7].into_iter().collect(),
+            ChordQuality::Minor => [0, 3, 7].into_iter().collect(),
+            ChordQuality::Pedal => [0].into_iter().collect(),
+            ChordQuality::PedalNeighbor(neighbor) => [0, neighbor].into_iter().collect(),
         }
     }
 
-    /// Classes de hauteur `[fondamentale, tierce, quinte]`.
+    /// Classes de hauteur de la sonorité, dans l'ordre de ses intervalles.
     #[must_use]
-    pub const fn pitch_classes(self, key: PitchClass, mode: Mode) -> [PitchClass; 3] {
+    pub fn pitch_classes(self, key: PitchClass, mode: Mode) -> arrayvec::ArrayVec<PitchClass, 3> {
         let root = self.root_pc(key, mode);
-        [root, (root + self.third_semitones()) % 12, (root + 7) % 12]
+        self.intervals().into_iter().map(|interval| (root + interval) % 12).collect()
     }
 
     /// `true` si la classe de hauteur de `midi` appartient à l'accord.
@@ -412,7 +424,7 @@ mod tests {
         // Degrés mixolydiens 7 (C), 2 (E), 4 (G) : triade de C majeur = bVII.
         let chords = harmonize("7 2 4 2 7 2 4 2", Mode::Mixolydian, free_role());
         assert_eq!(chords, [major(ChordDegree::BVII); 2]);
-        assert_eq!(chords[0].pitch_classes(D, Mode::Mixolydian), [0, 4, 7]);
+        assert_eq!(chords[0].pitch_classes(D, Mode::Mixolydian).as_slice(), [0, 4, 7]);
     }
 
     #[test]
@@ -452,7 +464,10 @@ mod tests {
         let half = harmonize("1 3 5 3 1 3 5 3", Mode::HarmonicMinor, role(3));
         assert_eq!(half[1], major(ChordDegree::V));
         // Triade de V en ré mineur harmonique : A C# E.
-        assert_eq!(major(ChordDegree::V).pitch_classes(D, Mode::HarmonicMinor), [9, 1, 4]);
+        assert_eq!(
+            major(ChordDegree::V).pitch_classes(D, Mode::HarmonicMinor).as_slice(),
+            [9, 1, 4]
+        );
     }
 
     #[test]
@@ -471,10 +486,10 @@ mod tests {
 
     #[test]
     fn chord_roots_follow_mode() {
-        assert_eq!(major(ChordDegree::I).pitch_classes(D, Mode::Ionian), [2, 6, 9]);
-        assert_eq!(minor(ChordDegree::VI).pitch_classes(D, Mode::Ionian), [11, 2, 6]);
-        assert_eq!(major(ChordDegree::VI).pitch_classes(9, Mode::Aeolian), [5, 9, 0]);
-        assert_eq!(major(ChordDegree::BVII).pitch_classes(9, Mode::Aeolian), [7, 11, 2]);
+        assert_eq!(major(ChordDegree::I).pitch_classes(D, Mode::Ionian).as_slice(), [2, 6, 9]);
+        assert_eq!(minor(ChordDegree::VI).pitch_classes(D, Mode::Ionian).as_slice(), [11, 2, 6]);
+        assert_eq!(major(ChordDegree::VI).pitch_classes(9, Mode::Aeolian).as_slice(), [5, 9, 0]);
+        assert_eq!(major(ChordDegree::BVII).pitch_classes(9, Mode::Aeolian).as_slice(), [7, 11, 2]);
     }
 
     /// 16 mesures distinctes : strain A sur I, strain B sur IV (hors cadences).
