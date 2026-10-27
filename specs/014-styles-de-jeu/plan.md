@@ -91,10 +91,17 @@ les transcriptions de G0.
 | G1 | fusionnée (`90acfb0`) | `g1-modes.md` |
 | G4 | fusionnée (`dab7665`) | `g4-forme-boucle.md` |
 | G5 | fusionnée (`69c1449`) | `g5-nappes.md` |
-| G2, G3, G6 | en cours (worktrees `g2-harmonie-boucle`, `g3-basse-motivique`, labo `g6-banque-nt`) | — |
+| G3 | fusionnée (`98d0e10`) : motifs pondérés dans `BassVoice`, pédale G#1 tenue en scie (GM 81, décision d'écoute) | `g3-basse-motivique.md` |
+| G6 | fusionnée (labo `3fa7eaa`) : `nt_desert.sf2` procédurale CC0, scies 38/81 tenues (excursion < 0,1 dB), kit rock sec | labo `references/nt-desert/banque.md` |
+| G2 | en cours (worktree `g2-harmonie-boucle`) | — |
 
-Après fusion de G1, G4, G5 : 516 tests passent, 0 échec ; clippy sur les bibliothèques et binaires
-sans nouvel avertissement (les 157 existaient avant). Labo : 270 tests passent, 27 ignorés.
+Après fusion de G1, G3, G4, G5 : 529 tests passent, 0 échec ; fmt propre ; clippy sur les
+bibliothèques et binaires sans nouvel avertissement (mêmes emplacements qu'avant la phase). Labo
+après G0 et G6 : 279 tests passent, 27 ignorés.
+
+Écoute du propriétaire (2026-10-27) : la pédale de *Fläshyn* rendue en GM 38 décroît (−19 dB sur la
+tenue) et laisse la batterie seule ; GM 30 (guitare saturée) « trop étrange » ; **GM 81 scie
+retenue**.
 
 ## Acceptation de la phase
 
