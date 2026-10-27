@@ -263,10 +263,14 @@ impl TradGenerator {
     }
 
     /// Vrai si `track` joue à `position` : l'arrangement l'autorise (ou la piste a
-    /// joué l'intro de cet air) ET le drapeau `enable_*` du jeu le permet. Seul
+    /// joué l'intro de cet air) ET le drapeau `enable_*` du jeu le permet ET la
+    /// partie courante ne la tait pas (`form.parts[].tracks_off`). Seul
     /// calcul de « piste active ».
     fn track_active(&self, track: TrackId, position: &TunePosition) -> bool {
         if !self.tuning.profile.has_track(track) {
+            return false;
+        }
+        if !position.is_intro() && self.profile.form.part_mutes(position.part.0, track) {
             return false;
         }
         let flag = match track {

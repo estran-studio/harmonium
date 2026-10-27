@@ -6,9 +6,9 @@ G1 (phrygien, bascule par valence), G2 (`harmony.model = "loop"`, pédale liée
 sur `Chords`), G3 (motifs de `BassVoice`, pédale liée), G4 (forme en boucle,
 sifflement à entrée tardive) et G5 (`tie`, segments `Tied`). Les fixtures
 `nt_pedale_boucle`, `nt_basse_motivique`, `boucle_test` et `nappe_pad` ont
-servi de patrons ; aucun mécanisme nouveau n'a été nécessaire, sauf un :
-la sourdine par partie (pont sans batterie ni basse), impossible en données,
-documentée ci-dessous comme seul écart structurel.
+servi de patrons ; aucun mécanisme nouveau n'a été nécessaire, sauf un,
+depuis résolu en G7b : la sourdine par partie (pont sans batterie ni basse),
+impossible en données au moment de G7 (voir « Écart résolu » ci-dessous).
 
 ## Ce qui a changé
 
@@ -40,7 +40,7 @@ demi-tons) donc la couleur transpose la structure entière.
 |---|---|---|---|---|
 | A1 pédale G# | 1–8 | pédale degré 1 | G#1 tenu 3 mes. (`tie`), relance D–E–F#–G–G# absolus (G0 §6.1) | Scie 81 liée, une attaque (décision d'écoute ; jamais de 30) |
 | A2 riff D/D# | 9–16 | boucle 8 mes. : D mineur (+6 demi-tons) | riff D1/D#1 (b2) + montée F–G–G#, variante espacée (poids 3:1) | La superposition D + D# + A n'est pas une triade : D mineur l'approche, tierce documentée |
-| Pont nappes | 17–32 | 16 accords tenus (C C E E F B C C / F C E E F B C# C#) | E1 épars (2 notes / 4 mes., vél. 40–45) | Sifflement 78 entre au pont (G4 ; bribes du pont) ; chute F–C#–D de fin d'A1 omise (pédale pure) |
+| Pont nappes | 17–32 | 16 accords tenus (C C E E F B C C / F C E E F B C# C#) | tue (`tracks_off`, G7b) | Sifflement 78 entre au pont (G4 ; bribes du pont) ; chute F–C#–D de fin d'A1 omise (pédale pure) |
 | B G/G# | 33–40 | I–bII phrygien, 2 + 2 mes. ×2 | 1 note douce / 2 mes. (quasi-absente, comme le stem) | Scie liée sur les triades |
 | A1' reprise | 41–48 | rejouée d'A1 (`sequence [0,1,2,3,0]`) | rejouée d'A1 (bit à bit aux graines testées) | Reprise littérale (r = 0,99 dans l'original) |
 
@@ -57,24 +57,15 @@ plus sèches (dominante à 0, la boucle n'est pas substituée) ; valence →
 G# phrygien au neutre, A phrygien en bas (bourdon calme), G# mixolydien
 en haut (bascule G1, degrés recalculés).
 
-## Écart connu : le pont garde la batterie
+## Écart résolu : le pont tait la batterie et la basse (G7b)
 
-Le moteur ne sait taire une piste que globalement (entrée d'arrangement sans
-sortie, `density_tracks` par émotion, drapeaux du jeu) : aucune donnée ne
-coupe les pieds ni la basse sur une seule partie. La basse du pont est
-réduite à des E1 épars (fidèle : « quelques notes E1 »), mais la batterie y
-continue (l'original : silence total mes. 17–30). Proposition de schéma pour
-une tâche moteur (données, pas de nom de style) :
-
-```toml
-[form.parts.Pont]
-# ... rôles existants ...
-tracks_off = ["Bass", "Heel", "Toe"]   # pistes tues sur cette partie
-```
-
-`track_active` lirait en plus le masque de la partie courante ; le lecteur
-n'aurait qu'à fermer les tenues à la frontière (repli sûr G5). En attendant,
-le test fige le comportement livré (batterie partout) avec renvoi ici.
+La sourdine par partie (`form.parts[].tracks_off`, tâche G7b) coupe `Bass`,
+`Heel` et `Toe` sur le pont, en données : le pont (mes. 17–32) est sans
+batterie ni basse, comme l'original (silence total mes. 17–30). Le motif de
+basse du pont (E1 épars) est supprimé : une partie qui tait la basse n'exige
+plus aucun motif (exemption validée) et aucun motif ne peut la nommer. Le test
+`arche_48_melodie_tardive` fige désormais le contrat inverse (silence au pont,
+présence avant/après). Voir `g7b-pistes-par-partie.md`.
 
 Autres écarts : A2 en D mineur (tierce ajoutée) ; une seule scie 81 pour
 pédale et triades (pas de pad 88/89 par partie) ; pont de 16 mesures en un
@@ -114,7 +105,7 @@ l'enfouit — point d'écoute n° 1.
 |---|---|
 | 0,0–13,7 s (mes. 1–8) | Scie G# continue, **aucune réattaque** aux barres ; relance mes. 4 et 8 |
 | 13,7–27,4 s (mes. 9–16) | Riff D/D# (demi-ton phrygien), montée F–G–G# |
-| 27,4–54,9 s (mes. 17–32) | Pont : triades C–E–F–B…, sifflement entré, E1 épars ; **batterie encore là (écart)** |
+| 27,4–54,9 s (mes. 17–32) | Pont : triades C–E–F–B…, sifflement entré, **sans batterie ni basse (G7b)** |
 | 54,9–68,6 s (mes. 33–40) | Alternance G / G# toutes les 2 mes., basse quasi absente |
 | 68,6–82,3 s (mes. 41–48) | Reprise A1 à l'identique |
 | `density` : tout le fichier | Scie seule, sans pieds ni basse (valider le calme *A Way*) |
@@ -142,7 +133,7 @@ l'enfouit — point d'écoute n° 1.
 
 ## Limites
 
-- Seul écart structurel : batterie du pont (moteur, voir ci-dessus).
+- Écart structurel résolu en G7b : pont sans batterie ni basse (voir ci-dessus).
 - Mix et vélocités propositionnels, non réglés à l'oreille contre la banque.
 - Les 5 graines neutres donnent la même couleur (G#) : la variété vient des
   graines × émotions, pas du tirage neutre.

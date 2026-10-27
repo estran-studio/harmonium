@@ -98,12 +98,28 @@ fn arche_48_melodie_tardive() -> TestResult {
         for s in &snapshots[16..32] {
             assert_eq!(notes(s, 1).len(), 3, "triade tenue, mesure {}", s.index);
         }
-        // Batterie présente dans tout l'air, pont compris : le moteur n'a pas
-        // de sourdine par partie en données (écart documenté au compte rendu G7).
-        for s in &snapshots[0..48] {
-            assert!(!notes(s, 3).is_empty(), "grosse caisse absente, mesure {}", s.index);
-            assert!(!notes(s, 4).is_empty(), "caisse claire absente, mesure {}", s.index);
+        // Pont sans batterie ni basse (G7b, comme l'original) : sourdine par
+        // partie en données ; scie et sifflement restent.
+        for s in &snapshots[16..32] {
+            assert!(notes(s, 2).is_empty(), "basse au pont, mesure {}", s.index);
+            assert!(notes(s, 3).is_empty(), "grosse caisse au pont, mesure {}", s.index);
+            assert!(notes(s, 4).is_empty(), "pieds au pont, mesure {}", s.index);
+            assert!(!notes(s, 1).is_empty(), "scie absente au pont, mesure {}", s.index);
         }
+        // Batterie et basse présentes avant (A1, A2) et après (B, A1') le pont :
+        // tous les coups de pieds, basse à chaque mesure en A1/A2/A1', une
+        // mesure sur deux en B (données : quasi-absence voulue).
+        for s in snapshots[0..16].iter().chain(&snapshots[40..48]) {
+            assert!(!notes(s, 2).is_empty(), "basse absente, mesure {}", s.index);
+        }
+        for s in &snapshots[32..48] {
+            assert!(!notes(s, 3).is_empty(), "grosse caisse absente, mesure {}", s.index);
+            assert!(!notes(s, 4).is_empty(), "pieds absents, mesure {}", s.index);
+        }
+        assert!(
+            snapshots[32..40].iter().any(|s| !notes(s, 2).is_empty()),
+            "basse absente de tout B"
+        );
         // Reprise A1' (mes. 41–48) : pédale et relance comme en A1.
         for (a, b) in [(41, 1), (44, 4), (48, 8)] {
             let (pa, pb) = (&snapshots[a - 1], &snapshots[b - 1]);

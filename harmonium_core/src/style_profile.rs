@@ -299,6 +299,12 @@ pub struct ProfilePart {
     pub name: String,
     pub roles: Vec<ProfileRole>,
     pub melody_center_offset: i8,
+    /// Pistes tues sur cette partie (ex. pont sans batterie ni basse) : lues
+    /// par la même porte que l'arrangement et la densité (`track_active`).
+    /// Omission : aucune sourdine. Un nom inconnu est refusé au chargement,
+    /// un doublon à la validation.
+    #[serde(default)]
+    pub tracks_off: Vec<TrackId>,
     /// Variante de la dernière mesure, jouée à la dernière reprise de la partie.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub second_ending: Option<ProfileRole>,
@@ -379,6 +385,11 @@ impl ProfileForm {
     }
     pub fn unique_offset(&self, part: usize) -> usize {
         self.parts[..part].iter().map(|p| p.roles.len()).sum()
+    }
+    /// Vrai si `track` est tue sur la partie `part` (`tracks_off`). Hors bornes :
+    /// faux (position d'intro, sans partie).
+    pub fn part_mutes(&self, part: usize, track: TrackId) -> bool {
+        self.parts.get(part).is_some_and(|p| p.tracks_off.contains(&track))
     }
 }
 fn default_half() -> f32 {
@@ -842,6 +853,12 @@ impl StyleProfile {
                 (-24..=24).contains(&part.melody_center_offset),
                 &format!("{field}.melody_center_offset"),
                 "attendu -24..24",
+            )?;
+            let mut muted = HashSet::new();
+            check(
+                part.tracks_off.iter().all(|t| muted.insert(*t)),
+                &format!("{field}.tracks_off"),
+                "piste unique requise (doublon)",
             )?;
             check(
                 part.phrase_ends.iter().all(|&bar| bar > 0 && bar <= part.roles.len())

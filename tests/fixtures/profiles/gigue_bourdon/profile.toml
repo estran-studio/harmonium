@@ -74,6 +74,9 @@ roles = [
 [[form.parts]]
 name = "B"
 melody_center_offset = 2
+# Principe VIII (014-G7b) : la partie B tait les pieds en données, par le
+# même mécanisme que le pont de `nt_desert`.
+tracks_off = ["Heel", "Toe"]
 phrase_ends = [4, 8]
 rhythm = [
   { bar = 4, patterns = [
