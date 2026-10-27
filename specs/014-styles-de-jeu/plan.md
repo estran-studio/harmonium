@@ -83,6 +83,19 @@ flowchart LR
 G0 et G1 peuvent démarrer en parallèle, de même que G4 et G5. La conception de G2 et G3 attend
 les transcriptions de G0.
 
+### État (2026-10-27)
+
+| Tâche | État | Compte rendu |
+|---|---|---|
+| G0 | fusionnée (labo `5e50ddf`) : désert = 12/8 à 140 BPM, pédales phrygiennes G#/D/A, 10 boucles transcrites (hors dépôt) | labo `references/nt-desert/README.md` |
+| G1 | fusionnée (`90acfb0`) | `g1-modes.md` |
+| G4 | fusionnée (`dab7665`) | `g4-forme-boucle.md` |
+| G5 | fusionnée (`69c1449`) | `g5-nappes.md` |
+| G2, G3, G6 | en cours (worktrees `g2-harmonie-boucle`, `g3-basse-motivique`, labo `g6-banque-nt`) | — |
+
+Après fusion de G1, G4, G5 : 516 tests passent, 0 échec ; clippy sur les bibliothèques et binaires
+sans nouvel avertissement (les 157 existaient avant). Labo : 270 tests passent, 27 ignorés.
+
 ## Acceptation de la phase
 
 1. `nt_<zone>` joue dans le clone NT, avec sa banque, sur au moins 30 s de jeu réel. Écoute du
