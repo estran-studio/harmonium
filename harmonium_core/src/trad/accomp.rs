@@ -13,7 +13,7 @@ use super::{
 use crate::{
     algo::RngCore,
     theory::PitchClass,
-    timeline::{Articulation, NoteId, TimelineNote},
+    timeline::{Articulation, NoteId, TimelineNote, TrackId},
     tuning::TradHarmonyParams,
 };
 
@@ -185,34 +185,44 @@ impl BassMotifPlan {
         let form = &plan.profile.form;
         let mut parts: Vec<Vec<BassMotifSlice>> = Vec::with_capacity(form.parts.len());
         for (part_idx, part) in form.parts.iter().enumerate() {
+            // Partie qui tait la basse (`tracks_off`) : aucune tranche. Le
+            // générateur ne lit jamais ces mesures (`track_active` coupe la
+            // piste) ; `slice_for_bar` renvoie `None` par accès protégé.
+            if part.tracks_off.contains(&TrackId::Bass) {
+                parts.push(Vec::new());
+                continue;
+            }
             let roles = plan.roles_for_part(part_idx);
             let mut chosen: Vec<BassMotifSlice> = Vec::with_capacity(roles.len());
             let mut ongoing: Option<BassMotifSlice> = None;
             for (bar, role) in roles.iter().enumerate() {
-                let slice = match *role {
-                    ImposedRole::CopyOf(source) => chosen[usize::from(source) - 1],
+                // Copie depuis une partie muette : aucune tranche source ; tirer
+                // une tranche fraîche au lieu de copier du vide.
+                let copied = match *role {
+                    ImposedRole::CopyOf(source) => Some(chosen[usize::from(source) - 1]),
                     ImposedRole::CopyOfPart { part: src_part, bar: src_bar } => {
-                        parts[src_part][usize::from(src_bar) - 1]
+                        parts.get(src_part).and_then(|v| v.get(usize::from(src_bar) - 1)).copied()
                     }
-                    _ => match ongoing {
-                        Some(slice) => slice,
-                        None => {
-                            // Préférer un motif entier ; faute de candidat assez court,
-                            // tronquer un motif éligible plutôt que laisser une fin vide.
-                            let Some(motif_index) =
-                                draw_bass_motif(&bass.motifs, &part.name, roles.len() - bar, rng)
-                                    .or_else(|| {
-                                        draw_bass_motif(&bass.motifs, &part.name, usize::MAX, rng)
-                                    })
-                            else {
-                                unreachable!("chaque partie validée dispose d'un motif de basse");
-                            };
-                            let slice = BassMotifSlice { motif_index, bar_in_motif: 0 };
-                            ongoing = Some(slice);
-                            slice
-                        }
-                    },
+                    _ => None,
                 };
+                let slice = copied.unwrap_or_else(|| match ongoing {
+                    Some(slice) => slice,
+                    None => {
+                        // Préférer un motif entier ; faute de candidat assez court,
+                        // tronquer un motif éligible plutôt que laisser une fin vide.
+                        let Some(motif_index) =
+                            draw_bass_motif(&bass.motifs, &part.name, roles.len() - bar, rng)
+                                .or_else(|| {
+                                    draw_bass_motif(&bass.motifs, &part.name, usize::MAX, rng)
+                                })
+                        else {
+                            unreachable!("chaque partie validée dispose d'un motif de basse");
+                        };
+                        let slice = BassMotifSlice { motif_index, bar_in_motif: 0 };
+                        ongoing = Some(slice);
+                        slice
+                    }
+                });
                 chosen.push(slice);
                 ongoing = ongoing.and_then(|mut next| {
                     next.bar_in_motif += 1;
@@ -223,13 +233,16 @@ impl BassMotifPlan {
         }
         let second_endings = (0..form.parts.len())
             .map(|part_idx| {
+                if form.parts[part_idx].tracks_off.contains(&TrackId::Bass) {
+                    return None;
+                }
                 let role = plan.second_ending_role(part_idx)?;
                 let part = &form.parts[part_idx];
                 let chosen = &parts[part_idx];
                 match role {
                     ImposedRole::CopyOf(source) => Some(chosen[usize::from(source) - 1]),
                     ImposedRole::CopyOfPart { part: src_part, bar: src_bar } => {
-                        Some(parts[src_part][usize::from(src_bar) - 1])
+                        parts.get(src_part).and_then(|v| v.get(usize::from(src_bar) - 1)).copied()
                     }
                     // Une seconde fin ne démarre jamais un motif multi-mesures :
                     // tirer une mesure entière ou rejouer la tranche finale d'origine.
@@ -242,7 +255,8 @@ impl BassMotifPlan {
         Self { parts, second_endings }
     }
 
-    /// Tranche de motif jouée à la mesure `bar_in_tour` du tour (`None` : plan vide).
+    /// Tranche de motif jouée à la mesure `bar_in_tour` du tour (`None` :
+    /// plan vide ou partie qui tait la basse).
     #[must_use]
     pub(crate) fn slice_for_bar(
         &self,
@@ -253,10 +267,10 @@ impl BassMotifPlan {
             return None;
         }
         let (part, _, offset, second_ending) = plan.position(bar_in_tour);
-        if second_ending && let Some(ending) = self.second_endings[part] {
+        if second_ending && let Some(ending) = self.second_endings.get(part).and_then(|e| *e) {
             return Some(ending);
         }
-        Some(self.parts[part][offset])
+        self.parts.get(part).and_then(|v| v.get(offset)).copied()
     }
 }
 

@@ -1,7 +1,10 @@
 //! Données et validation des deux voix d'accompagnement.
 use serde::{Deserialize, Serialize};
 
-use crate::{style_profile::ProfileError, trad::dynamics::Curve, tuning::TradHarmonyParams};
+use crate::{
+    style_profile::ProfileError, timeline::TrackId, trad::dynamics::Curve,
+    tuning::TradHarmonyParams,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -499,6 +502,13 @@ impl TradHarmonyParams {
                         format!("{mf}.part"),
                         "partie inconnue dans form.parts",
                     )?;
+                    require(
+                        parts.iter().all(|p| {
+                            &p.name != part_name || !p.tracks_off.contains(&TrackId::Bass)
+                        }),
+                        format!("{mf}.part"),
+                        "motif sans emploi : la partie tait la basse (tracks_off)",
+                    )?;
                 }
                 let span = motif.bars * steps;
                 let nf = format!("{mf}.notes");
@@ -592,6 +602,9 @@ impl TradHarmonyParams {
                 "somme des poids positive requise",
             )?;
             for part in parts {
+                if part.tracks_off.contains(&TrackId::Bass) {
+                    continue;
+                }
                 require(
                     b.motifs.iter().any(|m| {
                         m.weight > 0

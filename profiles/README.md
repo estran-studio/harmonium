@@ -33,7 +33,7 @@ Le onzième, `nt_desert` (phase 014, G7), est le premier profil non trad : dése
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
 | `[files]` | `cells`, `feet`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
-| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »). |
+| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "Heel", "Toe"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"`, `"jazz_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
@@ -205,7 +205,9 @@ la fixture NT utilise **Saw Lead, `bass_program = 81` (0-based)**.
 Banque : au plus 256 motifs, poids `u32` (défaut 1), somme positive sans
 débordement ; poids nul = jamais tiré. `part = "A"` filtre par nom de partie ;
 les motifs spécifiques éligibles ont priorité sur les motifs sans `part`.
-Chaque partie doit disposer d'au moins un motif de poids positif.
+Chaque partie doit disposer d'au moins un motif de poids positif, sauf celles
+qui taisent la basse (`tracks_off`, voir `[form]`) : aucun motif ne peut les
+nommer (refusé comme sans emploi), et le plan n'y tire aucune tranche.
 Le tirage préfère les motifs entiers qui tiennent avant la fin de partie ;
 sinon il tronque un motif à cette frontière, jamais au-delà.
 
@@ -972,6 +974,7 @@ la résolution `per_tune` et les contraintes de registre antérieures.
 | `parts.rhythm` | Distribution de durées aux positions choisies, voir ci-dessous | Un motif unique | Plusieurs motifs aux poids de corpus |
 | `parts.second_ending` | Variante de la dernière mesure à la dernière passe de la partie | Omettre, ou `"CadTonic"` | Distribution tonique/quinte/autre |
 | `parts.ornament_protected_bars` | Mesures sans aucun ornement (cadences), tous types de `[ornaments]` ; omission : dernière mesure si son rôle est cadentiel ; `[]` : aucune | `[4,8]` | `[]` |
+| `parts.tracks_off` | Pistes tues sur la partie, lues par la même porte que l'arrangement et la densité ; les tenues liées qui traversent la frontière se ferment à la barre et reprennent ensuite (repli sûr) ; la basse muette dispense de motif pour la partie | `["Heel", "Toe"]` en B | `["Bass", "Heel", "Toe"]` au pont de `nt_desert` |
 | `melody.params.max_continuity_step_distance`, `continuity_max_retries` | Distance diatonique préférée entre cellules et nombre d'essais ; contraintes souples, tessiture prioritaire | `2`, `16` | `7`, `4` |
 
 Une variation conserve le mode et la tessiture. `repeated_notes` remplace une
