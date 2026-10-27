@@ -101,9 +101,13 @@ son style d'origine est un défaut.
   `harmonium` avec contrôle OSC.
 - `harmonium_cli` — REPL d'écoute et de test.
 - `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
+- `harmonium_studio` — application egui : vitrine publique sur le web (WASM)
+  et atelier de développement en natif.
 
-Pas de frontend dans ce repo. L'intégration Bevy vit dans chaque jeu, sur
-`create_offline_engine`.
+Un seul frontend, `harmonium_studio`. Il ne lit que le contrat (principe I)
+et l'API publique du host, et exécute les commandes par le même chemin que
+le REPL, qui garde les mêmes capacités. L'intégration Bevy vit dans chaque
+jeu, sur `create_offline_engine`.
 
 ## Contraintes techniques
 
@@ -121,7 +125,8 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 4.0.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-27
+**Version** : 4.1.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-27
 (moteur tous styles et multi-jeux, fusion en données — principe VIII ;
 sources sous droits analysables, seuls les dérivés entrent au dépôt —
-principe VII)
+principe VII ; un seul frontend, `harmonium_studio`, vitrine web et atelier
+natif)
