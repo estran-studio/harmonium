@@ -33,12 +33,12 @@ fn spawn_export(style: &str, automation: Option<&Path>, midi: &Path) -> std::io:
     command.spawn()
 }
 
-/// Exporte les dix profils en parallèle ; échoue si l'un d'eux ne se termine pas dans
-/// `MAX_EXPORT` (les survivants sont tués).
+/// Exporte tous les profils distribués en parallèle ; échoue si l'un d'eux ne se
+/// termine pas dans `MAX_EXPORT` (les survivants sont tués).
 fn export_all_profiles(automation: Option<&Path>, name: &str) -> std::io::Result<()> {
     let dir = scratch_dir(name)?;
     let profiles = harmonium_core::StyleProfile::distributed();
-    assert_eq!(profiles.len(), 10, "le contrat couvre les dix profils distribués");
+    assert!(!profiles.is_empty(), "aucun profil distribué à exporter");
 
     let mut running = Vec::new();
     for profile in profiles {

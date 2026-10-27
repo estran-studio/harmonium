@@ -329,7 +329,14 @@ fn distributed_rhythmic_entropy_recovers_the_pre_phrase_form() {
             })
             .sum()
     }
-    for profile in StyleProfile::distributed() {
+    // Le test garde les tables `rhythm` : un profil sans aucune table (boucle
+    // à cellules éparses, ex. `nt_desert` en G7) est hors de son propos.
+    let with_rhythm: Vec<_> = StyleProfile::distributed()
+        .iter()
+        .filter(|p| p.form.parts.iter().any(|part| !part.rhythm.is_empty()))
+        .collect();
+    assert!(!with_rhythm.is_empty(), "aucun profil à tables rhythm");
+    for profile in with_rhythm {
         let mut current = profile.clone();
         current.arrangement = ReelArrangement::from_start(1, Default::default());
         current.ornaments = Default::default();

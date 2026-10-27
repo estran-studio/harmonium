@@ -1,0 +1,243 @@
+# Profil du désert de Nuclear Throne (Jukio Kallio, 2015).
+# Données seulement : pédale phrygienne tenue (G2/G5), basse motivique (G3),
+# forme en boucle avec sifflement tardif (G4), 12/8 à 140 noires pointées.
+# Arche de Fläshyn : A1 pédale G#, A2 riff D/D#, pont de nappes, B en
+# alternance G/G#, reprise A1'. Seuls les presets de assets/nt_desert.sf2
+# sont employés (0/38, 0/81, 0/78, 0/88, 0/89 ; kit 128/0, touches 36, 37,
+# 38, 41, 42, 44, 45, 46, 48, 49, 51). Voir README.md du dossier.
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "nt_desert"
+name = "Désert de Nuclear Throne"
+tradition = "Nuclear Throne, désert — Jukio Kallio, 2015"
+tags = ["nuclear-throne", "desert", "boucle", "synthe"]
+corpus = "harmonium_lab corpus/nuclear_throne/manifest.jsonl : 02 Fläshyn (Desert A) et 19 A Way (Desert B), Jukio Kallio / Vlambeer 2015, droits réservés (analyse et inspiration seulement ; audio, stems et transcriptions hors dépôt)"
+
+[meter]
+time_signature = { numerator = 12, denominator = 8 }
+steps_per_bar = 24
+steps_per_unit = 2
+steps_per_pulse = 6
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 210.0
+min_bpm = 150.0
+max_bpm = 240.0
+
+# Arche de Fläshyn en 48 mesures : 8 + 8 + 16 + 8, reprise A1' par rejouée
+# de la partie A1 (séquence [0, 1, 2, 3, 0]). Boucles sans cadence (G4) :
+# rôles Open/Free seulement, pas de fins imposées.
+[form]
+sequence = [0, 1, 2, 3, 0]
+[[form.parts]]
+name = "A1"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+[[form.parts]]
+name = "A2"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+[[form.parts]]
+name = "Pont"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+[[form.parts]]
+name = "B"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Sifflement (bribes du pont de Fläshyn, pistes 78 de la banque). Les
+# porteuses suivent l'accord courant (G2) ; sur pédale pure, la classe de
+# la pédale porte les tenues.
+[melody]
+cell_units = 12
+strong_units = [0, 3, 6, 9]
+weak_units = [1, 2, 4, 5, 7, 8, 10, 11]
+key_modes = [{ key = 8, mode = "phrygian", weight = 1 }]
+[melody.params]
+weight_role_run = 2
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 76
+tonic_midi_min = 62
+tonic_midi_max = 74
+tessitura_min = 64
+tessitura_max = 86
+base_velocity = 72
+strong_eighth_velocity_offset = 4
+even_eighth_velocity_offset = -4
+
+# Boucles et pédales par partie (G2), en demi-tons relatifs à la tonique
+# (transportable par la couleur) : A1 pédale G#, A2 pédale de triton en
+# triade mineure (D + D# + A de l'original, tierce documentée au README),
+# pont C C E E F B C C puis F C E E F B C# C#, B en I-bII phrygien.
+[harmony]
+model = "loop"
+steps_per_chord = 24
+default_bars_per_chord = 1
+[harmony.parts.A1]
+kind = "pedal"
+degree = 1
+[harmony.parts.A2]
+kind = "chord_loop"
+chords = [{ semitones = 6, quality = "Minor", bars = 8 }]
+[harmony.parts.Pont]
+kind = "chord_loop"
+chords = [
+  { semitones = 4, quality = "Major", bars = 1 },
+  { semitones = 4, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 9, quality = "Major", bars = 1 },
+  { semitones = 3, quality = "Major", bars = 1 },
+  { semitones = 4, quality = "Major", bars = 1 },
+  { semitones = 4, quality = "Major", bars = 1 },
+  { semitones = 9, quality = "Major", bars = 1 },
+  { semitones = 4, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 9, quality = "Major", bars = 1 },
+  { semitones = 3, quality = "Major", bars = 1 },
+  { semitones = 5, quality = "Major", bars = 1 },
+  { semitones = 5, quality = "Major", bars = 1 },
+]
+[harmony.parts.B]
+kind = "chord_loop"
+chords = [
+  { semitones = 11, quality = "Major", bars = 2 },
+  { semitones = 0, quality = "Major", bars = 2 },
+]
+
+[accompaniment]
+strong_steps = [0, 6, 12, 18]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Basse motivique (G3) sur scie 81, décision d'écoute du propriétaire.
+# Références : tonique pour A1 (pédale G# + relance chromatique D-E-F#-G-G#,
+# hauteurs absolues de G0 §6.1), fondamentale courante ailleurs (motifs
+# transportés : riff D/D# de G0, E1 épars du pont, quasi-absence en B).
+[accompaniment.bass]
+low = 26
+high = 37
+[[accompaniment.bass.motifs]]
+part = "A1"
+bars = 4
+weight = 1
+reference = "tonic"
+notes = [
+  { step = 0, duration = 72, semitones = 0, velocity = 92, tie = true },
+  { step = 72, duration = 5, semitones = -6, velocity = 85 },
+  { step = 77, duration = 1, semitones = -4, velocity = 85 },
+  { step = 78, duration = 1, semitones = -2, velocity = 90 },
+  { step = 79, duration = 4, semitones = -1, velocity = 95 },
+  { step = 83, duration = 13, semitones = 0, velocity = 100 },
+]
+[[accompaniment.bass.motifs]]
+part = "A2"
+bars = 2
+weight = 3
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 4, semitones = 0, velocity = 95 },
+  { step = 4, duration = 1, semitones = 1, velocity = 85 },
+  { step = 5, duration = 3, semitones = 0, velocity = 90 },
+  { step = 8, duration = 3, semitones = 1, velocity = 85 },
+  { step = 11, duration = 6, semitones = 0, velocity = 95 },
+  { step = 17, duration = 1, semitones = 1, velocity = 85 },
+  { step = 18, duration = 6, semitones = 0, velocity = 95 },
+  { step = 24, duration = 5, semitones = 0, velocity = 95 },
+  { step = 29, duration = 2, semitones = 1, velocity = 85 },
+  { step = 31, duration = 1, semitones = 3, velocity = 85 },
+  { step = 32, duration = 3, semitones = 5, velocity = 90 },
+  { step = 35, duration = 2, semitones = 6, velocity = 95 },
+  { step = 37, duration = 2, semitones = 0, velocity = 90 },
+  { step = 39, duration = 2, semitones = 1, velocity = 85 },
+  { step = 41, duration = 2, semitones = 0, velocity = 90 },
+  { step = 43, duration = 1, semitones = 2, velocity = 85 },
+  { step = 44, duration = 4, semitones = 0, velocity = 95 },
+]
+[[accompaniment.bass.motifs]]
+part = "A2"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 12, semitones = 0, velocity = 76 },
+  { step = 12, duration = 12, semitones = 1, velocity = 70 },
+  { step = 24, duration = 18, semitones = 0, velocity = 76 },
+  { step = 42, duration = 6, semitones = 1, velocity = 70 },
+]
+[[accompaniment.bass.motifs]]
+part = "Pont"
+bars = 4
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 2, semitones = 0, velocity = 45 },
+  { step = 48, duration = 2, semitones = 0, velocity = 40 },
+]
+[[accompaniment.bass.motifs]]
+part = "B"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [{ step = 0, duration = 2, semitones = 0, velocity = 50 }]
+
+# Scie pédale (G2) : un coup plaqué lié d'une mesure entière, programme 81,
+# registre une octave au-dessus de la basse. Mêmes coups sur les boucles :
+# triades tenues qui changent avec l'accord.
+[accompaniment.chords]
+center = 44
+max_drift = 6
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 66, tie = true }] }]
+
+[instruments]
+melody_program = 78
+chords_program = 81
+bass_program = 81
+percussion_bank = 128
+percussion_program = 0
+
+[mix]
+master_db = 14.0
+[mix.room]
+room_size = 0.3
+damping = 0.5
+width = 0.6
+level = 0.25
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.05
+reverb_send = 0.2
+[mix.tracks.Chords]
+level_db = -4.0
+pan = -0.3
+reverb_send = 0.25
+[mix.tracks.Bass]
+level_db = -5.0
+pan = 0.0
+reverb_send = 0.1
+[mix.tracks.Heel]
+level_db = -5.0
+pan = -0.06
+reverb_send = 0.08
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.08
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

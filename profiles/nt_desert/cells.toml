@@ -1,0 +1,9 @@
+# Cellules du sifflement : tenues et traits phrygiens épars (12 croches de
+# 12/8 par cellule). Seuls open/run sont employés (arp/turn de poids nul,
+# G4) ; la forme les tait jusqu'au pont (arrangement.toml).
+cells = [
+  { role = "open", notes = "1 - - - - - 5 - - - - -", weight = 1 },
+  { role = "open", notes = "5 - - - - - 8 - - - - -", weight = 1 },
+  { role = "run", notes = "1 2 3 2 1 - - - - - - -", weight = 1 },
+  { role = "run", notes = "5 4 3 2 1 - - - - - - -", weight = 1 },
+]
