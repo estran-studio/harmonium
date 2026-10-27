@@ -266,6 +266,12 @@ chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="
 [[harmony.candidates]]
 mode = "aeolian"
 chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+[[harmony.candidates]]
+mode = "phrygian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Major"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+[[harmony.candidates]]
+mode = "harmonic_minor"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Major"}, {degree="VI",quality="Major"}]
 
 [accompaniment]
 strong_steps = [0, 8]

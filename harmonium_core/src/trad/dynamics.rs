@@ -203,6 +203,9 @@ impl StyleDynamics {
                     .into(),
             );
         }
+        // Lignes saines une par une ; la couverture (chaque mode atteignable
+        // a ses accords et sa bascule) est vérifiée au niveau du profil,
+        // qui seul connaît `key_modes` en plus de `color` et des parallèles.
         if self.parallel_modes.is_empty()
             || self
                 .parallel_modes
@@ -210,15 +213,8 @@ impl StyleDynamics {
                 .any(|c| c.bright.is_minor() || !c.dark.is_minor() || c.weight == 0)
             || self.parallel_modes.iter().map(|c| u64::from(c.weight)).sum::<u64>()
                 > u64::from(u32::MAX)
-            || Mode::ALL.iter().any(|mode| {
-                if mode.is_minor() {
-                    !self.parallel_modes.iter().any(|c| c.dark == *mode)
-                } else {
-                    !self.parallel_modes.iter().any(|c| c.bright == *mode)
-                }
-            })
         {
-            return Err("parallel_modes: table claire → sombre complète et poids positifs (somme <= u32::MAX) requis".into());
+            return Err("parallel_modes: lignes non vides, claires → sombres, poids positifs (somme <= u32::MAX) requises".into());
         }
         for (name, curve, min, max) in [
             ("arousal_intensity", &self.arousal_intensity, 0.0, 1.0),

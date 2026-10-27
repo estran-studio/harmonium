@@ -1,0 +1,55 @@
+# Table de podorythmie pour le reel québécois en 2/2 (16 pas) (D9, constitution V).
+#
+# Densité 0 : talon uniquement (pas 0, 8).
+# Densité 1 : talon (0, 4, 8, 12) + pointe (2, 6, 10, 14).
+# Densité 2 : talon (0, 4, 8, 12) + pointe doublée (2, 3, 6, 7, 10, 11, 14, 15),
+#             les pas impairs de pointe ayant un delta de vélocité de -20.
+#
+# Sons provisoires et vélocités : réglables à l'oreille sans toucher au code.
+# Avec `harmonium_trad.sf2` (banque de pieds, SK2) : talon = touche 36,
+# pointe = touche 37, banque 0 programme 0. `feet_gain` (0..1) règle le niveau
+# global ; `velocity_humanize` (0..40) l'amplitude d'humanisation des vélocités.
+
+heel_note = 36
+toe_note = 37
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 0.9
+velocity_humanize = 12
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 8, track = "Heel" },
+]
+
+[[patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Toe" },
+  { step = 4, track = "Heel" },
+  { step = 6, track = "Toe" },
+  { step = 8, track = "Heel" },
+  { step = 10, track = "Toe" },
+  { step = 12, track = "Heel" },
+  { step = 14, track = "Toe" },
+]
+
+[[patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Toe" },
+  { step = 3, track = "Toe", delta_velocity = -20 },
+  { step = 4, track = "Heel" },
+  { step = 6, track = "Toe" },
+  { step = 7, track = "Toe", delta_velocity = -20 },
+  { step = 8, track = "Heel" },
+  { step = 10, track = "Toe" },
+  { step = 11, track = "Toe", delta_velocity = -20 },
+  { step = 12, track = "Heel" },
+  { step = 14, track = "Toe" },
+  { step = 15, track = "Toe", delta_velocity = -20 },
+]
