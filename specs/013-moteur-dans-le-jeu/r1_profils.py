@@ -641,7 +641,7 @@ STYLES = {
         tradition_text="Acadie / Maritimes (Nouveau-Brunswick, Île-du-Prince-Édouard, Cap-Breton / Chéticamp, Îles-de-la-Madeleine), répertoire traditionnel de violon, de piano et de podorythmie",
         tags=['gigue', 'jig', 'acadien', 'acadie', 'maritimes', 'violon', 'piano', 'podorythmie'],
         meter=dict(num=6, den=8, steps=12, pulse=6, pulses=2, swing=0.5, bpm=180.0, lo=168.0, hi=192.0),
-        master=15.0, set_template='gigue_quebecoise', ramp=(6.0, 0.08),
+        master=13.0, set_template='gigue_quebecoise', ramp=(6.0, 0.08),
         transitions=[('direct', 70, None), ('call', 20, 1), ('held', 10, None)]),
     'reel_britannique_coloniale': dict(
         ref='britannique_coloniale-reel', tradition='britannique_coloniale', corpus='britannique_coloniale', kind='reel',
@@ -650,7 +650,7 @@ STYLES = {
         tradition_text="Musique britannique coloniale, bals de garnison et danses de campagne d'Amérique du Nord britannique, c. 1760–1840",
         tags=['reel', 'britannique', 'coloniale', 'violon', '1837', 'garnison', 'danse', 'country dance'],
         meter=dict(num=2, den=2, steps=16, pulse=8, pulses=2, swing=0.5, bpm=208.0, lo=192.0, hi=224.0),
-        master=13.5, set_template='reel_quebecois', ramp=(5.0, 0.06),
+        master=13.0, set_template='reel_quebecois', ramp=(5.0, 0.06),
         transitions=[('direct', 90, None), ('held', 10, None)]),
     'valse_britannique_coloniale': dict(
         ref='britannique_coloniale-waltz', tradition='britannique_coloniale', corpus='britannique_coloniale', kind='waltz',
@@ -659,7 +659,7 @@ STYLES = {
         tradition_text="Musique britannique coloniale, bals de garnison et salons d'Amérique du Nord britannique, c. 1760–1840",
         tags=['valse', 'waltz', 'britannique', 'coloniale', 'violon', '1837', 'garnison', 'bal'],
         meter=dict(num=3, den=4, steps=12, pulse=4, pulses=3, swing=0.5, bpm=138.0, lo=126.0, hi=150.0),
-        master=12.0, set_template='valse_quebecoise', ramp=(2.0, 0.05),
+        master=11.5, set_template='valse_quebecoise', ramp=(2.0, 0.05),
         transitions=[('direct', 100, None)]),
 }
 

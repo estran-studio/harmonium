@@ -292,7 +292,7 @@ percussion_bank = 128
 percussion_program = 0
 
 [mix]
-master_db = 13.5
+master_db = 13.0
 [mix.room]
 room_size = 0.4
 damping = 0.55
