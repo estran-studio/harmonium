@@ -67,7 +67,8 @@ réutilisé dans le lecteur et le MIDI, sans modification du callback.
 
 ## Limites et écoute
 
-G2 absent : `trad_functional` uniquement, aucun modèle boucle/pédale réimplémenté.
+Intégration G2 : les motifs acceptent désormais `trad_functional` et `loop` ;
+la fixture `nt_pedale_boucle` vérifie leur transposition sur ses accords fixes.
 Les degrés suivent le mode de la tonalité depuis la référence ; octaves relatives,
 pas de repli du contour ; refus MIDI conservateur jusqu'à trois demi-tons/pas modal.
 `SequenceOf`, `VariedEndOf`, résolution par passe, variations et préférences

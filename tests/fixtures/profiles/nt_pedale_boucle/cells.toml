@@ -1,0 +1,7 @@
+# Banques `open` et `run` seulement : `arp`/`turn` de poids nul, banques non exigées (G4).
+cells = [
+ { role = "open", notes = "1 3 5 3 1 3 5 3", weight = 1 },
+ { role = "open", notes = "5 3 1 3 5 3 1 3", weight = 1 },
+ { role = "run", notes = "1 2 3 4 5 6 7 8", weight = 1 },
+ { role = "run", notes = "8 7 6 5 4 3 2 1", weight = 1 },
+]

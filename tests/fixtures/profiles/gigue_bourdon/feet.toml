@@ -1,0 +1,47 @@
+# Table de podorythmie pour la gigue québécoise en 6/8 (12 pas).
+#
+# Densité 0 : talon uniquement sur les temps pointés (pas 0, 6).
+# Densité 1 : talon (0, 6) + pointe (2, 4, 8, 10).
+# Densité 2 : talon (0, 6) + pointe doublée (2, 3, 4, 8, 9, 10),
+#             les pas impairs de pointe ayant un delta de vélocité de -20.
+#
+# Avec `harmonium_trad.sf2` (banque de pieds, SK2) : talon = touche 36,
+# pointe = touche 37, banque 0 programme 0.
+
+heel_note = 36
+toe_note = 37
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 0.9
+velocity_humanize = 12
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 6, track = "Heel" },
+]
+
+[[patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Toe" },
+  { step = 4, track = "Toe" },
+  { step = 6, track = "Heel" },
+  { step = 8, track = "Toe" },
+  { step = 10, track = "Toe" },
+]
+
+[[patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Toe" },
+  { step = 3, track = "Toe", delta_velocity = -20 },
+  { step = 4, track = "Toe" },
+  { step = 6, track = "Heel" },
+  { step = 8, track = "Toe" },
+  { step = 9, track = "Toe", delta_velocity = -20 },
+  { step = 10, track = "Toe" },
+]

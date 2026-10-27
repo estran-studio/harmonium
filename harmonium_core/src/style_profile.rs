@@ -1,6 +1,6 @@
 //! Profils de style validés : grille, forme et banques, embarqués ou chargés d'un dossier.
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     fmt,
     path::{Component, Path},
     sync::LazyLock,
@@ -410,6 +410,39 @@ pub struct ModeChords {
     pub mode: Mode,
     pub chords: Vec<TradChord>,
 }
+/// Harmonie fixe d'une partie ; les racines numériques suivent le mode actif.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum HarmonyPart {
+    Pedal {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        degree: Option<u8>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        semitones: Option<u8>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        neighbor_semitones: Option<u8>,
+    },
+    ChordLoop {
+        chords: Vec<LoopChord>,
+    },
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoopChord {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub degree: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semitones: Option<u8>,
+    pub quality: crate::trad::ChordQuality,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bars: Option<usize>,
+}
+fn default_bars_per_chord() -> usize {
+    1
+}
+fn is_one(value: &usize) -> bool {
+    *value == 1
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfileHarmony {
@@ -424,6 +457,10 @@ pub struct ProfileHarmony {
     pub max_recursion: u8,
     #[serde(default)]
     pub scale_guidance: bool,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub parts: BTreeMap<String, HarmonyPart>,
+    #[serde(default = "default_bars_per_chord", skip_serializing_if = "is_one")]
+    pub default_bars_per_chord: usize,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1003,9 +1040,12 @@ impl StyleProfile {
             "poids libres : somme sans débordement, positive si la forme emploie un rôle libre",
         )?;
         check(
-            matches!(self.harmony.model.as_str(), "trad_functional" | "jazz_functional" | "none"),
+            matches!(
+                self.harmony.model.as_str(),
+                "trad_functional" | "jazz_functional" | "loop" | "none"
+            ),
             "harmony.model",
-            "modèles disponibles : trad_functional, jazz_functional, none",
+            "modèles disponibles : trad_functional, jazz_functional, loop, none",
         )?;
         check(
             self.harmony.steps_per_chord > 0
@@ -1013,6 +1053,7 @@ impl StyleProfile {
             "harmony.steps_per_chord",
             "doit diviser steps_per_bar",
         )?;
+        crate::models::chord_loop::validate(self)?;
         if self.harmony.model == "jazz_functional" {
             check(self.harmony.max_recursion <= 16, "harmony.max_recursion", "attendu 0..16")?;
             check(
@@ -1103,9 +1144,10 @@ impl StyleProfile {
         }
         if let Some(a) = &self.accompaniment {
             check(
-                a.bass.motifs.is_empty() || self.harmony.model == "trad_functional",
+                a.bass.motifs.is_empty()
+                    || matches!(self.harmony.model.as_str(), "trad_functional" | "loop"),
                 "accompaniment.bass.motifs",
-                "les motifs de basse demandent une harmonie trad_functional",
+                "les motifs de basse demandent une harmonie trad_functional ou loop",
             )?;
             a.validate_accompaniment(
                 m.steps_per_bar,

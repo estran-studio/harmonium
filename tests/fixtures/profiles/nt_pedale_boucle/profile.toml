@@ -1,0 +1,134 @@
+# Fixture technique synthétique, sans validation d’écoute ; aucun extrait de partition NT.
+# Pédale G♯ seule sur scie grave, puis boucles chromatique et modale.
+[files]
+cells = "cells.toml"
+dynamics = "dynamics.toml"
+
+[meta]
+id = "nt_pedale_boucle"
+name = "Fixture technique pédale et boucles NT"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test"]
+corpus = "G0 NT désert (Fläshyn, Jukio Kallio, 2015) : pédale et demi-ton dérivés ; cellules synthétiques, transcriptions hors dépôt"
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 120.0
+min_bpm = 100.0
+max_bpm = 140.0
+
+[form]
+sequence = [0, 1, 2]
+[[form.parts]]
+name = "Pedale"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free"]
+
+[[form.parts]]
+name = "Chromatique"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free"]
+[[form.parts]]
+name = "Modale"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 8, mode = "phrygian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 8
+default_bars_per_chord = 2
+[harmony.parts.Pedale]
+kind = "pedal"
+degree = 1
+[harmony.parts.Chromatique]
+kind = "chord_loop"
+chords = [{semitones=11,quality="Major",bars=2}, {semitones=0,quality="Major",bars=2}]
+[harmony.parts.Modale]
+kind = "chord_loop"
+chords = [{degree=1,quality="Minor",bars=2}, {degree=2,quality="Major",bars=2}]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 59
+# Motif G3 de deux mesures : fondamentale/b2 puis fondamentale/quinte,
+# transposé à chaque changement de l'accord G2. La scie continue reste sur Chords.
+motifs = [
+  { bars = 2, weight = 1, reference = "chord_root", notes = [
+    { step = 0, semitones = 0, duration = 3, velocity = 72 },
+    { step = 8, semitones = 1, duration = 1, velocity = 64 },
+    { step = 10, semitones = 0, duration = 3, velocity = 72 },
+    { step = 16, semitones = 0, duration = 3, velocity = 72 },
+    { step = 24, semitones = 7, duration = 3, velocity = 68 },
+  ] },
+]
+
+[accompaniment.chords]
+center = 40
+max_drift = 6
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, stroke = "block", duration = 16, velocity = 64, tie = true }] }]
+
+[percussion]
+heel_note = 36
+toe_note = 38
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 1.0
+velocity_humanize = 0
+patterns = [
+  { density = 0, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }] },
+  { density = 1, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 4, track = "Toe", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }, { step = 12, track = "Toe", delta_velocity = 0 }] },
+  { density = 2, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 4, track = "Toe", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }, { step = 12, track = "Toe", delta_velocity = 0 }] },
+]
+
+[instruments]
+melody_program = 40
+chords_program = 81
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[arrangement]
+tours_per_tune = 8
+[arrangement.entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+[arrangement.intro]
+forms = []
+pickup_eighths = 0
+
+[ornaments]
+rate_scale = 0.0

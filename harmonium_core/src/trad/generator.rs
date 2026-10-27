@@ -23,6 +23,7 @@ use crate::{
     algo::RngCore,
     models::{
         HarmonyPlan,
+        chord_loop::LoopHarmony,
         jazz::{GrammarStyle, SteedmanGrammar},
     },
     ornaments::BarContext,
@@ -434,22 +435,21 @@ impl TradGenerator {
             measure.notes_for_track(TrackId::Melody).iter().map(|n| n.duration_steps).collect()
         };
         self.apply_dynamics(&mut measure);
-        self.fit_jazz_melody(&mut measure, &tune, &position);
+        self.fit_planned_melody(&mut measure, &tune, &position);
         let hetero_written = if !is_intro && self.track_active(TrackId::Countermelody, &position) {
             let context = self.ornament_context(&measure, &tune, &position);
-            let changes: Vec<_> =
-                if !is_outro && matches!(tune.harmony, HarmonyPlan::TradFunctional(_)) {
-                    self.chords_for_bar(&tune, self.performed_bar(&position))
-                        .iter()
-                        .enumerate()
-                        .map(|(slot, chord)| ChordChange {
-                            start_step: slot * self.profile.harmony.steps_per_chord,
-                            context: build_chord_context(*chord, tune.plan.key, tune.plan.mode),
-                        })
-                        .collect()
-                } else {
-                    measure.chord_changes.clone()
-                };
+            let changes: Vec<_> = if !is_outro && tune.harmony.uses_modal_chords() {
+                self.chords_for_bar(&tune, self.performed_bar(&position))
+                    .iter()
+                    .enumerate()
+                    .map(|(slot, chord)| ChordChange {
+                        start_step: slot * self.profile.harmony.steps_per_chord,
+                        context: build_chord_context(*chord, tune.plan.key, tune.plan.mode),
+                    })
+                    .collect()
+            } else {
+                measure.chord_changes.clone()
+            };
             let next = &mut self.next_note_id;
             self.profile.heterophony.as_ref().map(|h| {
                 h.prepare(&mut measure, &context, &written, &changes, &mut || {
@@ -553,8 +553,7 @@ impl TradGenerator {
         let Some(a) = &self.profile.accompaniment else {
             return;
         };
-        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert())
-            || !matches!(tune.harmony, HarmonyPlan::TradFunctional(_))
+        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert()) || !tune.harmony.uses_modal_chords()
         {
             return;
         }
@@ -682,6 +681,9 @@ impl TradGenerator {
                 {
                     tune.harmony = HarmonyPlan::TradFunctional(h);
                 }
+            }
+            if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
+                tune.harmony = HarmonyPlan::Loop(LoopHarmony::new(tune.plan.clone()));
             }
         }
         position.mode = mode;
@@ -886,6 +888,11 @@ impl TradGenerator {
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
         measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
+        if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
+            measure
+                .chord_changes
+                .push(ChordChange { start_step: 0, context: measure.chord_context.clone() });
+        }
 
         // 1. Mélodie (violon, D6)
         if self.track_active(TrackId::Melody, position) {
@@ -1018,18 +1025,19 @@ impl TradGenerator {
 
     /// Les cellules restent la source du rythme et du contour ; seules les
     /// hauteurs hors accord/gamme sont rapprochées du contexte publié.
-    fn fit_jazz_melody(
+    fn fit_planned_melody(
         &mut self,
         measure: &mut Measure,
         tune: &ActiveTune,
         position: &TunePosition,
     ) {
-        let HarmonyPlan::JazzFunctional(bars) = &tune.harmony else { return };
+        if !matches!(tune.harmony, HarmonyPlan::JazzFunctional(_) | HarmonyPlan::Loop(_)) {
+            return;
+        }
         if measure.chord_changes.is_empty() {
             return;
         }
         let bar = tune.plan.material_index(self.performed_bar(position));
-        let chords = &bars[bar];
         let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) else { return };
         let source = std::mem::take(notes);
         notes.reserve(source.len() + measure.chord_changes.len());
@@ -1038,25 +1046,44 @@ impl TradGenerator {
             let end = note.start_step + note.duration_steps;
             let mut start = note.start_step;
             while start < end {
-                let slot = start / self.profile.harmony.steps_per_chord;
+                let slot =
+                    measure.chord_changes.partition_point(|change| change.start_step <= start) - 1;
                 let change = &measure.chord_changes[slot];
                 let next =
                     measure.chord_changes.get(slot + 1).map_or(measure.steps, |c| c.start_step);
-                let chord = &chords[slot];
-                let scale = change
-                    .context
-                    .scale_guidance
-                    .as_ref()
-                    .map_or(&[][..], |guidance| guidance.scale_notes.as_slice());
-                let allowed = chord
-                    .chord_type
-                    .intervals()
-                    .iter()
-                    .map(|&interval| (chord.root + interval) % 12)
-                    .chain(scale.iter().copied());
                 let mut segment = note.clone();
-                segment.pitch =
-                    nearest_pitch(allowed, note.pitch, params.tessitura_min, params.tessitura_max);
+                segment.pitch = match &tune.harmony {
+                    HarmonyPlan::JazzFunctional(bars) => {
+                        let chord = &bars[bar][slot];
+                        let scale = change
+                            .context
+                            .scale_guidance
+                            .as_ref()
+                            .map_or(&[][..], |guidance| guidance.scale_notes.as_slice());
+                        let allowed = chord
+                            .chord_type
+                            .intervals()
+                            .iter()
+                            .map(|&interval| (chord.root + interval) % 12)
+                            .chain(scale.iter().copied());
+                        nearest_pitch(
+                            allowed,
+                            note.pitch,
+                            params.tessitura_min,
+                            params.tessitura_max,
+                        )
+                    }
+                    HarmonyPlan::Loop(harmony) => {
+                        let chord = harmony.chords_for_bar(self.performed_bar(position))[slot];
+                        nearest_pitch(
+                            chord.pitch_classes(tune.plan.key, tune.plan.mode),
+                            note.pitch,
+                            params.tessitura_min,
+                            params.tessitura_max,
+                        )
+                    }
+                    _ => unreachable!("modèle filtré avant la réalisation mélodique"),
+                };
                 segment.start_step = start;
                 segment.duration_steps = end.min(next) - start;
                 if start != note.start_step {
@@ -1210,6 +1237,9 @@ impl TradGenerator {
     /// Variation harmonique de l'accompagnement uniquement : cadences et
     /// squelette mélodique restent ceux de l'air.
     fn chords_for_bar<'a>(&self, tune: &'a ActiveTune, bar: usize) -> Cow<'a, [TradChord]> {
+        if let HarmonyPlan::Loop(harmony) = &tune.harmony {
+            return Cow::Borrowed(harmony.chords_for_bar(bar));
+        }
         let HarmonyPlan::TradFunctional(harmony) = &tune.harmony else {
             unreachable!("traditional voicing requires traditional harmony")
         };
@@ -1554,6 +1584,8 @@ impl TradGenerator {
                 })
                 .collect();
             HarmonyPlan::JazzFunctional(bars)
+        } else if self.profile.harmony.model == "loop" {
+            HarmonyPlan::Loop(LoopHarmony::new(plan.clone()))
         } else if self.profile.harmony.model == "none" {
             HarmonyPlan::None
         } else if let Some(accompaniment) = &self.tuning.profile.accompaniment {
@@ -1861,6 +1893,8 @@ pub fn trad_chord_name(chord: TradChord, key: PitchClass, mode: Mode) -> String 
     match chord.quality {
         ChordQuality::Major => root.to_string(),
         ChordQuality::Minor => format!("{root}m"),
+        ChordQuality::Pedal => format!("{root} (pédale)"),
+        ChordQuality::PedalNeighbor(neighbor) => format!("{root} (pédale +{neighbor})"),
     }
 }
 

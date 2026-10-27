@@ -386,18 +386,27 @@ pub(crate) fn first_bass_target(
     }
 }
 
-/// Voicings serrés d'une triade : 3 sons ascendants dans moins d'une octave.
-fn close_voicings(chord: TradChord, key: PitchClass, mode: Mode) -> impl Iterator<Item = [u8; 3]> {
+/// Les triades s'inversent ; une pédale garde son voisin au-dessus d'elle.
+fn close_voicings(
+    chord: TradChord,
+    key: PitchClass,
+    mode: Mode,
+) -> impl Iterator<Item = arrayvec::ArrayVec<u8, 3>> {
     let root = chord.root_pc(key, mode);
-    let tones = [0, chord.third_semitones(), 7];
+    let tones = chord.intervals();
+    let inversions = if tones.len() < 3 { 1 } else { tones.len() };
     (0..=10u8).flat_map(move |octave| {
-        (0..3usize).filter_map(move |inversion| {
+        let tones = tones.clone();
+        (0..inversions).filter_map(move |inversion| {
             let base = u16::from(root) + 12 * u16::from(octave);
-            let note = |i: usize| {
-                let wrapped = if i % 3 < inversion { 12 } else { 0 };
-                u8::try_from(base + u16::from(tones[i % 3]) + wrapped).ok().filter(|&n| n <= 127)
-            };
-            Some([note(inversion)?, note(inversion + 1)?, note(inversion + 2)?])
+            (inversion..inversion + tones.len())
+                .map(|i| {
+                    let wrapped = if i % tones.len() < inversion { 12 } else { 0 };
+                    u8::try_from(base + u16::from(tones[i % tones.len()]) + wrapped)
+                        .ok()
+                        .filter(|&n| n <= 127)
+                })
+                .collect()
         })
     })
 }
@@ -407,7 +416,7 @@ fn close_voicings(chord: TradChord, key: PitchClass, mode: Mode) -> impl Iterato
 /// Un `Guitarist` neuf démarre sans voicing précédent ; en créer un par tune.
 #[derive(Clone, Debug, Default)]
 pub struct Guitarist {
-    previous: Option<[u8; 3]>,
+    previous: Option<arrayvec::ArrayVec<u8, 3>>,
 }
 
 impl Guitarist {
@@ -424,27 +433,30 @@ impl Guitarist {
         key: PitchClass,
         mode: Mode,
         params: &TradHarmonyParams,
-    ) -> Option<[u8; 3]> {
+    ) -> Option<arrayvec::ArrayVec<u8, 3>> {
         let candidates = close_voicings(chord, key, mode).filter(|v| {
-            params.chords.strings <= 3 || v[usize::from(params.chords.strings - 4)] <= 115
+            v.len() < 3
+                || params.chords.strings <= 3
+                || v[usize::from(params.chords.strings - 4)] <= 115
         });
         let best = if params.chords.voicing == ChordVoicing::FixedTriad {
             candidates
-                .filter(|v| v[0] >= params.chords.low && v[2] <= params.chords.high)
+                .filter(|v| v[0] >= params.chords.low && v[v.len() - 1] <= params.chords.high)
                 .min_by_key(|v| v[0])
         } else {
-            let center_sum = 3 * i32::from(params.chords.center);
-            let max_drift_sum = 3 * i32::from(params.chords.max_drift);
+            let count = chord.intervals().len() as i32;
+            let center_sum = count * i32::from(params.chords.center);
+            let max_drift_sum = count * i32::from(params.chords.max_drift);
             candidates.min_by_key(|v| {
                 let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
                 let center_dist = (sum - center_sum).abs();
-                let movement: i32 = self.previous.map_or(0, |p| {
-                    v.iter().zip(p).map(|(&a, b)| (i32::from(a) - i32::from(b)).abs()).sum()
+                let movement: i32 = self.previous.as_ref().map_or(0, |p| {
+                    v.iter().zip(p).map(|(&a, &b)| (i32::from(a) - i32::from(b)).abs()).sum()
                 });
                 (center_dist > max_drift_sum, movement, center_dist, v[0])
             })
         }?;
-        self.previous = Some(best);
+        self.previous = Some(best.clone());
         Some(best)
     }
 
@@ -493,19 +505,23 @@ impl Guitarist {
             else {
                 continue;
             };
+            // Les cordes supplémentaires doublent les triades seulement :
+            // une pédale écrite reste une note, un voisin reste une dyade.
+            let strings =
+                if voicing.len() == 3 { usize::from(voice.strings) } else { voicing.len() };
             let mut pitches = [0u8; 6];
-            pitches[..3].copy_from_slice(&voicing);
-            for i in 3..usize::from(voice.strings) {
-                pitches[i] = pitches[i - 3] + 12;
+            pitches[..voicing.len()].copy_from_slice(&voicing);
+            for i in voicing.len()..strings {
+                pitches[i] = pitches[i - voicing.len()] + 12;
             }
             let (first, count) = if hit.stroke == super::accomp_profile::Stroke::Up {
                 let count = voice
                     .strum
                     .as_ref()
-                    .map_or(usize::from(voice.strings), |s| usize::from(s.up_strings));
-                (usize::from(voice.strings) - count, count)
+                    .map_or(strings, |s| usize::from(s.up_strings).min(strings));
+                (strings - count, count)
             } else {
-                (0, usize::from(voice.strings))
+                (0, strings)
             };
             let pitches = &mut pitches[first..first + count];
             if hit.stroke == super::accomp_profile::Stroke::Up {
