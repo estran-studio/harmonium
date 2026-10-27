@@ -121,6 +121,10 @@ pub enum Articulation {
     Linked,
     /// Accent de vélocité appliqué avant publication.
     Accent,
+    /// Lié : pas de nouvelle attaque si la hauteur sonne encore à l'arrivée
+    /// (même canal, même hauteur, même instant que sa fin) ; sinon attaque
+    /// normale. Posé par le générateur, jamais par les règles d'interprétation.
+    Tied,
     /// Trigger only, no NoteOff needed (percussion)
     Trigger,
 }

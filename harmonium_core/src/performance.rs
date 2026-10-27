@@ -175,10 +175,12 @@ impl Performance {
                         "positions dans la grille et durées ordonnées requises",
                     ));
                 }
-                if rule.articulation == Articulation::Trigger {
+                if rule.articulation == Articulation::Trigger
+                    || rule.articulation == Articulation::Tied
+                {
                     return Err(ProfileError::new(
                         format!("{f}.articulation"),
-                        "Normal, Detached, Linked ou Accent requis",
+                        "Normal, Detached, Linked ou Accent requis (la liaison vient des coups)",
                     ));
                 }
             }

@@ -53,6 +53,10 @@ pub struct ChordHit {
     pub stroke: Stroke,
     #[serde(default = "unit_multiplier")]
     pub probability: f32,
+    /// Liaison : pas de nouvelle attaque si les hauteurs sonnent encore à
+    /// l'arrivée (nappe). Sans coïncidence exacte, attaque normale.
+    #[serde(default)]
+    pub tie: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
