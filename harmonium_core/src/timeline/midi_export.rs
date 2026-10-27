@@ -179,31 +179,43 @@ fn build_instrument_track(
     mix: crate::mix::MidiTrackMix,
     program: Option<u8>,
 ) -> Vec<TrackEvent<'static>> {
-    let mut events: Vec<(u32, TrackEventKind<'static>)> = Vec::new();
+    let mut spans: Vec<(u32, u32, u8, u8)> = Vec::new();
 
-    // Collect all note events with absolute tick positions
+    // Collect all note events with absolute tick positions, merging tied continuations.
     for measure in measures {
         let base_tick = measure_start(measure);
         for note in measure.notes_for_track(track_id) {
             let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             // Même gate explicite que la lecture ; arrondi au tick MIDI.
-
-            events.push((
-                on_tick,
-                TrackEventKind::Midi {
-                    channel: u4::new(channel),
-                    message: MidiMessage::NoteOn { key: u7::new(note.pitch), vel: u7::new(vel) },
-                },
-            ));
-            events.push((
-                off_tick,
-                TrackEventKind::Midi {
-                    channel: u4::new(channel),
-                    message: MidiMessage::NoteOff { key: u7::new(note.pitch), vel: u7::new(0) },
-                },
-            ));
+            if note.articulation == super::Articulation::Tied
+                && let Some(prev) = spans
+                    .iter_mut()
+                    .rfind(|(_, prev_off, p, _)| *p == note.pitch && *prev_off == on_tick)
+            {
+                prev.1 = off_tick;
+                continue;
+            }
+            spans.push((on_tick, off_tick, note.pitch, vel));
         }
+    }
+
+    let mut events: Vec<(u32, TrackEventKind<'static>)> = Vec::with_capacity(spans.len() * 2);
+    for (on_tick, off_tick, pitch, vel) in spans {
+        events.push((
+            on_tick,
+            TrackEventKind::Midi {
+                channel: u4::new(channel),
+                message: MidiMessage::NoteOn { key: u7::new(pitch), vel: u7::new(vel) },
+            },
+        ));
+        events.push((
+            off_tick,
+            TrackEventKind::Midi {
+                channel: u4::new(channel),
+                message: MidiMessage::NoteOff { key: u7::new(pitch), vel: u7::new(0) },
+            },
+        ));
     }
 
     // Sort by tick, NoteOff before NoteOn at same tick

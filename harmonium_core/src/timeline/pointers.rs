@@ -37,6 +37,12 @@ impl Writehead {
     }
 }
 
+/// Rang de tri d'un événement préparé : l'attaque liée précède la fin
+/// coïncidente pour pouvoir fusionner avec elle, puis fins, puis attaques.
+/// Sans liaison, l'ordre historique (fins avant attaques) est inchangé.
+fn tied_rank(event: &PreparedEvent) -> u8 {
+    if event.on { u8::from(!event.tied) * 2 } else { 1 }
+}
 /// Événement musical trié sur le thread principal ; temps en millièmes de pas.
 #[derive(Clone, Copy, Debug)]
 pub struct PreparedEvent {
@@ -46,6 +52,8 @@ pub struct PreparedEvent {
     pub pitch: u8,
     pub velocity: u8,
     pub on: bool,
+    /// Attaque liée : fusionne avec la fin coïncidente de la note active.
+    pub tied: bool,
 }
 impl Measure {
     /// Appeler après toute modification de notes, avant le handoff audio.
@@ -62,6 +70,7 @@ impl Measure {
                         pitch: note.pitch,
                         velocity: note.velocity,
                         on: true,
+                        tied: note.articulation == crate::timeline::Articulation::Tied,
                     };
                     self.playback_events.push(event);
                     self.playback_events.push(PreparedEvent {
@@ -72,7 +81,7 @@ impl Measure {
                 }
             }
         }
-        self.playback_events.sort_by_key(|e| (e.time, e.on, e.channel, e.id, e.pitch));
+        self.playback_events.sort_by_key(|e| (e.time, tied_rank(e), e.channel, e.id, e.pitch));
     }
 }
 
@@ -209,13 +218,39 @@ impl Playhead {
                 i += 1;
             }
         }
-        self.candidates.sort_unstable_by_key(|e| (e.time, e.on, e.channel, e.id, e.pitch));
-        for candidate in &self.candidates {
-            let active =
+        self.candidates.sort_unstable_by_key(|e| (e.time, tied_rank(e), e.channel, e.id, e.pitch));
+        let mut j = 0;
+        while j < self.candidates.len() {
+            let candidate = self.candidates[j];
+            let slot =
                 &mut self.active[usize::from(candidate.channel)][usize::from(candidate.pitch)];
             let offset = candidate.time as u16;
             if candidate.on {
-                if active.is_some() {
+                if candidate.tied && slot.is_some() {
+                    // Attaque liée : la note active se prolonge sans réattaque
+                    // si sa fin coïncide ici (même instant, canal, hauteur).
+                    // Sinon, repli sur l'attaque normale : jamais de note bloquée.
+                    let mut k = j + 1;
+                    let mut merge = false;
+                    while k < self.candidates.len() && self.candidates[k].time == candidate.time {
+                        let later = self.candidates[k];
+                        if !later.on
+                            && later.channel == candidate.channel
+                            && later.pitch == candidate.pitch
+                            && Some(later.id) == *slot
+                        {
+                            merge = true;
+                            break;
+                        }
+                        k += 1;
+                    }
+                    if merge {
+                        *slot = Some(candidate.id);
+                        j += 1;
+                        continue;
+                    }
+                }
+                if slot.is_some() {
                     push_capped(
                         &mut self.events,
                         StepEvent {
@@ -227,7 +262,7 @@ impl Playhead {
                         },
                     );
                 }
-                *active = Some(candidate.id);
+                *slot = Some(candidate.id);
                 push_capped(
                     &mut self.events,
                     StepEvent {
@@ -239,8 +274,8 @@ impl Playhead {
                         },
                     },
                 );
-            } else if *active == Some(candidate.id) {
-                *active = None;
+            } else if *slot == Some(candidate.id) {
+                *slot = None;
                 push_capped(
                     &mut self.events,
                     StepEvent {
@@ -252,6 +287,7 @@ impl Playhead {
                     },
                 );
             }
+            j += 1;
         }
         let steps = self
             .current_measure

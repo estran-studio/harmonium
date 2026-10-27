@@ -126,11 +126,16 @@ hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigu
 ### Accords grattés
 
 `chords.strings` (3..6, défaut 3) complète la triade par octaves en montant.
-Chaque coup porte `stroke = "block" | "down" | "up"` (défaut `block`) et
-`probability` (0..1, défaut 1). Zéro/1 : aucun tirage de présence ; entre les
-deux : un tirage dérivé par attaque. `down` va du grave à l'aigu ; `up` ne
-joue que les `up_strings` les plus aiguës, dans l'ordre inverse. Dans le
-snapshot, l'ordre du Vec et des identifiants est toujours l'ordre d'attaque.
+Chaque coup porte `stroke = "block" | "down" | "up"` (défaut `block`),
+`probability` (0..1, défaut 1) et `tie = true | false` (défaut `false`). Zéro/1 :
+aucun tirage de présence ; entre les deux : un tirage dérivé par attaque. `down`
+va du grave à l'aigu ; `up` ne joue que les `up_strings` les plus aiguës, dans
+l'ordre inverse. Dans le snapshot, l'ordre du Vec et des identifiants est
+toujours l'ordre d'attaque. Un coup `tie = true` publie `articulation = "Tied"` :
+si une hauteur sonne encore au moment exact où l'attaque suivante commence
+(même canal, même hauteur, fin coïncidente), le lecteur et l'export MIDI la
+prolongent sans nouvelle attaque ; sinon, attaque normale. Une nappe s'écrit
+avec un coup `block` d'une mesure entière et `tie = true`.
 
 ```toml
 [accompaniment.chords.strum]

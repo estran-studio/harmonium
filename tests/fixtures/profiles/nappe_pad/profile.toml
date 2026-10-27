@@ -1,0 +1,123 @@
+# Fixture technique uniquement : nappe tenue sur la piste Chords, aucun
+# corpus ni prétention de style. Sert la tâche G5 (liaison des accords).
+[files]
+cells = "cells.toml"
+dynamics = "dynamics.toml"
+
+[meta]
+id = "nappe_pad"
+name = "Fixture nappe (pad tenu)"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test"]
+corpus = "Aucun corpus : un coup plaqué par mesure, lié quand l'accord ne change pas"
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 90.0
+min_bpm = 80.0
+max_bpm = 100.0
+
+[form]
+sequence = [0, 0, 1, 0] # AABA, quatre parties de huit mesures.
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "CadHalf", "Free", "Free", "Free", "CadFull"]
+[[form.parts]]
+name = "B"
+melody_center_offset = 2
+roles = ["Open", "Free", "Free", "CadHalf", "Free", "Free", "Free", "CadFull"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 0, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 1
+weight_role_arp = 1
+weight_role_turn = 1
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 16
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 4, 8, 12]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 47
+hits = [{ step = 0, degree = "root", duration = 16, velocity = 60 }]
+
+# Nappe : un seul motif, un coup plaqué lié d'une mesure entière, voicing
+# serré (3 sons) en registre médium. `tie` ne supprime l'attaque que si les
+# hauteurs sonnent encore à la barre ; un accord changé rejoue.
+[accompaniment.chords]
+center = 62
+max_drift = 4
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, duration = 16, velocity = 70, tie = true }] }]
+
+[percussion]
+heel_note = 51
+toe_note = 42
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 1.0
+velocity_humanize = 0
+patterns = [
+ { density = 0, euclid = { pulses = 2, steps = 16, rotation = 1 } },
+ { density = 1, euclid = { pulses = 4, steps = 16, rotation = 1 } },
+ { density = 2, euclid = { pulses = 8, steps = 16, rotation = 1 } },
+]
+
+[instruments]
+melody_program = 65
+# Pad 2 (warm), GM 89.
+chords_program = 88
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[arrangement]
+tours_per_tune = 1
+[arrangement.entries]
+Melody = { tour = 1, part = 0, pass = 1 }
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+[arrangement.intro]
+forms = []
+pickup_eighths = 0

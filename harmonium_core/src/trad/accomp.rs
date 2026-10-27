@@ -221,7 +221,7 @@ impl Guitarist {
                 start_step: step,
                 duration_steps: hit.duration,
                 velocity,
-                articulation: Articulation::Normal,
+                articulation: if hit.tie { Articulation::Tied } else { Articulation::Normal },
                 performance: Default::default(),
             }));
         }
