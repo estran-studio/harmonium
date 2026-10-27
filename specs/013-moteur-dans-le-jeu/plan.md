@@ -107,7 +107,8 @@ flowchart LR
   dans la simulation, signaux → émotions côté jeu.
 - **R — Nouveaux styles (en parallèle)** : profils en données depuis le corpus (types présents :
   quadrille et cotillon québécois, gigue/valse/marche acadiennes, reel/valse britanniques…), mesurés
-  au labo, écoutés au comparateur. Puis phase 014 : test à l'aveugle équitable réel/généré (BT2).
+  au labo, écoutés au comparateur. Puis, dans une phase ultérieure (la 014 est devenue « styles de
+  jeu ») : test à l'aveugle équitable réel/généré (BT2).
 
 ## Acceptation de la phase
 
