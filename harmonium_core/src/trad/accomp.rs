@@ -382,7 +382,7 @@ mod tests {
         let mut guitarist = Guitarist::new();
         let mut next_id = ids();
         for bar in 0..64 {
-            let mode = Mode::ALL[bar % 4];
+            let mode = Mode::ALL[bar % Mode::ALL.len()];
             let candidates = candidate_chords(mode, profile());
             let chords =
                 [candidates[bar % candidates.len()], candidates[(bar * 3 + 1) % candidates.len()]];

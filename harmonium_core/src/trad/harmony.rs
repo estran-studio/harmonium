@@ -54,12 +54,13 @@ impl TradChord {
         Self { degree, quality }
     }
 
-    /// Demi-tons de la fondamentale au-dessus de la tonique.
+    /// Demi-tons de la fondamentale au-dessus de la tonique. Le II suit la
+    /// seconde du mode (bII phrygien à 1 demi-ton) ; inchangé ailleurs.
     #[must_use]
     pub const fn root_semitones(self, mode: Mode) -> u8 {
         match self.degree {
             ChordDegree::I => 0,
-            ChordDegree::II => 2,
+            ChordDegree::II => mode.intervals()[1] as u8,
             ChordDegree::IV => 5,
             ChordDegree::V => 7,
             ChordDegree::VI => mode.intervals()[5] as u8,
@@ -433,6 +434,39 @@ mod tests {
             candidate_chords(Mode::Aeolian, &StyleProfile::default()),
             [minor(I), minor(IV), minor(V), major(BVII), major(VI)]
         );
+        assert_eq!(
+            candidate_chords(Mode::Phrygian, &StyleProfile::default()),
+            [minor(I), minor(IV), major(V), major(BVII), major(VI)]
+        );
+        assert_eq!(
+            candidate_chords(Mode::HarmonicMinor, &StyleProfile::default()),
+            [minor(I), minor(IV), major(V), major(VI)]
+        );
+    }
+    #[test]
+    fn harmonic_minor_cadence_plays_major_v() {
+        // La sensible (degré 7) n'appartient qu'au V majeur : la cadence
+        // parfaite joue V majeur puis i.
+        let full = harmonize("1 3 5 3 1 3 5 3", Mode::HarmonicMinor, role(7));
+        assert_eq!(full, [major(ChordDegree::V), minor(ChordDegree::I)]);
+        let half = harmonize("1 3 5 3 1 3 5 3", Mode::HarmonicMinor, role(3));
+        assert_eq!(half[1], major(ChordDegree::V));
+        // Triade de V en ré mineur harmonique : A C# E.
+        assert_eq!(major(ChordDegree::V).pitch_classes(D, Mode::HarmonicMinor), [9, 1, 4]);
+    }
+
+    #[test]
+    fn phrygian_dominant_is_major_and_flat_two_is_modal() {
+        // V majeur : couleur cadentielle des boucles sombres (sensible
+        // empruntée) ; ses hauteurs hors mode réservent le V aux cadences
+        // imposées, le vote libre restant sur la tonique.
+        let full = harmonize("1 3 5 3 1 3 5 3", Mode::Phrygian, role(7));
+        assert_eq!(full, [major(ChordDegree::V), minor(ChordDegree::I)]);
+        let free = harmonize("1 3 5 3 1 3 5 3", Mode::Phrygian, free_role());
+        assert_eq!(free, [minor(ChordDegree::I), minor(ChordDegree::I)]);
+        // bII modal : fondamentale un demi-ton au-dessus de la tonique.
+        assert_eq!(major(ChordDegree::II).root_semitones(Mode::Phrygian), 1);
+        assert_eq!(major(ChordDegree::II).root_semitones(Mode::Ionian), 2);
     }
 
     #[test]

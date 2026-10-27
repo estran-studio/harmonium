@@ -93,15 +93,18 @@ pub enum KeyClass {
     StepDown,
     Other,
 }
-
 impl KeyClass {
     /// Tonique de la collection diatonique majeure qui contient `mode` sur `key`.
+    /// Le mineur harmonique n'est pas diatonique : on retient son relatif
+    /// majeur (bIII, même décalage que l'éolien), seule la classification
+    /// des enchaînements l'utilise.
     const fn collection(key: PitchClass, mode: Mode) -> PitchClass {
         let offset = match mode {
             Mode::Ionian => 0,
             Mode::Dorian => 2,
+            Mode::Phrygian => 4,
             Mode::Mixolydian => 7,
-            Mode::Aeolian => 9,
+            Mode::Aeolian | Mode::HarmonicMinor => 9,
         };
         (key % 12 + 12 - offset) % 12
     }

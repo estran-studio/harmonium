@@ -1062,12 +1062,50 @@ impl StyleProfile {
                 "tonique I et dominante V requises",
             )?;
         }
+        // Modes atteignables : `key_modes` (valence neutre) et `color`
+        // (ailleurs), fermés par les bascules parallèles dans les deux sens.
+        // Eux seuls exigent accords candidats et ligne de bascule : un profil
+        // qui n'emploie ni le phrygien ni le mineur harmonique reste valide
+        // sans eux, et leurs notes ne changent pas.
+        let mut reachable = std::collections::HashSet::new();
+        reachable.extend(self.melody.key_modes.iter().map(|k| k.mode));
+        reachable.extend(self.dynamics.color.iter().map(|c| c.mode));
+        loop {
+            let mut fringe = Vec::new();
+            for row in &self.dynamics.parallel_modes {
+                if reachable.contains(&row.bright) {
+                    fringe.push(row.dark);
+                }
+                if reachable.contains(&row.dark) {
+                    fringe.push(row.bright);
+                }
+            }
+            if fringe.iter().all(|mode| reachable.contains(mode)) {
+                break;
+            }
+            reachable.extend(fringe);
+        }
         check(
             self.harmony.model != "trad_functional"
-                || Mode::ALL.iter().all(|mode| modes.contains(mode)),
+                || reachable.iter().all(|mode| modes.contains(mode)),
             "harmony.candidates",
-            "accords requis pour les quatre modes (dynamique parallèle)",
+            "accords requis pour chaque mode atteignable (key_modes, color, parallel_modes)",
         )?;
+        for mode in &reachable {
+            if mode.is_minor() {
+                check(
+                    self.dynamics.parallel_modes.iter().any(|c| c.dark == *mode),
+                    "dynamics.parallel_modes",
+                    "chaque mode sombre atteignable requiert sa bascule depuis un mode clair",
+                )?;
+            } else {
+                check(
+                    self.dynamics.parallel_modes.iter().any(|c| c.bright == *mode),
+                    "dynamics.parallel_modes",
+                    "chaque mode clair atteignable requiert sa bascule vers un mode sombre",
+                )?;
+            }
+        }
         if let Some(a) = &self.accompaniment {
             a.validate_accompaniment(m.steps_per_bar, self.harmony.model == "jazz_functional")?;
         } else {

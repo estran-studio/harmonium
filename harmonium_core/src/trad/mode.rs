@@ -1,4 +1,5 @@
-//! Modes diatoniques traditionnels québécois et conversion degrés → demi-tons.
+//! Modes du moteur : diatoniques traditionnels québécois, plus le mineur
+//! harmonique (couleur sombre à sensible des boucles de jeu).
 //!
 //! ## Représentation des degrés (`degree: i8`)
 //!
@@ -12,12 +13,21 @@
 //!   `4,` = `-4`, `3,` = `-5`, `2,` = `-6`, `1,` = `-7` = `-12` demi-tons) ;
 //! - `0` : traité comme `-1` (`7,`, un degré sous la tonique vers le grave)
 //!   afin que tout `degree <= 0` descende sous la tonique sans ambiguïté.
+//!
+//! Le mineur harmonique déroge au diatonisme (seconde augmentée 6–7) : les
+//! degrés restent une échelle à sept notes, donc tout le code générique
+//! (cellules, ornements, marche de basse, levées) s'y applique sans branche.
+//!
+//! Parallèles clairs par la valence (données `parallel_modes`) : le phrygien
+//! s'assombrit depuis le mixolydien (même septième mineure, degrés altérés
+//! minimaux : 2, 3, 6), le mineur harmonique depuis l'ionien (même sensible,
+//! degrés altérés minimaux : 3, 6).
 
 use serde::{Deserialize, Serialize};
 
 use crate::theory::PitchClass;
 
-/// Mode diatonique utilisé dans le répertoire traditionnel québécois.
+/// Mode utilisé par le répertoire traditionnel et les boucles de jeu.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Mode {
@@ -34,11 +44,23 @@ pub enum Mode {
     /// Mineur naturel (ex. la éolien, mi éolien).
     #[serde(alias = "Aeolian")]
     Aeolian,
+    /// Mineur à seconde mineure (couleur sombre des boucles de jeu : b2).
+    Phrygian,
+    /// Mineur à sensible et sixte mineure (V majeur, couleur tendue des
+    /// boucles de jeu).
+    HarmonicMinor,
 }
 
 impl Mode {
     /// Tous les modes supportés en ordre canonique.
-    pub const ALL: [Self; 4] = [Self::Ionian, Self::Mixolydian, Self::Dorian, Self::Aeolian];
+    pub const ALL: [Self; 6] = [
+        Self::Ionian,
+        Self::Mixolydian,
+        Self::Dorian,
+        Self::Aeolian,
+        Self::Phrygian,
+        Self::HarmonicMinor,
+    ];
 
     /// Intervalles en demi-tons depuis la tonique pour les degrés `1..=7`
     /// dans une octave (indices `0..7`).
@@ -49,13 +71,17 @@ impl Mode {
             Self::Mixolydian => [0, 2, 4, 5, 7, 9, 10],
             Self::Dorian => [0, 2, 3, 5, 7, 9, 10],
             Self::Aeolian => [0, 2, 3, 5, 7, 8, 10],
+            Self::Phrygian => [0, 1, 3, 5, 7, 8, 10],
+            Self::HarmonicMinor => [0, 2, 3, 5, 7, 8, 11],
         }
     }
 
-    /// Indique si le mode possède une tierce mineure (Dorien, Éolien).
+    /// Indique si le mode possède une tierce mineure (Dorien, Éolien,
+    /// Phrygien, mineur harmonique) : ces modes sont le côté sombre de la
+    /// bascule de valence.
     #[must_use]
     pub const fn is_minor(self) -> bool {
-        matches!(self, Self::Dorian | Self::Aeolian)
+        matches!(self, Self::Dorian | Self::Aeolian | Self::Phrygian | Self::HarmonicMinor)
     }
 
     /// Convertit un degré diatonique en décalage de demi-tons par rapport à la
@@ -203,6 +229,54 @@ mod tests {
         assert_eq!(Mode::Aeolian.degree_to_semitones(-2), -4); // sixte mineure grave : 8 - 12 = -4
         assert_eq!(Mode::Aeolian.degree_to_semitones(-3), -5);
         assert_eq!(Mode::Aeolian.degree_to_semitones(-7), -12);
+    }
+
+    #[test]
+    fn phrygian_degrees() {
+        // Seconde mineure (b2) : la couleur sombre des boucles de jeu.
+        let expected = [0, 1, 3, 5, 7, 8, 10, 12];
+        for (i, &semi) in expected.iter().enumerate() {
+            let deg = (i + 1) as i8;
+            assert_eq!(Mode::Phrygian.degree_to_semitones(deg), semi, "Phrygian deg {deg}");
+        }
+        assert_eq!(Mode::Phrygian.degree_to_semitones(-1), -2);
+        assert_eq!(Mode::Phrygian.degree_to_semitones(-2), -4); // sixte mineure grave : 8 - 12 = -4
+        assert_eq!(Mode::Phrygian.degree_to_semitones(-6), -11); // seconde mineure grave : 1 - 12
+        assert_eq!(Mode::Phrygian.degree_to_semitones(-7), -12);
+        assert!(Mode::Phrygian.is_minor());
+    }
+
+    #[test]
+    fn harmonic_minor_degrees() {
+        // Sensible (degré 7 à 11 demi-tons) et sixte mineure : le V est majeur.
+        let expected = [0, 2, 3, 5, 7, 8, 11, 12];
+        for (i, &semi) in expected.iter().enumerate() {
+            let deg = (i + 1) as i8;
+            assert_eq!(
+                Mode::HarmonicMinor.degree_to_semitones(deg),
+                semi,
+                "HarmonicMinor deg {deg}"
+            );
+        }
+        assert_eq!(Mode::HarmonicMinor.degree_to_semitones(-1), -1); // sensible grave : 11 - 12
+        assert_eq!(Mode::HarmonicMinor.degree_to_semitones(-2), -4); // sixte mineure grave : 8 - 12
+        assert_eq!(Mode::HarmonicMinor.degree_to_semitones(-7), -12);
+        assert!(Mode::HarmonicMinor.is_minor());
+    }
+
+    #[test]
+    fn new_modes_hold_seven_distinct_pitch_classes() {
+        for mode in [Mode::Phrygian, Mode::HarmonicMinor] {
+            let mut pcs = mode.intervals().to_vec();
+            pcs.sort_unstable();
+            pcs.dedup();
+            assert_eq!(pcs.len(), 7, "{mode:?}");
+            // Aucune tierce majeure : côté sombre de la bascule de valence.
+            assert!(mode.is_minor(), "{mode:?}");
+            assert!(Mode::ALL.contains(&mode), "{mode:?}");
+        }
+        assert!(!Mode::Ionian.is_minor());
+        assert!(!Mode::Mixolydian.is_minor());
     }
 
     #[test]

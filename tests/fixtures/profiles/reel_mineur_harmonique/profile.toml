@@ -1,0 +1,1015 @@
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "reel_mineur_harmonique"
+name = "Fixture reel mineur harmonique (G1)"
+tradition = "Exercice de contrat : grammaire du reel québécois passée en mineur harmonique, non destinée à la distribution"
+tags = ["test", "mineur_harmonique"]
+corpus = "Aucun corpus : mêmes cellules que reel_quebecois, autre mode (phase 014, G1)"
+
+[meter]
+time_signature = { numerator = 2, denominator = 2 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 8
+pulses_per_bar = 2
+default_swing_ratio = 0.56
+default_bpm = 230.0
+min_bpm = 220.0
+max_bpm = 240.0
+
+[form]
+sequence = [0, 0, 1, 1]
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 1009 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 968 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 305 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 304 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 263 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 261 },
+      { durations = [1, 1, 1, 1, 4], weight = 227 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 226 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 163 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 157 },
+      { durations = [2, 1, 1, 2, 2], weight = 79 },
+      { durations = [2, 2, 4], weight = 75 },
+      { durations = [3, 1, 2, 1, 1], weight = 69 },
+      { durations = [2, 2, 2, 1, 1], weight = 68 },
+      { durations = [3, 1, 2, 2], weight = 64 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 43 },
+      { durations = [2, 2, 3, 1], weight = 42 },
+      { durations = [4, 1, 1, 1, 1], weight = 39 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 36 },
+      { durations = [3, 2, 1, 1, 1], weight = 36 },
+      { durations = [6, 2], weight = 31 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 30 },
+      { durations = [2, 1, 1, 3, 1], weight = 25 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 24 },
+      { durations = [1, 1, 3, 1, 1, 1], weight = 24 },
+      { durations = [3, 1, 3, 1], weight = 22 },
+      { durations = [6, 1, 1], weight = 22 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 21 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 20 },
+      { durations = [4, 2, 1, 1], weight = 17 },
+      { durations = [1, 3, 1, 1, 1, 1], weight = 16 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 15 },
+      { durations = [2, 2, 1, 1, 2], weight = 14 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 13 },
+      { durations = [5, 1, 1, 1], weight = 13 },
+      { durations = [1, 1, 2, 3, 1], weight = 11 },
+      { durations = [2, 3, 1, 1, 1], weight = 11 },
+      { durations = [1, 1, 2, 2, 2], weight = 10 },
+      { durations = [2, 1, 1, 4], weight = 10 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 2, 2], weight = 8 },
+      { durations = [3, 1, 1, 1, 2], weight = 8 },
+      { durations = [4, 2, 2], weight = 7 },
+      { durations = [2, 4, 2], weight = 6 },
+      { durations = [1, 1, 2, 4], weight = 5 },
+      { durations = [1, 2, 1, 3, 1], weight = 4 },
+      { durations = [1, 3, 1, 3], weight = 4 },
+      { durations = [7, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 4, 2], weight = 3 },
+      { durations = [1, 2, 1, 4], weight = 3 },
+      { durations = [1, 3, 2, 1, 1], weight = 3 },
+      { durations = [2, 2, 1, 2, 1], weight = 3 },
+      { durations = [4, 3, 1], weight = 3 },
+      { durations = [1, 4, 1, 1, 1], weight = 2 },
+      { durations = [3, 2, 1, 2], weight = 2 },
+      { durations = [1, 3, 1, 1, 2], weight = 1 },
+      { durations = [2, 1, 2, 1, 2], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [5, 2, 1], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 1009 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 968 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 305 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 304 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 263 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 261 },
+      { durations = [1, 1, 1, 1, 4], weight = 227 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 226 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 163 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 157 },
+      { durations = [2, 1, 1, 2, 2], weight = 79 },
+      { durations = [2, 2, 4], weight = 75 },
+      { durations = [3, 1, 2, 1, 1], weight = 69 },
+      { durations = [2, 2, 2, 1, 1], weight = 68 },
+      { durations = [3, 1, 2, 2], weight = 64 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 43 },
+      { durations = [2, 2, 3, 1], weight = 42 },
+      { durations = [4, 1, 1, 1, 1], weight = 39 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 36 },
+      { durations = [3, 2, 1, 1, 1], weight = 36 },
+      { durations = [6, 2], weight = 31 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 30 },
+      { durations = [2, 1, 1, 3, 1], weight = 25 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 24 },
+      { durations = [1, 1, 3, 1, 1, 1], weight = 24 },
+      { durations = [3, 1, 3, 1], weight = 22 },
+      { durations = [6, 1, 1], weight = 22 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 21 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 20 },
+      { durations = [4, 2, 1, 1], weight = 17 },
+      { durations = [1, 3, 1, 1, 1, 1], weight = 16 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 15 },
+      { durations = [2, 2, 1, 1, 2], weight = 14 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 13 },
+      { durations = [5, 1, 1, 1], weight = 13 },
+      { durations = [1, 1, 2, 3, 1], weight = 11 },
+      { durations = [2, 3, 1, 1, 1], weight = 11 },
+      { durations = [1, 1, 2, 2, 2], weight = 10 },
+      { durations = [2, 1, 1, 4], weight = 10 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 2, 2], weight = 8 },
+      { durations = [3, 1, 1, 1, 2], weight = 8 },
+      { durations = [4, 2, 2], weight = 7 },
+      { durations = [2, 4, 2], weight = 6 },
+      { durations = [1, 1, 2, 4], weight = 5 },
+      { durations = [1, 2, 1, 3, 1], weight = 4 },
+      { durations = [1, 3, 1, 3], weight = 4 },
+      { durations = [7, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 4, 2], weight = 3 },
+      { durations = [1, 2, 1, 4], weight = 3 },
+      { durations = [1, 3, 2, 1, 1], weight = 3 },
+      { durations = [2, 2, 1, 2, 1], weight = 3 },
+      { durations = [4, 3, 1], weight = 3 },
+      { durations = [1, 4, 1, 1, 1], weight = 2 },
+      { durations = [3, 2, 1, 2], weight = 2 },
+      { durations = [1, 3, 1, 1, 2], weight = 1 },
+      { durations = [2, 1, 2, 1, 2], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [5, 2, 1], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 301 }, { role = { VariedEndOf = 1 }, weight = 602 }, { role = "Free", weight = 9097 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1235 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 4 }, { degrees = -1, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = 7, weight = 2 }] } }, weight = 301 }, { role = { VariedEndOf = 1 }, weight = 1084 }, { role = "Free", weight = 7380 }] },
+  { choose = [{ role = "CadTonic", weight = 572 }, { role = "CadHalf", weight = 934 }, { role = "CadOpen", weight = 8494 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 7169 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 5 }, { degrees = -2, weight = 1 }] } }, weight = 181 }, { role = { VariedEndOf = 1 }, weight = 452 }, { role = "Free", weight = 2198 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 6627 }, { role = { SequenceOf = { bar = 2, shift = [{ degrees = -1, weight = 2 }] } }, weight = 60 }, { role = { VariedEndOf = 2 }, weight = 1084 }, { role = "Free", weight = 2229 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 3825 }, { role = { SequenceOf = { bar = 3, shift = [{ degrees = 1, weight = 1 }] } }, weight = 30 }, { role = { VariedEndOf = 3 }, weight = 1355 }, { role = "Free", weight = 4790 }] },
+  { choose = [{ role = "CadTonic", weight = 2199 }, { role = "CadHalf", weight = 783 }, { role = "CadOpen", weight = 7018 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 169 }, { role = "CadFifth", weight = 19 }, { role = "CadOther", weight = 99 }] }
+[[form.parts]]
+name = "B"
+melody_center_offset = 2
+phrase_ends = [4, 8]
+rhythm = [
+  { bar = 4, patterns = [
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 1009 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 968 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 305 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 304 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 263 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 261 },
+      { durations = [1, 1, 1, 1, 4], weight = 227 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 226 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 163 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 157 },
+      { durations = [2, 1, 1, 2, 2], weight = 79 },
+      { durations = [2, 2, 4], weight = 75 },
+      { durations = [3, 1, 2, 1, 1], weight = 69 },
+      { durations = [2, 2, 2, 1, 1], weight = 68 },
+      { durations = [3, 1, 2, 2], weight = 64 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 43 },
+      { durations = [2, 2, 3, 1], weight = 42 },
+      { durations = [4, 1, 1, 1, 1], weight = 39 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 36 },
+      { durations = [3, 2, 1, 1, 1], weight = 36 },
+      { durations = [6, 2], weight = 31 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 30 },
+      { durations = [2, 1, 1, 3, 1], weight = 25 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 24 },
+      { durations = [1, 1, 3, 1, 1, 1], weight = 24 },
+      { durations = [3, 1, 3, 1], weight = 22 },
+      { durations = [6, 1, 1], weight = 22 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 21 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 20 },
+      { durations = [4, 2, 1, 1], weight = 17 },
+      { durations = [1, 3, 1, 1, 1, 1], weight = 16 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 15 },
+      { durations = [2, 2, 1, 1, 2], weight = 14 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 13 },
+      { durations = [5, 1, 1, 1], weight = 13 },
+      { durations = [1, 1, 2, 3, 1], weight = 11 },
+      { durations = [2, 3, 1, 1, 1], weight = 11 },
+      { durations = [1, 1, 2, 2, 2], weight = 10 },
+      { durations = [2, 1, 1, 4], weight = 10 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 2, 2], weight = 8 },
+      { durations = [3, 1, 1, 1, 2], weight = 8 },
+      { durations = [4, 2, 2], weight = 7 },
+      { durations = [2, 4, 2], weight = 6 },
+      { durations = [1, 1, 2, 4], weight = 5 },
+      { durations = [1, 2, 1, 3, 1], weight = 4 },
+      { durations = [1, 3, 1, 3], weight = 4 },
+      { durations = [7, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 4, 2], weight = 3 },
+      { durations = [1, 2, 1, 4], weight = 3 },
+      { durations = [1, 3, 2, 1, 1], weight = 3 },
+      { durations = [2, 2, 1, 2, 1], weight = 3 },
+      { durations = [4, 3, 1], weight = 3 },
+      { durations = [1, 4, 1, 1, 1], weight = 2 },
+      { durations = [3, 2, 1, 2], weight = 2 },
+      { durations = [1, 3, 1, 1, 2], weight = 1 },
+      { durations = [2, 1, 2, 1, 2], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [5, 2, 1], weight = 1 },
+  ] },
+  { bar = 8, patterns = [
+      { durations = [2, 1, 1, 1, 1, 1, 1], weight = 1009 },
+      { durations = [1, 1, 1, 1, 2, 1, 1], weight = 968 },
+      { durations = [1, 1, 1, 1, 2, 2], weight = 305 },
+      { durations = [3, 1, 1, 1, 1, 1], weight = 304 },
+      { durations = [1, 1, 1, 1, 1, 1, 2], weight = 263 },
+      { durations = [1, 1, 1, 1, 3, 1], weight = 261 },
+      { durations = [1, 1, 1, 1, 4], weight = 227 },
+      { durations = [2, 1, 1, 2, 1, 1], weight = 226 },
+      { durations = [2, 2, 1, 1, 1, 1], weight = 163 },
+      { durations = [1, 1, 2, 1, 1, 1, 1], weight = 157 },
+      { durations = [2, 1, 1, 2, 2], weight = 79 },
+      { durations = [2, 2, 4], weight = 75 },
+      { durations = [3, 1, 2, 1, 1], weight = 69 },
+      { durations = [2, 2, 2, 1, 1], weight = 68 },
+      { durations = [3, 1, 2, 2], weight = 64 },
+      { durations = [2, 1, 1, 1, 1, 2], weight = 43 },
+      { durations = [2, 2, 3, 1], weight = 42 },
+      { durations = [4, 1, 1, 1, 1], weight = 39 },
+      { durations = [1, 2, 1, 1, 1, 1, 1], weight = 36 },
+      { durations = [3, 2, 1, 1, 1], weight = 36 },
+      { durations = [6, 2], weight = 31 },
+      { durations = [2, 1, 2, 1, 1, 1], weight = 30 },
+      { durations = [2, 1, 1, 3, 1], weight = 25 },
+      { durations = [1, 1, 2, 1, 1, 2], weight = 24 },
+      { durations = [1, 1, 3, 1, 1, 1], weight = 24 },
+      { durations = [3, 1, 3, 1], weight = 22 },
+      { durations = [6, 1, 1], weight = 22 },
+      { durations = [1, 1, 2, 2, 1, 1], weight = 21 },
+      { durations = [1, 2, 1, 2, 1, 1], weight = 20 },
+      { durations = [4, 2, 1, 1], weight = 17 },
+      { durations = [1, 3, 1, 1, 1, 1], weight = 16 },
+      { durations = [1, 1, 1, 2, 1, 1, 1], weight = 15 },
+      { durations = [2, 2, 1, 1, 2], weight = 14 },
+      { durations = [1, 1, 1, 1, 1, 3], weight = 13 },
+      { durations = [5, 1, 1, 1], weight = 13 },
+      { durations = [1, 1, 2, 3, 1], weight = 11 },
+      { durations = [2, 3, 1, 1, 1], weight = 11 },
+      { durations = [1, 1, 2, 2, 2], weight = 10 },
+      { durations = [2, 1, 1, 4], weight = 10 },
+      { durations = [3, 1, 4], weight = 9 },
+      { durations = [1, 2, 1, 2, 2], weight = 8 },
+      { durations = [3, 1, 1, 1, 2], weight = 8 },
+      { durations = [4, 2, 2], weight = 7 },
+      { durations = [2, 4, 2], weight = 6 },
+      { durations = [1, 1, 2, 4], weight = 5 },
+      { durations = [1, 2, 1, 3, 1], weight = 4 },
+      { durations = [1, 3, 1, 3], weight = 4 },
+      { durations = [7, 1], weight = 4 },
+      { durations = [1, 1, 1, 1, 1, 2, 1], weight = 3 },
+      { durations = [1, 1, 4, 2], weight = 3 },
+      { durations = [1, 2, 1, 4], weight = 3 },
+      { durations = [1, 3, 2, 1, 1], weight = 3 },
+      { durations = [2, 2, 1, 2, 1], weight = 3 },
+      { durations = [4, 3, 1], weight = 3 },
+      { durations = [1, 4, 1, 1, 1], weight = 2 },
+      { durations = [3, 2, 1, 2], weight = 2 },
+      { durations = [1, 3, 1, 1, 2], weight = 1 },
+      { durations = [2, 1, 2, 1, 2], weight = 1 },
+      { durations = [2, 3, 1, 2], weight = 1 },
+      { durations = [5, 2, 1], weight = 1 },
+  ] },
+]
+roles = [
+  "Open",
+  { choose = [{ role = { CopyOf = 1 }, weight = 205 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 3 }, { degrees = 1, weight = 1 }, { degrees = 3, weight = 1 }] } }, weight = 146 }, { role = { VariedEndOf = 1 }, weight = 526 }, { role = "Free", weight = 9123 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 1053 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = 1, weight = 9 }, { degrees = -1, weight = 2 }, { degrees = 4, weight = 2 }, { degrees = -4, weight = 1 }] } }, weight = 409 }, { role = { VariedEndOf = 1 }, weight = 1140 }, { role = "Free", weight = 7398 }] },
+  { choose = [{ role = "CadTonic", weight = 556 }, { role = "CadHalf", weight = 848 }, { role = "CadOpen", weight = 8596 }] },
+  { choose = [{ role = { CopyOf = 1 }, weight = 6754 }, { role = { SequenceOf = { bar = 1, shift = [{ degrees = -1, weight = 1 }, { degrees = -2, weight = 1 }] } }, weight = 58 }, { role = { VariedEndOf = 1 }, weight = 497 }, { role = "Free", weight = 2691 }] },
+  { choose = [{ role = { CopyOf = 2 }, weight = 5819 }, { role = { VariedEndOf = 2 }, weight = 1462 }, { role = "Free", weight = 2719 }] },
+  { choose = [{ role = { CopyOf = 3 }, weight = 2321 }, { role = { VariedEndOf = 3 }, weight = 1137 }, { role = { CopyOfPart = { part = "A", bar = 7 } }, weight = 2063 }, { role = "Free", weight = 4479 }] },
+  { choose = [{ role = "CadTonic", weight = 1784 }, { role = "CadHalf", weight = 936 }, { role = "CadOpen", weight = 7280 }] },
+]
+second_ending = { choose = [{ role = "CadTonic", weight = 182 }, { role = "CadFifth", weight = 18 }, { role = "CadOther", weight = 78 }] }
+
+[melody]
+cell_units = 8
+strong_units = [0, 4]
+weak_units = [1, 3, 5, 7]
+key_modes = [
+ { key = 2, mode = "harmonic_minor", weight = 1 },
+]
+[melody.params]
+weight_role_run = 4
+weight_role_arp = 3
+weight_role_turn = 3
+max_continuity_step_distance = 2
+continuity_max_retries = 16
+melody_center_midi = 71
+tonic_midi_min = 66
+tonic_midi_max = 77
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 94
+strong_eighth_velocity_offset = 12
+even_eighth_velocity_offset = -10
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 8
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+[[harmony.candidates]]
+mode = "phrygian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Major"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+[[harmony.candidates]]
+mode = "harmonic_minor"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 40
+high = 50
+walk_low = 38
+walk_high = 52
+hits = [
+  { step = 0, degree = "root", duration = 4, velocity = 78 },
+  { step = 8, degree = "fifth_if_held", duration = 4, velocity = 78 },
+]
+
+[accompaniment.bass.passing]
+none_weight = 5
+density = [[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]
+phrase = [[0.0, 0.7], [0.75, 1.0], [1.0, 1.3]]
+avoid_melody_intervals = [1, 6, 11]
+arousal_low_multiplier = 0.5
+arousal_high_multiplier = 1.5
+rules = [
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 3, duration = 2, velocity_delta = -12, min_leap = 0 },
+  { when = "next_target_differs", before = [4, 2], motion = "scale_walk", weight = 2, duration = 1, velocity_delta = -12, min_leap = 5 },
+  { when = "next_target_differs", before = [2], motion = "chromatic", weight = 1, duration = 2, velocity_delta = -12, min_leap = 0 },
+]
+
+[accompaniment.chords]
+center = 60
+max_drift = 6
+strings = 4
+default_pattern = 1
+patterns = [
+  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 12, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 2, stroke = "down", duration = 1, velocity = 66 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 10, stroke = "down", duration = 1, velocity = 66 }, { step = 12, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 2, stroke = "down", duration = 1, velocity = 66 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 6, stroke = "up", duration = 1, velocity = 54, probability = 0.4 }, { step = 10, stroke = "down", duration = 1, velocity = 66 }, { step = 12, stroke = "down", duration = 1, velocity = 72 }, { step = 14, stroke = "up", duration = 1, velocity = 54, probability = 0.4 }] },
+]
+
+[accompaniment.chords.strum]
+down_gap_ms = 6.0
+up_gap_ms = 4.0
+up_strings = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 230.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 5
+
+[instruments]
+melody_program = 40
+countermelody_program = 40
+chords_program = 24
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[mix]
+master_db = 13.0
+[mix.room]
+room_size = 0.35
+damping = 0.6
+width = 0.7
+level = 0.28
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 2800.0
+presence_db = 1.5
+presence_q = 0.8
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.04
+reverb_send = 0.16
+[mix.tracks.Chords]
+level_db = -5.0
+pan = -0.35
+reverb_send = 0.22
+[mix.tracks.Bass]
+level_db = -8.0
+pan = 0.0
+reverb_send = 0.08
+[mix.tracks.Heel]
+level_db = -6.0
+pan = -0.06
+reverb_send = 0.1
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.1
+
+[performance.tracks.Melody]
+# Millièmes de pas publiés ; valeurs non mesurables dans les ABC : à valider à l’oreille.
+offsets = [-0.02, 0.0, 0.01, 0.0, 0.01, 0.0, 0.01, 0.0, -0.02, 0.0, 0.01, 0.0, 0.01, 0.0, 0.01, 0.0]
+jitter = 0.02
+phrase = [[0.0, -2.0], [0.5, 2.0], [1.0, -3.0]]
+velocity_min = 30
+velocity_max = 127
+breath = 0.08
+[[performance.tracks.Melody.rules]]
+articulation = "Normal"
+weight = 100.0
+# Accent métrique proposé (aucune marque accent/marcato dans ce corpus).
+[[performance.tracks.Melody.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0, 8]
+accent = 2.0
+# DS-T10b : 55 marques Linked / 3021 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.858736
+steps = [0]
+min_duration = 3
+max_duration = 16
+context = "any"
+# DS-T10b : 7 marques Detached / 3021 porteuses ; 0|long|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.236566
+steps = [0]
+min_duration = 3
+max_duration = 16
+context = "any"
+shorten = 0.20
+# DS-T10b : 31 marques Linked / 7576 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.411032
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+# DS-T10b : 3 marques Detached / 7576 porteuses ; 0|short|any.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.039777
+steps = [0]
+min_duration = 1
+max_duration = 2
+context = "any"
+shorten = 0.20
+# DS-T10b : 2 marques Linked / 2037 porteuses ; 10|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.098377
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Detached / 2037 porteuses ; 10|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.098377
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 1 marques Linked / 3614 porteuses ; 10|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.027678
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Linked / 195 porteuses ; 10|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.036269
+steps = [10]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 4 marques Linked / 293 porteuses ; 12|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.384083
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 5 marques Linked / 555 porteuses ; 12|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.912409
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 2 marques Detached / 555 porteuses ; 12|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.364964
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "descending"
+shorten = 0.20
+# DS-T10b : 3 marques Linked / 302 porteuses ; 12|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.010101
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 2 marques Detached / 302 porteuses ; 12|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.673401
+steps = [12]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+shorten = 0.20
+# DS-T10b : 7 marques Linked / 2789 porteuses ; 12|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.251799
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Detached / 2789 porteuses ; 12|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.071942
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 20 marques Linked / 3480 porteuses ; 12|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.578369
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Detached / 3480 porteuses ; 12|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.057837
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 1 marques Linked / 649 porteuses ; 12|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.154321
+steps = [12]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 27 marques Linked / 3537 porteuses ; 14|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.769450
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 1 marques Detached / 3537 porteuses ; 14|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.028498
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 8 marques Linked / 3498 porteuses ; 14|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.229358
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Detached / 3498 porteuses ; 14|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.057339
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 8 marques Linked / 301 porteuses ; 14|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 2.730375
+steps = [14]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 4 marques Linked / 73 porteuses ; 2|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 5.797101
+steps = [2]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 2 marques Detached / 3475 porteuses ; 2|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.057587
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 7 marques Linked / 3510 porteuses ; 2|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.199943
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Detached / 3510 porteuses ; 2|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.057127
+steps = [2]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 5 marques Linked / 469 porteuses ; 3|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.077586
+steps = [3]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 2 marques Linked / 455 porteuses ; 3|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.441501
+steps = [3]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 6 marques Linked / 86 porteuses ; 3|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 7.500000
+steps = [3]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 6 marques Linked / 390 porteuses ; 4|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 1.570681
+steps = [4]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 2 marques Detached / 390 porteuses ; 4|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.523560
+steps = [4]
+min_duration = 3
+max_duration = 16
+context = "descending"
+shorten = 0.20
+# DS-T10b : 21 marques Linked / 334 porteuses ; 4|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 6.709265
+steps = [4]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 18 marques Linked / 3605 porteuses ; 4|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.502372
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 4 marques Detached / 3605 porteuses ; 4|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.111638
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 17 marques Linked / 3656 porteuses ; 4|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.467547
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 3 marques Detached / 3656 porteuses ; 4|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.082508
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 2 marques Linked / 1199 porteuses ; 4|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.167224
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+# DS-T10b : 1 marques Detached / 1199 porteuses ; 4|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.083612
+steps = [4]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+shorten = 0.20
+# DS-T10b : 11 marques Linked / 32 porteuses ; 6|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 52.380952
+steps = [6]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 40 marques Linked / 54 porteuses ; 6|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 285.714286
+steps = [6]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 11 marques Linked / 4049 porteuses ; 6|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.272750
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 5 marques Detached / 4049 porteuses ; 6|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.123977
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 6 marques Linked / 4229 porteuses ; 6|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.142146
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Detached / 4229 porteuses ; 6|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.047382
+steps = [6]
+min_duration = 1
+max_duration = 2
+context = "descending"
+shorten = 0.20
+# DS-T10b : 2 marques Linked / 426 porteuses ; 7|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.471698
+steps = [7]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 9 marques Linked / 1489 porteuses ; 8|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.609343
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+# DS-T10b : 3 marques Detached / 1489 porteuses ; 8|long|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.203114
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 7 marques Linked / 1429 porteuses ; 8|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.492958
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "descending"
+# DS-T10b : 2 marques Detached / 1429 porteuses ; 8|long|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.140845
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "descending"
+shorten = 0.20
+# DS-T10b : 2 marques Linked / 236 porteuses ; 8|long|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.854701
+steps = [8]
+min_duration = 3
+max_duration = 16
+context = "repeated"
+# DS-T10b : 4 marques Linked / 2750 porteuses ; 8|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.145719
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+# DS-T10b : 1 marques Detached / 2750 porteuses ; 8|short|ascending.
+[[performance.tracks.Melody.rules]]
+articulation = "Detached"
+weight = 0.036430
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "ascending"
+shorten = 0.20
+# DS-T10b : 8 marques Linked / 2595 porteuses ; 8|short|descending.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.309239
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "descending"
+# DS-T10b : 2 marques Linked / 438 porteuses ; 8|short|repeated.
+[[performance.tracks.Melody.rules]]
+articulation = "Linked"
+weight = 0.458716
+steps = [8]
+min_duration = 1
+max_duration = 2
+context = "repeated"
+[performance.tracks.Melody.emotions]
+tension_advance = 0.04
+tension_detach = 0.10
+arousal_accent = 4.0
+valence_velocity = 0.0
+density_detach = 0.0
+
+# Ornements idiomatiques (V3b). Taux : plancher écrit du corpus, références/ornaments/quebecoise-reel.json
+# du labo (DS-T10), pour 100 notes de la mélodie ; `rate_scale` les relève (les ABC sous-notent).
+[ornaments]
+rate_scale = 4.0
+
+[ornaments.types.passing]
+min_carrier_eighths = 1.5
+density_curve = [[0.0, 0.0], [0.5, 0.0], [1.0, 1.0]]
+
+[ornaments.types.grace_single]
+written_per_100_notes = 0.184504
+per_100_notes_by_bar = [0.139101, 0.189795, 0.026706, 0.242154, 0.163759, 0.21393, 0.2235, 0.277087]
+min_carrier_eighths = 0.5
+span = 0.4
+velocity_scale = 0.75
+
+[ornaments.types.grace_multiple]
+written_per_100_notes = 0.046815
+min_carrier_eighths = 1.0
+span = 0.49
+count = 2
+velocity_scale = 0.7
+
+[ornaments.types.roll]
+written_per_100_notes = 0.689826
+per_100_notes_by_bar = [0.950448, 0.541802, 1.084553, 0.381561, 0.985227, 0.741212, 0.640309, 0.193496]
+min_carrier_eighths = 2.0
+velocity_scale = 0.8
+
+[ornaments.types.turn]
+written_per_100_notes = 0.004131
+min_carrier_eighths = 1.0
+velocity_scale = 0.8
+
+[ornaments.types.triplet_repeated]
+written_per_100_notes = 0.181751
+per_100_notes_by_bar = [0.227029, 0.160918, 0.217941, 0.059882, 0.323969, 0.178547, 0.165809, 0.119912]
+min_carrier_eighths = 1.0
+velocity_scale = 0.9
+
+[ornaments.types.double_stop]
+written_per_100_notes = 0.344225
+per_100_notes_by_bar = [0.409851, 0.181564, 0.214606, 0.324314, 0.328983, 0.143256, 0.099777, 1.051449]
+min_carrier_eighths = 2.0
+strings = [55, 62, 69, 76]
+min_interval = 3
+max_interval = 12
+velocity_scale = 0.8
+
+[ornaments.types.trill]
+written_per_100_notes = 0.009638
+min_carrier_eighths = 1.0
+velocity_scale = 0.8
+
+[mix.tracks.Countermelody]
+level_db = -12.0
+pan = -0.22
+reverb_send = 0.16
+
+[performance.tracks.Countermelody]
+jitter = 0.025
+phrase = [[0.0, 0.98], [0.7, 1.02], [1.0, 0.94]]
+breath = 0.08
+
+[heterophony]
+source = "Melody"
+octave = 0
+low = 55
+high = 88
+arousal_low = 0.5
+arousal_high = 1.5
+density_low = 0.7
+density_high = 1.3
+operations = [
+  { operation = "unison", weight = 72 },
+  { operation = "ornament", weight = 10, phrase_end = "never" },
+  { operation = "plain", weight = 8 },
+  { operation = "simplify", weight = 7, phrase_end = "never" },
+  { operation = "octave", weight = 2 },
+  { operation = "third", weight = 3, phrase_end = "only" },
+  { operation = "sixth", weight = 2, phrase_end = "only" },
+  { operation = "rest", weight = 3, beats = ["weak"], phrase_end = "never" },
+]

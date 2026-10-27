@@ -1,0 +1,67 @@
+# Arrangement du reel : tours d'un air, entrées progressives (D11), et intros idiomatiques (P1-T11).
+# Les entrées progressives et l'intro complète ne concernent que le premier air de chaque set
+# (`set.toml`) ; les airs suivants du set voient toutes les pistes dès A1 et n'ont que la levée.
+#
+# Un air est joué `tours_per_tune` tours AABB de 32 mesures avant d'en tirer un
+# nouveau ; chaque tour rejoue la même ligne et la même harmonie.
+#
+# Chaque piste entre à une position `{ tour, part, pass }` :
+#   tour : 1..=16 (borné au dernier tour de l'air s'il le dépasse) ;
+#   part : "A" ou "B" ;
+#   pass : 1 ou 2 (première ou seconde passe de la partie, 8 mesures chacune).
+# Une piste joue de cette position jusqu'à la fin de l'air.
+#
+# Les drapeaux de jeu (`enable_melody`, `enable_harmony`, `enable_rhythm`,
+# `feet_density`) restent des plafonds : une piste joue si ce tableau
+# l'autorise ET si le drapeau le permet.
+
+tours_per_tune = 3
+
+[entries]
+# Le violon part seul et fait la première phrase.
+Melody = { tour = 1, part = 0, pass = 1 }
+# Guitare et basse entrent à la reprise de A.
+Chords = { tour = 1, part = 0, pass = 2 }
+Bass = { tour = 1, part = 0, pass = 2 }
+# Les pieds entrent au deuxième tour.
+Heel = { tour = 2, part = 0, pass = 1 }
+Toe = { tour = 2, part = 0, pass = 1 }
+Countermelody = { tour = 2, part = 0, pass = 1 }
+
+# ---------------------------------------------------------------------------
+# [intro] — Intros idiomatiques (P1-T11, constitution v3 V)
+#
+# Une forme est tirée au RNG par air (déterministe) selon les poids. Une forme
+# décrit un rôle (ce qui joue) et sa longueur en mesures, sans supposer la
+# grille ni la forme de l'air : le générateur lit la grille et la forme depuis
+# l'air courant.
+#
+#   role = "percussion" : les pistes de percussion jouent seules (décompte)
+#   role = "tail"       : la mélodie joue les `bars` dernières mesures de l'air
+#   role = "vamp"       : l'accompagnement joue sur la tonique
+#
+# Toutes les formes incluent une levée (anacrouse) de `pickup_eighths` croches
+# à la fin de la dernière mesure d'intro, montant vers la première note de l'air.
+#
+# Seul le premier air d'un set a l'intro complète ; les suivants enchaînent avec
+# seulement la levée (comme dans un vrai set). Un profil où chaque air est son
+# propre set (`length = [{ tunes = 1, weight = 1 }]`) annonce chaque air en entier.
+# ---------------------------------------------------------------------------
+
+[intro]
+pickup_eighths = 2
+
+[[intro.forms]]
+role = "percussion"
+weight = 3
+bars = 1
+
+[[intro.forms]]
+role = "tail"
+weight = 2
+bars = 2
+
+[[intro.forms]]
+role = "vamp"
+weight = 1
+bars = 2
