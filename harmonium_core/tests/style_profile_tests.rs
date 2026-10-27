@@ -3,7 +3,10 @@ use harmonium_core::{
     StyleProfile,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    trad::{Cell, CellBank, CellRole, FootHit, ImposedRole, Part, ReelArrangement, TradGenerator},
+    trad::{
+        Cell, CellBank, CellRole, EntryPoint, FootHit, ImposedRole, Part, ReelArrangement,
+        TradGenerator,
+    },
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -147,7 +150,7 @@ fn cross_section_bounds_reject_before_generation() -> Result<(), Box<dyn std::er
     p.melody.cells.cells[0].notes.pop();
     assert_eq!(p.validate().unwrap_err().field, "melody.cells[0].notes");
     p = variable_profile()?;
-    p.arrangement.entries.melody.pass = 3;
+    p.arrangement.entries.melody = Some(EntryPoint { tour: 1, part: Part(0), pass: 3 });
     assert_eq!(p.validate().unwrap_err().field, "arrangement.entries.Melody.pass");
     Ok(())
 }

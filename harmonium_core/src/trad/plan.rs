@@ -30,6 +30,23 @@ impl ImposedRole {
             _ => None,
         }
     }
+    /// Rôle dont la cellule se tire parmi les rôles libres pondérés (`Run`, `Arp`, `Turn`).
+    pub const fn draws_free_cell(self) -> bool {
+        matches!(self, Self::Free | Self::CadOpen | Self::CadOther)
+    }
+    /// Rôle cadentiel : frontière de phrase à défaut de `phrase_ends`, mesure protégée des
+    /// ornements à défaut de `ornament_protected_bars`.
+    pub const fn is_cadential(self) -> bool {
+        matches!(
+            self,
+            Self::CadHalf
+                | Self::CadFull
+                | Self::CadTonic
+                | Self::CadOpen
+                | Self::CadFifth
+                | Self::CadOther
+        )
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BarRole {
