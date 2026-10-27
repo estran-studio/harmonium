@@ -310,11 +310,12 @@ impl EntryPoint {
     }
 }
 
-/// Points d'entrée des cinq pistes (clés TOML = noms de [`TrackId`]).
+/// Points d'entrée des pistes (clés TOML = noms de [`TrackId`]) ; `Heel` et `Toe` sont requis,
+/// une piste omise ne joue pas.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TrackEntries {
-    #[serde(rename = "Melody")]
-    pub melody: EntryPoint,
+    #[serde(rename = "Melody", skip_serializing_if = "Option::is_none")]
+    pub melody: Option<EntryPoint>,
     #[serde(rename = "Chords", skip_serializing_if = "Option::is_none")]
     pub chords: Option<EntryPoint>,
     #[serde(rename = "Bass", skip_serializing_if = "Option::is_none")]
@@ -330,7 +331,7 @@ pub struct TrackEntries {
 impl TrackEntries {
     pub const fn get(&self, track: TrackId) -> Option<EntryPoint> {
         match track {
-            TrackId::Melody => Some(self.melody),
+            TrackId::Melody => self.melody,
             TrackId::Chords => self.chords,
             TrackId::Bass => self.bass,
             TrackId::Heel => Some(self.heel),
@@ -481,7 +482,6 @@ impl TryFrom<RawArrangement> for ReelArrangement {
                 .map_err(|_| ArrangementError::PassOutOfRange { track, pass: entry.pass })?;
             Ok(EntryPoint { tour, part, pass })
         };
-        let melody = take_required(TrackId::Melody)?;
         let heel = take_required(TrackId::Heel)?;
         let toe = take_required(TrackId::Toe)?;
 
@@ -496,6 +496,7 @@ impl TryFrom<RawArrangement> for ReelArrangement {
                 .map_err(|_| ArrangementError::PassOutOfRange { track, pass: entry.pass })?;
             Ok(Some(EntryPoint { tour, part, pass }))
         };
+        let melody = take_optional(TrackId::Melody)?;
         let chords = take_optional(TrackId::Chords)?;
         let bass = take_optional(TrackId::Bass)?;
         let countermelody = take_optional(TrackId::Countermelody)?;
@@ -524,7 +525,7 @@ impl ReelArrangement {
         Self {
             tours_per_tune,
             entries: TrackEntries {
-                melody: start,
+                melody: Some(start),
                 chords: Some(start),
                 bass: Some(start),
                 heel: start,
@@ -610,6 +611,17 @@ impl ReelArrangement {
         if position.tune_in_set > 1 {
             return true;
         }
+        position.ordinal() >= self.entry_ordinal(entry, form)
+    }
+
+    /// Vrai si `track` joue dès la première mesure de la forme au premier air d'un set.
+    #[must_use]
+    pub fn opens(&self, track: TrackId, form: &ProfileForm) -> bool {
+        self.entry_opt(track).is_some_and(|entry| self.entry_ordinal(entry, form) == 0)
+    }
+
+    /// Rang 0-based de la passe d'entrée dans l'air (tours × passes du schéma).
+    fn entry_ordinal(&self, entry: EntryPoint, form: &ProfileForm) -> usize {
         let last_tour = self.tours_per_tune.max(1);
         let sequence = form
             .sequence
@@ -618,7 +630,7 @@ impl ReelArrangement {
             .filter(|(_, part)| **part == entry.part.0)
             .nth(entry.pass - 1)
             .map_or(form.sequence.len(), |(i, _)| i);
-        position.ordinal() >= (entry.tour.min(last_tour) - 1) * form.sequence.len() + sequence
+        (entry.tour.min(last_tour) - 1) * form.sequence.len() + sequence
     }
 }
 

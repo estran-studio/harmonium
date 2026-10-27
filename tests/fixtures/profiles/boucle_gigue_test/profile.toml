@@ -1,0 +1,128 @@
+# Fixture G4 (014), second style (principe VIII) : boucle de 2 mesures en 6/8,
+# sans cadence, mélodie entrant à la passe 2. Banques `open`, `run`, `turn`
+# (`arp` de poids nul, banque non exigée).
+[files]
+cells = "cells.toml"
+dynamics = "dynamics.toml"
+
+[meta]
+id = "boucle_gigue_test"
+name = "Fixture boucle 2 mesures en 6/8"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test"]
+corpus = "Aucun corpus : cellules synthétiques écrites pour les tests"
+
+[meter]
+time_signature = { numerator = 6, denominator = 8 }
+steps_per_bar = 12
+steps_per_unit = 2
+steps_per_pulse = 6
+pulses_per_bar = 2
+default_swing_ratio = 0.5
+default_bpm = 150.0
+min_bpm = 130.0
+max_bpm = 170.0
+
+[form]
+sequence = [0, 0, 0, 0]
+[[form.parts]]
+name = "Boucle"
+melody_center_offset = 0
+roles = ["Free", "Open"]
+
+[melody]
+cell_units = 6
+strong_units = [0, 3]
+weak_units = [1, 2, 4, 5]
+key_modes = [{ key = 2, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 2
+weight_role_arp = 0
+weight_role_turn = 1
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "trad_functional"
+steps_per_chord = 6
+[[harmony.candidates]]
+mode = "ionian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Major"}, {degree="VI",quality="Minor"}]
+[[harmony.candidates]]
+mode = "mixolydian"
+chords = [{degree="I",quality="Major"}, {degree="IV",quality="Major"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}]
+[[harmony.candidates]]
+mode = "dorian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Major"}, {degree="BVII",quality="Major"}, {degree="V",quality="Minor"}]
+[[harmony.candidates]]
+mode = "aeolian"
+chords = [{degree="I",quality="Minor"}, {degree="IV",quality="Minor"}, {degree="V",quality="Minor"}, {degree="BVII",quality="Major"}, {degree="VI",quality="Major"}]
+
+[accompaniment]
+strong_steps = [0, 6]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 59
+hits = [
+  { step = 0, degree = "root", duration = 3, velocity = 72 },
+  { step = 6, degree = "root", duration = 3, velocity = 72 },
+]
+
+[accompaniment.chords]
+center = 60
+max_drift = 6
+default_pattern = 0
+patterns = [{ hits = [{ step = 3, duration = 1, velocity = 64 }, { step = 9, duration = 1, velocity = 64 }] }]
+
+[percussion]
+heel_note = 51
+toe_note = 42
+heel_velocity = 55
+toe_velocity = 45
+feet_gain = 1.0
+velocity_humanize = 0
+patterns = [
+  { density = 0, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 6, track = "Heel", delta_velocity = 0 }] },
+  { density = 1, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 3, track = "Toe", delta_velocity = 0 }, { step = 6, track = "Heel", delta_velocity = 0 }, { step = 9, track = "Toe", delta_velocity = 0 }] },
+  { density = 2, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 3, track = "Toe", delta_velocity = 0 }, { step = 6, track = "Heel", delta_velocity = 0 }, { step = 9, track = "Toe", delta_velocity = 0 }] },
+]
+
+[instruments]
+melody_program = 40
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[arrangement]
+tours_per_tune = 8
+[arrangement.entries]
+Melody = { tour = 1, part = 0, pass = 2 }
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+[arrangement.intro]
+forms = []
+pickup_eighths = 0
+
+[ornaments]
+rate_scale = 1.0
+
+[ornaments.types.grace_single]
+written_per_100_notes = 20.0
+min_carrier_eighths = 0.5
+span = 0.4
+velocity_scale = 0.75

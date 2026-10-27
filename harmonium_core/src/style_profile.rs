@@ -105,10 +105,26 @@ impl ProfileRole {
             _ => None,
         }
     }
-    fn needs_cell_role(&self, role: crate::trad::CellRole) -> bool {
+    /// Vrai si le rôle peut tirer une cellule de `role` : rôle imposé, ou rôle libre de
+    /// poids positif (`free` : [`crate::ReelFiddleParams::free_role_weights`]).
+    fn needs_cell_role(
+        &self,
+        role: crate::trad::CellRole,
+        free: &[(crate::trad::CellRole, u32)],
+    ) -> bool {
         match self {
-            Self::Fixed(fixed) => fixed.forced_cell_role() == Some(role),
-            Self::Choice { choose } => choose.iter().any(|c| c.role.needs_cell_role(role)),
+            Self::Fixed(fixed) => {
+                fixed.forced_cell_role() == Some(role)
+                    || (fixed.draws_free_cell() && free.iter().any(|&(r, w)| r == role && w > 0))
+            }
+            Self::Choice { choose } => choose.iter().any(|c| c.role.needs_cell_role(role, free)),
+            _ => false,
+        }
+    }
+    fn draws_free_cell(&self) -> bool {
+        match self {
+            Self::Fixed(fixed) => fixed.draws_free_cell(),
+            Self::Choice { choose } => choose.iter().any(|c| c.role.draws_free_cell()),
             _ => false,
         }
     }
@@ -293,8 +309,8 @@ pub struct ProfilePart {
     pub link_previous: bool,
     #[serde(default)]
     pub rhythm: Vec<PositionRhythm>,
-    /// Mesures sans aucun ornement (cadences). Omission : protéger la dernière mesure ;
-    /// [] : aucune protection.
+    /// Mesures sans aucun ornement (cadences). Omission : protéger la dernière mesure si son
+    /// rôle est cadentiel ; [] : aucune protection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ornament_protected_bars: Option<Vec<usize>>,
 }
@@ -341,19 +357,7 @@ impl ProfileForm {
     }
     pub(crate) fn phrase_end(&self, part: usize, offset: usize, role: ImposedRole) -> bool {
         let ends = &self.parts[part].phrase_ends;
-        if ends.is_empty() {
-            matches!(
-                role,
-                ImposedRole::CadHalf
-                    | ImposedRole::CadFull
-                    | ImposedRole::CadTonic
-                    | ImposedRole::CadOpen
-                    | ImposedRole::CadFifth
-                    | ImposedRole::CadOther
-            )
-        } else {
-            ends.contains(&(offset + 1))
-        }
+        if ends.is_empty() { role.is_cadential() } else { ends.contains(&(offset + 1)) }
     }
     pub fn bars_per_tour(&self) -> usize {
         self.sequence.iter().map(|&p| self.parts[p].roles.len()).sum()
@@ -476,7 +480,7 @@ impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
     pub fn has_track(&self, track: TrackId) -> bool {
         match track {
-            TrackId::Melody => true,
+            TrackId::Melody => self.arrangement.has_track(TrackId::Melody),
             TrackId::Countermelody => {
                 self.heterophony.is_some()
                     && self.instruments.countermelody_program.is_some()
@@ -654,6 +658,11 @@ impl StyleProfile {
                 self.arrangement.has_track(TrackId::Countermelody),
                 "arrangement.entries.Countermelody",
                 "entrée requise avec heterophony",
+            )?;
+            check(
+                self.has_track(TrackId::Melody),
+                "arrangement.entries.Melody",
+                "heterophony lit la piste Melody : entrée requise",
             )?;
         }
         self.set.validate()?;
@@ -884,13 +893,10 @@ impl StyleProfile {
                 "longueur différente de cell_units",
             )?;
         }
-        if self
-            .form
-            .parts
-            .iter()
-            .flat_map(|p| p.roles.iter().chain(p.second_ending.iter()))
-            .any(ProfileRole::uses_varied_end)
-        {
+        // Rôles que la forme emploie, seconde fin comprise.
+        let roles =
+            || self.form.parts.iter().flat_map(|p| p.roles.iter().chain(p.second_ending.iter()));
+        if roles().any(ProfileRole::uses_varied_end) {
             check(
                 self.melody.cell_units >= 2,
                 "melody.cell_units",
@@ -917,21 +923,12 @@ impl StyleProfile {
                 "VariedEndOf exige deux fins distinctes avec attaque à mi-mesure",
             )?;
         }
+        // Banques exigées par les seuls rôles employés ; un rôle libre ne compte que
+        // pour un poids positif.
+        let free = self.melody.params.free_role_weights();
         for role in crate::trad::CellRole::ALL {
-            let needed = self
-                .form
-                .parts
-                .iter()
-                .flat_map(|p| p.roles.iter().chain(p.second_ending.iter()))
-                .any(|r| r.needs_cell_role(role))
-                || matches!(
-                    role,
-                    crate::trad::CellRole::Run
-                        | crate::trad::CellRole::Arp
-                        | crate::trad::CellRole::Turn
-                );
             check(
-                !needed
+                !roles().any(|r| r.needs_cell_role(role, &free))
                     || self
                         .melody
                         .cells
@@ -999,13 +996,11 @@ impl StyleProfile {
             "attendu 1..127",
         )?;
         check(
-            u64::from(p.weight_role_run)
-                + u64::from(p.weight_role_arp)
-                + u64::from(p.weight_role_turn)
-                <= u64::from(u32::MAX)
-                && (p.weight_role_run > 0 || p.weight_role_arp > 0 || p.weight_role_turn > 0),
+            free.iter()
+                .try_fold(0u32, |sum, &(_, w)| sum.checked_add(w))
+                .is_some_and(|total| total > 0 || !roles().any(ProfileRole::draws_free_cell)),
             "melody.params.weight_role_run",
-            "poids libres : somme positive sans débordement",
+            "poids libres : somme sans débordement, positive si la forme emploie un rôle libre",
         )?;
         check(
             matches!(self.harmony.model.as_str(), "trad_functional" | "jazz_functional" | "none"),

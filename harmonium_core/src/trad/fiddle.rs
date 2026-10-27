@@ -854,24 +854,15 @@ fn pick_cell_for_bar(
         }
     }
 
-    // Repli déterministe sur la candidate la plus proche parmi les rôles permis (D6 : jamais d'échec).
-    let allowed_roles: &[CellRole] = match imposed.forced_cell_role() {
-        Some(CellRole::Open) => &[CellRole::Open],
-        Some(CellRole::CadHalf) => &[CellRole::CadHalf],
-        Some(CellRole::CadFull) => &[CellRole::CadFull],
-        Some(other) => std::slice::from_ref(match other {
-            CellRole::Run => &CellRole::Run,
-            CellRole::Arp => &CellRole::Arp,
-            CellRole::Turn => &CellRole::Turn,
-            CellRole::Open => &CellRole::Open,
-            CellRole::CadHalf => &CellRole::CadHalf,
-            CellRole::CadFull => &CellRole::CadFull,
-        }),
-        None => &[CellRole::Run, CellRole::Arp, CellRole::Turn],
+    // Repli déterministe sur la candidate la plus proche parmi les rôles permis (D6 : jamais
+    // d'échec) : le rôle imposé, sinon les rôles libres de poids positif.
+    let allowed = |role: CellRole| match imposed.forced_cell_role() {
+        Some(forced) => role == forced,
+        None => params.free_role_weights().iter().any(|&(r, w)| r == role && w > 0),
     };
 
     for base_cell in &bank.cells {
-        if !allowed_roles.contains(&base_cell.role) || !is_eligible_cell(base_cell, excluded_cell) {
+        if !allowed(base_cell.role) || !is_eligible_cell(base_cell, excluded_cell) {
             continue;
         }
         for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
@@ -900,7 +891,7 @@ fn pick_cell_for_bar(
 
     // Repli ultime si toutes les cellules permises étaient exclues (ex. banque à 1 cellule).
     for base_cell in &bank.cells {
-        if !allowed_roles.contains(&base_cell.role) || !base_cell.respects_cadence() {
+        if !allowed(base_cell.role) || !base_cell.respects_cadence() {
             continue;
         }
         for shift in contour_shifts_for_cell(base_cell, plan, tonic_midi, target_midi) {
@@ -932,11 +923,7 @@ fn pick_cell_for_bar(
 
 /// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`ReelFiddleParams`].
 fn draw_free_cell_role(params: &ReelFiddleParams, rng: &mut dyn RngCore) -> CellRole {
-    let candidates = [
-        (CellRole::Run, params.weight_role_run),
-        (CellRole::Arp, params.weight_role_arp),
-        (CellRole::Turn, params.weight_role_turn),
-    ];
+    let candidates = params.free_role_weights();
     let total: u32 = candidates.iter().map(|&(_, w)| w).sum();
     if total == 0 {
         return CellRole::Run;

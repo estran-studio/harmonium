@@ -1111,7 +1111,7 @@ impl TradGenerator {
         };
 
         // Tonique accentuée sur le pas 0 (temps 1), durée 8 pas (blanche)
-        if self.musical_params.enable_melody {
+        if self.musical_params.enable_melody && self.tuning.profile.has_track(TrackId::Melody) {
             measure.add_note(
                 TrackId::Melody,
                 TimelineNote {
@@ -1285,12 +1285,14 @@ impl TradGenerator {
         position: &TunePosition,
     ) -> BarContext {
         let part = &self.profile.form.parts[position.part.0];
-        let protected = part
-            .ornament_protected_bars
-            .as_ref()
-            .map_or(position.bar_in_strain == part.roles.len(), |bars| {
-                bars.contains(&position.bar_in_strain)
-            });
+        // Omission : la dernière mesure de la partie, si elle porte une cadence.
+        let protected = part.ornament_protected_bars.as_ref().map_or_else(
+            || {
+                position.bar_in_strain == part.roles.len()
+                    && tune.plan.bar_role(self.performed_bar(position)).role.is_cadential()
+            },
+            |bars| bars.contains(&position.bar_in_strain),
+        );
         let (_, end) = self.phrase_window(tune, position);
         let params = &self.tuning.profile.melody.params;
         BarContext {
@@ -1473,18 +1475,20 @@ impl TradGenerator {
             plan.resolve_roles(rng);
             let mut fiddle_params = self.tuning.profile.melody.params.clone();
             let intensity = self.effective_intensity(tune_index);
-            fiddle_params.weight_role_run = (fiddle_params.weight_role_run as f32
-                * dynamics.run_weight.eval(intensity))
-            .round()
-            .max(1.0) as u32;
-            fiddle_params.weight_role_arp = (fiddle_params.weight_role_arp as f32
-                * dynamics.arp_weight.eval(intensity))
-            .round()
-            .max(1.0) as u32;
-            fiddle_params.weight_role_turn = (fiddle_params.weight_role_turn as f32
-                * dynamics.turn_weight.eval(intensity))
-            .round()
-            .max(1.0) as u32;
+            // Courbe d'intensité sur un rôle employé (au moins 1) ; un poids nul reste nul.
+            let scale = |weight: u32, curve: &super::dynamics::Curve| {
+                if weight == 0 {
+                    0
+                } else {
+                    (weight as f32 * curve.eval(intensity)).round().max(1.0) as u32
+                }
+            };
+            fiddle_params.weight_role_run =
+                scale(fiddle_params.weight_role_run, &dynamics.run_weight);
+            fiddle_params.weight_role_arp =
+                scale(fiddle_params.weight_role_arp, &dynamics.arp_weight);
+            fiddle_params.weight_role_turn =
+                scale(fiddle_params.weight_role_turn, &dynamics.turn_weight);
             fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
                 + dynamics.color_register.eval(dynamics.valence_input(valence)))
             .round()
@@ -1679,16 +1683,20 @@ impl TradGenerator {
         } else {
             0
         };
-        let pickup_bars = usize::from(intro_config.pickup_eighths > 0);
+        // La levée mène à la première note de la forme : seulement si la mélodie la joue.
+        let profile = &self.tuning.profile;
+        let melody_opens = profile.has_track(TrackId::Melody)
+            && (!first_in_set || profile.arrangement.opens(TrackId::Melody, &self.profile.form));
+        let pickup_eighths = if melody_opens { intro_config.pickup_eighths } else { 0 };
+        let pickup_bars = usize::from(pickup_eighths > 0);
         let content_bars =
             if first_in_set { form_bars.max(pickup_bars) } else { form_bars + pickup_bars };
         let intro_bars = leading_silence + content_bars;
 
         // Calculer les notes de levée
-        let pickup_notes = if intro_config.pickup_eighths > 0 && intro_bars > 0 {
-            let first_note_midi =
-                first_melody_note_midi(fiddle, plan, &self.tuning.profile.melody.params);
-            compute_pickup_notes(first_note_midi, intro_config.pickup_eighths, plan.key, plan.mode)
+        let pickup_notes = if pickup_eighths > 0 && intro_bars > 0 {
+            let first_note_midi = first_melody_note_midi(fiddle, plan, &profile.melody.params);
+            compute_pickup_notes(first_note_midi, pickup_eighths, plan.key, plan.mode)
         } else {
             Vec::new()
         };

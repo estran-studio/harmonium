@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     style_profile::StyleProfile,
     trad::{
+        CellRole,
         accomp_profile::{BassVoice, ChordVoice},
         harmony::ChordDegree,
     },
@@ -32,6 +33,18 @@ pub struct ReelFiddleParams {
 impl Default for ReelFiddleParams {
     fn default() -> Self {
         StyleProfile::default().melody.params
+    }
+}
+impl ReelFiddleParams {
+    /// Poids des rôles de cellule libres, tirés par `Free`, `CadOpen` et `CadOther`.
+    /// Un poids nul retire le rôle du tirage : sa banque n'est pas exigée.
+    #[must_use]
+    pub const fn free_role_weights(&self) -> [(CellRole, u32); 3] {
+        [
+            (CellRole::Run, self.weight_role_run),
+            (CellRole::Arp, self.weight_role_arp),
+            (CellRole::Turn, self.weight_role_turn),
+        ]
     }
 }
 
