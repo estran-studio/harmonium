@@ -1,9 +1,9 @@
 # Harmonium
 
-Moteur Rust de musique procédurale de style folklorique québécois /
-canadien-français, piloté en temps réel par l'état d'un jeu. Conçu pour
-« 1837 » (roguelike Rust/Bevy) : le beat est exposé au gameplay, les jauges
-émotionnelles du personnage pilotent la musique.
+Moteur Rust de musique procédurale tous styles — traditions, musiques de jeu,
+genres fusionnés — piloté en temps réel par l'état d'un jeu. Premier client :
+« 1837 » (roguelike Rust/Bevy) ; le beat est exposé au gameplay, quatre
+émotions pilotent la musique.
 
 Direction et principes : [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playback/plan.md).
