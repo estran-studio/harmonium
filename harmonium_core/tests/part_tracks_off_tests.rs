@@ -194,3 +194,30 @@ fn validation_piste_inconnue_doublon_et_motif_sans_emploi() -> TestResult {
     p.validate()?;
     Ok(())
 }
+
+#[test]
+fn gigue_bourdon_pieds_micro_timing_publie() -> TestResult {
+    // Principe VIII (014-G7c) : le micro-timing des pieds employé par
+    // `nt_desert` vit aussi dans un autre style (gigue 6/8), en données.
+    let p = load_fixture("gigue_bourdon")?;
+    p.validate()?;
+    let snapshots = stream(&p, 1, 32)?;
+    let mut pieds = 0;
+    let mut decales = 0;
+    for s in snapshots.iter().take(8) {
+        for n in &s.notes {
+            if n.track == TrackId::Heel as u8 || n.track == TrackId::Toe as u8 {
+                pieds += 1;
+                assert!(
+                    (-20..=20).contains(&n.performance.offset),
+                    "décalage hors ±0,02 pas, mesure {} : {n:?}",
+                    s.index
+                );
+                decales += i32::from(n.performance.offset != 0);
+            }
+        }
+    }
+    assert!(pieds > 0, "aucun coup de pieds en A");
+    assert!(decales > 0, "micro-timing nul sur tous les pieds");
+    Ok(())
+}

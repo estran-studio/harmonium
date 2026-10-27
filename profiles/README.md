@@ -20,14 +20,14 @@ utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
 | `gigue_acadienne` (R1) | Acadie ; 55 gigues | 6/8, 180 | violon, **piano** | oui | violon |
 | `reel_britannique_coloniale` (R1) | britannique colonial ; 493 reels | 2/2, 208 | violon, guitare, basse | non | non |
 | `valse_britannique_coloniale` (R1) | britannique colonial ; 60 valses | 3/4, 138 | violon, guitare, basse | non | non |
-| `nt_desert` | Nuclear Throne, désert (Jukio Kallio, 2015) ; Fläshyn / A Way | 12/8, 210 (= 140 pointées) | sifflement 78, scies 81, kit rock sec | oui (kit 128/0 : 36, 38, 42) | non (sifflement tardif au pont) |
+| `nt_desert` | Nuclear Throne, désert (Jukio Kallio, 2015) ; Fläshyn / A Way | 12/8, 210 (= 140 pointées) | nappe 89, scie 81, kit rock sec | oui (kit 128/0 : 36, 38, 42) | non (mélodie retirée, G7c) |
 
 Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois
 derniers (phase 013, R1) sont construits par le même chemin — références du labo, `mine-cells`, formules de
 [Source des réglages distribués](#source-des-réglages-distribués-p3-t1-contrat-11) — par
 `specs/013-moteur-dans-le-jeu/r1_profils.py` (`selftest` rejoue les formules sur quatre profils existants) ;
 mesures et limites dans le plan 013, section R1.
-Le onzième, `nt_desert` (phase 014, G7), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7-nt-desert.md`.
+Le onzième, `nt_desert` (phase 014, G7 puis G7c), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md`, `specs/014-styles-de-jeu/g7-nt-desert.md` et `specs/014-styles-de-jeu/g7c-nt-desert-ecoute.md`.
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
@@ -602,10 +602,12 @@ leurs limites sont dans [Mesures V1](../specs/012-vie-realisme/plan.md#mesures-v
 ## Interprétation
 
 `[performance.tracks.<piste>]` fonctionne pour `Melody`, `Chords`, `Bass`,
-`Heel` et `Toe`. Les profils distribués n'ajoutent d'interprétation qu'à la
-mélodie ; les durées écrites de basse/guitare et les samples de pieds restent
-ceux des banques. **Section absente ou tous les réglages à zéro : aucun
-tirage supplémentaire**, mêmes hauteurs, vélocités et durées qu'avant V2.
+`Heel` et `Toe`. Les profils trad distribués n'ajoutent d'interprétation qu'à
+la mélodie ; `nt_desert` y ajoute le micro-timing et l'accent des pieds
+(jitter et règle `Accent` sur `Heel`/`Toe`, G7c) ; les durées écrites de
+basse/guitare et les samples de pieds restent ceux des banques. **Section absente
+ou tous les réglages à zéro : aucun tirage supplémentaire**, mêmes hauteurs,
+vélocités et durées qu'avant V2.
 Les champs omis sont neutres ; `velocity_min = velocity_max = 0` désactive
 le bornage supplémentaire.
 

@@ -1,8 +1,9 @@
 # Pilotage par les 4 émotions. Neutre (0,5/0,3/0,5/0,5) : groove principal à
 # 210 noires. Arousal : tempo et batterie. Density : couches (à 0,2 ne reste
-# que la scie, façon bourdon de A Way). Tension : riff et contretemps, sans
-# dominante substituée (boucle G2). Valence : phrygien sombre (G#, voire A
-# façon A Way en bas) contre mixolydien plus clair en haut.
+# que la nappe, façon bourdon de A Way ; la mélodie est retirée en G7c).
+# Tension : riff et contretemps, sans dominante substituée (boucle G2).
+# Valence : phrygien sombre (G#, voire A façon A Way en bas) contre
+# mixolydien plus clair en haut.
 neutral_valence = 0.3
 valence_range = [-1.0, 1.0]
 mode_shift_boundary = "part"
@@ -28,7 +29,6 @@ brightness_accent = [[0.0, -8.0], [0.65, 0.0], [1.0, 10.0]]
 density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
 density_chop = [[0.0, 0.0], [1.0, 0.0]]
 density_tracks = [
-  { track = "Melody", minimum = 0.35 },
   { track = "Bass", minimum = 0.25 },
   { track = "Heel", minimum = 0.3 },
   { track = "Toe", minimum = 0.35 },
