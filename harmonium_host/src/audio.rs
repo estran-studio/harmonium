@@ -9,7 +9,7 @@ use harmonium_audio::backend::{
     recorder::{OverflowPolicy, RecorderBackend},
     synth_backend::SynthBackend,
 };
-use harmonium_core::{log, params::SessionConfig};
+use harmonium_core::log;
 
 use crate::{
     clock::{ClockReader, TransportClock},
@@ -19,54 +19,39 @@ use crate::{
     },
 };
 
-/// Create a decoupled timeline stream for real-time playback.
+/// Control side of an engine: everything the main thread drives, the
+/// [`PlaybackEngine`] (audio side) being handed to a stream or to the caller.
+pub struct EngineControls {
+    /// Main-thread composer (direct calls, no queue).
+    pub composer: MusicComposer,
+    /// Commands to the playback engine.
+    pub commands: rtrb::Producer<PlaybackCommand>,
+    /// Reports published by the playback engine.
+    pub reports: rtrb::Consumer<harmonium_core::EngineReport>,
+    /// Packed transport position `(bar, step)`, written by the playback
+    /// engine and read lock-free.
+    pub transport_position: Arc<AtomicU64>,
+    /// Lock-free reader of the published [`TransportClock`].
+    pub clock_reader: ClockReader,
+    /// Completed recordings.
+    pub finished_recordings: crate::FinishedRecordings,
+}
+
+/// Build the whole engine graph at `sample_rate`: the control side and the
+/// playback engine that renders it. No audio device is touched.
 ///
-/// Returns:
-/// - `cpal::Stream` — audio output stream
-/// - `SessionConfig` — session key/scale/bpm
-/// - `Mutex<MusicComposer>` — main-thread composer (direct calls, no queue)
-/// - `rtrb::Producer<PlaybackCommand>` — send commands to playback engine
-/// - `rtrb::Consumer<EngineReport>` — receive reports from playback engine
-/// - `FontQueue` — SoundFont loading queue
-/// - `Arc<AtomicU64>` — packed transport position `(bar, step)`, written by
-///   the playback engine, read lock-free
-/// - `ClockReader` — lock-free reader of the published [`TransportClock`],
-///   for a third thread (the game)
-/// - `FinishedRecordings` — completed recordings
-#[allow(clippy::type_complexity)]
-pub fn create_timeline_stream(
+/// `overflow` is the recorder's policy: real time drops rather than blocks
+/// the audio thread; offline blocks, so recordings are complete.
+pub(crate) fn build_engine(
     sf2_bytes: Option<&[u8]>,
     feet_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
-) -> Result<
-    (
-        cpal::Stream,
-        SessionConfig,
-        Mutex<MusicComposer>,
-        rtrb::Producer<PlaybackCommand>,
-        rtrb::Producer<crate::playback::LiveMidiEvent>,
-        rtrb::Consumer<harmonium_core::EngineReport>,
-        crate::FontQueue,
-        Arc<AtomicU64>,
-        ClockReader,
-        crate::FinishedRecordings,
-    ),
-    String,
-> {
-    let host = cpal::default_host();
-    let device =
-        host.default_output_device().ok_or_else(|| "No output device found".to_string())?;
-
-    let config = device.default_output_config().map_err(|e| e.to_string())?;
-    let sample_rate = config.sample_rate().0 as f64;
-    let channels = config.channels() as usize;
-
-    log::info(&format!("Decoupled Engine - Sample rate: {}, Channels: {}", sample_rate, channels));
-
+    sample_rate: f64,
+    overflow: OverflowPolicy,
+) -> (EngineControls, PlaybackEngine) {
     // Command/report ring buffers (lock-free for audio thread)
-    let (playback_cmd_tx, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    let (live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(256);
-    let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
+    let (commands, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
+    let (report_tx, reports) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
 
     // Handoff rings: composer → playback staged measures, playback →
     // composer returned boxes (deallocated on the main thread).
@@ -80,9 +65,6 @@ pub fn create_timeline_stream(
     let (clock_tx, clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
     let clock_reader = ClockReader::from_output(clock_output);
 
-    // Font queue (shared between NativeHandle and PlaybackEngine)
-    let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
-
     // Create renderer: every logical channel on SoundFont bank 0
     let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
     let inner_backend: Box<dyn AudioRenderer> = Box::new(SynthBackend::new(
@@ -94,37 +76,68 @@ pub fn create_timeline_stream(
     ));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
-    let recorder_backend = Box::new(RecorderBackend::new(
+    let recorder_backend = Box::new(RecorderBackend::with_policy(
         inner_backend,
         finished_recordings.clone(),
         sample_rate as u32,
+        overflow,
     ));
 
-    // Create composer (main thread)
-    let composer = MusicComposer::new(
-        sample_rate,
-        measure_tx,
-        return_rx,
-        transport_position.clone(),
-        font_queue.clone(),
-    );
-    let session_config = composer.config.clone();
+    // NOTE: No pre-generation here. The caller sets params first, then
+    // generates: pre-generating with defaults would produce bars that don't
+    // match the user's settings.
+    let composer =
+        MusicComposer::new(sample_rate, measure_tx, return_rx, transport_position.clone());
 
-    // NOTE: No pre-generation here. The caller (NativeHandle::start → initialize_with_config)
-    // sets params first, then generates. Pre-generating with defaults would produce
-    // bars that don't match the user's saved settings.
-
-    // Create playback engine (will be moved into CPAL closure)
-    let mut playback = PlaybackEngine::new(
+    let playback = PlaybackEngine::new(
         sample_rate,
         recorder_backend,
         measure_rx,
         return_tx,
         playback_cmd_rx,
-        live_midi_rx,
         report_tx,
         transport_position.clone(),
         clock_tx,
+    );
+
+    (
+        EngineControls {
+            composer,
+            commands,
+            reports,
+            transport_position,
+            clock_reader,
+            finished_recordings,
+        },
+        playback,
+    )
+}
+
+/// Create a decoupled timeline stream for real-time playback: the engine
+/// graph of [`build_engine`] with its playback engine moved into a `cpal`
+/// output stream (already playing).
+pub fn create_timeline_stream(
+    sf2_bytes: Option<&[u8]>,
+    feet_sf2_bytes: Option<&[u8]>,
+    odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+) -> Result<(cpal::Stream, EngineControls), String> {
+    let host = cpal::default_host();
+    let device =
+        host.default_output_device().ok_or_else(|| "No output device found".to_string())?;
+
+    let config = device.default_output_config().map_err(|e| e.to_string())?;
+    let sample_rate = config.sample_rate().0 as f64;
+    let channels = config.channels() as usize;
+
+    log::info(&format!("Decoupled Engine - Sample rate: {}, Channels: {}", sample_rate, channels));
+
+    // Playback engine: moved into the CPAL closure.
+    let (controls, mut playback) = build_engine(
+        sf2_bytes,
+        feet_sf2_bytes,
+        odin_presets,
+        sample_rate,
+        OverflowPolicy::DropAndCount,
     );
 
     let err_fn = |err| log::error(&format!("an error occurred on stream: {}", err));
@@ -150,20 +163,7 @@ pub fn create_timeline_stream(
 
     stream.play().map_err(|e| e.to_string())?;
 
-    let composer_mutex = Mutex::new(composer);
-
-    Ok((
-        stream,
-        session_config,
-        composer_mutex,
-        playback_cmd_tx,
-        live_midi_tx,
-        report_rx,
-        font_queue,
-        transport_position,
-        clock_reader,
-        finished_recordings,
-    ))
+    Ok((stream, controls))
 }
 
 /// Create a timeline engine for offline (non-realtime) rendering.
@@ -187,65 +187,18 @@ pub fn create_offline_engine(
     ),
     String,
 > {
-    let (playback_cmd_tx, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    // Offline render has no live MIDI input; the consumer simply stays empty.
-    let (_live_midi_tx, live_midi_rx) = rtrb::RingBuffer::<crate::playback::LiveMidiEvent>::new(1);
-    let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
-
-    // Handoff rings: composer → playback staged measures, playback →
-    // composer returned boxes (deallocated on the main thread).
-    let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
-    let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
-    // Shared transport position, packed (bar, step) — initial (1, 0)
-    let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
-
-    // Predictive clock: single writer (audio callback) → lock-free reader.
-    let initial_clock = TransportClock::initial(sample_rate as u32);
-    let (clock_tx, clock_output) = triple_buffer::TripleBuffer::new(&initial_clock).split();
-    let clock_reader = ClockReader::from_output(clock_output);
-
-    let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
-
-    let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
-    let inner_backend: Box<dyn AudioRenderer> = Box::new(SynthBackend::new(
-        sample_rate,
-        sf2_bytes,
-        feet_sf2_bytes,
-        &default_routing,
-        odin_presets,
-    ));
-
-    let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     // Offline there is no deadline: block rather than drop, so recordings are
     // complete and published when the stop command returns.
-    let recorder_backend = Box::new(RecorderBackend::with_policy(
-        inner_backend,
-        finished_recordings.clone(),
-        sample_rate as u32,
-        OverflowPolicy::Block,
-    ));
-
-    let composer = MusicComposer::new(
-        sample_rate,
-        measure_tx,
-        return_rx,
-        transport_position.clone(),
-        font_queue,
-    );
-
-    let playback = PlaybackEngine::new(
-        sample_rate,
-        recorder_backend,
-        measure_rx,
-        return_tx,
-        playback_cmd_rx,
-        live_midi_rx,
-        report_tx,
-        transport_position,
-        clock_tx,
-    );
-
-    Ok((composer, playback, playback_cmd_tx, report_rx, clock_reader, finished_recordings))
+    let (controls, playback) =
+        build_engine(sf2_bytes, feet_sf2_bytes, odin_presets, sample_rate, OverflowPolicy::Block);
+    Ok((
+        controls.composer,
+        playback,
+        controls.commands,
+        controls.reports,
+        controls.clock_reader,
+        controls.finished_recordings,
+    ))
 }
 
 #[cfg(test)]

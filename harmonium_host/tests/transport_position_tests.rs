@@ -23,8 +23,8 @@ use std::{
 use harmonium::{
     composer::MusicComposer,
     playback::{
-        LiveMidiEvent, MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP,
-        TICKS_PER_BEAT, TaggedMeasure, TransportPosition, pack, unpack,
+        MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TICKS_PER_BEAT,
+        TaggedMeasure, TransportPosition, pack, unpack,
     },
 };
 use harmonium_audio::backend::AudioRenderer;
@@ -65,8 +65,6 @@ struct Harness {
     engine: PlaybackEngine,
     transport: Arc<AtomicU64>,
     cmd_tx: rtrb::Producer<PlaybackCommand>,
-    /// Kept alive so the engine's live-MIDI consumer never sees a closed ring.
-    _live_tx: rtrb::Producer<LiveMidiEvent>,
     /// Reports are drained lazily; the consumer just must outlive the engine.
     _report_rx: rtrb::Consumer<harmonium_core::EngineReport>,
     /// Return ring: played boxes flow back here; kept alive (and drained)
@@ -76,7 +74,6 @@ struct Harness {
 
 fn make_playback(n_bars: usize) -> Harness {
     let (cmd_tx, cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    let (_live_tx, live_rx) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
     let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
@@ -100,13 +97,12 @@ fn make_playback(n_bars: usize) -> Harness {
         measure_rx,
         return_tx,
         cmd_rx,
-        live_rx,
         report_tx,
         transport.clone(),
         clock_tx,
     );
 
-    Harness { engine, transport, cmd_tx, _live_tx, _report_rx: report_rx, _return_rx: return_rx }
+    Harness { engine, transport, cmd_tx, _report_rx: report_rx, _return_rx: return_rx }
 }
 
 impl Harness {
@@ -284,7 +280,7 @@ fn position_is_stable_between_ticks() {
 // ─── T018: position reads take no composer lock ───
 
 /// The composer mutex is HELD on this thread while the position is read.
-/// `NativeHandle::transport_position` and the composer's own `playhead_bar`
+/// `LiveHost::transport_position` and the composer's own `playhead_bar`
 /// both read the packed atomic through their own `Arc` clones — a regression
 /// to composer-lock reads would deadlock here (std Mutex is not reentrant).
 #[test]
@@ -292,15 +288,8 @@ fn position_read_takes_no_composer_lock() {
     let (measure_tx, _measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (_return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     let transport = Arc::new(AtomicU64::new(pack(1, 0)));
-    let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let composer = MusicComposer::new_with_seed(
-        SAMPLE_RATE,
-        measure_tx,
-        return_rx,
-        transport.clone(),
-        font_queue,
-        42,
-    );
+    let composer =
+        MusicComposer::new_with_seed(SAMPLE_RATE, measure_tx, return_rx, transport.clone(), 42);
     let composer = Mutex::new(composer);
 
     let guard = composer.lock().unwrap();

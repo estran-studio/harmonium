@@ -1,15 +1,14 @@
-//! Unified command interface for controlling the engine
+//! Interface de commande unique du moteur.
 //!
-//! All control flows through EngineCommand (CLI, OSC).
-//! This replaces the previous triple buffer + SPSC rings + mutex architecture
-//! with a single lock-free command queue.
+//! Toute commande de jeu ou d'interface (REPL, OSC, studio) est un
+//! `EngineCommand` exécuté par l'hôte (`LiveHost::apply`) : une seule façon de
+//! piloter le moteur.
 
 use serde::{Deserialize, Serialize};
 
 use crate::events::RecordFormat;
 
-/// Unified command interface for controlling the engine
-/// All control flows through these commands (CLI, OSC)
+/// Commande de pilotage du moteur, exécutée par l'hôte vivant.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum EngineCommand {
     // === GLOBAL ===
@@ -19,7 +18,7 @@ pub enum EngineCommand {
     /// Clear the user's BPM override, returning to emotion-mapped BPM
     ResetBpm,
 
-    /// Set master volume (0.0-1.0)
+    /// Listening volume (0.0-1.0, linear, clamped): scales what is heard, not what is recorded
     SetMasterVolume(f32),
 
     /// Set time signature
@@ -45,8 +44,8 @@ pub enum EngineCommand {
     /// Set channel routing (channel 0-15, bank_id: -1 = default bank 0, >=0 = oxisynth bank)
     SetChannelRoute { channel: u8, bank_id: i32 },
 
-    /// Set velocity base (channel 0-15, velocity 0-127)
-    SetVelocityBase { channel: u8, velocity: u8 },
+    /// Mute/unmute audio output (generation still runs, but output buffer is zeroed)
+    SetOutputMute(bool),
 
     // === RECORDING ===
     /// Start recording (Wav | Midi | MusicXml)
@@ -83,32 +82,37 @@ pub enum EngineCommand {
     /// Used for reproducible sessions (e.g. restoring a saved track).
     SetSeed(u64),
 
-    /// Export timeline to MusicXML
-    ExportTimeline(RecordFormat),
-
     // === PLAYHEAD (soft seek) ===
     /// Seek playhead to a bar WITHOUT resetting the writehead.
     /// Re-fills the ring buffer from the writehead's committed ScoreTimeline.
     SeekPlayhead(usize),
 
-    /// Mute/unmute audio output (generation still runs, but output buffer is zeroed)
-    SetOutputMute(bool),
-
     // === WRITEHEAD ===
     /// Set the writehead lookahead distance (minimum 4 bars)
     SetWriteheadLookahead(usize),
 
-    // === STYLE PROFILE ===
+    // === TEMPO AUDIBLE ET GROOVE ===
+    /// Swing des croches (0,5 = droit, 0,75 = très marqué ; borné), audible à la mesure suivante.
+    SetSwing(f32),
+
+    /// Tempo audible : saut à la prochaine pulsation (`ramp_pulses == 0`) ou rampe linéaire sur
+    /// `ramp_pulses` pulsations. Prime sur le tempo des mesures jusqu'à `ClearAudibleTempo`.
+    SetAudibleTempo { bpm: f32, ramp_pulses: u8 },
+
+    /// Rend le tempo des mesures à la prochaine pulsation.
+    ClearAudibleTempo,
+
+    // === STYLE ===
     /// Installe un profil validé et sélectionne le générateur de profils.
     SetStyleProfile(Box<crate::style_profile::StyleProfile>),
 
-    /// Rétablit le profil embarqué et sélectionne son générateur.
-    ClearStyleProfile,
+    /// Densité de podorythmie (`0..=2`), audible à la mesure suivante.
+    SetFeetDensity(u8),
+
+    /// Énergie du style (`0..=1`), audible à la mesure suivante.
+    SetIntensity(f32),
 
     // === UTILITY ===
-    /// Request full state report
-    GetState,
-
     /// Reset engine to defaults
     Reset,
 }

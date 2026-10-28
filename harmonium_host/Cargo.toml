@@ -7,14 +7,9 @@ license.workspace = true
 [lints]
 workspace = true
 
-[[bin]]
-name = "harmonium"
-path = "src/main.rs"
-required-features = ["standalone"]
-
 [features]
 default = ["standalone"]
-standalone = ["cpal"]
+standalone = ["cpal", "dep:rosc"]
 # Synthé Odin par piste (GPLv3 via `harmonium_audio/odin`) : un binaire
 # compilé avec `odin` est GPL ; 1837 compile sans, en SoundFont.
 odin = ["harmonium_audio/odin"]
@@ -27,11 +22,10 @@ cpal = { version = "0.15", optional = true }
 rtrb = "0.3"
 triple_buffer = "8"
 arrayvec = "0.7"
-rosc = "0.10"
+rosc = { version = "0.10", optional = true }
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 rust-music-theory = "0.3.0"
-ctrlc = "3.4"
 
 [dev-dependencies]
 midly = "0.5.3"

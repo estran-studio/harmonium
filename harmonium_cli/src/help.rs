@@ -28,6 +28,8 @@ pub fn print_help() {
             ("set bpm <70-180>", "Set BPM (overrides emotion-mapped BPM)"),
             ("set volume <0-1>", "Set master volume"),
             ("set time <n/d>", "Set time signature (e.g., 4/4)"),
+            ("set rhythm|harmony|melody <on|off>", "Enable or disable a generation module"),
+            ("set lookahead <bars>", "Bars composed ahead of the playhead (minimum 4)"),
         ],
     );
 
@@ -54,6 +56,7 @@ pub fn print_help() {
                 "Énergie, articulation, pieds et chop ; effet à la prochaine mesure",
             ),
             ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
+            ("seed new", "Tire un nouveau seed au hasard et repart de la mesure 1"),
         ],
     );
 
@@ -63,13 +66,16 @@ pub fn print_help() {
             ("set gain <ch> <0-1>", "Set channel gain (ch: 0-4)"),
             ("set mute <ch>", "Mute channel (0=melody, 1=chords, 2=bass, 3=heel, 4=toe)"),
             ("set unmute <ch>", "Unmute channel"),
+            ("set route <ch> <bank>", "Route a channel to a SoundFont bank (-1 = bank 0)"),
+            ("set output <mute|unmute>", "Silence the output (generation keeps running)"),
         ],
     );
 
     print_section(
         "TIMELINE (timeline engine only)",
         &[
-            ("seek <bar>", "Seek playhead to a specific bar"),
+            ("seek <bar>", "Seek to a bar, replaying the generator deterministically"),
+            ("seek <bar> soft", "Move the playhead only, without recomposing"),
             ("loop <start> <end>", "Loop playback between two bars"),
             ("loop off", "Clear loop region"),
         ],
@@ -110,6 +116,7 @@ pub fn print_help() {
     println!("  {}", "emotion a+0.1 t-0.2        # Increase arousal, decrease tension".green());
     println!("  {}", "style gigue_quebecoise".green());
     println!("  {}", "seek 4                         # Jump to bar 4".green());
+    println!("  {}", "seek 2 soft                    # Replay composed bar 2".green());
     println!("  {}", "loop 4 8                       # Loop bars 4-8".green());
     println!("  {}", "record midi output.mid".green());
     println!();
@@ -133,6 +140,16 @@ pub fn print_command_help(command: &str) {
             println!("  {}  - BPM (70-180)", "bpm".green());
             println!("  {}  - Master volume (0-1)", "volume".green());
             println!("  {}  - Time signature (e.g., 4/4)", "time".green());
+            println!("  {}  - Module on/off: set rhythm|harmony|melody on|off", "rhythm".green());
+            println!("  {}  - Channel gain: set gain <ch> <0-1>", "gain".green());
+            println!("  {}  - Channel mute/unmute: set mute|unmute <ch>", "mute".green());
+            println!(
+                "  {}  - Channel to bank: set route <ch> <bank> (-1 = bank 0)",
+                "route".green()
+            );
+            println!("  {}  - Silence the output: set output mute|unmute", "output".green());
+            println!("  {}  - Writehead lookahead in bars (minimum 4)", "lookahead".green());
+            println!("  {}  - Session seed (see also: seed new)", "seed".green());
         }
 
         "intensity" => {

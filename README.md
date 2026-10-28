@@ -14,8 +14,8 @@ Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playba
 |---|---|
 | `harmonium_core` | Types purs et génération : grille de pas, `Measure`, `TimelineGenerator`, `Writehead`/`Playhead`, harmonie, `TuningParams`/`StyleProfile`, mapping émotion → paramètres. Aucune I/O. |
 | `harmonium_audio` | Rendu SoundFont (oxisynth), enregistrement WAV / MIDI / MusicXML, garde d'allocation temps réel. |
-| `harmonium_host` | `MusicComposer` (thread principal) + `PlaybackEngine` (callback cpal), transport lock-free, `NativeHandle`, `create_offline_engine`, binaire `harmonium` avec contrôle OSC. |
-| `harmonium_cli` | REPL d'écoute et de test (`harmonium-cli`). |
+| `harmonium_host` | `MusicComposer` (thread principal) + `PlaybackEngine` (callback cpal), transport lock-free, `LiveHost` (hôte vivant : exécuteur d'`EngineCommand`, `pump`), module OSC, `create_offline_engine`. |
+| `harmonium_cli` | REPL d'écoute et de test (`harmonium-cli`), contrôle OSC par `--osc`. |
 | `harmonium_lab` | Ingestion de corpus MusicXML, métriques de distance, tuning assisté. |
 
 ## Démarrer
@@ -24,7 +24,7 @@ Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playba
 make soundfont           # télécharge la banque GM complète GeneralUser GS (~32 Mo)
 make run                 # REPL, charge assets/GeneralUser-GS.sf2 par défaut (ou repli test.sf2)
 make run ARGS="--soundfont path/to/bank.sf2"
-make play ARGS="--osc"   # lecteur autonome, /harmonium/params (arousal valence density tension) sur UDP 8080
+make run ARGS="--osc"   # REPL + OSC : /harmonium/params (arousal valence density tension) sur UDP 127.0.0.1:8080
 make test                # cargo test --workspace
 make quality             # fmt + clippy + tests
 ```
@@ -33,7 +33,8 @@ make quality             # fmt + clippy + tests
 
 ```mermaid
 flowchart LR
-  G[Jeu / CLI / OSC] -->|setters| C[MusicComposer\nthread principal]
+  G[Jeu / REPL / OSC] -->|EngineCommand| H[LiveHost]
+  H --> C[MusicComposer\nthread principal]
   C -->|Measure| P[PlaybackEngine\ncallback cpal]
   P -->|AudioEvent| S[oxisynth SF2]
   P -->|AtomicU64 bar,step| G

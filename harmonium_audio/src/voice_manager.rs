@@ -111,7 +111,7 @@ impl VoiceManager {
         vm
     }
 
-    pub fn add_font(&mut self, bank_id: u32, bytes: &[u8]) {
+    pub(crate) fn add_font(&mut self, bank_id: u32, bytes: &[u8]) {
         harmonium_core::log::info(&format!(
             "Loading SoundFont: {} bytes, bank_id={}",
             bytes.len(),
@@ -358,7 +358,6 @@ impl VoiceManager {
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }
             | AudioEvent::EmotionUpdate { .. }
-            | AudioEvent::LoadFont { .. }
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
             | AudioEvent::StopRecording { .. }
