@@ -96,13 +96,18 @@ les transcriptions de G0.
 | G2 | fusionnée (`12e0530`) : `harmony.model = "loop"`, pédales et boucles d'accords par partie, composée avec G3 | `g2-harmonie-boucle.md` |
 | G7 | fusionnée (`40dcc0f`) : `profiles/nt_desert` en données (arche de Fläshyn, tempo et centre tonal reproduits au labo ; brillance −1,3 kHz) | `g7-nt-desert.md` |
 | G7b | fusionnée (`c26c2c3`) : `tracks_off` par partie ; pont de `nt_desert` sans batterie ni basse | `g7b-pistes-par-partie.md` |
-| G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
-| G6b | terminée dans le worktree `g6b-odin`, à fusionner : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | `g6b-odin.md` |
+| G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | `g7c-nt-desert-ecoute.md` |
+| G6b | fusionnée (`113fe81`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | `g6b-odin.md` |
+| G7d | fusionnée (`94ba523`) : mix de `nt_desert` (basse au premier plan, charleston réduit aux accents, Odin +17 dB) | `g7d-nt-desert-mix.md` |
+| M1 | fusionnée (labo `0a1d77f`) : distance générique profil→corpus (`styledist`, audio + symbolique), première mesure sur `nt_desert` | labo `references/nt-desert/distance-nt_desert.json` |
+| G9-G0 | fusionnée (labo `6a28971`) : références Basement d'Isaac (mineur harmonique sur pédale, 140 BPM, 4/4 ; propositions `isaac_basement` avec presets Odin candidats) | labo `references/isaac-basement/README.md` |
+| G6c | en cours (worktree `g6c-odin-finitions`) : morphing préparé hors du thread audio, avertissement au chargement | — |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
-Après fusion de G1 à G7c et G6b : 549 tests passent sans `odin`, 5 tests de contrat avec `odin`, 0 échec ; fmt propre ; clippy sur les bibliothèques
-et binaires sans nouvel avertissement (157, mêmes emplacements qu'avant la phase). Labo après G0
-et G6 : 279 tests passent, 27 ignorés.
+Après fusion de G1 à G7d et G6b : 617 tests passent sans `odin`, 0 échec ; les 5 tests de contrat
+`odin` passent. Labo après G0, G6, M1 et G9 : 290 tests passent, 27 ignorés. Portage Odin 2 dans
+`odin-rs` fusionné en local (non poussé) : chemin de voix, matrice de modulation, effets, presets et
+API hôte, banc de fidélité contre le C++ réel (`odin-rs/PORTING.md`, `FIDELITE.md`).
 
 Écoute du propriétaire (2026-10-27) : la pédale de *Fläshyn* rendue en GM 38 décroît (−19 dB sur la
 tenue) et laisse la batterie seule ; GM 30 (guitare saturée) « trop étrange » ; **GM 81 scie
