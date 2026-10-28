@@ -98,11 +98,13 @@ consulté. Constats dans le code (moteur `69c1449`, revus à `129a37e`) :
 - **Chargement en deux temps, cache explicite** (décision F) : page HTML avec la progression du wasm, puis
   écran egui avec la progression de chaque ressource, la préparation et le bouton Start. La banque vit dans
   Cache Storage, jamais dans le seul cache HTTP. Détail sous « Chargement et cache ».
-- **Banque web** : copie de GeneralUser GS et de la banque de pieds servie avec le site. Format décidé en
-  S1 : SF2 brut si son analyse est rapide (un seul long téléchargement, rien à décoder ensuite), sinon
-  SF3, plus léger mais décodé (Vorbis) à chaque visite, même depuis le cache. Les banques étant ignorées
-  par git, elles sont publiées en assets d'une release GitHub du dépôt ; la CI les télécharge, vérifie
-  leur `sha256` et les copie dans le site.
+- **Ressources web** : copie de GeneralUser GS et de la banque de pieds servie avec le site, plus les
+  presets Odin (`.odin`) des profils distribués : depuis G6b, l'hôte les fournit (`OdinPresetSource`) et
+  aucun n'est dans le dépôt (`specs/014-styles-de-jeu/g6b-odin.md`). Format de banque décidé en S1 : SF2
+  brut si son analyse est rapide (un seul long téléchargement, rien à décoder ensuite), sinon SF3, plus
+  léger mais décodé (Vorbis) à chaque visite, même depuis le cache. Banques et presets étant hors git, ils
+  sont publiés en assets d'une release GitHub du dépôt ; la CI les télécharge, vérifie leur `sha256` et
+  les copie dans le site.
 
 ## Écran Live
 
@@ -175,7 +177,7 @@ flowchart LR
   S5 --> S6[S6 Studio Live]
   S4[S4 Profils embarqués bruts] --> S7[S7 Atelier TOML]
   S6 --> S7
-  S1 --> S8[S8 Banque web]
+  S1 --> S8[S8 Ressources web : banques, presets Odin]
   S6 --> S9[S9 CI et déploiement]
   S8 --> S9
 ```
@@ -184,16 +186,24 @@ flowchart LR
 |---|---|---|
 | S1 | Sonde jetable, non fusionnée : app eframe minimale (natif et web), `reel_quebecois` sur GeneralUser GS (SF2 puis SF3) et pieds, plus des voix `odin2-core` (dépôt `estran-studio/odin-rs`, utilisable sans attendre G6b) ; mesure et pulsation affichées. Mesures en release sur Chrome, Firefox et Safari récents (macOS) : sous-alimentations audio sur 5 min avec l'interface à 60 images/s, CPU par tampon (SoundFont, puis Odin selon le nombre de voix), onglet en arrière-plan. **Chargement**, à froid puis depuis Cache Storage : poids du wasm (tables d'ondes comprises) et son rechargement après les 10 min de GitHub Pages, lecture de la banque depuis le cache, analyse SF2, décodage SF3, temps jusqu'au bouton Start. **Snapshots natif contre wasm** pour les onze profils distribués, graines 1–3, 64 mesures : les fonctions f32 transcendantes peuvent différer entre la libm native et celle du wasm. | Tableau de mesures dans ce plan. Décisions : WebAudio sur le thread principal, ou AudioWorklet avec threads wasm (en-têtes COOP/COEP, donc pas GitHub Pages sans contournement) ; format de banque (SF2 ou SF3) ; service worker ou non ; seuils du premier chargement et du chargement depuis le cache. |
 | S2 | Après la fusion de G6b. `NativeHandle` devient l'hôte unique (banque de pieds, exécuteur d'`EngineCommand`, renommé) ; le REPL migre dessus ; `EngineCommand` absorbe `CliCommand` ; module OSC dans le host, `--osc` dans le REPL ; binaire `harmonium`, `ctrlc`, cible `make play` et leurs sections de README supprimés ; ligne `harmonium_host` de la constitution mise à jour. | Tests du REPL verts, commandes inchangées à l'usage ; OSC piloté depuis un client UDP ; goldens inchangés. |
-| S3 | Après la fusion de G6b. `getrandom` feature `js` sur la cible wasm ; `web_time::Instant` à la place de `std::time::Instant` dans le host ; travailleur d'enregistrement pilotable sans thread (même encodeur ; thread en natif, appelé par la boucle de l'interface en wasm). CI : `cargo check --target wasm32-unknown-unknown` des crates du moteur, avec et sans `odin`. Si la CI tient, la constitution gagne la contrainte « le moteur compile pour `wasm32-unknown-unknown` ». | Check wasm vert en CI, avec et sans `odin` ; goldens inchangés ; `BeatInfo` inchangé en natif. |
+| S3 | Après S2. `getrandom` feature `js` sur la cible wasm ; `web_time::Instant` à la place de `std::time::Instant` dans le host ; travailleur d'enregistrement pilotable sans thread (même encodeur ; thread en natif, appelé par la boucle de l'interface en wasm). **Tirages à largeur fixe** : aucun tirage aléatoire sur `usize` (rand 0.8 l'échantillonne selon la largeur de pointeur, 32 bits en wasm) ; correctif de la sonde S1 repris proprement. CI : `cargo check --target wasm32-unknown-unknown` des crates du moteur, avec et sans `odin`, et comparaison des snapshots natif / wasm (profils distribués, graines 1–3, 64 mesures). Si la CI tient, la constitution gagne la contrainte « le moteur compile pour `wasm32-unknown-unknown` et y produit les mêmes snapshots ». | Check wasm et comparaison verts en CI, avec et sans `odin` ; goldens inchangés ; `BeatInfo` inchangé en natif. |
 | S4 | `build.rs` embarque les fichiers bruts de chaque profil ; un décodeur multi-fichiers en mémoire sert `load(dir)`, les profils embarqués et l'atelier ; la fusion de `build.rs` disparaît. Erreurs : chemin du champ et position dans le fichier source. | Goldens des profils distribués inchangés ; une erreur de validation pointe le bon fichier et la bonne ligne. |
 | S5 | Crate `harmonium_studio` (eframe ; natif et web via Trunk ; compilé avec `odin`) : page HTML et initialiseur Trunk, chargeur de ressources (web : manifeste, téléchargement en flux, Cache Storage ; natif : disque, thread), générateur du manifeste au build, écran de chargement, bouton Start (voir « Chargement et cache »). | Premier chargement : progression visible jusqu'au Start. Visite suivante : aucune requête réseau pour la banque (onglet Réseau des outils de développement). Nouvelle empreinte : un téléchargement, l'ancienne entrée supprimée. Cache refusé (navigation privée) : la musique joue, avec l'avis. |
-| S6 | Écran Live et parité REPL complète (tableau ci-dessus). Enregistrement : fichiers en natif, téléchargements en web. Panneau « About » : licences et crédits de ce qui est distribué (Harmonium `MIT OR Apache-2.0` ; `odin-rs` GPLv3, d'où un bundle GPL, avec le lien vers les sources ; GeneralUser GS, S. Christian Collins ; échantillons de pieds CC0). | Chaque ligne du tableau de parité marche des deux côtés ; piano-roll et horloge suivent l'audio ; une émotion changée s'entend à la mesure suivante ; `nt_desert` joue ses pistes Odin. |
+| S6 | Écran Live et parité REPL complète (tableau ci-dessus). Enregistrement : fichiers en natif, téléchargements en web. Panneau « About » : licences et crédits de ce qui est distribué (Harmonium `MIT OR Apache-2.0` ; `odin-rs` GPLv3, d'où un bundle GPL, avec le lien vers les sources ; GeneralUser GS, S. Christian Collins ; échantillons de pieds CC0 ; presets Odin). | Chaque ligne du tableau de parité marche des deux côtés ; piano-roll et horloge suivent l'audio ; une émotion changée s'entend à la mesure suivante ; `nt_desert` joue ses pistes Odin (exige de vrais presets, voir S8). |
 | S7 | Atelier TOML : onglets par fichier du profil, coloration, Apply = décoder, valider, installer à la mesure suivante ; erreurs placées sur la ligne ; « Fork » d'un profil distribué. Natif : ouvrir et enregistrer un dossier. Web : téléverser, télécharger le dossier, modifications gardées dans le navigateur. | Un profil modifié s'entend à la mesure suivante ; le dossier enregistré se charge par `harmonium-cli --profile`. |
-| S8 | Banque web : format décidé en S1 (SF2 brut, ou conversion en SF3) ; GeneralUser GS et banque de pieds publiées en assets de release, `sha256` versionnées dans le dépôt ; entrées du manifeste. | Premier chargement et chargement depuis le cache sous les seuils fixés en S1 ; une banque dont l'empreinte ne correspond pas fait échouer la CI. |
+| S8 | Ressources web : format de banque décidé en S1 (SF2 brut, ou conversion en SF3) ; GeneralUser GS, banque de pieds et presets Odin des profils distribués publiés en assets de release, `sha256` versionnées dans le dépôt ; entrées du manifeste. Prérequis : des presets Odin réels pour `nt_desert` (G6b n'a que des presets de smoke synthétiques, hors dépôt), avec source et licence. | Premier chargement et chargement depuis le cache sous les seuils fixés en S1 ; une ressource dont l'empreinte ne correspond pas fait échouer la CI. |
 | S9 | CI : `harmonium_studio` construit en natif et en wasm, avec `odin`, à chaque PR (dépendances système d'eframe sous Linux) ; déploiement GitHub Pages sur `main`, banques téléchargées depuis la release et vérifiées. | Une PR qui casse le studio échoue en CI ; l'URL publique sert la dernière version de `main`. |
 
-S1 et S4 démarrent maintenant ; S8 après S1 ; S2 et S3 après la fusion de G6b. S4 peut entrer en conflit
-avec G6b sur `style_profile.rs` (instrument par piste) : rebaser.
+S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin réels.
+
+### État (2026-10-27)
+
+| Tâche | État | Compte rendu |
+|---|---|---|
+| G6b (phase 014) | fusionnée (`113fe81`) : Odin par piste, presets fournis par l'hôte, pieds routés par le profil | `specs/014-styles-de-jeu/g6b-odin.md` |
+| S1 | en cours (worktree `s1-sonde-web`). Déterminisme mesuré : 0/66 fichiers de snapshots identiques natif / wasm (11 profils, graines 1–3, deux réglages d'émotions, 64 mesures) ; cause : `gen_range` sur `usize` ; après tirages en `u64`, 66/66 identiques et sortie native inchangée | `s1-sonde-web.md` (à venir) |
+| S2 | en cours (worktree `s2-hote-unique`) | — |
+| S4 | faite (`5a134fc`, worktree `s4-profils-bruts`) ; rebase sur G6b et dépendance `toml_edit` unique en cours | `s4-profils-bruts.md` (branche) |
 
 ## Risques
 
@@ -204,8 +214,8 @@ avec G6b sur `style_profile.rs` (instrument par piste) : rebaser.
   threads wasm.
 - **Onglet en arrière-plan** : `requestAnimationFrame` s'arrête, la génération aussi, et l'anticipation
   (4 mesures au moins, anneau de 16) s'épuise.
-- **Divergence natif / wasm** : si S1 la trouve, `libm` partout ; cela change les snapshots natifs, donc
-  bump de `TUNING_VERSION` et goldens régénérés dans le même commit (principe I).
+- **Divergence natif / wasm** : confirmée par S1, cause trouvée (tirages `usize`) ; le correctif ne change
+  pas la sortie native, donc ni bump de `TUNING_VERSION` ni goldens régénérés. Reste à la garder en CI (S3).
 - **Poids** : 32,3 Mo de banque en SF2 au premier chargement ; en SF3, moins à télécharger mais un
   décodage Vorbis en wasm à chaque visite. Les tables d'ondes d'Odin grossissent le wasm.
 - **Éviction** : Safari efface le cache après 7 jours sans visite, et tout navigateur peut l'effacer sous
