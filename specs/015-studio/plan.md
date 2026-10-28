@@ -79,10 +79,10 @@ consulté. Constats dans le code (moteur `69c1449`, revus à `129a37e`) :
 - **Contrat seulement.** Le studio lit `MeasureSnapshot`, `BeatInfo`, `EngineReport` et l'API publique du
   host, et pilote par `EngineCommand`. Il n'accède à aucun interne du générateur ; ce que l'interface
   doit montrer entre d'abord dans la sortie publiée.
-- **Un seul hôte vivant, un seul exécuteur.** `NativeHandle` devient l'hôte du REPL et du studio et
-  exécute `EngineCommand`. `EngineCommand` absorbe `CliCommand`. Le REPL garde son analyseur de texte,
-  perd `dispatch_command` et `handle_clock_command`. Ce qui reste sans consommateur au terme de S2 est
-  supprimé. Le nom « Native » devient faux en wasm : renommé en S2.
+- **Un seul hôte vivant, un seul exécuteur.** `NativeHandle`, renommé `LiveHost` en S2, est l'hôte du
+  REPL et du studio et exécute `EngineCommand` (`LiveHost::apply`) ; la génération avance par
+  `LiveHost::pump`. `EngineCommand` a absorbé `CliCommand`. Le REPL garde son analyseur de texte et son
+  affichage ; `dispatch_command` et `handle_clock_command` ont disparu.
 - **Génération pilotée par l'appelant.** En natif, un thread de génération, comme le REPL aujourd'hui ; en
   web, la boucle de l'interface appelle la même fonction. Anticipation relevée si les onglets en arrière-plan
   l'exigent (mesuré en S1).
@@ -202,7 +202,8 @@ S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin ré
 |---|---|---|
 | G6b (phase 014) | fusionnée (`113fe81`) : Odin par piste, presets fournis par l'hôte, pieds routés par le profil | `specs/014-styles-de-jeu/g6b-odin.md` |
 | S1 | en cours (worktree `s1-sonde-web`). Déterminisme mesuré : 0/66 fichiers de snapshots identiques natif / wasm (11 profils, graines 1–3, deux réglages d'émotions, 64 mesures) ; cause : `gen_range` sur `usize` ; après tirages en `u64`, 66/66 identiques et sortie native inchangée | `s1-sonde-web.md` (à venir) |
-| S2 | en cours (worktree `s2-hote-unique`) | — |
+| S2 | fusionnée (`48fa066`) : `LiveHost` (banque principale, banque de pieds, presets Odin ; `apply`, `pump`, `detached` pour les tests), `EngineCommand` étendu (swing, tempo audible, pieds, intensité) et élagué, REPL migré, OSC dans le host (`--osc`), binaire `harmonium`, `ctrlc`, MIDI live et `LoadFont` supprimés, volume d'écoute réel (rampe 10 ms, hors enregistrements) ; 74 suites vertes, goldens inchangés | `s2-hote-unique.md` |
+| S3 | en cours | — |
 | S4 | fusionnée (`f01dddd`) : fichiers d'origine embarqués, un seul décodeur multi-fichiers (`load`, `from_files`, `distributed_files`), erreurs `fichier:ligne: champ: message` ; `toml` 0.8.23, une seule version de `toml_edit` ; 73 suites de tests vertes, goldens inchangés | `s4-profils-bruts.md` |
 
 ## Risques
