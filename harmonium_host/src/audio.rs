@@ -143,10 +143,14 @@ fn build_recorder(
 /// Create a decoupled timeline stream for real-time playback: the engine
 /// graph of [`build_engine`] with its playback engine moved into a `cpal`
 /// output stream (already playing).
+///
+/// `buffer_frames` fixes the size of the device buffer in frames; `None` keeps
+/// the platform default.
 pub fn create_timeline_stream(
     sf2_bytes: Option<&[u8]>,
     feet_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+    buffer_frames: Option<u32>,
 ) -> Result<(cpal::Stream, EngineControls), String> {
     let host = cpal::default_host();
     let device =
@@ -155,6 +159,10 @@ pub fn create_timeline_stream(
     let config = device.default_output_config().map_err(|e| e.to_string())?;
     let sample_rate = config.sample_rate().0 as f64;
     let channels = config.channels() as usize;
+    let mut stream_config: cpal::StreamConfig = config.into();
+    if let Some(frames) = buffer_frames {
+        stream_config.buffer_size = cpal::BufferSize::Fixed(frames);
+    }
 
     log::info(&format!("Decoupled Engine - Sample rate: {}, Channels: {}", sample_rate, channels));
 
@@ -171,7 +179,7 @@ pub fn create_timeline_stream(
 
     let stream = device
         .build_output_stream(
-            &config.into(),
+            &stream_config,
             move |data: &mut [f32], info: &cpal::OutputCallbackInfo| {
                 // Audible instant of this buffer's first frame: callback
                 // entry time + (playback − callback) device latency. Falls

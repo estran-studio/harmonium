@@ -11,10 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # harmonium_studio (eframe) : bibliothèques de fenêtrage en plus de libasound2.
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev pkg-config
+          sudo apt-get install -y libasound2-dev pkg-config libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
       - name: Install Rust (stable + clippy)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -55,10 +56,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # harmonium_studio (eframe) : bibliothèques de fenêtrage en plus de libasound2.
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev pkg-config
+          sudo apt-get install -y libasound2-dev pkg-config libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Rust Cache

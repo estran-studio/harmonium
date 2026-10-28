@@ -1,0 +1,74 @@
+[package]
+name = "harmonium_studio"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license.workspace = true
+description = "Harmonium Studio : application egui (natif et web) — chargement des ressources, cache, démarrage du moteur"
+default-run = "harmonium_studio"
+
+[lints]
+workspace = true
+
+[features]
+default = ["app"]
+# L'application egui. Sans elle, la crate se réduit au manifeste des ressources et à son
+# générateur (`studio_assets`), que le build web lance sans compiler eframe.
+app = ["dep:eframe", "dep:harmonium", "dep:harmonium_audio", "dep:harmonium_core", "dep:web-time"]
+
+[lib]
+name = "harmonium_studio"
+path = "src/lib.rs"
+
+[[bin]]
+name = "harmonium_studio"
+path = "src/main.rs"
+required-features = ["app"]
+
+[[bin]]
+name = "studio_assets"
+path = "src/bin/studio_assets.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.11"
+
+harmonium_core = { path = "../harmonium_core", optional = true }
+harmonium_audio = { path = "../harmonium_audio", features = ["odin"], optional = true }
+# Le studio est toujours compilé avec le synthé Odin (le profil `nt_desert` en dépend) :
+# le bundle publié est donc GPL (constitution 4.2.0).
+harmonium = { path = "../harmonium_host", features = ["odin"], optional = true }
+eframe = { version = "0.34", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"], optional = true }
+web-time = { version = "1", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+log = "0.4"
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "BlobPropertyBag",
+    "Cache",
+    "CacheStorage",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "Location",
+    "MessageEvent",
+    "ReadableStream",
+    "ReadableStreamDefaultReader",
+    "Request",
+    "RequestCache",
+    "RequestInit",
+    "Response",
+    "Url",
+    "UrlSearchParams",
+    "Window",
+    "Worker",
+    "console",
+] }
+
+[dev-dependencies]
+tempfile = "3"

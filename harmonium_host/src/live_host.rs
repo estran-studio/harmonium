@@ -80,14 +80,16 @@ impl LiveHost {
     /// `sf2_bytes` is the main bank, `feet_sf2_bytes` the feet bank (without
     /// it the feet fall back to the GM kit on channel 9), `odin_presets` the
     /// `.odin` presets provided by the game (name + bytes); without the
-    /// `odin` feature they are ignored (SoundFont rendering).
+    /// `odin` feature they are ignored (SoundFont rendering). `buffer_frames`
+    /// fixes the device buffer size in frames (`None`: platform default).
     pub fn start(
         sf2_bytes: Option<&[u8]>,
         feet_sf2_bytes: Option<&[u8]>,
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+        buffer_frames: Option<u32>,
     ) -> Result<Self, String> {
         let (stream, controls) =
-            audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets)?;
+            audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets, buffer_frames)?;
         Self::from_controls(Some(OutputStream(stream)), controls)
     }
 
@@ -96,8 +98,9 @@ impl LiveHost {
         sf2_bytes: Option<&[u8]>,
         feet_sf2_bytes: Option<&[u8]>,
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+        buffer_frames: Option<u32>,
     ) -> Result<Self, String> {
-        let host = Self::start(sf2_bytes, feet_sf2_bytes, odin_presets)?;
+        let host = Self::start(sf2_bytes, feet_sf2_bytes, odin_presets, buffer_frames)?;
         host.pause()?;
         Ok(host)
     }

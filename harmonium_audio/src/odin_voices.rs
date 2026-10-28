@@ -24,16 +24,10 @@ use crate::odin_source::OdinPresetSource;
 const SCRATCH_FRAMES: usize = 1024;
 
 /// Champs discrets du preset (octaves, demi-tons) : sélectionnés, jamais interpolés.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 struct DiscretePreset {
     octaves: [i32; 3],
     semitones: [i32; 3],
-}
-
-impl Default for DiscretePreset {
-    fn default() -> Self {
-        Self { octaves: [0; 3], semitones: [0; 3] }
-    }
 }
 
 /// Socle analysé d'un preset fourni par l'hôte (construction, hors callback).
@@ -296,7 +290,7 @@ impl OdinMixer {
     /// Rend les voix actives et les ajoute à `output` (stéréo entrelacée),
     /// par tranches du tampon fixe.
     pub fn render_add(&mut self, output: &mut [f32]) {
-        if output.len() % 2 != 0 {
+        if !output.len().is_multiple_of(2) {
             return;
         }
         for voice in &mut self.voices {
