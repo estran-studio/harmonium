@@ -96,7 +96,7 @@ les transcriptions de G0.
 | G2 | fusionnée (`12e0530`) : `harmony.model = "loop"`, pédales et boucles d'accords par partie, composée avec G3 | `g2-harmonie-boucle.md` |
 | G7 | fusionnée (`40dcc0f`) : `profiles/nt_desert` en données (arche de Fläshyn, tempo et centre tonal reproduits au labo ; brillance −1,3 kHz) | `g7-nt-desert.md` |
 | G7b | fusionnée (`c26c2c3`) : `tracks_off` par partie ; pont de `nt_desert` sans batterie ni basse | `g7b-pistes-par-partie.md` |
-| G7c | en cours (worktree `g7c-nt-desert-ecoute`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
+| G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
 | G6b | en cours (worktree `g6b-odin`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | — |
 | G8 | à faire : le clone NT est `games/throne` du dépôt alacod (public) ; il activera `odin` | — |
 
