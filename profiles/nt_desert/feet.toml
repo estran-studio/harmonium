@@ -1,8 +1,11 @@
-# Batterie sèche du désert (kit 128/0) sur la grille §6.2 de G0 (24 pas) :
-# grosse caisse aux pas 0/8/20, caisse claire aux pas 2/10/14, charleston
-# fermé (touche 42, portée par Toe) à tous les pas pairs. Densité 0 : ossature
-# clairsemée ; densité 1 : groove principal ; densité 2 : groove + relances
-# (pas 16/22 de la grille).
+# Batterie en groove (G7c, essais du propriétaire sur GeneralUser) : grosse
+# caisse aux pas 0/8/20, caisse claire aux pas 2/10/14 (grille §6.2 de G0),
+# charleston fermé (touche 42, portée par Toe) sur les pulsations seulement
+# (pas 0/6/12/18, grille de 24 pas). Densité 0 : ossature clairsemée ;
+# densité 1 : groove principal ; densité 2 : groove + relances (pas 16/22).
+# Accents par temps dans les motifs : temps fort plein, autres temps ×0,8
+# (pieds 92 → 74, 84 → 67). Le micro-timing et l'accent du temps fort vivent
+# dans [performance.tracks.Heel] et [performance.tracks.Toe] du profile.toml.
 heel_note = 36
 toe_note = 38
 heel_velocity = 92
@@ -14,55 +17,39 @@ velocity_humanize = 4
 density = 0
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
-  { step = 0, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 8, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 16, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 0, track = "Toe", note = 42, delta_velocity = 0 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -17 },
 ]
 
 [[patterns]]
 density = 1
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
-  { step = 0, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 2, track = "Toe", delta_velocity = 0 },
-  { step = 2, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 4, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 6, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 8, track = "Heel", delta_velocity = 0 },
-  { step = 8, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 10, track = "Toe", delta_velocity = 0 },
-  { step = 10, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 14, track = "Toe", delta_velocity = 0 },
-  { step = 14, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 16, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 18, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 20, track = "Heel", delta_velocity = 0 },
-  { step = 20, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 22, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 0, track = "Toe", note = 42, delta_velocity = 0 },
+  { step = 2, track = "Toe", delta_velocity = -17 },
+  { step = 6, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 8, track = "Heel", delta_velocity = -18 },
+  { step = 10, track = "Toe", delta_velocity = -17 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 14, track = "Toe", delta_velocity = -17 },
+  { step = 18, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 20, track = "Heel", delta_velocity = -18 },
 ]
 
 [[patterns]]
 density = 2
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
-  { step = 0, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 2, track = "Toe", delta_velocity = 0 },
-  { step = 2, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 4, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 6, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 8, track = "Heel", delta_velocity = 0 },
-  { step = 8, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 10, track = "Toe", delta_velocity = 0 },
-  { step = 10, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 14, track = "Toe", delta_velocity = 0 },
-  { step = 14, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 0, track = "Toe", note = 42, delta_velocity = 0 },
+  { step = 2, track = "Toe", delta_velocity = -17 },
+  { step = 6, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 8, track = "Heel", delta_velocity = -18 },
+  { step = 10, track = "Toe", delta_velocity = -17 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 14, track = "Toe", delta_velocity = -17 },
   { step = 16, track = "Heel", delta_velocity = -8 },
-  { step = 16, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 18, track = "Toe", note = 42, delta_velocity = -30 },
-  { step = 20, track = "Heel", delta_velocity = 0 },
-  { step = 20, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 18, track = "Toe", note = 42, delta_velocity = -17 },
+  { step = 20, track = "Heel", delta_velocity = -18 },
   { step = 22, track = "Toe", delta_velocity = -8 },
   { step = 22, track = "Toe", note = 42, delta_velocity = -30 },
 ]

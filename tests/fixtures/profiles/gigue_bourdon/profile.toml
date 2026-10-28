@@ -246,3 +246,12 @@ forms = []
 pickup_eighths = 0
 [ornaments]
 rate_scale = 0.0
+
+# Principe VIII (014-G7c) : les mêmes mécanismes de groove que le désert de
+# Nuclear Throne (`profiles/nt_desert`), en données — micro-timing et
+# dispersion légers sur les deux pieds. Sans règle d'accent : ni hauteurs, ni
+# vélocités, ni durées ne changent, seuls les décalages publiés bougent.
+[performance.tracks.Heel]
+jitter = 0.02
+[performance.tracks.Toe]
+jitter = 0.02

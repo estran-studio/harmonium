@@ -96,7 +96,9 @@ les transcriptions de G0.
 | G2 | fusionnée (`12e0530`) : `harmony.model = "loop"`, pédales et boucles d'accords par partie, composée avec G3 | `g2-harmonie-boucle.md` |
 | G7 | fusionnée (`40dcc0f`) : `profiles/nt_desert` en données (arche de Fläshyn, tempo et centre tonal reproduits au labo ; brillance −1,3 kHz) | `g7-nt-desert.md` |
 | G7b | fusionnée (`c26c2c3`) : `tracks_off` par partie ; pont de `nt_desert` sans batterie ni basse | `g7b-pistes-par-partie.md` |
-| G8 | en attente : dépôt du clone NT | — |
+| G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
+| G6b | en cours (worktree `g6b-odin`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | — |
+| G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
 Après fusion de G1 à G5, G7 et G7b : 544 tests passent, 0 échec ; fmt propre ; clippy sur les bibliothèques
 et binaires sans nouvel avertissement (157, mêmes emplacements qu'avant la phase). Labo après G0
@@ -106,11 +108,23 @@ et G6 : 279 tests passent, 27 ignorés.
 tenue) et laisse la batterie seule ; GM 30 (guitare saturée) « trop étrange » ; **GM 81 scie
 retenue**.
 
+Écoute de `nt_desert` G7 (2026-10-27) : « horrible » — buzz (deux scies 81 empilées dans le grave),
+batterie en avant et rigide (charleston à tous les pas pairs, swing 0,50, aucun micro-timing),
+solos sifflés sans rapport (mélodie de cellules génériques, programme 78). Constat : la structure est
+juste, le son et l'écriture non ; la banque procédurale G6 est le maillon faible. Corrections
+d'écriture : G7c.
+
+**Décision (2026-10-27) : synthé Odin.** Le propriétaire veut un vrai synthé pour les jeux de type NT :
+le port Rust `odin-rs` (GPLv3, dérivé d'Odin 2), déjà branché avant `77a26d4`. Constitution v4.2.0 :
+Odin en option de compilation `odin`, instrument par piste en données, désactivée par défaut ;
+Harmonium et alacod passent sous `MIT OR Apache-2.0` ; seuls les jeux publics GPL (clones dans
+`alacod/games/`) activent `odin`, 1837 compile sans (SoundFont, aucun code GPL).
+
 ## Acceptation de la phase
 
-1. `nt_<zone>` joue dans le clone NT, avec sa banque, sur au moins 30 s de jeu réel. Écoute du
-   propriétaire : « ça sonne comme du NT ».
-2. Même critère pour `isaac_<étage>` dans le clone Isaac.
+1. `nt_desert` rendu par harmonium (CLI, banque ou presets Odin) : écoute du propriétaire « ça sonne
+   comme du NT ».
+2. Même critère pour `isaac_<étage>`.
 3. Pour chaque profil, le labo publie la distance au corpus de référence, en audio et en
    symbolique.
 4. Chaque algorithme ajouté est employé par au moins une fixture d'un autre style ; aucun nom de
@@ -124,6 +138,8 @@ retenue**.
 - **Mécanisme de fusion** (un profil qui reprend les couches d'un autre, principe VIII) : il vient
   après deux styles non trad, pour qu'il se conçoive sur des cas réels.
 - Test à l'aveugle réel/généré BT2 (annoncé en 013) ; J1b, J2 et J3 de la phase 013.
+- Brancher la musique dans les clones (`alacod/games/throne`, `games/isaac`), ex-G8 et partie jeu de
+  G9 : plus tard, la phase reste dans harmonium.
 
 ## G0 — Corpus NT (2026-10-27)
 

@@ -1,14 +1,15 @@
 # Arrangement : air d'un seul tour de 48 mesures (A1 A2 Pont B A1'). Basse,
-# scie et batterie dès la première mesure ; le sifflement n'entre qu'au pont
-# (partie 2, bribes de Fläshyn — G4). Pas d'intro : le jeu démarre direct.
-tours_per_tune = 1
-
+# scie et batterie dès la première mesure. Mélodie retirée (G7c) : dans
+# Fläshyn il n'y a pas de lead sifflé (il appartient à « A Way ») et la
+# transcription du motif de A Way est trop incertaine pour justifier un motif
+# rare (voiced_ratio ~7 %, voir le compte rendu G7c). Pas de piste Melody :
+# la forme tait le sifflement sur tout l'air (mécanisme G4). Pas d'intro :
+# le jeu démarre direct.
 [entries]
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
 Heel = { tour = 1, part = 0, pass = 1 }
 Toe = { tour = 1, part = 0, pass = 1 }
-Melody = { tour = 1, part = 2, pass = 1 }
 
 [intro]
 forms = []

@@ -1,10 +1,15 @@
 # Profil du désert de Nuclear Throne (Jukio Kallio, 2015).
 # Données seulement : pédale phrygienne tenue (G2/G5), basse motivique (G3),
-# forme en boucle avec sifflement tardif (G4), 12/8 à 140 noires pointées.
+# forme en boucle sans mélodie (G4, G7c), 12/8 à 140 noires pointées.
 # Arche de Fläshyn : A1 pédale G#, A2 riff D/D#, pont de nappes, B en
-# alternance G/G#, reprise A1'. Seuls les presets de assets/nt_desert.sf2
-# sont employés (0/38, 0/81, 0/78, 0/88, 0/89 ; kit 128/0, touches 36, 37,
-# 38, 41, 42, 44, 45, 46, 48, 49, 51). Voir README.md du dossier.
+# alternance G/G#, reprise A1'. G7c (écoute du propriétaire) : sifflement
+# retiré (pas de lead dans Fläshyn), une seule voix grave (scie 81 sur Bass),
+# accords en nappe chaude 89 en tessiture médium, batterie en groove
+# (charleston aux pulsations, accents, micro-timing) et en retrait au mix.
+# Seuls les presets de assets/nt_desert.sf2 sont employés : 0/81 (scie grave
+# sur Bass), 0/89 (nappe chaude sur Chords), kit 128/0 (touches 36, 38, 42).
+# 0/78 reste déclaré (champ requis par le schéma) mais ne sonne plus, la
+# mélodie étant retirée. Voir README.md du dossier.
 [files]
 cells = "cells.toml"
 feet = "feet.toml"
@@ -55,9 +60,9 @@ name = "B"
 melody_center_offset = 0
 roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
 
-# Sifflement (bribes du pont de Fläshyn, pistes 78 de la banque). Les
-# porteuses suivent l'accord courant (G2) ; sur pédale pure, la classe de
-# la pédale porte les tenues.
+# Mélodie retirée (G7c) : aucune entrée Melody dans l'arrangement, donc aucun
+# sifflement ne sonne. La section et la banque de cellules restent requises
+# pour le plan interne qui sert au vote harmonique (mécanisme G4).
 [melody]
 cell_units = 12
 strong_units = [0, 3, 6, 9]
@@ -188,18 +193,20 @@ weight = 1
 reference = "chord_root"
 notes = [{ step = 0, duration = 2, semitones = 0, velocity = 50 }]
 
-# Scie pédale (G2) : un coup plaqué lié d'une mesure entière, programme 81,
-# registre une octave au-dessus de la basse. Mêmes coups sur les boucles :
-# triades tenues qui changent avec l'accord.
+# Nappe chaude (G7c, essai v2/v3 du propriétaire) : un coup plaqué lié d'une
+# mesure entière, programme 89, vélocité ×0,8 (53), tessiture médium
+# (center 60) pour ne pas doubler la scie grave de Bass. Mêmes coups sur les
+# boucles : triades tenues qui changent avec l'accord.
 [accompaniment.chords]
-center = 44
+center = 60
 max_drift = 6
 default_pattern = 0
-patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 66, tie = true }] }]
+patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 53, tie = true }] }]
 
 [instruments]
+# 78 déclaré mais inutilisé (mélodie retirée, G7c ; champ requis par le schéma).
 melody_program = 78
-chords_program = 81
+chords_program = 89
 bass_program = 81
 percussion_bank = 128
 percussion_program = 0
@@ -242,15 +249,35 @@ level_db = -5.0
 pan = 0.0
 reverb_send = 0.1
 [mix.tracks.Heel]
-level_db = -5.0
+level_db = -9.0
 pan = -0.06
-reverb_send = 0.08
+reverb_send = 0.15
 [mix.tracks.Toe]
-level_db = -6.0
+level_db = -10.0
 pan = 0.06
-reverb_send = 0.08
+reverb_send = 0.15
 [mix.eq]
 highpass_hz = 40.0
 presence_hz = 3000.0
 presence_db = 1.0
 presence_q = 0.8
+
+# Groove (G7c, essais du propriétaire) : micro-timing et dispersion légers
+# (jitter ±0,02 pas) plus accent du temps fort sur les deux pieds. Mécanismes
+# génériques (voir profiles/README.md « Interprétation »), déjà employés par
+# les profils trad sur Melody ; la fixture gigue_bourdon les emploie sur les
+# pieds (principe VIII).
+[performance.tracks.Heel]
+jitter = 0.02
+[[performance.tracks.Heel.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0
+[performance.tracks.Toe]
+jitter = 0.02
+[[performance.tracks.Toe.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0
