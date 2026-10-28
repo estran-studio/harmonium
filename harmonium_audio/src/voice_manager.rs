@@ -111,7 +111,7 @@ impl VoiceManager {
         vm
     }
 
-    pub(crate) fn add_font(&mut self, bank_id: u32, bytes: &[u8]) {
+    pub(crate) fn add_font(&mut self, bank_id: u32, bytes: &[u8]) -> bool {
         harmonium_core::log::info(&format!(
             "Loading SoundFont: {} bytes, bank_id={}",
             bytes.len(),
@@ -129,9 +129,11 @@ impl VoiceManager {
                 let font_id = self.synth.add_font(font, true);
                 self.synth.set_bank_offset(font_id, bank_id);
                 harmonium_core::log::info("SoundFont loaded successfully");
+                true
             }
             Ok(Err(e)) => {
                 harmonium_core::log::error(&format!("SoundFont loading failed: {e}"));
+                false
             }
             Err(panic_info) => {
                 let msg = if let Some(s) = panic_info.downcast_ref::<String>() {
@@ -144,6 +146,7 @@ impl VoiceManager {
                 harmonium_core::log::error(&format!(
                     "SoundFont loading panicked (corrupt data?): {msg}"
                 ));
+                false
             }
         }
     }
@@ -357,7 +360,7 @@ impl VoiceManager {
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }
-            | AudioEvent::EmotionUpdate { .. }
+            | AudioEvent::SetOdin { .. }
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
             | AudioEvent::StopRecording { .. }

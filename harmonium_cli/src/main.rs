@@ -202,6 +202,9 @@ fn main() -> Result<()> {
         }
         if let Some(style) = parsed_style {
             host.apply(EngineCommand::SetStyleProfile(style)).map_err(|e| anyhow::anyhow!(e))?;
+            for missing in host.missing_resources() {
+                println!("[WARN] {missing}");
+            }
         }
 
         let config = host.session_config();

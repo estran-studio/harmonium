@@ -170,11 +170,18 @@ morph = [
   `osc_detune`, `osc1_volume`/`osc2_volume`/`osc3_volume`, `master_volume`.
   Au plus 8 règles par piste, un paramètre une seule fois. Drive et effets du
   preset ne sont pas exposés par `odin2-core` (configuration simplifiée du
-  moteur). Octaves et demi-tons du preset ne se morphent pas.
-- **Temps réel.** Aucune allocation ni verrou dans le callback : presets
-  analysés à la construction, voix créées une fois, règles stockées en tableau
-  `Copy`. Les notes `Tied` (nappes, pédales) n'émettent pas de nouvelle
-  attaque : Odin ne réattaque pas non plus.
+  moteur) : un nouveau paramètre s'ajoute dans `OdinVoiceParams`
+  (`harmonium_core/src/odin.rs`, mode d'emploi en commentaire), sans changer le
+  schéma des profils existants. Octaves et demi-tons du preset ne se morphent pas.
+- **Temps réel.** Le morphing est préparé sur le thread principal : le compositeur
+  connaît les socles des presets fournis par l'hôte, calcule le preset morphé de
+  chaque piste à chaque changement d'émotion et envoie au callback une charge
+  `Copy` (`PlaybackCommand::SetOdin` → `AudioEvent::SetOdin`). Le callback copie
+  dans le moteur : aucun calcul, allocation ni verrou. Les notes `Tied` (nappes,
+  pédales) n'émettent pas de nouvelle attaque : Odin ne réattaque pas non plus.
+- **Preset non chargé.** Un preset déclaré que l'hôte n'a pas fourni (ou illisible,
+  ou build sans `odin`) n'a pas de repli implicite autre que le programme SoundFont
+  déclaré ; le chargement du profil journalise un avertissement clair.
 - **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`) ;
   le gain master du profil, calibré pour les samples SF2, ne s'y applique pas :
   le niveau propre se règle dans le `master` du preset, fixe ou morphé par
@@ -187,7 +194,10 @@ Heel et Toe suivent `instruments.percussion_bank`, un seul chemin
 `nt_desert`) ; toute autre banque = canaux propres 3 et 4 sur cette banque. La
 banque de pieds `harmonium_trad.sf2` est chargée en banque `1` : les profils
 trad à podorythmie déclarent `percussion_bank = 1`. Un profil à kit déclare 128 :
-charger la banque de pieds ne le détourne plus.
+charger la banque de pieds ne le détourne plus. Une banque désignée et non
+chargée par l'hôte (ni kit GM en 128, ni banque de pieds en 1) n'a aucun repli :
+les pieds sont silencieux et le chargement du profil journalise un avertissement
+(`MusicComposer::missing_resources`, `harmonium_core::host_resources`).
 
 ## Accompagnement
 

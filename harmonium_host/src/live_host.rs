@@ -247,6 +247,12 @@ impl LiveHost {
         self.composer.musical_params()
     }
 
+    /// Ressources que le profil actif désigne et que l'hôte n'a pas chargées
+    /// (déjà journalisées au chargement du profil).
+    pub fn missing_resources(&self) -> &[harmonium_core::host_resources::MissingResource] {
+        self.composer.missing_resources()
+    }
+
     /// Current emotions `[arousal, valence, density, tension]`.
     pub fn emotions(&self) -> [f32; 4] {
         self.composer.emotions()
@@ -441,7 +447,8 @@ impl LiveHost {
     /// After a change to the composer: forward the pending eviction (if the
     /// timeline changed) and the style's program changes, then hand the
     /// audio thread the commanded parameters (recorders, reporting) and the
-    /// emotions (Odin morphing). Epoch tags make the order against the
+    /// Odin presets morphed by the current emotions (prepared here, copied by
+    /// the callback). Epoch tags make the order against the
     /// replacement bars irrelevant for correctness; evicting first keeps the
     /// window from filling with stale boxes.
     fn publish(&mut self) -> Result<(), String> {
@@ -454,7 +461,7 @@ impl LiveHost {
         self.send(PlaybackCommand::UpdateMusicalParams(
             self.composer.musical_params().playback_params(),
         ))?;
-        self.send(PlaybackCommand::SetEmotions(self.composer.emotions()))
+        self.send(PlaybackCommand::SetOdin(self.composer.odin_patches()))
     }
 }
 

@@ -58,6 +58,9 @@ pub fn run(
     }
     if let Some(st) = style {
         composer.set_profile(*st).map_err(|e| anyhow::anyhow!(e))?;
+        for missing in composer.missing_resources() {
+            println!("[WARN] {missing}");
+        }
     }
     // Le style réapplique ses défauts (dont le swing) : les réglages
     // d'export passent après, via les paramètres existants.
@@ -100,7 +103,7 @@ pub fn run(
     }
     let _ = playback_cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()));
-    let _ = playback_cmd_tx.push(PlaybackCommand::SetEmotions(composer.emotions()));
+    let _ = playback_cmd_tx.push(PlaybackCommand::SetOdin(composer.odin_patches()));
     if let Some(track) = solo_track {
         for id in harmonium_core::timeline::TrackId::ALL {
             playback_cmd_tx
@@ -230,7 +233,7 @@ pub fn run(
                 let has_next = target_bars.is_none_or(|last| current_bar < last);
                 if has_next && current_bar != prepared_after {
                     automation.apply(current_bar + 1, &mut composer, initial_emotions);
-                    let _ = playback_cmd_tx.push(PlaybackCommand::SetEmotions(composer.emotions()));
+                    let _ = playback_cmd_tx.push(PlaybackCommand::SetOdin(composer.odin_patches()));
                     if let Some((bar, _)) = composer.take_pending_drop() {
                         playback_cmd_tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| {
                             anyhow::anyhow!("file de commandes pleine pendant l'automation")
