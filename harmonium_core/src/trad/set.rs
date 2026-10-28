@@ -393,7 +393,7 @@ impl ProfileSet {
 
 fn weighted_index(weights: impl Iterator<Item = u32> + Clone, u: u32) -> Option<usize> {
     let total: u64 = weights.clone().map(u64::from).sum();
-    let mut remaining = u64::from(u) * total / KEY_DRAW_RANGE as u64;
+    let mut remaining = u64::from(u) * total / KEY_DRAW_RANGE;
     weights.enumerate().find_map(|(index, weight)| {
         let hit = remaining < u64::from(weight);
         remaining = remaining.saturating_sub(u64::from(weight));
@@ -411,7 +411,7 @@ fn validate_weights(field: &str, weights: impl Iterator<Item = u32>) -> Result<(
 }
 
 /// Résolution d'un tirage uniforme `0..UNIT` en tonalité (même précision partout).
-pub const KEY_DRAW_RANGE: usize = 1_000_000;
+pub const KEY_DRAW_RANGE: u64 = 1_000_000;
 
 /// Tonalité candidate d'un air, avec son poids de base.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -531,7 +531,7 @@ impl SetPlan {
                 gap_draw: 0,
             };
         }
-        let mut remaining = rng.next_range_usize(0..total as usize) as u64;
+        let mut remaining = rng.next_range_u64(0..total);
         let tunes = set
             .length
             .iter()
@@ -541,13 +541,12 @@ impl SetPlan {
                 hit
             })
             .map_or(1, |entry| entry.tunes);
-        let key_draws =
-            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+        let key_draws = (1..tunes).map(|_| rng.next_range_u64(0..KEY_DRAW_RANGE) as u32).collect();
         let transition_draws =
-            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
+            (1..tunes).map(|_| rng.next_range_u64(0..KEY_DRAW_RANGE) as u32).collect();
         let signature_draws =
-            (1..tunes).map(|_| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32).collect();
-        let gap_draw = rng.next_range_usize(0..KEY_DRAW_RANGE) as u32;
+            (1..tunes).map(|_| rng.next_range_u64(0..KEY_DRAW_RANGE) as u32).collect();
+        let gap_draw = rng.next_range_u64(0..KEY_DRAW_RANGE) as u32;
         Self { first_tune, tunes, key_draws, transition_draws, signature_draws, gap_draw }
     }
 

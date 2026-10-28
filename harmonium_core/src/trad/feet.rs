@@ -683,7 +683,7 @@ pub fn draw_feet_humanize(
     }
     for slot in &mut offsets {
         for step in slot.iter_mut() {
-            *step = (rng.next_range_usize(0..(2 * h + 1) as usize) as i32 - h) as i8;
+            *step = (rng.next_range_u64(0..(2 * h + 1) as u64) as i32 - h) as i8;
         }
     }
     offsets

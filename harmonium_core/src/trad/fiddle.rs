@@ -261,7 +261,7 @@ fn vary_cell(
 ) {
     use crate::style_profile::VariationOperation;
     let operations = &plan.profile.form.variation_operations;
-    let first = rng.next_range_usize(0..operations.len());
+    let first = rng.next_range_u64(0..operations.len() as u64) as usize;
     let pitch = |note: &CellNote| match note {
         CellNote::Degree(degree) => Some(fold_midi_to_tessitura(
             i16::from(tonic) + i16::from(plan.mode.degree_to_semitones(*degree)),
@@ -593,16 +593,16 @@ fn apply_rhythm(
     rhythm: &crate::style_profile::PositionRhythm,
     rng: &mut dyn RngCore,
 ) {
-    let total: usize = rhythm.patterns.iter().map(|p| p.weight as usize).sum();
-    let mut pick = rng.next_range_usize(0..total);
+    let total: u64 = rhythm.patterns.iter().map(|p| u64::from(p.weight)).sum();
+    let mut pick = rng.next_range_u64(0..total);
     let pattern = rhythm
         .patterns
         .iter()
         .find(|p| {
-            if pick < p.weight as usize {
+            if pick < u64::from(p.weight) {
                 true
             } else {
-                pick -= p.weight as usize;
+                pick -= u64::from(p.weight);
                 false
             }
         })
@@ -698,7 +698,7 @@ fn varied_end_cell(
             && !same_degree_classes(&cell.notes[split..], &source.notes[split..])
     };
     let total: u64 = bank.cells.iter().filter(eligible).map(|cell| u64::from(cell.weight)).sum();
-    let mut pick = rng.next_range_usize(0..total as usize) as u64;
+    let mut pick = rng.next_range_u64(0..total);
     for candidate in bank.cells.iter().filter(eligible) {
         if pick < u64::from(candidate.weight) {
             let octave = fitting_octave(candidate, 0, plan, tonic, params);
@@ -928,7 +928,7 @@ fn draw_free_cell_role(params: &ReelFiddleParams, rng: &mut dyn RngCore) -> Cell
     if total == 0 {
         return CellRole::Run;
     }
-    let mut pick = rng.next_range_usize(0..(total as usize)) as u32;
+    let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
     for &(role, weight) in &candidates {
         if weight > 0 {
             if pick < weight {
@@ -1009,13 +1009,13 @@ fn draw_weighted<'a>(
     keep: impl Fn(&Cell) -> bool,
     rng: &mut dyn RngCore,
 ) -> Option<&'a Cell> {
-    let total: usize = cells.iter().filter(|c| keep(c)).map(|c| c.weight as usize).sum();
+    let total: u64 = cells.iter().filter(|c| keep(c)).map(|c| u64::from(c.weight)).sum();
     if total == 0 {
         return None;
     }
-    let mut pick = rng.next_range_usize(0..total);
+    let mut pick = rng.next_range_u64(0..total);
     for cell in cells.iter().filter(|c| keep(c)) {
-        let weight = cell.weight as usize;
+        let weight = u64::from(cell.weight);
         if pick < weight {
             return Some(cell);
         }

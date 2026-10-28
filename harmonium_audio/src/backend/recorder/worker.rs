@@ -1,17 +1,19 @@
-//! Thread d'enregistrement : encode le WAV et le MIDI hors du callback.
+//! Travailleur d'enregistrement : encode le WAV et le MIDI hors du callback.
 //!
 //! Il consomme la file SPSC dans l'ordre, possède toute la croissance mémoire
 //! (tampon WAV, piste MIDI, notes actives, SMF) et publie les fichiers finis
 //! dans `finished_recordings`. Les positions MIDI arrivent en frames ; il les
 //! convertit en ticks **cumulés** avec la cadence courante, et arrondit la
 //! position absolue, jamais un delta isolé.
+//!
+//! Deux façons de le faire tourner, avec le même encodeur : [`spawn`] lui donne un
+//! thread (natif) ; [`RecorderWorker::pump`] le fait avancer depuis l'appelant, sans
+//! thread (wasm, où `std::thread::spawn` n'existe pas).
 
 use std::{
-    cell::RefCell,
     io::{Cursor, Seek, SeekFrom, Write},
-    rc::Rc,
     sync::{
-        Arc,
+        Arc, Mutex, PoisonError,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::Duration,
@@ -53,26 +55,27 @@ impl Drop for AliveGuard {
 pub(super) fn spawn(ports: WorkerPorts) -> std::io::Result<std::thread::JoinHandle<()>> {
     std::thread::Builder::new().name("harmonium-recorder".into()).spawn(move || {
         let _alive = AliveGuard(ports.alive.clone());
-        Worker::new(ports).run();
+        RecorderWorker::new(ports).run();
     })
 }
 
-/// Tampon WAV partagé entre l'écrivain `hound` et le thread (mono-thread : `Rc`).
+/// Tampon WAV partagé entre l'écrivain `hound` et la session (jamais en concurrence : le verrou
+/// ne sert qu'à garder le travailleur `Send`, il est libre à chaque accès).
 #[derive(Clone)]
-struct SharedBuf(Rc<RefCell<Cursor<Vec<u8>>>>);
+struct SharedBuf(Arc<Mutex<Cursor<Vec<u8>>>>);
 
 impl Write for SharedBuf {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.borrow_mut().write(buf)
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).write(buf)
     }
     fn flush(&mut self) -> std::io::Result<()> {
-        self.0.borrow_mut().flush()
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).flush()
     }
 }
 
 impl Seek for SharedBuf {
     fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        self.0.borrow_mut().seek(pos)
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).seek(pos)
     }
 }
 
@@ -210,7 +213,9 @@ impl MidiSession {
     }
 }
 
-struct Worker {
+/// Encodeur d'enregistrement : consomme les messages du callback. Natif, un thread le fait
+/// tourner ; sans thread (wasm), l'hôte l'appelle par [`pump`](Self::pump).
+pub struct RecorderWorker {
     ports: WorkerPorts,
     processed: u64,
     wav: Option<WavSession>,
@@ -219,34 +224,59 @@ struct Worker {
     last_frame: u64,
 }
 
-impl Worker {
-    fn new(ports: WorkerPorts) -> Self {
+impl RecorderWorker {
+    pub(super) fn new(ports: WorkerPorts) -> Self {
         Self { ports, processed: 0, wav: None, midi: None, last_frame: 0 }
     }
 
-    fn run(&mut self) {
-        loop {
-            let mut busy = false;
-            while let Ok(msg) = self.ports.rx.pop() {
-                busy = true;
-                self.handle(msg);
-                self.processed += 1;
-                self.ports.progress.store(self.processed, Ordering::Release);
-            }
-            if !busy {
-                if self.ports.rx.is_abandoned() && self.ports.rx.is_empty() {
-                    break;
-                }
-                std::thread::sleep(IDLE_SLEEP);
-            }
+    /// Consomme tous les messages en attente et publie les fichiers terminés dans
+    /// `finished_recordings`. Si le callback a disparu, ferme la prise en cours. Hors callback
+    /// uniquement : l'encodage alloue.
+    pub fn pump(&mut self) {
+        self.drain();
+        if self.closed() {
+            self.close();
         }
-        // Le callback a disparu : ne pas perdre une prise en cours.
+    }
+
+    /// Vide la file ; rend vrai si au moins un message a été traité.
+    fn drain(&mut self) -> bool {
+        let mut busy = false;
+        while let Ok(msg) = self.ports.rx.pop() {
+            busy = true;
+            self.handle(msg);
+            self.processed += 1;
+            self.ports.progress.store(self.processed, Ordering::Release);
+        }
+        busy
+    }
+
+    /// Le callback a disparu et la file est vide.
+    fn closed(&self) -> bool {
+        self.ports.rx.is_abandoned() && self.ports.rx.is_empty()
+    }
+
+    /// Le callback a disparu : ne pas perdre une prise en cours.
+    fn close(&mut self) {
         if self.wav.is_some() {
             self.stop_wav(None);
         }
         if self.midi.is_some() {
             self.stop_midi(self.last_frame);
         }
+    }
+
+    /// Boucle du thread d'enregistrement.
+    fn run(&mut self) {
+        loop {
+            if !self.drain() {
+                if self.closed() {
+                    break;
+                }
+                std::thread::sleep(IDLE_SLEEP);
+            }
+        }
+        self.close();
     }
 
     fn handle(&mut self, msg: RecordMsg) {
@@ -275,7 +305,7 @@ impl Worker {
             bits_per_sample: 32,
             sample_format: SampleFormat::Float,
         };
-        let buf = SharedBuf(Rc::new(RefCell::new(Cursor::new(Vec::with_capacity(1024 * 1024)))));
+        let buf = SharedBuf(Arc::new(Mutex::new(Cursor::new(Vec::with_capacity(1024 * 1024)))));
         self.wav = WavWriter::new(buf.clone(), spec).ok().map(|writer| WavSession {
             writer,
             buf,
@@ -321,8 +351,9 @@ impl Worker {
         if writer.finalize().is_err() {
             return;
         }
-        if let Ok(cell) = Rc::try_unwrap(buf.0) {
-            self.publish(RecordFormat::Wav, cell.into_inner().into_inner());
+        if let Ok(cell) = Arc::try_unwrap(buf.0) {
+            let cursor = cell.into_inner().unwrap_or_else(PoisonError::into_inner);
+            self.publish(RecordFormat::Wav, cursor.into_inner());
         }
     }
 

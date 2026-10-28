@@ -20,8 +20,8 @@ graph TD
 ### `backend`
 
 * **`SynthBackend`** — `SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &initial_routing)` ; synthèse oxisynth puis deux biquads stéréo et gain de bus. `SetMix` installe la salle, les CC 7/10/91 et les coefficients préparés par le compositeur au taux de l'hôte. État et DSP à taille fixe : aucune allocation ni aucun verrou ajoutés au callback. `SetChannelRoute`, `ProgramChange`, `AllNotesOff` et les CC MIDI ordinaires restent pris en charge.
-* **`RecorderBackend`** — capture WAV (après EQ et master) et MIDI, **sans allocation, verrou ni E/S dans le callback**. Le callback copie des blocs PCM préalloués (recyclés) et des événements MIDI `Copy` horodatés en frames dans une file SPSC `rtrb` bornée ; un thread d'enregistrement, créé dans `RecorderBackend::new`, encode WAV (`hound`) et MIDI (`midly`), gère la croissance mémoire et publie les fichiers dans `finished_recordings`. Le MIDI initialise CC 7/10/91 pour toutes les pistes logiques (`TrackId::ALL`) et les réémet à chaque `SetMix`. MusicXML est exporté par le compositeur depuis les mesures.
-  * **Débordement explicite** : `OverflowPolicy::DropAndCount` (défaut, temps réel) refuse ce qui ne tient pas et le compte dans `RecorderBackend::stats()` (`dropped_pcm_samples`, `dropped_midi_events`, `lost_commands`) ; le WAV garde sa durée (silence à la place des blocs perdus), un `Stop` entre toujours. `OverflowPolicy::Block` (`RecorderBackend::with_policy`, rendu hors ligne) attend le thread : rien n'est perdu et la fin d'une prise rend la main une fois le fichier publié.
+* **`RecorderBackend`** — capture WAV (après EQ et master) et MIDI, **sans allocation, verrou ni E/S dans le callback**. Le callback copie des blocs PCM préalloués (recyclés) et des événements MIDI `Copy` horodatés en frames dans une file SPSC `rtrb` bornée ; un travailleur d'enregistrement (`RecorderWorker`) encode WAV (`hound`) et MIDI (`midly`), gère la croissance mémoire et publie les fichiers dans `finished_recordings`. Natif, un thread le fait tourner, créé dans `RecorderBackend::new` ; sans thread (wasm, où `std::thread::spawn` n'existe pas), `RecorderBackend::pumped` rend le travailleur et l'hôte l'avance par `RecorderWorker::pump()` : même encodeur, mêmes octets. Le MIDI initialise CC 7/10/91 pour toutes les pistes logiques (`TrackId::ALL`) et les réémet à chaque `SetMix`. MusicXML est exporté par le compositeur depuis les mesures.
+  * **Débordement explicite** : `OverflowPolicy::DropAndCount` (défaut, temps réel) refuse ce qui ne tient pas et le compte dans `RecorderBackend::stats()` (`dropped_pcm_samples`, `dropped_midi_events`, `lost_commands`) ; le WAV garde sa durée (silence à la place des blocs perdus), un `Stop` entre toujours. `OverflowPolicy::Block` (`RecorderBackend::with_policy`, rendu hors ligne) attend le thread : rien n'est perdu et la fin d'une prise rend la main une fois le fichier publié. `RecorderBackend::pumped` est toujours en `DropAndCount` : sans thread, rien ne pourrait attendre ; la perte, comptée, ne vient que d'un `pump` trop espacé (la réserve couvre ≈ 3 s de stéréo à 44,1 kHz).
   * **MIDI exact** : `PlaybackEngine` annonce la cadence audible (`AudioEvent::MidiClock`, ticks par frame) à chaque pulse ; le thread convertit les frames en ticks **cumulés** et n'arrondit que la position absolue (swing et rampes de tempo compris) : résidu ≤ 0,5 tick par rapport aux positions écrites, sans dérive.
   * `AudioEvent::UpdateMusicalParams` porte un `PlaybackParams` (`Copy`, préparé sur le thread principal), jamais un `Box<MusicalParams>`.
 
@@ -87,8 +87,8 @@ conservent le preset dédié en banque 1.
 ## Dependencies
 
 * **`oxisynth`** — SoundFont 2/3 synthesizer.
-* **`hound`** — WAV encoding (recorder thread only).
-* **`midly`** — MIDI encoding (recorder thread only).
+* **`hound`** — WAV encoding (recorder worker only).
+* **`midly`** — MIDI encoding (recorder worker only).
 * **`rtrb`** — SPSC queues between the callback and the recorder thread.
 * **`arrayvec`** — stack-allocated programme lists.
 

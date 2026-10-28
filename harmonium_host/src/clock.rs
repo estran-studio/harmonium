@@ -8,9 +8,10 @@
 //! path) and in the reader; generation and playback never read it
 //! (constitution II).
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use harmonium_core::time_plan::Flicks;
+use web_time::Instant;
 
 use crate::playback::TransportPosition;
 

@@ -20,15 +20,28 @@ use crate::{
 /// Écart entre deux points de reprise du générateur, en mesures.
 pub const CHECKPOINT_BARS: usize = 8;
 
-/// RNG d'une session après les deux tirages d'affichage du composer (tonalité et gamme de
-/// session) : seule initialisation, partagée par le composer et le plan.
+/// Nombre de tonalités tirables à l'ouverture d'une session (do à si).
+pub const SESSION_KEYS: u64 = 7;
+/// Nombre de gammes tirables à l'ouverture d'une session (pentatonique mineure ou majeure).
+pub const SESSION_SCALES: u64 = 2;
+
+/// RNG d'une session et les deux tirages d'affichage du composer (indice de tonalité dans
+/// `0..SESSION_KEYS`, indice de gamme dans `0..SESSION_SCALES`) : seule initialisation,
+/// partagée par le composer et le plan. Tirages en `u64`, comme tout le moteur (voir
+/// `algo::RngCore`).
 #[must_use]
-pub fn session_rng(seed: u64) -> ChaCha8Rng {
+pub fn session_start(seed: u64) -> (ChaCha8Rng, u64, u64) {
     use rand::Rng;
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let _ = rng.gen_range(0..7usize);
-    let _ = rng.gen_range(0..2usize);
-    rng
+    let key = rng.gen_range(0..SESSION_KEYS);
+    let scale = rng.gen_range(0..SESSION_SCALES);
+    (rng, key, scale)
+}
+
+/// RNG d'une session après les deux tirages d'affichage du composer.
+#[must_use]
+pub fn session_rng(seed: u64) -> ChaCha8Rng {
+    session_start(seed).0
 }
 
 /// Valeur entière en millièmes, convertie pour le générateur (`f32`).

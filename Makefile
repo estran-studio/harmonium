@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug test test/sheet test/lab-export fmt lint audit quality
+.PHONY: soundfont run run/debug test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -49,6 +49,21 @@ test/sheet:
 
 test/lab-export:
 	cargo test -p harmonium_core --test music_generation_tests generate_all_lab_exports -- --ignored --nocapture
+
+## Natif contre wasm : mêmes snapshots octet pour octet (profils distribués, graines 1-3,
+## deux réglages d'émotions, 64 mesures). Demande `rustup target add wasm32-unknown-unknown`,
+## Node et le CLI wasm-bindgen de la version de Cargo.lock (`WASM_BINDGEN` = son chemin).
+test/determinism:
+	harmonium_determinism/scripts/run.sh
+
+# ════════════════════════════════════════════════════════════════════
+# WASM
+# ════════════════════════════════════════════════════════════════════
+
+## Le moteur compile pour le navigateur, avec et sans le synthé Odin
+wasm/check:
+	cargo check --target wasm32-unknown-unknown -p harmonium_core -p harmonium_audio -p harmonium
+	cargo check --target wasm32-unknown-unknown -p harmonium_audio -p harmonium --features odin
 
 # ════════════════════════════════════════════════════════════════════
 # QUALITY & CI

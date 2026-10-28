@@ -1612,8 +1612,8 @@ impl TradGenerator {
         let performance_seed = if self.profile.performance.is_neutral() {
             0
         } else {
-            let high = rng.next_range_usize(0..1 << 32) as u64;
-            (high << 32) | rng.next_range_usize(0..1 << 32) as u64
+            let high = rng.next_range_u64(0..1 << 32);
+            (high << 32) | rng.next_range_u64(0..1 << 32)
         };
 
         // Tirer l'intro (P1-T11)
@@ -1707,10 +1707,10 @@ impl TradGenerator {
                 let tune_in_set = plan.tune_in_set(tune_index);
                 let u = plan
                     .key_draw(tune_in_set)
-                    .unwrap_or_else(|| rng.next_range_usize(0..KEY_DRAW_RANGE) as u32);
+                    .unwrap_or_else(|| rng.next_range_u64(0..KEY_DRAW_RANGE) as u32);
                 (Some(prev), plan.is_last(tune_in_set), u)
             }
-            _ => (None, false, rng.next_range_usize(0..KEY_DRAW_RANGE) as u32),
+            _ => (None, false, rng.next_range_u64(0..KEY_DRAW_RANGE) as u32),
         };
         set.choose(prev, &candidates, last, u)
     }

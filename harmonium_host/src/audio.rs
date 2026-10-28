@@ -1,15 +1,13 @@
-use std::{
-    sync::{Arc, Mutex, atomic::AtomicU64},
-    time::Instant,
-};
+use std::sync::{Arc, Mutex, atomic::AtomicU64};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use harmonium_audio::backend::{
     AudioRenderer,
-    recorder::{OverflowPolicy, RecorderBackend},
+    recorder::{OverflowPolicy, RecorderBackend, RecorderWorker},
     synth_backend::SynthBackend,
 };
 use harmonium_core::log;
+use web_time::Instant;
 
 use crate::{
     clock::{ClockReader, TransportClock},
@@ -35,6 +33,10 @@ pub struct EngineControls {
     pub clock_reader: ClockReader,
     /// Completed recordings.
     pub finished_recordings: crate::FinishedRecordings,
+    /// Encoder of the recordings when no thread runs it (wasm): the host
+    /// advances it from [`LiveHost::pump`](crate::LiveHost::pump). `None` when
+    /// the recorder has its own thread.
+    pub recorder: Option<RecorderWorker>,
 }
 
 /// Build the whole engine graph at `sample_rate`: the control side and the
@@ -76,12 +78,9 @@ pub(crate) fn build_engine(
     ));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
-    let recorder_backend = Box::new(RecorderBackend::with_policy(
-        inner_backend,
-        finished_recordings.clone(),
-        sample_rate as u32,
-        overflow,
-    ));
+    let (recorder_backend, recorder) =
+        build_recorder(inner_backend, finished_recordings.clone(), sample_rate as u32, overflow);
+    let recorder_backend = Box::new(recorder_backend);
 
     // NOTE: No pre-generation here. The caller sets params first, then
     // generates: pre-generating with defaults would produce bars that don't
@@ -108,9 +107,37 @@ pub(crate) fn build_engine(
             transport_position,
             clock_reader,
             finished_recordings,
+            recorder,
         },
         playback,
     )
+}
+
+/// The recorder of an engine. Native: its encoder has a thread, and `overflow`
+/// decides what a full queue does.
+#[cfg(not(target_arch = "wasm32"))]
+fn build_recorder(
+    inner: Box<dyn AudioRenderer>,
+    finished: crate::FinishedRecordings,
+    sample_rate: u32,
+    overflow: OverflowPolicy,
+) -> (RecorderBackend, Option<RecorderWorker>) {
+    (RecorderBackend::with_policy(inner, finished, sample_rate, overflow), None)
+}
+
+/// The recorder of an engine. Wasm has no thread: the encoder goes to the host,
+/// which advances it from [`LiveHost::pump`](crate::LiveHost::pump). The
+/// callback never blocks, so a full queue always drops and counts, whatever
+/// `overflow` says.
+#[cfg(target_arch = "wasm32")]
+fn build_recorder(
+    inner: Box<dyn AudioRenderer>,
+    finished: crate::FinishedRecordings,
+    sample_rate: u32,
+    _overflow: OverflowPolicy,
+) -> (RecorderBackend, Option<RecorderWorker>) {
+    let (backend, worker) = RecorderBackend::pumped(inner, finished, sample_rate);
+    (backend, Some(worker))
 }
 
 /// Create a decoupled timeline stream for real-time playback: the engine
@@ -169,7 +196,11 @@ pub fn create_timeline_stream(
 /// Create a timeline engine for offline (non-realtime) rendering.
 ///
 /// No audio device is opened. The caller drives `playback.process_buffer()`
-/// in a tight loop to render as fast as possible.
+/// in a tight loop to render as fast as possible. Native only: the recorder
+/// blocks on its encoder thread, and wasm has none (use
+/// [`LiveHost::detached`](crate::LiveHost::detached), whose `pump` drives the
+/// encoder).
+#[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::type_complexity)]
 pub fn create_offline_engine(
     sf2_bytes: Option<&[u8]>,

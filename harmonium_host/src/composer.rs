@@ -16,6 +16,7 @@ use harmonium_core::{
     log,
     params::{MusicalParams, SessionConfig, TimeSignature},
     theory::chord::{Chord, ChordType},
+    time_plan::score::{SESSION_KEYS, SESSION_SCALES, session_start},
     timeline::Writehead,
     trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
     tuning::TuningParams,
@@ -105,14 +106,13 @@ impl MusicComposer {
         transport_position: Arc<AtomicU64>,
         session_seed: u64,
     ) -> Self {
-        use rand::Rng;
-        let mut rng = ChaCha8Rng::seed_from_u64(session_seed);
+        let (rng, key_index, scale_index) = session_start(session_seed);
 
         let bpm = 120.0;
         let steps = 16;
         let initial_pulses = 4;
 
-        let keys = [
+        let keys: [PitchSymbol; SESSION_KEYS as usize] = [
             PitchSymbol::C,
             PitchSymbol::D,
             PitchSymbol::E,
@@ -121,9 +121,10 @@ impl MusicComposer {
             PitchSymbol::A,
             PitchSymbol::B,
         ];
-        let scales = [ScaleType::PentatonicMinor, ScaleType::PentatonicMajor];
-        let random_key = keys[rng.gen_range(0..keys.len())];
-        let random_scale = scales[rng.gen_range(0..scales.len())];
+        let scales: [ScaleType; SESSION_SCALES as usize] =
+            [ScaleType::PentatonicMinor, ScaleType::PentatonicMajor];
+        let random_key = keys[key_index as usize];
+        let random_scale = scales[scale_index as usize];
 
         let config = SessionConfig {
             bpm,

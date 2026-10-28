@@ -699,8 +699,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff2abc00be7fca6ebc474524697ae276ad847ad0a6b3faa4bcb027e9a4614ad0"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -740,6 +742,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "cpal",
+ "getrandom 0.2.17",
  "harmonium_audio",
  "harmonium_core",
  "hound",
@@ -751,6 +754,7 @@ dependencies = [
  "rust-music-theory",
  "serde_json",
  "triple_buffer",
+ "web-time",
 ]
 
 [[package]]
@@ -790,6 +794,7 @@ name = "harmonium_core"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "getrandom 0.2.17",
  "midly",
  "rand",
  "rand_chacha",
@@ -798,6 +803,19 @@ dependencies = [
  "serde_path_to_error",
  "toml",
  "toml_edit 0.22.27",
+]
+
+[[package]]
+name = "harmonium_determinism"
+version = "0.1.0"
+dependencies = [
+ "harmonium",
+ "harmonium_core",
+ "hound",
+ "rtrb",
+ "serde_json",
+ "wasm-bindgen",
+ "web-time",
 ]
 
 [[package]]
