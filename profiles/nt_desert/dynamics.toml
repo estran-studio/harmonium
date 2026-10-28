@@ -1,6 +1,6 @@
 # Pilotage par les 4 émotions. Neutre (0,5/0,3/0,5/0,5) : groove principal à
 # 210 noires. Arousal : tempo et batterie. Density : couches (à 0,2 ne reste
-# que la nappe, façon bourdon de A Way ; la mélodie est retirée en G7c).
+# que la nappe). Dessus à 0,4 ; doublure à 0,5, après son entrée tardive.
 # Tension : riff et contretemps, sans dominante substituée (boucle G2).
 # Valence : phrygien sombre (G#, voire A façon A Way en bas) contre
 # mixolydien plus clair en haut.
@@ -32,6 +32,8 @@ density_tracks = [
   { track = "Bass", minimum = 0.25 },
   { track = "Heel", minimum = 0.3 },
   { track = "Toe", minimum = 0.35 },
+  { track = "Melody", minimum = 0.4 },
+  { track = "Countermelody", minimum = 0.5 },
 ]
 tension_offbeat = [[0.0, -3.0], [0.3, 0.0], [1.0, 24.0]]
 tension_duration = [[0.0, 1.0], [0.3, 1.0], [1.0, 0.8]]

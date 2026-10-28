@@ -1,10 +1,9 @@
-# Banque de cellules conservée pour le plan interne (G4) : la mélodie est
-# retirée de l'arrangement en G7c (pas de sifflement dans Fläshyn), donc ces
-# cellules ne sonnent jamais. Seuls open/run sont employés (arp/turn de poids
-# nul, G4).
+# G7f — proposition originale, non transcrite de l'OST.
+# Appel descendant (tenue de deux pulses, puis deux réponses), retour plus
+# espacé. Les degrés sont en G# phrygien ; G2 les rapproche de la sonorité
+# locale (D mineur en A2). Les rôles alternent appel fixe et réponse pondérée.
 cells = [
-  { role = "open", notes = "1 - - - - - 5 - - - - -", weight = 1 },
-  { role = "open", notes = "5 - - - - - 8 - - - - -", weight = 1 },
-  { role = "run", notes = "1 2 3 2 1 - - - - - - -", weight = 1 },
-  { role = "run", notes = "5 4 3 2 1 - - - - - - -", weight = 1 },
+  { role = "open", notes = "8 - - - - - 6 - - 5 - -", weight = 1 },
+  { role = "run", notes = "5 - - - - - - - - 8 - -", weight = 3 },
+  { role = "run", notes = "5 - - - - - 6 - - 8 - -", weight = 1 },
 ]

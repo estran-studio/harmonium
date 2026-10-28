@@ -1,19 +1,9 @@
 # Profil du désert de Nuclear Throne (Jukio Kallio, 2015).
-# Données seulement : pédale phrygienne tenue (G2/G5), basse motivique (G3),
-# forme en boucle sans mélodie (G4, G7c), 12/8 à 140 noires pointées.
-# Arche de Fläshyn : A1 pédale G#, A2 riff D/D#, pont de nappes, B en
-# alternance G/G#, reprise A1'. G7c (écoute du propriétaire) : sifflement
-# retiré (pas de lead dans Fläshyn), une seule voix grave (scie 81 sur Bass),
-# accords en nappe chaude 89 en tessiture médium, batterie en groove
-# (charleston réduit aux accents de temps, G7d) et en retrait au mix.
-# G7d (mixage mesuré) : le gain master ne s'applique qu'aux pistes SoundFont,
-# pas aux voix Odin — il descend à 9 dB et basse/nappe remontent à 0 dB pour
-# que la basse Odin domine la batterie pendant les tenues ; le master du
-# preset basse se morphe par arousal/density (voie prévue, [odin.Bass]).
-# Seuls les presets de assets/nt_desert.sf2 sont employés : 0/81 (scie grave
-# sur Bass), 0/89 (nappe chaude sur Chords), kit 128/0 (touches 36, 38, 42).
-# 0/78 reste déclaré (champ requis par le schéma) mais ne sonne plus, la
-# mélodie étant retirée. Voir README.md du dossier.
+# G7f : proposition composée, pas une transcription ni un sifflement supposé.
+# A1 reste une pédale G# ; A2 suit D mineur ; le pont garde ses accords.
+# Motif de dessus sur pad 88 doux, réponses et répétitions plutôt que solos libres.
+# La banque du jeu et GeneralUser possèdent 88, 89, 81 et les toms employés.
+# Le mix G7d et les presets Odin restent inchangés ; aucun algorithme ajouté.
 [files]
 cells = "cells.toml"
 feet = "feet.toml"
@@ -39,34 +29,40 @@ default_bpm = 210.0
 min_bpm = 150.0
 max_bpm = 240.0
 
-# Arche de Fläshyn en 48 mesures : 8 + 8 + 16 + 8, reprise A1' par rejouée
-# de la partie A1 (séquence [0, 1, 2, 3, 0]). Boucles sans cadence (G4) :
-# rôles Open/Free seulement, pas de fins imposées.
+# Arche de 48 mesures, répétée deux tours avec quelques fins variées.
+# Les frontières de phrase déclenchent les fills, sans cadence harmonique.
 [form]
 sequence = [0, 1, 2, 3, 0]
+resolve = "per_tune"
+repeat_variation = 0.15
+tour_variation = 0.20
+variation_operations = ["varied_end", "repeated_notes"]
+varied_end_keep = 0.5
+avoid_adjacent = false
 [[form.parts]]
 name = "A1"
 melody_center_offset = 0
-roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+phrase_ends = [8]
+roles = ["Open", "Open", "Open", "Open", "Open", "Open", "Open", "Open"]
 [[form.parts]]
 name = "A2"
 melody_center_offset = 0
-roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+phrase_ends = [8]
+roles = ["Open", "Open", "Free", "Free", "Open", "Free", "Open", "Free"]
 [[form.parts]]
 name = "Pont"
 melody_center_offset = 0
-# Pont sans batterie ni basse, comme l'original (mes. 17–30 silencieuses) :
-# la sourdine par partie (G7b) coupe Heel/Toe/Bass sur toute la partie.
-tracks_off = ["Bass", "Heel", "Toe"]
+# Retombée : nappes seules, y compris au second tour.
+tracks_off = ["Bass", "Heel", "Toe", "Melody", "Countermelody"]
 roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
 [[form.parts]]
 name = "B"
-melody_center_offset = 0
-roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+melody_center_offset = -5
+phrase_ends = [8]
+roles = ["Open", "Open", "Free", "Free", "Open", "Free", "Open", "Free"]
 
-# Mélodie retirée (G7c) : aucune entrée Melody dans l'arrangement, donc aucun
-# sifflement ne sonne. La section et la banque de cellules restent requises
-# pour le plan interne qui sert au vote harmonique (mécanisme G4).
+# Le moteur rapproche les porteuses des sons de l'accord courant : A1'
+# conserve donc une ligne de pédale, pas une gamme libre ajoutée au bourdon.
 [melody]
 cell_units = 12
 strong_units = [0, 3, 6, 9]
@@ -78,12 +74,12 @@ weight_role_arp = 0
 weight_role_turn = 0
 max_continuity_step_distance = 2
 continuity_max_retries = 8
-melody_center_midi = 76
-tonic_midi_min = 62
-tonic_midi_max = 74
+melody_center_midi = 74
+tonic_midi_min = 60
+tonic_midi_max = 72
 tessitura_min = 64
-tessitura_max = 86
-base_velocity = 72
+tessitura_max = 84
+base_velocity = 60
 strong_eighth_velocity_offset = 4
 even_eighth_velocity_offset = -4
 
@@ -204,16 +200,34 @@ notes = [{ step = 0, duration = 2, semitones = 0, velocity = 50 }]
 [accompaniment.chords]
 center = 60
 max_drift = 6
+strings = 4
 default_pattern = 0
 patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 53, tie = true }] }]
 
 [instruments]
-# 78 déclaré mais inutilisé (mélodie retirée, G7c ; champ requis par le schéma).
-melody_program = 78
+# Pad doux employé en dessus, pas de programme 78.
+melody_program = 88
+countermelody_program = 88
 chords_program = 89
 bass_program = 81
 percussion_bank = 128
 percussion_program = 0
+
+# Doublure brève au dernier retour du second tour ; pas de solo indépendant.
+[heterophony]
+source = "Melody"
+octave = -1
+low = 55
+high = 79
+arousal_low = 0.5
+arousal_high = 1.0
+density_low = 0.5
+density_high = 1.0
+operations = [
+  { operation = "unison", weight = 8 },
+  { operation = "plain", weight = 2 },
+  { operation = "rest", weight = 3, beats = ["weak"] },
+]
 
 # G7d : le preset d'usine sort à −15 dB de master ; la règle master_volume
 # (socle 0,178 + 0,77 arousal + 0,77 density au neutre ≈ ×2, borne 2,0) remonte
@@ -246,8 +260,12 @@ damping = 0.5
 width = 0.6
 level = 0.25
 [mix.tracks.Melody]
-level_db = 0.0
+level_db = -8.0
 pan = 0.05
+reverb_send = 0.2
+[mix.tracks.Countermelody]
+level_db = -14.0
+pan = 0.25
 reverb_send = 0.2
 [mix.tracks.Chords]
 level_db = 0.0

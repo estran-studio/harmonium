@@ -112,8 +112,8 @@ fn invalid_bank_value_names_the_bank_file_and_line() -> TestResult {
     let copy = Copy::of("nt_desert", "bank_value")?;
     let line = copy.replace(
         "cells.toml",
-        r#"{ role = "run", notes = "5 4 3 2 1 - - - - - - -", weight = 1 }"#,
-        r#"{ role = "run", notes = "5 4 oups 2 1 - - - - - - -", weight = 1 }"#,
+        r#"notes = "5 - - - - - 6 - - 8 - -""#,
+        r#"notes = "5 - - - - - oups - - 8 - -""#,
     )?;
     let error = StyleProfile::load(&copy.dir).err().ok_or("valeur invalide acceptée")?;
     assert_eq!(error.file.as_deref(), Some("cells.toml"), "{error}");
@@ -127,11 +127,8 @@ fn invalid_bank_value_names_the_bank_file_and_line() -> TestResult {
 fn validation_error_in_a_bank_names_the_bank_file_and_line() -> TestResult {
     let copy = Copy::of("nt_desert", "bank_validation")?;
     // Une cellule trop courte passe la lecture et échoue à `validate()`.
-    let line = copy.replace(
-        "cells.toml",
-        r#"{ role = "run", notes = "1 2 3 2 1 - - - - - - -", weight = 1 }"#,
-        r#"{ role = "run", notes = "1 2 3", weight = 1 }"#,
-    )?;
+    let line =
+        copy.replace("cells.toml", r#"notes = "5 - - - - - 6 - - 8 - -""#, r#"notes = "1 2 3""#)?;
     let error = StyleProfile::load(&copy.dir).err().ok_or("cellule courte acceptée")?;
     assert_eq!(error.file.as_deref(), Some("cells.toml"), "{error}");
     assert_eq!(error.line, Some(line), "{error}");
@@ -216,8 +213,8 @@ fn in_memory_files_report_the_same_errors_as_the_disk() -> TestResult {
     let copy = Copy::of("nt_desert", "memory")?;
     copy.replace(
         "cells.toml",
-        r#"{ role = "run", notes = "5 4 3 2 1 - - - - - - -", weight = 1 }"#,
-        r#"{ role = "run", notes = "5 4 oups 2 1 - - - - - - -", weight = 1 }"#,
+        r#"notes = "5 - - - - - 6 - - 8 - -""#,
+        r#"notes = "5 - - - - - oups - - 8 - -""#,
     )?;
     let files: BTreeMap<String, String> = [
         "profile.toml",

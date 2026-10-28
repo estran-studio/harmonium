@@ -59,3 +59,48 @@ hits = [
   { step = 22, track = "Toe", delta_velocity = -8 },
   { step = 22, track = "Toe", note = 42, delta_velocity = -40 },
 ]
+
+# Fills composés aux seules frontières phrase_ends (A1/A2/B, mesure 8).
+# Le dernier temps descend les toms ; pas de cymbale brillante supplémentaire.
+# À faible densité, une seule réponse grave ; au neutre, trois toms.
+[[cadence_patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 0, track = "Toe", note = 42, delta_velocity = -20 },
+  { step = 20, track = "Toe", note = 41, delta_velocity = -20 },
+]
+
+[[cadence_patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 0, track = "Toe", note = 42, delta_velocity = -20 },
+  { step = 2, track = "Toe", delta_velocity = -17 },
+  { step = 8, track = "Heel", delta_velocity = -18 },
+  { step = 10, track = "Toe", delta_velocity = -17 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 14, track = "Toe", delta_velocity = -17 },
+  { step = 18, track = "Toe", note = 48, delta_velocity = -18 },
+  { step = 20, track = "Toe", note = 45, delta_velocity = -14 },
+  { step = 22, track = "Toe", note = 41, delta_velocity = -10 },
+]
+
+[[cadence_patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 0, track = "Toe", note = 42, delta_velocity = -20 },
+  { step = 2, track = "Toe", delta_velocity = -17 },
+  { step = 6, track = "Toe", note = 42, delta_velocity = -32 },
+  { step = 8, track = "Heel", delta_velocity = -18 },
+  { step = 10, track = "Toe", delta_velocity = -17 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 14, track = "Toe", delta_velocity = -17 },
+  { step = 16, track = "Heel", delta_velocity = -8 },
+  { step = 18, track = "Toe", note = 48, delta_velocity = -18 },
+  { step = 19, track = "Toe", delta_velocity = -24 },
+  { step = 20, track = "Toe", note = 45, delta_velocity = -14 },
+  { step = 21, track = "Toe", delta_velocity = -20 },
+  { step = 22, track = "Toe", note = 41, delta_velocity = -10 },
+]

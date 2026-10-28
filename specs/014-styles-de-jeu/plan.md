@@ -99,6 +99,7 @@ les transcriptions de G0.
 | G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | `g7c-nt-desert-ecoute.md` |
 | G6b | fusionnée (`113fe81`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | `g6b-odin.md` |
 | G7d | fusionnée (`94ba523`) : mix de `nt_desert` (basse au premier plan, charleston réduit aux accents, Odin +17 dB) | `g7d-nt-desert-mix.md` |
+| G7f | livrée sur branche : motifs composés sans sifflement, contrastes de couches et fills aux frontières ; deux tours comparés aux deux banques, validation d'écoute du propriétaire attendue | `g7f-nt-desert-riche.md` |
 | M1 | fusionnée (labo `0a1d77f`) : distance générique profil→corpus (`styledist`, audio + symbolique), première mesure sur `nt_desert` | labo `references/nt-desert/distance-nt_desert.json` |
 | G9-G0 | fusionnée (labo `6a28971`) : références Basement d'Isaac (mineur harmonique sur pédale, 140 BPM, 4/4 ; propositions `isaac_basement` avec presets Odin candidats) | labo `references/isaac-basement/README.md` |
 | G6c | en cours (worktree `g6c-odin-finitions`) : morphing préparé hors du thread audio, avertissement au chargement | — |

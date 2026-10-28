@@ -1,6 +1,6 @@
-# Forme longue : boucle de jeu. Chaque air est son propre set d'un seul air
-# de 48 mesures : intro complète (vide ici) et entrées rejouées à chaque air,
-# raccord direct sans pause, pas d'outro (boucle sans fin pour le jeu).
+# Forme longue : chaque set contient un air, deux tours de 48 mesures.
+# Intro vide et entrées rejouées au prochain air ; raccord direct sans pause,
+# pas d'outro. Les variations restent internes aux tours, sans modulation.
 length = [{ tunes = 1, weight = 1 }]
 
 [key]
