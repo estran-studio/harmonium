@@ -103,9 +103,9 @@ les transcriptions de G0.
 | M1 | fusionnée (labo `0a1d77f`) : distance générique profil→corpus (`styledist`, audio + symbolique), première mesure sur `nt_desert` | labo `references/nt-desert/distance-nt_desert.json` |
 | G9-G0 | fusionnée (labo `6a28971`) : références Basement d'Isaac (mineur harmonique sur pédale, 140 BPM, 4/4 ; propositions `isaac_basement` avec presets Odin candidats) | labo `references/isaac-basement/README.md` |
 | G6c | fusionnée (`fe921d2`) : morphing préparé hors du thread audio, avertissement au chargement | `g6c-odin-finitions.md` |
-| G6d | en cours (`g6d-odin2`) : migration vers le port fidèle, seul propriétaire de la nouvelle API Odin | — |
-| G7e | suspendue jusqu'à G6d : vérifier les transitions et corriger la fluidité sans imposer un glissando partout | — |
-| G7f | en cours (`g7f-nt-desert-riche`) : motifs, réponses et contrastes d'arrangement ; pas de retour du sifflement rejeté | — |
+| G6d | fusionnée (`6770b43`) : vrai moteur Odin fidèle (odin-rs `4718189`), morphing sur 45 paramètres du catalogue, instances hors callback, boost +17 dB retiré | `g6d-odin2.md` |
+| G7f | fusionnée (`12bb1c7`) : dessus composé A5–F5–D5 (pad 88), deux tours, relief par section, sans sifflement | `g7f-nt-desert-riche.md` |
+| G7e | en cours (`g7e-legato`) : fluidité des notes — Scope SoundFont + articulation maintenant, glide Odin en suivi | — |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
 Après G6c : 627 tests passent sans `odin`, 6 tests de contrat `odin` passent. Labo après G0, G6,
