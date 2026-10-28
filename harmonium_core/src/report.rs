@@ -34,6 +34,7 @@ fn is_normal(value: &crate::timeline::Articulation) -> bool {
             | crate::timeline::Articulation::Linked
             | crate::timeline::Articulation::Accent
             | crate::timeline::Articulation::Tied
+            | crate::timeline::Articulation::Legato
     )
 }
 

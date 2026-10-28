@@ -164,6 +164,7 @@ fn validation_piste_inconnue_doublon_et_motif_sans_emploi() -> TestResult {
             octave: 0,
             velocity: 45,
             tie: false,
+            legato: false,
             doubling: Vec::new(),
         }],
     };

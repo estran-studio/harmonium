@@ -311,6 +311,14 @@ impl VoiceManager {
     pub fn process_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::NoteOn { note, velocity, channel } => {
+                // Legato monophonique (G7e) : réalisé par le chevauchement de
+                // notes du playhead (NoteOn de la nouvelle hauteur, puis NoteOff
+                // de l'ancienne légèrement après), pas ici. `oxisynth` (dérivé de
+                // FluidSynth) stocke les contrôleurs CC 126 (mode mono) et CC 5/65
+                // (portamento) mais ne les interprète pas : aucun mode mono ni
+                // glissando de hauteur n'est produit par cet appel. La basse reste
+                // polyphonique dans le rendu SoundFont ; le vrai glissando est
+                // renvoyé au moteur Odin (TODO G7e, après G6d).
                 let midi_ch = self.midi_channel_map[channel as usize];
                 // Dette tierce assumée et circonscrite : `oxisynth` alloue puis libère
                 // un `Vec` de 64 pointeurs à chaque NoteOn (`core/midi.rs`, `inner_noteon`).

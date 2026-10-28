@@ -72,15 +72,18 @@ tie_priority = ["I", "V", "IV"]
 low = 38
 high = 49
 # Marche 1–2–3, puis 5–4–2, sur deux mesures ; degrés modaux.
+# Legato (principe VIII, G7e) : même emploi que la basse de nt_desert, dans
+# une valse 3/4 — les hauteurs, durées et vélocités ne changent pas, seule
+# l'articulation passe de Normal à Legato.
 [[accompaniment.bass.motifs]]
 bars = 2
 notes = [
- { step = 0, duration = 4, degree = 1, velocity = 78 },
- { step = 4, duration = 4, degree = 2, velocity = 70 },
- { step = 8, duration = 4, degree = 3, velocity = 72 },
- { step = 12, duration = 4, degree = 5, velocity = 78 },
- { step = 16, duration = 4, degree = 4, velocity = 70 },
- { step = 20, duration = 4, degree = 2, velocity = 72 },
+ { step = 0, duration = 4, degree = 1, velocity = 78, legato = true },
+ { step = 4, duration = 4, degree = 2, velocity = 70, legato = true },
+ { step = 8, duration = 4, degree = 3, velocity = 72, legato = true },
+ { step = 12, duration = 4, degree = 5, velocity = 78, legato = true },
+ { step = 16, duration = 4, degree = 4, velocity = 70, legato = true },
+ { step = 20, duration = 4, degree = 2, velocity = 72, legato = true },
 ]
 [accompaniment.chords]
 center = 60

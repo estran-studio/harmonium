@@ -27,6 +27,7 @@ fn profile() -> TestResult<StyleProfile> {
                 octave: 0,
                 velocity: 80,
                 tie: false,
+                legato: false,
                 doubling: vec![],
             },
             BassMotifNote {
@@ -37,6 +38,7 @@ fn profile() -> TestResult<StyleProfile> {
                 octave: 0,
                 velocity: 72,
                 tie: false,
+                legato: false,
                 doubling: vec![],
             },
         ],
