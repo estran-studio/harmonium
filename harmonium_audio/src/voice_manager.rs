@@ -65,20 +65,19 @@ pub struct VoiceManager {
     pub current_banks: [Option<u32>; 16],
     /// Program currently selected on each logical channel.
     pub current_programs: [u8; 16],
-    /// Maps logical channels to MIDI channels (e.g. drums/feet ch3/ch4 → MIDI ch9)
+    /// Maps logical channels to MIDI channels. Identité par défaut ; la
+    /// banque de percussion du profil décide (`128` → canal GM 9, sinon
+    /// canaux propres, voir `apply_profile_programs`).
     pub midi_channel_map: [u8; 16],
-    /// Banque explicitement chargée par l'hôte pour les percussions, prioritaire au repli du profil.
-    percussion_bank_override: Option<u32>,
 }
 
-/// Default map: logical channel N → MIDI channel N, except Heel (3) and Toe (4) → MIDI channel 9 (D10).
+/// Default map: logical channel N → MIDI channel N. Le profil décide du
+/// routage des pieds via `apply_profile_programs` (un seul chemin).
 fn default_midi_channel_map() -> [u8; 16] {
     let mut map = [0u8; 16];
     for (i, slot) in map.iter_mut().enumerate() {
         *slot = i as u8;
     }
-    map[3] = GM_DRUM_CHANNEL;
-    map[4] = GM_DRUM_CHANNEL;
     map
 }
 
@@ -104,7 +103,6 @@ impl VoiceManager {
             current_banks: [None; 16],
             current_programs: default_channel_programs(),
             midi_channel_map: default_midi_channel_map(),
-            percussion_bank_override: None,
         };
         if let Some(bytes) = sf2_bytes {
             vm.add_font(0, bytes);
@@ -150,56 +148,35 @@ impl VoiceManager {
         }
     }
 
-    /// Configure GM-standard program assignments and drum/feet channel mapping.
+    /// Applique l'instrumentarium déjà résolu, sans allocation dans le callback.
     ///
-    /// Une seule fonction décide du routage des pieds (pas de chemin parallèle) :
-    /// - `feet_loaded` : Heel (3) et Toe (4) sur leurs canaux MIDI propres (3 et 4),
-    ///   banque `FEET_BANK_OFFSET`, programme 0 (banque de pieds `harmonium_trad.sf2`, SK2).
-    /// - sinon `gm_compatible` : Heel/Toe sur le canal MIDI 9 (kit GM banque 128, programme 0).
-    /// - sinon (banque non-GM) : Heel/Toe sur leurs canaux logiques (3 et 4) sans remap.
-    ///
-    /// Les programmes mélodiques/harmoniques sont inchangés : Melody (0), Chords (1),
-    /// Bass (2) selon le style GM (`apply_style_programs`).
-    pub fn configure_gm_defaults(&mut self, gm_compatible: bool, feet_loaded: bool) {
-        self.percussion_bank_override = feet_loaded.then_some(FEET_BANK_OFFSET);
-        if feet_loaded {
-            // Banque de pieds dédiée (SK2) : Heel (3) et Toe (4) sur leurs canaux
-            // MIDI propres, banque décalée FEET_BANK_OFFSET, programme 0.
-            self.midi_channel_map[3] = 3;
-            self.midi_channel_map[4] = 4;
-            self.set_channel_route(3, ChannelRoute { bank: FEET_BANK_OFFSET });
-            self.set_channel_route(4, ChannelRoute { bank: FEET_BANK_OFFSET });
-            self.set_channel_program(3, 0);
-            self.set_channel_program(4, 0);
-        } else if gm_compatible {
-            // Remap drum/feet logical channels (heel=3, toe=4) to MIDI channel 9 (GM drums, D10)
+    /// Un seul chemin pour les pieds : la banque de percussion du profil
+    /// décide. Banque `128` (kit GM : marche, `nt_desert`) : Heel (3) et Toe
+    /// (4) partagent le canal MIDI 9 avec cette banque. Toute autre banque
+    /// (pieds `harmonium_trad.sf2` en banque `1`) : canaux MIDI propres (3
+    /// et 4) avec la banque et le programme du profil. Sans la banque
+    /// demandée, les pieds sont silencieux (avertissement au chargement).
+    pub fn apply_profile_programs(
+        &mut self,
+        instruments: &harmonium_core::style_profile::ProfileInstruments,
+    ) {
+        for (channel, program) in gm_programs_for_profile(instruments) {
+            self.set_channel_program(usize::from(channel), program);
+        }
+        let bank = u32::from(instruments.percussion_bank);
+        if bank == 128 {
             self.midi_channel_map[3] = GM_DRUM_CHANNEL;
             self.midi_channel_map[4] = GM_DRUM_CHANNEL;
-
-            // Set up MIDI channel 9 as drum bank (GM standard bank 128)
-            let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                channel: GM_DRUM_CHANNEL,
-                ctrl: 0,
-                value: 128,
-            });
         } else {
-            // Non-GM SoundFont: pas de remap du canal 9.
-            // Les pieds restent sur leurs canaux logiques (3 et 4) vers les canaux MIDI 3 et 4.
             self.midi_channel_map[3] = 3;
             self.midi_channel_map[4] = 4;
-
-            let _ = self.synth.send_event(oxisynth::MidiEvent::ControlChange {
-                channel: GM_DRUM_CHANNEL,
-                ctrl: 0,
-                value: 0,
-            });
         }
-        let _ = self.synth.send_event(oxisynth::MidiEvent::ProgramChange {
-            channel: GM_DRUM_CHANNEL,
-            program_id: 0,
-        });
-
-        self.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
+        // La carte précède les ordres : route et programme partent sur le
+        // canal MIDI résolu ci-dessus.
+        for channel in [3, 4] {
+            self.set_channel_route(channel, ChannelRoute { bank });
+            self.set_channel_program(channel, instruments.percussion_program);
+        }
     }
 
     /// Détermine si la SoundFont chargée dans oxisynth contient un preset en banque 128 (kit de batterie GM).
@@ -286,21 +263,6 @@ impl VoiceManager {
             .send_event(oxisynth::MidiEvent::ProgramChange { channel: 15, program_id: prog });
 
         missing
-    }
-
-    /// Applique l'instrumentarium déjà résolu, sans allocation dans le callback.
-    pub fn apply_profile_programs(
-        &mut self,
-        instruments: &harmonium_core::style_profile::ProfileInstruments,
-    ) {
-        for (channel, program) in gm_programs_for_profile(instruments) {
-            self.set_channel_program(usize::from(channel), program);
-        }
-        let bank = self.percussion_bank_override.unwrap_or(u32::from(instruments.percussion_bank));
-        for channel in [3, 4] {
-            self.set_channel_route(channel, ChannelRoute { bank });
-            self.set_channel_program(channel, instruments.percussion_program);
-        }
     }
 
     /// Send a GM Program Change to the MIDI channel mapped from a logical channel.
@@ -395,6 +357,7 @@ impl VoiceManager {
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }
+            | AudioEvent::EmotionUpdate { .. }
             | AudioEvent::LoadFont { .. }
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
@@ -479,26 +442,30 @@ mod tests {
     }
 
     #[test]
-    fn test_configure_gm_defaults_remapping() {
+    fn test_percussion_routing_follows_profile_bank_128() {
         let mut vm = VoiceManager::new(None, 44100.0);
-        vm.configure_gm_defaults(true, false);
-        assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL);
-        assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL);
-
-        vm.configure_gm_defaults(false, false);
-        assert_eq!(vm.midi_channel_map[3], 3, "Pas de remap sur canal 9 quand non-GM");
-        assert_eq!(vm.midi_channel_map[4], 4, "Pas de remap sur canal 9 quand non-GM");
+        let mut instruments = harmonium_core::StyleProfile::builtin().instruments;
+        instruments.percussion_bank = 128;
+        instruments.percussion_program = 0;
+        vm.apply_profile_programs(&instruments);
+        assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL, "kit GM sur canal 9");
+        assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL, "kit GM sur canal 9");
+        assert_eq!(vm.channel_routing[3].bank, 128, "Heel → banque du profil");
+        assert_eq!(vm.channel_routing[4].bank, 128, "Toe → banque du profil");
     }
 
     #[test]
-    fn test_configure_feet_routing() {
+    fn test_percussion_routing_follows_profile_feet_bank() {
         let mut vm = VoiceManager::new(None, 44100.0);
-        vm.configure_gm_defaults(true, true);
-        assert_eq!(vm.midi_channel_map[3], 3, "Heel → canal MIDI 3");
-        assert_eq!(vm.midi_channel_map[4], 4, "Toe → canal MIDI 4");
-        assert_eq!(vm.channel_routing[3].bank, FEET_BANK_OFFSET, "Heel → banque décalée");
-        assert_eq!(vm.channel_routing[4].bank, FEET_BANK_OFFSET, "Toe → banque décalée");
-        assert_eq!(vm.channel_program(3), Some(0), "Heel programme 0");
-        assert_eq!(vm.channel_program(4), Some(0), "Toe programme 0");
+        let mut instruments = harmonium_core::StyleProfile::builtin().instruments;
+        instruments.percussion_bank = 1;
+        instruments.percussion_program = 0;
+        vm.apply_profile_programs(&instruments);
+        assert_eq!(vm.midi_channel_map[3], 3, "pieds sur canaux propres");
+        assert_eq!(vm.midi_channel_map[4], 4, "pieds sur canaux propres");
+        assert_eq!(vm.channel_routing[3].bank, FEET_BANK_OFFSET, "Heel → banque du profil");
+        assert_eq!(vm.channel_routing[4].bank, FEET_BANK_OFFSET, "Toe → banque du profil");
+        assert_eq!(vm.channel_program(3), Some(0), "Heel programme du profil");
+        assert_eq!(vm.channel_program(4), Some(0), "Toe programme du profil");
     }
 }

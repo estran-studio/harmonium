@@ -15,6 +15,18 @@ midly = "0.5.3"
 rtrb = "0.3"
 arrayvec = "0.7"
 
+[dependencies.odin2-core]
+git = "https://github.com/bascanada/odin-rs"
+features = ["std"]
+optional = true
+
+[features]
+default = []
+# Synthé Odin par piste (GPLv3 via `odin2-core`) : un binaire compilé avec
+# `odin` est GPL ; 1837 compile sans. Aucun preset `.odin` dans ce dépôt :
+# l'hôte fournit les octets, comme les SF2.
+odin = ["dep:odin2-core"]
+
 [dev-dependencies]
 hound = "3.5.1"
 midly = "0.5.3"

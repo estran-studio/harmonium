@@ -227,7 +227,7 @@ melody_program = 40
 countermelody_program = 40
 chords_program = 24
 bass_program = 32
-percussion_bank = 128
+percussion_bank = 1
 percussion_program = 0
 
 [mix]

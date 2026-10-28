@@ -27,6 +27,7 @@ const BUFFER_SIZE: usize = 256;
 pub fn run(
     sf2_bytes: Option<&[u8]>,
     feet_sf2_bytes: Option<&[u8]>,
+    odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
     solo_track: Option<String>,
@@ -49,7 +50,7 @@ pub fn run(
         mut report_rx,
         mut clock_reader,
         finished_recordings,
-    ) = audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, SAMPLE_RATE)
+    ) = audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, odin_presets, SAMPLE_RATE)
         .map_err(|e| anyhow::anyhow!(e))?;
 
     if let Some(s) = seed {
@@ -99,6 +100,7 @@ pub fn run(
     }
     let _ = playback_cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()));
+    let _ = playback_cmd_tx.push(PlaybackCommand::SetEmotions(composer.emotions()));
     if let Some(track) = solo_track {
         for id in harmonium_core::timeline::TrackId::ALL {
             playback_cmd_tx
@@ -228,6 +230,7 @@ pub fn run(
                 let has_next = target_bars.is_none_or(|last| current_bar < last);
                 if has_next && current_bar != prepared_after {
                     automation.apply(current_bar + 1, &mut composer, initial_emotions);
+                    let _ = playback_cmd_tx.push(PlaybackCommand::SetEmotions(composer.emotions()));
                     if let Some((bar, _)) = composer.take_pending_drop() {
                         playback_cmd_tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| {
                             anyhow::anyhow!("file de commandes pleine pendant l'automation")

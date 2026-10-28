@@ -211,6 +211,24 @@ bass_program = 81
 percussion_bank = 128
 percussion_program = 0
 
+[odin.Bass]
+preset = "basse_saturee"
+morph = [
+  { param = "filter_frequency", arousal = 3500.0, tension = 1500.0 },
+  { param = "filter_resonance", tension = 0.3 },
+  { param = "filter_env_amount", arousal = 0.4 },
+  { param = "amp_release", density = 0.3 },
+]
+
+[odin.Chords]
+preset = "nappe"
+morph = [
+  { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
+  { param = "amp_attack", tension = -0.15 },
+  { param = "amp_release", density = 0.6 },
+  { param = "filter_sustain", valence = 0.2 },
+]
+
 [mix]
 master_db = 14.0
 [mix.room]

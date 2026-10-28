@@ -5,27 +5,34 @@ use crate::{
     voice_manager::{ChannelRoute, FEET_BANK_OFFSET, VoiceManager},
 };
 
-/// SoundFont renderer backed by oxisynth.
+/// SoundFont renderer backed by oxisynth, avec voix Odin par piste derrière
+/// l'option `odin`. Sans `odin` (ou sans preset fourni), tout passe par oxisynth.
 pub struct SynthBackend {
     voice_manager: VoiceManager,
     mix: harmonium_core::mix::PreparedMix,
     eq_state: [[[f32; 2]; 2]; 2],
+    #[cfg(feature = "odin")]
+    odin: crate::odin_voices::OdinMixer,
 }
 
 impl SynthBackend {
     /// Build the backend. `sf2_bytes = None` starts without any bank loaded:
     /// the engine renders silence until a `LoadFont` event arrives.
-    /// `feet_sf2_bytes` charge la banque de pieds dédiée (décalage
-    /// [`FEET_BANK_OFFSET`]) et route Heel/Toe dessus ; `None` conserve le
-    /// comportement GM (canal 9) ou non-GM.
+    /// `feet_sf2_bytes` charge la banque de pieds en banque
+    /// [`FEET_BANK_OFFSET`] ; le profil décide qui l'emploie
+    /// (`apply_profile_programs`, un seul chemin).
     /// `initial_routing` holds signed bank ids per logical channel
     /// (negative ⇒ bank 0); entries beyond channel 15 are ignored.
+    /// `odin_presets` : presets `.odin` fournis par l'hôte (nom + octets),
+    /// analysés à la construction hors callback quand compilé avec `odin` ;
+    /// ignorés sinon (chaque piste joue son programme SoundFont).
     #[must_use]
     pub fn new(
         sample_rate: f64,
         sf2_bytes: Option<&[u8]>,
         feet_sf2_bytes: Option<&[u8]>,
         initial_routing: &[i32],
+        odin_presets: &[crate::odin_source::OdinPresetSource],
     ) -> Self {
         let mut voice_manager = VoiceManager::new(sf2_bytes, sample_rate as f32);
 
@@ -33,49 +40,41 @@ impl SynthBackend {
             voice_manager.set_channel_route(i, ChannelRoute::from_bank_id(bank_id));
         }
 
-        // After routing is established, configure GM defaults if a SoundFont is loaded.
-        // This must happen after set_channel_route() because that sends ProgramChange(0)
-        // which would overwrite the correct GM programs.
-        // Détection réelle de la conformité GM : présence d'un preset en banque 128 (kit de batterie).
-        // Calculé à l'initialisation, strictement hors du callback temps réel.
-        let gm_compatible = if sf2_bytes.is_some() {
-            let gm = voice_manager.has_bank_128_preset();
-            if !gm {
-                let missing = voice_manager.missing_gm_programs();
-                let missing_list =
-                    if missing.is_empty() { "aucun".to_string() } else { missing.join(", ") };
-                let warning_msg = format!(
-                    "Avertissement : la banque SoundFont n'est pas compatible General MIDI \
-                     (aucun kit de batterie en banque 128). \
-                     Programmes GM demandés absents : {missing_list}. \
-                     Le canal 9 ne sera pas remappé vers la banque 128."
-                );
-                eprintln!("{warning_msg}");
-                harmonium_core::log::warn(&warning_msg);
-            }
-            gm
-        } else {
-            false
-        };
+        // Diagnostic de conformité GM (kit banque 128, programmes demandés),
+        // strictement hors du callback temps réel. Le routage, lui, suit le
+        // profil (`apply_profile_programs`, un seul chemin).
+        if sf2_bytes.is_some() && !voice_manager.has_bank_128_preset() {
+            let missing = voice_manager.missing_gm_programs();
+            let missing_list =
+                if missing.is_empty() { "aucun".to_string() } else { missing.join(", ") };
+            let warning_msg = format!(
+                "Avertissement : la banque SoundFont n'est pas compatible General MIDI \
+                 (aucun kit de batterie en banque 128). \
+                 Programmes GM demandés absents : {missing_list}."
+            );
+            eprintln!("{warning_msg}");
+            harmonium_core::log::warn(&warning_msg);
+        }
 
         // Préparation SF2 strictement à l'initialisation : les banques natives
         // évitent le saturating_sub des offsets oxisynth, qui masquerait GM 0.
-        let feet_loaded = feet_sf2_bytes.is_some_and(|bytes| {
+        if let Some(bytes) = feet_sf2_bytes {
             match relocate_font_banks(bytes, FEET_BANK_OFFSET as u16) {
-                Ok(prepared) => {
-                    voice_manager.add_font(0, &prepared);
-                    true
-                }
-                Err(error) => {
-                    harmonium_core::log::error(error);
-                    false
-                }
+                Ok(prepared) => voice_manager.add_font(0, &prepared),
+                Err(error) => harmonium_core::log::error(error),
             }
-        });
+        }
 
-        voice_manager.configure_gm_defaults(gm_compatible, feet_loaded);
+        voice_manager.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
+        #[cfg(feature = "odin")]
+        let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32, odin_presets);
+        #[cfg(not(feature = "odin"))]
+        let _ = odin_presets;
 
         let mix = harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate);
+        #[cfg(feature = "odin")]
+        let mut backend = Self { voice_manager, mix, eq_state: [[[0.0; 2]; 2]; 2], odin };
+        #[cfg(not(feature = "odin"))]
         let mut backend = Self { voice_manager, mix, eq_state: [[[0.0; 2]; 2]; 2] };
         backend.apply_mix(mix);
         backend
@@ -110,7 +109,30 @@ impl SynthBackend {
                 });
             }
         }
+        #[cfg(feature = "odin")]
+        self.odin.apply_mix(mix);
     }
+    /// Bascule SoundFont ↔ Odin d'après le profil : applique puis coupe les
+    /// notes des canaux qui changent de côté (aucune note pendante).
+    /// Sans `odin`, aucun canal ne bascule.
+    #[cfg(feature = "odin")]
+    fn update_routing(&mut self, params: &harmonium_core::params::PlaybackParams) {
+        let mut was = [false; harmonium_core::timeline::TrackId::ALL.len()];
+        for (index, slot) in was.iter_mut().enumerate() {
+            *slot = self.odin.is_odin_channel(index);
+        }
+        self.odin.apply_descs(&params.odin);
+        for (index, was_odin) in was.iter().enumerate() {
+            if *was_odin != self.odin.is_odin_channel(index) {
+                let channel = index as u8;
+                self.voice_manager.process_event(AudioEvent::AllNotesOff { channel });
+                self.odin.all_notes_off(index);
+            }
+        }
+    }
+
+    #[cfg(not(feature = "odin"))]
+    fn update_routing(&mut self, _params: &harmonium_core::params::PlaybackParams) {}
 }
 
 impl AudioRenderer for SynthBackend {
@@ -130,17 +152,49 @@ impl AudioRenderer for SynthBackend {
             }
             AudioEvent::SetMix { mix } => self.apply_mix(mix),
             AudioEvent::UpdateMusicalParams { params } => {
+                self.update_routing(&params);
                 self.voice_manager.apply_profile_programs(&params.instruments);
+            }
+            #[cfg(feature = "odin")]
+            AudioEvent::EmotionUpdate { emotions } => self.odin.apply_emotions(emotions),
+            #[cfg(not(feature = "odin"))]
+            AudioEvent::EmotionUpdate { .. } => {}
+            AudioEvent::NoteOn { note, velocity, channel } => {
+                #[cfg(feature = "odin")]
+                if self.odin.is_odin_channel(usize::from(channel)) {
+                    self.odin.note_on(usize::from(channel), note, velocity);
+                    return;
+                }
+                self.voice_manager.process_event(AudioEvent::NoteOn { note, velocity, channel });
+            }
+            AudioEvent::NoteOff { note, channel } => {
+                #[cfg(feature = "odin")]
+                if self.odin.is_odin_channel(usize::from(channel)) {
+                    self.odin.note_off(usize::from(channel), note);
+                    return;
+                }
+                self.voice_manager.process_event(AudioEvent::NoteOff { note, channel });
+            }
+            AudioEvent::AllNotesOff { channel } => {
+                // Les deux côtés : une bascule SoundFont ↔ Odin ne doit jamais
+                // laisser une note pendante.
+                self.voice_manager.process_event(AudioEvent::AllNotesOff { channel });
+                #[cfg(feature = "odin")]
+                self.odin.all_notes_off(usize::from(channel));
             }
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. } => {}
+            // Contrôleurs et programmes : état SoundFont seulement (le preset
+            // Odin et le mix de piste viennent du profil).
             _ => self.voice_manager.process_event(event),
         }
     }
 
     /// Allocation-free: oxisynth writes interleaved stereo straight into
     /// `output`. Non-stereo layouts are not rendered and yield silence.
+    /// Les voix Odin actives s'ajoutent après EQ et gain master (niveau propre
+    /// au preset et au mix de piste : le gain master est calibré pour les samples SF2).
     fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         if channels == 2 {
             self.voice_manager.render(output);
@@ -158,6 +212,8 @@ impl AudioRenderer for SynthBackend {
                     *sample = x * self.mix.master_gain;
                 }
             }
+            #[cfg(feature = "odin")]
+            self.odin.render_add(output);
         } else {
             output.fill(0.0);
         }
@@ -246,7 +302,7 @@ mod tests {
         let phdr = feet.windows(4).position(|chunk| chunk == b"phdr").unwrap();
         let size = u32::from_le_bytes(feet[phdr + 4..phdr + 8].try_into().unwrap()) as usize;
         feet[phdr + 8 + size - 38..phdr + 8 + size - 18].fill(0);
-        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&feet), &[0; 5]);
+        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&feet), &[0; 5], &[]);
         backend.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         let piano = backend.voice_manager.synth.channel_preset(1).unwrap();
         assert_eq!(piano.name(), "GM piano");
@@ -258,7 +314,7 @@ mod tests {
             assert_eq!(backend.voice_manager.midi_channel_map[channel as usize], channel);
         }
 
-        let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5]);
+        let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5], &[]);
         reference.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         for synth in [&mut backend, &mut reference] {
             synth.handle_event(AudioEvent::NoteOn { note: 60, velocity: 100, channel: 1 });

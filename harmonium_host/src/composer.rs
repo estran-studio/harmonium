@@ -657,6 +657,12 @@ impl MusicComposer {
         );
     }
 
+    /// Émotions courantes du contrôleur pour le morphing Odin audio.
+    #[must_use]
+    pub fn emotions(&self) -> [f32; 4] {
+        self.controls.emotions()
+    }
+
     // === Writehead controls ===
 
     pub fn set_writehead_lookahead(&mut self, n: usize) {
@@ -736,6 +742,8 @@ impl MusicComposer {
     pub fn set_tuning(&mut self, tuning: harmonium_core::tuning::TuningParams) {
         self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
         self.musical_params.profile_instruments = tuning.profile.instruments;
+        self.musical_params.profile_odin =
+            harmonium_core::params::describe_odin_tracks(&tuning.profile.odin);
         self.generator.update_tuning(tuning);
         self.apply_profile_defaults();
     }

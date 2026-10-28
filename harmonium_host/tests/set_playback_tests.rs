@@ -27,7 +27,7 @@ fn beat_info_crosses_every_transition_and_set_gap_without_a_hole() -> Result<(),
         profile.set.end.outro = true;
         profile.set.end.gap_bars = vec![SetGap { bars: 2, weight: 1 }];
         let (mut composer, mut playback, mut commands, mut reports, mut clock_reader, _recordings) =
-            create_offline_engine(None, None, 44100.0)?;
+            create_offline_engine(None, None, &[], 44100.0)?;
         composer.set_profile(profile)?;
         composer.set_seed(3);
         composer.sync_generator();

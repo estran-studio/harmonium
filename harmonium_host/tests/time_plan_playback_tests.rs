@@ -68,7 +68,7 @@ fn render(
     commands: &[DatedCommand],
 ) -> Result<(BTreeMap<(usize, usize), RenderedStep>, usize), String> {
     let (mut composer, mut playback, mut queue, mut reports, mut clock, _recordings) =
-        create_offline_engine(None, None, f64::from(SAMPLE_RATE))?;
+        create_offline_engine(None, None, &[], f64::from(SAMPLE_RATE))?;
     composer.set_profile(profile.clone())?;
     composer.set_seed(SEED);
     forward_drop(&mut composer, &mut queue);
@@ -184,7 +184,7 @@ fn rendered_steps_land_on_the_shared_plan_for_every_profile() -> Result<(), Stri
 #[test]
 fn an_underflow_is_published_as_a_plan_gap_not_hidden() -> Result<(), String> {
     let (mut composer, mut playback, mut queue, _reports, mut clock, _recordings) =
-        create_offline_engine(None, None, f64::from(SAMPLE_RATE))?;
+        create_offline_engine(None, None, &[], f64::from(SAMPLE_RATE))?;
     composer.set_profile(StyleProfile::named("reel_quebecois").map_err(|e| e.to_string())?)?;
     composer.set_seed(SEED);
     forward_drop(&mut composer, &mut queue);

@@ -80,8 +80,13 @@ pub struct NativeHandle {
 }
 
 impl NativeHandle {
-    /// Start the engine and immediately begin playback.
-    pub fn start(sf2_bytes: Option<&[u8]>) -> Result<Self, String> {
+    /// Start the engine and immediately begin playback. `odin_presets` :
+    /// presets `.odin` fournis par le jeu (nom + octets), comme les SF2 ;
+    /// sans `odin` compilé, ignorés (rendu SoundFont).
+    pub fn start(
+        sf2_bytes: Option<&[u8]>,
+        odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+    ) -> Result<Self, String> {
         let (
             stream,
             session_config,
@@ -93,7 +98,7 @@ impl NativeHandle {
             transport_position,
             clock_reader,
             finished_recordings,
-        ) = crate::audio::create_timeline_stream(sf2_bytes, None)?;
+        ) = crate::audio::create_timeline_stream(sf2_bytes, None, odin_presets)?;
 
         Ok(Self {
             stream: SendStream(stream),
@@ -112,8 +117,11 @@ impl NativeHandle {
     }
 
     /// Start the engine in a paused state.
-    pub fn start_paused(sf2_bytes: Option<&[u8]>) -> Result<Self, String> {
-        let handle = Self::start(sf2_bytes)?;
+    pub fn start_paused(
+        sf2_bytes: Option<&[u8]>,
+        odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
+    ) -> Result<Self, String> {
+        let handle = Self::start(sf2_bytes, odin_presets)?;
         handle.pause()?;
         Ok(handle)
     }
@@ -377,10 +385,14 @@ impl NativeHandle {
         self.composer.lock().ok().map(|c| c.emotion_mapped_bpm()).unwrap_or(120.0)
     }
 
-    pub fn set_emotions(&self, arousal: f32, valence: f32, density: f32, tension: f32) {
+    pub fn set_emotions(&mut self, arousal: f32, valence: f32, density: f32, tension: f32) {
         if let Ok(mut c) = self.composer.lock() {
             c.set_emotions(arousal, valence, density, tension);
         }
+        // Morphing Odin : meilleur effort, la génération reste l'autorité.
+        let _ = self.playback_cmd_tx.push(crate::playback::PlaybackCommand::SetEmotions([
+            arousal, valence, density, tension,
+        ]));
     }
 
     pub fn set_time_signature(&self, numerator: usize, denominator: usize) {
@@ -658,7 +670,7 @@ mod tests {
         // `start_paused` opens a real output stream (available on the macOS
         // workstation and CI); on a device-less host the contract cannot be
         // exercised and the test is a no-op.
-        let Ok(mut handle) = NativeHandle::start_paused(None) else {
+        let Ok(mut handle) = NativeHandle::start_paused(None, &[]) else {
             return Ok(());
         };
         let now = Instant::now();

@@ -12,7 +12,7 @@ use harmonium_core::{
 #[test]
 fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), String> {
     let (mut composer, mut playback, mut tx, _reports, mut clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_seed(1);
 
     composer.set_tuning(TuningParams {

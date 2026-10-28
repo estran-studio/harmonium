@@ -85,6 +85,7 @@ impl ReplState {
             let _ = self
                 .playback_cmd_tx
                 .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()));
+            let _ = self.playback_cmd_tx.push(PlaybackCommand::SetEmotions(c.emotions()));
         }
     }
 }
@@ -934,7 +935,7 @@ mod tests {
     #[test]
     fn negative_absolute_valence_reaches_the_trad_mapper() -> Result<()> {
         let (composer, _playback, playback_cmd_tx, report_rx, clock_reader, finished_recordings) =
-            harmonium::audio::create_offline_engine(None, None, 44100.0)
+            harmonium::audio::create_offline_engine(None, None, &[], 44100.0)
                 .map_err(|e| anyhow::anyhow!(e))?;
         let mut state = ReplState {
             composer: Arc::new(Mutex::new(composer)),

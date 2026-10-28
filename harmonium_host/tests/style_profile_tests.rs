@@ -39,7 +39,7 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
             * meter.steps_per_pulse as f64)
             .round() as u64;
         let (mut composer, mut playback, mut commands, _reports, mut clock, _recordings) =
-            create_offline_engine(None, None, 44100.0)?;
+            create_offline_engine(None, None, &[], 44100.0)?;
         composer.set_profile(profile)?;
         composer.set_seed(1);
         composer.generate_bars(3);
@@ -79,7 +79,7 @@ fn compound_meter_beat_info_contract() -> Result<(), String> {
         .find(|p| p.meter.time_signature == harmonium_core::params::TimeSignature::new(6, 8))
         .expect("profil 6/8 distribué");
     let (mut composer, mut playback, mut commands, _reports, mut clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_profile(profile.clone())?;
     composer.set_seed(1);
     composer.generate_bars(4);
@@ -122,7 +122,7 @@ fn triple_meter_beat_info_contract() -> Result<(), String> {
         .find(|p| p.meter.time_signature == harmonium_core::params::TimeSignature::new(3, 4))
         .expect("profil 3/4 distribué");
     let (mut composer, mut playback, mut commands, _reports, mut clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_profile(profile.clone())?;
     composer.set_seed(1);
     composer.generate_bars(4);
@@ -169,7 +169,7 @@ fn switching_profiles_applies_defaults_and_queues_programs() -> Result<(), Strin
     use harmonium_core::params::TimeSignature;
 
     let (mut composer, mut playback, mut commands, _reports, _clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
 
     composer.set_profile_id("gigue_quebecoise")?;
     let params = composer.musical_params();

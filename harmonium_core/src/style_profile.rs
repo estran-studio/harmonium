@@ -510,6 +510,11 @@ pub struct StyleProfile {
     pub accompaniment: Option<TradHarmonyParams>,
     pub percussion: FeetTable,
     pub instruments: ProfileInstruments,
+    /// Instruments Odin par piste (`[odin.<Piste>]`) : preset fourni par
+    /// l'hôte et morphing par les 4 émotions. Vide par défaut : tout joue
+    /// SoundFont. Le programme SoundFont reste toujours requis (repli).
+    #[serde(default)]
+    pub odin: std::collections::BTreeMap<TrackId, crate::odin::OdinTrackSpec>,
     pub arrangement: ReelArrangement,
     pub dynamics: StyleDynamics,
     #[serde(default)]
@@ -1223,6 +1228,46 @@ impl StyleProfile {
             "programme MIDI dans 0..127",
         )?;
         check(i.percussion_bank <= 255, "instruments.percussion_bank", "banque SF2 dans 0..255")?;
+        for (track, spec) in &self.odin {
+            let track_name = track.name();
+            check(
+                !spec.preset.is_empty() && spec.preset.len() <= crate::odin::ODIN_PRESET_NAME_CAP,
+                &format!("odin.{track_name}.preset"),
+                "nom de preset non vide de 64 caractères au plus",
+            )?;
+            check(
+                !spec.preset.contains('/') && !spec.preset.contains('\\'),
+                &format!("odin.{track_name}.preset"),
+                "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)",
+            )?;
+            check(
+                self.instruments.program(*track).is_some(),
+                &format!("odin.{track_name}"),
+                "programme SoundFont requis (rendu sans `odin`)",
+            )?;
+            check(
+                spec.morph.len() <= crate::odin::ODIN_MAX_RULES,
+                &format!("odin.{track_name}.morph"),
+                "au plus 8 règles par piste",
+            )?;
+            let mut seen = [false; 16];
+            for rule in &spec.morph {
+                let slot = rule.param as usize;
+                check(
+                    !seen[slot],
+                    &format!("odin.{track_name}.morph"),
+                    "paramètre unique par piste",
+                )?;
+                seen[slot] = true;
+                check(
+                    [rule.arousal, rule.valence, rule.density, rule.tension]
+                        .iter()
+                        .all(|gain| gain.is_finite()),
+                    &format!("odin.{track_name}.morph"),
+                    "gains de morphing finis",
+                )?;
+            }
+        }
         self.arrangement.validate().map_err(|error| {
             use crate::trad::ArrangementError as E;
             let field = match &error {

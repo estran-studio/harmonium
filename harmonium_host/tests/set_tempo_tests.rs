@@ -4,7 +4,7 @@ use harmonium::audio::create_offline_engine;
 #[test]
 fn explicit_bpm_survives_emotions_and_reset_restores_the_set_ramp() -> Result<(), String> {
     let (mut composer, _playback, _commands, _reports, _clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_bpm(197.0);
     composer.use_emotion_mode();
     composer.set_emotions(0.8, 0.3, 0.7, 0.5);
@@ -23,7 +23,7 @@ fn explicit_bpm_survives_emotions_and_reset_restores_the_set_ramp() -> Result<()
 #[test]
 fn game_stop_targets_the_playing_air_not_the_pregenerated_air() -> Result<(), String> {
     let (mut composer, _playback, _commands, _reports, _clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_seed(3);
     composer.generate_bars(100);
     let ahead = composer.take_snapshots();

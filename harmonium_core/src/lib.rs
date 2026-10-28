@@ -6,6 +6,7 @@ pub mod log;
 pub mod mapper;
 pub mod mix;
 pub mod models;
+pub mod odin;
 pub mod ornaments;
 pub mod params;
 pub mod performance;

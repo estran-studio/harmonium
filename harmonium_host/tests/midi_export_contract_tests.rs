@@ -38,7 +38,7 @@ fn render_reel(
     mechanical: bool,
 ) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, &[], SAMPLE_RATE)?;
     if mechanical {
         let mut profile = composer.profile().clone();
         profile.performance = Default::default();

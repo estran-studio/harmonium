@@ -29,7 +29,7 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         ("tension", [0.5, 0.3, 0.5, 1.0]),
     ] {
         let (mut composer, mut playback, mut tx, _reports, mut clock, _recordings) =
-            create_offline_engine(None, None, 44100.0)?;
+            create_offline_engine(None, None, &[], 44100.0)?;
         composer.set_seed(1);
 
         composer.set_tuning(TuningParams {
@@ -140,7 +140,7 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
 #[test]
 fn emotion_mapping_reads_style_tempo_data_and_preserves_runtime_contract() -> Result<(), String> {
     let (mut composer, _playback, _tx, _rx, _clock, _recordings) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
 
     let mut tuning = TuningParams::default();
     tuning.profile.meter.default_bpm = 250.0;

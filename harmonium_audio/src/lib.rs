@@ -1,4 +1,7 @@
 pub mod backend;
+pub mod odin_source;
+#[cfg(feature = "odin")]
+pub mod odin_voices;
 pub mod realtime;
 pub mod voice_manager;
 

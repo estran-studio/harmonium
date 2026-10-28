@@ -23,7 +23,7 @@ use crate::params::{PulseSpec, TimeSignature};
 pub type NoteId = u64;
 
 /// Track identifier for per-instrument separation
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum TrackId {
     /// Melody / Lead (MIDI channel 0)
     Melody,

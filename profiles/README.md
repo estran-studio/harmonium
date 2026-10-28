@@ -39,6 +39,7 @@ Le onzième, `nt_desert` (phase 014, G7 puis G7c), est le premier profil non tra
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
+| `[odin.<Piste>]` | Optionnel. Instrument Odin d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `preset` (nom fourni par l'hôte) et `morph` (règles émotionnelles). Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
@@ -123,6 +124,58 @@ La tension ne substitue pas de dominante aux accords déclarés. Les intros
 vamp et l'outro tonique restent les raccords explicites de l'arrangement ;
 la boucle décrit les mesures du corps de l'air.
 
+
+## Instrument Odin par piste (option `odin`)
+
+Chaque piste garde son **programme SoundFont**, toujours requis : c'est le rendu
+de tout binaire compilé sans `odin` (1837, par défaut). Une piste peut en plus
+déclarer un preset Odin, en données :
+
+```toml
+[odin.Bass]
+preset = "basse_saturee"
+morph = [
+  { param = "filter_frequency", arousal = 3500.0, tension = 1500.0 },
+  { param = "filter_resonance", tension = 0.3 },
+]
+```
+
+- **Choix à l'exécution.** Sans `odin` compilé, ou si l'hôte ne fournit pas le
+  preset nommé, la piste joue son programme SoundFont. Avec `odin` et le preset
+  présent, elle joue Odin. Aucun nom de style ni canal fixe : la clé est la
+  piste (`Melody`, `Chords`, `Bass`, `Countermelody`) ; `Heel` et `Toe` restent
+  SoundFont.
+- **Presets fournis par l'hôte**, comme les octets SF2 : `create_offline_engine`
+  / `NativeHandle::start` reçoivent des `OdinPresetSource { name, bytes }`
+  (`name` = nom du fichier sans `.odin`) ; CLI : `--odin-presets <dossier>`,
+  sous `--features odin`. **Aucun fichier `.odin` ni code GPL dans ce dépôt**
+  (licence MIT OR Apache-2.0) ; `odin2-core` (GPLv3) est une dépendance git
+  optionnelle : un binaire compilé avec `odin` est GPL.
+- **Morphing par les 4 émotions.** `valeur = socle du preset + arousal×a +
+  valence×v + density×d + tension×t` (émotions dans `0..1`), puis bornée.
+  `param` : `filter_frequency` (Hz), `filter_resonance`, `filter_env_amount`,
+  `amp_attack`/`amp_decay`/`amp_sustain`/`amp_release`,
+  `filter_attack`/`filter_decay`/`filter_sustain`/`filter_release` (s),
+  `osc_detune`, `osc1_volume`/`osc2_volume`/`osc3_volume`, `master_volume`.
+  Au plus 8 règles par piste, un paramètre une seule fois. Drive et effets du
+  preset ne sont pas exposés par `odin2-core` (configuration simplifiée du
+  moteur). Octaves et demi-tons du preset ne se morphent pas.
+- **Temps réel.** Aucune allocation ni verrou dans le callback : presets
+  analysés à la construction, voix créées une fois, règles stockées en tableau
+  `Copy`. Les notes `Tied` (nappes, pédales) n'émettent pas de nouvelle
+  attaque : Odin ne réattaque pas non plus.
+- **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`) ;
+  le gain master du profil, calibré pour les samples SF2, ne s'y applique pas :
+  le niveau propre se règle dans le `master` du preset.
+
+## Percussion : routage par le profil
+
+Heel et Toe suivent `instruments.percussion_bank`, un seul chemin
+(`apply_profile_programs`) : banque `128` = kit GM sur le canal MIDI 9 (marche,
+`nt_desert`) ; toute autre banque = canaux propres 3 et 4 sur cette banque. La
+banque de pieds `harmonium_trad.sf2` est chargée en banque `1` : les profils
+trad à podorythmie déclarent `percussion_bank = 1`. Un profil à kit déclare 128 :
+charger la banque de pieds ne le détourne plus.
 
 ## Accompagnement
 
