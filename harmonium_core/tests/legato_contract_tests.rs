@@ -100,23 +100,24 @@ fn relance_chromatique_une_attaque_et_chevauchée() -> TestResult {
     let log = bass_played(ms);
     assert!(orphan_free(&log), "notes orphelines : {log:?}");
 
-    // Relance de la quatrième mesure : D pas 0, E pas 5, F# pas 6, G pas 7,
-    // G# pas 11. Chaque hauteur attaque une fois ; la fin de la note
-    // précédente chevauche l'attaque (offset > 0, après le NoteOn à 0).
+    // Relance de la quatrième mesure (G7h : montée d'une octave, figures
+    // ≥ 2 pas) : D2 pas 0, E2 pas 4, F#2 pas 6, G2 pas 8, G#2 pas 12. Chaque
+    // hauteur attaque une fois ; la fin de la note précédente chevauche
+    // l'attaque (offset > 0, après le NoteOn à 0).
     let bar4: Vec<_> = log.iter().copied().filter(|e| e.0 == 4).collect();
     assert_eq!(
         bar4,
         vec![
-            (4, 0, 0, true, 26),
-            (4, 0, LEGATO_OVERLAP, false, 32), // pédale G# relâchée après l'attaque de D
-            (4, 5, 0, true, 28),
-            (4, 5, LEGATO_OVERLAP, false, 26),
-            (4, 6, 0, true, 30),
-            (4, 6, LEGATO_OVERLAP, false, 28),
-            (4, 7, 0, true, 31),
-            (4, 7, LEGATO_OVERLAP, false, 30),
-            (4, 11, 0, true, 32),
-            (4, 11, LEGATO_OVERLAP, false, 31),
+            (4, 0, 0, true, 38),
+            (4, 0, LEGATO_OVERLAP, false, 32), // pédale G# relâchée après l'attaque de D2
+            (4, 4, 0, true, 40),
+            (4, 4, LEGATO_OVERLAP, false, 38),
+            (4, 6, 0, true, 42),
+            (4, 6, LEGATO_OVERLAP, false, 40),
+            (4, 8, 0, true, 43),
+            (4, 8, LEGATO_OVERLAP, false, 42),
+            (4, 12, 0, true, 44),
+            (4, 12, LEGATO_OVERLAP, false, 43),
         ],
         "barre 4 : une attaque par note, chevauchement (pas de détachement)"
     );
