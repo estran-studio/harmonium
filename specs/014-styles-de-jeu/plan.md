@@ -98,7 +98,7 @@ les transcriptions de G0.
 | G7b | fusionnée (`c26c2c3`) : `tracks_off` par partie ; pont de `nt_desert` sans batterie ni basse | `g7b-pistes-par-partie.md` |
 | G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
 | G6b | en cours (worktree `g6b-odin`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | — |
-| G8 | à faire : le clone NT est `games/throne` du dépôt alacod (public) ; il activera `odin` | — |
+| G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
 Après fusion de G1 à G5, G7 et G7b : 544 tests passent, 0 échec ; fmt propre ; clippy sur les bibliothèques
 et binaires sans nouvel avertissement (157, mêmes emplacements qu'avant la phase). Labo après G0
@@ -122,9 +122,9 @@ Harmonium et alacod passent sous `MIT OR Apache-2.0` ; seuls les jeux publics GP
 
 ## Acceptation de la phase
 
-1. `nt_<zone>` joue dans le clone NT, avec sa banque, sur au moins 30 s de jeu réel. Écoute du
-   propriétaire : « ça sonne comme du NT ».
-2. Même critère pour `isaac_<étage>` dans le clone Isaac.
+1. `nt_desert` rendu par harmonium (CLI, banque ou presets Odin) : écoute du propriétaire « ça sonne
+   comme du NT ».
+2. Même critère pour `isaac_<étage>`.
 3. Pour chaque profil, le labo publie la distance au corpus de référence, en audio et en
    symbolique.
 4. Chaque algorithme ajouté est employé par au moins une fixture d'un autre style ; aucun nom de
@@ -138,6 +138,8 @@ Harmonium et alacod passent sous `MIT OR Apache-2.0` ; seuls les jeux publics GP
 - **Mécanisme de fusion** (un profil qui reprend les couches d'un autre, principe VIII) : il vient
   après deux styles non trad, pour qu'il se conçoive sur des cas réels.
 - Test à l'aveugle réel/généré BT2 (annoncé en 013) ; J1b, J2 et J3 de la phase 013.
+- Brancher la musique dans les clones (`alacod/games/throne`, `games/isaac`), ex-G8 et partie jeu de
+  G9 : plus tard, la phase reste dans harmonium.
 
 ## G0 — Corpus NT (2026-10-27)
 
