@@ -31,14 +31,14 @@ porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError`
 | `gigue_acadienne` (R1) | Acadie ; 55 gigues | 6/8, 180 | violon, **piano** | oui | violon |
 | `reel_britannique_coloniale` (R1) | britannique colonial ; 493 reels | 2/2, 208 | violon, guitare, basse | non | non |
 | `valse_britannique_coloniale` (R1) | britannique colonial ; 60 valses | 3/4, 138 | violon, guitare, basse | non | non |
-| `nt_desert` | Nuclear Throne, désert (Jukio Kallio, 2015) ; Fläshyn / A Way | 12/8, 210 (= 140 pointées) | dessus doux 88, nappe 89, scie 81, kit rock sec | oui (36, 38, 42 et fills 48/45/41) | pad 88, dernier retour du second tour (G7f) |
+| `nt_desert` | Nuclear Throne, désert (Jukio Kallio, 2015) ; Fläshyn / A Way | 12/8, 210 (= 140 pointées) | dessus lead 81, nappe 89, scie 81, kit rock sec | oui (36, 38, 42 et fills 48/45/41) | lead 81, dernier retour du second tour (G7h) |
 
 Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois
 derniers (phase 013, R1) sont construits par le même chemin — références du labo, `mine-cells`, formules de
 [Source des réglages distribués](#source-des-réglages-distribués-p3-t1-contrat-11) — par
 `specs/013-moteur-dans-le-jeu/r1_profils.py` (`selftest` rejoue les formules sur quatre profils existants) ;
 mesures et limites dans le plan 013, section R1.
-Le onzième, `nt_desert` (phase 014, G7 à G7f), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après).
+Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) puis `g7h-nt-desert-lisibilite.md` (registre, longueurs et timbre lisibles).
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
@@ -286,6 +286,9 @@ sur une note demande aussi une liaison avec la fin coïncidente précédente,
 y compris à l'intérieur d'une mesure. Un timbre à sustain et aucune
 interprétation raccourcissant le gate sont nécessaires pour une vraie pédale ;
 la fixture NT utilise **Saw Lead, `bass_program = 81` (0-based)**.
+`legato = true` (G7e) lie la note à la suivante par chevauchement au lecteur :
+une seule attaque par hauteur, la fin de la note tenue recouvre l'attaque
+nouvelle ; la première note d'un motif attaque normalement.
 `doubling = ["octave", "tenth"]` suit les mêmes règles que les coups.
 
 Banque : au plus 256 motifs, poids `u32` (défaut 1), somme positive sans

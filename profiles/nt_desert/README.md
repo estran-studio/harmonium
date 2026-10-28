@@ -21,12 +21,13 @@ introduction. Les entrées se réappliquent au prochain air.
 | Section | Mesures du tour | Fonction | Couches au premier tour |
 |---|---|---|---|
 | A1 | 1–8 | Pédale **G♯**, relance chromatique de basse toutes les quatre mesures | Basse 81 et nappe 89 seules |
-| A2 | 9–16 | Riff **D/D♯**, harmonie D mineur | Entrée batterie et motif de dessus doux 88 |
+| A2 | 9–16 | Riff **D/D♯**, harmonie D mineur | Entrée batterie et motif de dessus lead 81 |
 | Pont | 17–32 | C C E E F B C C / F C E E F B C♯ C♯ | Nappes seules ; `Bass`, `Heel`, `Toe`, `Melody`, `Countermelody` coupées |
 | B | 33–40 | G/G♯ par blocs de deux mesures, basse ponctuelle | Retour du motif dans un registre abaissé de cinq demi-tons avant réalisation harmonique |
 | A1' | 41–48 | Retour de la pédale et de sa relance | Dessus et batterie restent présents ; doublure seulement aux mesures 89–96 |
 
-Le dessus est un **pad mélodique 88**, non un sifflet ni un solo rapide.
+Le dessus est un **lead 81 (sawtooth)**, non un sifflet ni un solo rapide :
+le pad 88 à attaque lente fondait les trois notes en accord flou (G7h).
 Une seule cellule d'appel : tenue de deux pulses, puis deux notes descendantes
 (`8 — 6 — 5`). En A2, graine 1 neutre : **A5–F5–D5**. La réponse plus
 espacée repart de `5` vers `8`, avec une variante intermédiaire rare.
@@ -43,8 +44,9 @@ réduit aux accents de temps — pas 0 et 12 à la densité neutre, pulsations
 plein, autres temps ×0,8 dans les motifs, accent du temps fort et
 micro-timing ±0,02 pas en `[performance.tracks.Heel/Toe]`. Instruments :
 nappe chaude 89 (vélocité ×0,8, tessiture médium, jamais sous MIDI 48),
-scie grave 81 sur la basse seule (deux octaves plus bas, seule voix grave),
-kit 128/0 (touches 36, 38, 42).
+scie 81 sur la basse seule (pédale G♯1 tenue en ancre grave ; relance et riff
+montés d'une octave en D2–G♯2, figures ≥ 2 pas contigus, G7h), kit 128/0
+(touches 36, 38, 42).
 Le gain master (9 dB, SoundFont seulement) ne touche pas les voix Odin.
 Basse et nappe restent à 0 dB au niveau de piste ; les presets d'usine
 `Sausage Bassener` (Bass) et `Darken Nature [RM]` (Chords) conservent leur
@@ -67,10 +69,10 @@ Le groove courant et son micro-timing ±0,02 pas restent ceux de G7c/G7d.
 ## Timbres et émotions
 
 Tous les programmes nécessaires sont présents dans `assets/nt_desert.sf2`
-et GeneralUser GS : dessus/doublure 88, nappe 89, basse 81, kit 128/0
-(36, 38, 42, 41, 45, 48). Aucun preset de clavier absent de la banque du jeu
-n'est requis, donc aucune variante muette de secours. Banque procédurale CC0 :
-`harmonium_lab/references/nt-desert/banque.md`.
+et GeneralUser GS : dessus/doublure 81 (lead sawtooth, G7h), nappe 89,
+basse 81, kit 128/0 (36, 38, 42, 41, 45, 48). Aucun preset de clavier absent
+de la banque du jeu n'est requis, donc aucune variante muette de secours.
+Banque procédurale CC0 : `harmonium_lab/references/nt-desert/banque.md`.
 
 Mix G7d conservé : master SoundFont +9 dB, basse/nappe 0 dB, batterie
 −5/−6 dB. Nouveau dessus à −8 dB ; doublure à −14 dB. Les configurations

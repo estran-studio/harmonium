@@ -5,9 +5,12 @@
 # B en alternance G/G#, reprise A1'. G7c : sifflement retiré, une seule voix
 # grave (scie 81 sur Bass), accords en nappe chaude 89 en médium, batterie en
 # groove (charleston réduit aux accents, G7d) et en retrait au mix.
-# G7f : dessus composé (pas une transcription) sur pad 88 doux, réponses et
-# répétitions plutôt que solos ; doublure brève au dernier retour du second
-# tour. La banque du jeu et GeneralUser possèdent 88, 89, 81 et les toms.
+# G7f : dessus composé (pas une transcription), réponses et répétitions
+# plutôt que solos ; doublure brève au dernier retour du second tour.
+# G7h : lisibilité — relance et riff de basse montés d'une octave (D2–G#2,
+# chaque demi-ton audible), figures allongées (≥ 2 pas, contiguës pour le
+# legato G7e), dessus passé du pad 88 (attaque lente) au lead 81 (attaque
+# nette). La banque du jeu et GeneralUser possèdent 81, 89 et les toms.
 # G6d : presets Odin fidèles usine (Sausage Bassener sur Bass, Darken Nature
 # [RM] sur Chords) ; le gain master ne s'applique qu'aux pistes SoundFont, les
 # presets gardent leur master d'usine.
@@ -142,6 +145,9 @@ tie_priority = ["I", "V", "IV"]
 # hauteurs absolues de G0 §6.1), fondamentale courante ailleurs (riff D/D#
 # de G0, quasi-absence en B). Le pont tait la basse (`tracks_off`, G7b),
 # comme l'original : aucun motif pour cette partie.
+# G7h : la pédale G#1 reste l'ancre grave tenue ; la relance et le riff
+# montent d'une octave (`octave = 1`, D2–G#2) pour que chaque demi-ton soit
+# une note audible, et leurs figures sont allongées à ≥ 2 pas contigus.
 [accompaniment.bass]
 low = 26
 high = 37
@@ -152,11 +158,11 @@ weight = 1
 reference = "tonic"
 notes = [
   { step = 0, duration = 72, semitones = 0, velocity = 92, tie = true },
-  { step = 72, duration = 5, semitones = -6, velocity = 85, legato = true },
-  { step = 77, duration = 1, semitones = -4, velocity = 85, legato = true },
-  { step = 78, duration = 1, semitones = -2, velocity = 90, legato = true },
-  { step = 79, duration = 4, semitones = -1, velocity = 95, legato = true },
-  { step = 83, duration = 13, semitones = 0, velocity = 100, legato = true },
+  { step = 72, duration = 4, semitones = -6, octave = 1, velocity = 85, legato = true },
+  { step = 76, duration = 2, semitones = -4, octave = 1, velocity = 85, legato = true },
+  { step = 78, duration = 2, semitones = -2, octave = 1, velocity = 90, legato = true },
+  { step = 80, duration = 4, semitones = -1, octave = 1, velocity = 95, legato = true },
+  { step = 84, duration = 12, semitones = 0, octave = 1, velocity = 100, legato = true },
 ]
 [[accompaniment.bass.motifs]]
 part = "A2"
@@ -164,23 +170,21 @@ bars = 2
 weight = 3
 reference = "chord_root"
 notes = [
-  { step = 0, duration = 4, semitones = 0, velocity = 95, legato = true },
-  { step = 4, duration = 1, semitones = 1, velocity = 85, legato = true },
-  { step = 5, duration = 3, semitones = 0, velocity = 90, legato = true },
-  { step = 8, duration = 3, semitones = 1, velocity = 85, legato = true },
-  { step = 11, duration = 6, semitones = 0, velocity = 95, legato = true },
-  { step = 17, duration = 1, semitones = 1, velocity = 85, legato = true },
-  { step = 18, duration = 4, semitones = 0, velocity = 95, legato = true },
-  { step = 24, duration = 5, semitones = 0, velocity = 95, legato = true },
-  { step = 29, duration = 2, semitones = 1, velocity = 85, legato = true },
-  { step = 31, duration = 1, semitones = 3, velocity = 85, legato = true },
-  { step = 32, duration = 3, semitones = 5, velocity = 90, legato = true },
-  { step = 35, duration = 2, semitones = 6, velocity = 95, legato = true },
-  { step = 37, duration = 2, semitones = 0, velocity = 90, legato = true },
-  { step = 39, duration = 2, semitones = 1, velocity = 85, legato = true },
-  { step = 41, duration = 2, semitones = 0, velocity = 90, legato = true },
-  { step = 43, duration = 1, semitones = 2, velocity = 85, legato = true },
-  { step = 44, duration = 4, semitones = 0, velocity = 95, legato = true },
+  { step = 0, duration = 4, semitones = 0, octave = 1, velocity = 95, legato = true },
+  { step = 4, duration = 2, semitones = 1, octave = 1, velocity = 85, legato = true },
+  { step = 6, duration = 4, semitones = 0, octave = 1, velocity = 90, legato = true },
+  { step = 10, duration = 2, semitones = 1, octave = 1, velocity = 85, legato = true },
+  { step = 12, duration = 6, semitones = 0, octave = 1, velocity = 95, legato = true },
+  { step = 18, duration = 2, semitones = 1, octave = 1, velocity = 85, legato = true },
+  { step = 20, duration = 4, semitones = 0, octave = 1, velocity = 95, legato = true },
+  { step = 24, duration = 4, semitones = 0, octave = 1, velocity = 95, legato = true },
+  { step = 28, duration = 2, semitones = 1, octave = 1, velocity = 85, legato = true },
+  { step = 30, duration = 2, semitones = 3, octave = 1, velocity = 85, legato = true },
+  { step = 32, duration = 3, semitones = 5, octave = 1, velocity = 90, legato = true },
+  { step = 35, duration = 3, semitones = 6, octave = 1, velocity = 95, legato = true },
+  { step = 38, duration = 3, semitones = 0, octave = 1, velocity = 90, legato = true },
+  { step = 41, duration = 2, semitones = 1, octave = 1, velocity = 85, legato = true },
+  { step = 43, duration = 5, semitones = 0, octave = 1, velocity = 95, legato = true },
 ]
 [[accompaniment.bass.motifs]]
 part = "A2"
@@ -188,17 +192,17 @@ bars = 2
 weight = 1
 reference = "chord_root"
 notes = [
-  { step = 0, duration = 12, semitones = 0, velocity = 76, legato = true },
-  { step = 12, duration = 12, semitones = 1, velocity = 70, legato = true },
-  { step = 24, duration = 18, semitones = 0, velocity = 76, legato = true },
-  { step = 42, duration = 6, semitones = 1, velocity = 70, legato = true },
+  { step = 0, duration = 12, semitones = 0, octave = 1, velocity = 76, legato = true },
+  { step = 12, duration = 12, semitones = 1, octave = 1, velocity = 70, legato = true },
+  { step = 24, duration = 18, semitones = 0, octave = 1, velocity = 76, legato = true },
+  { step = 42, duration = 6, semitones = 1, octave = 1, velocity = 70, legato = true },
 ]
 [[accompaniment.bass.motifs]]
 part = "B"
 bars = 2
 weight = 1
 reference = "chord_root"
-notes = [{ step = 0, duration = 2, semitones = 0, velocity = 50 }]
+notes = [{ step = 0, duration = 2, semitones = 0, octave = 1, velocity = 50 }]
 
 # Nappe chaude (G7c, essai v2/v3 du propriétaire) : un coup plaqué lié d'une
 # mesure entière, programme 89, vélocité ×0,8 (53), tessiture médium
@@ -212,9 +216,11 @@ default_pattern = 0
 patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 53, tie = true }] }]
 
 [instruments]
-# Pad doux employé en dessus, pas de programme 78.
-melody_program = 88
-countermelody_program = 88
+# Lead 2 sawtooth (81) en dessus : attaque nette, registre médium distinct de
+# la basse ; présent dans les deux banques (nt_desert.sf2 et GeneralUser GS).
+# Pas de programme 78 (sifflement) ni de pad 88 (attaque lente, G7h).
+melody_program = 81
+countermelody_program = 81
 chords_program = 89
 bass_program = 81
 percussion_bank = 128
