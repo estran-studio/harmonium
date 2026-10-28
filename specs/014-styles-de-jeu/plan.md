@@ -100,7 +100,7 @@ les transcriptions de G0.
 | G6b | terminée dans le worktree `g6b-odin`, à fusionner : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | `g6b-odin.md` |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
-Après fusion de G1 à G5, G7 et G7b : 544 tests passent, 0 échec ; fmt propre ; clippy sur les bibliothèques
+Après fusion de G1 à G7c et G6b : 549 tests passent sans `odin`, 5 tests de contrat avec `odin`, 0 échec ; fmt propre ; clippy sur les bibliothèques
 et binaires sans nouvel avertissement (157, mêmes emplacements qu'avant la phase). Labo après G0
 et G6 : 279 tests passent, 27 ignorés.
 
