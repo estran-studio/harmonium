@@ -205,7 +205,7 @@ S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin ré
 | G6b (phase 014) | fusionnée (`113fe81`) : Odin par piste, presets fournis par l'hôte, pieds routés par le profil | `specs/014-styles-de-jeu/g6b-odin.md` |
 | S1 | terminée (branche jetable `wquintal/s1-sonde-web`, `2daa7d4`, non fusionnée ; rapport copié dans main). (a) fil principal sans AudioWorklet : 0 tampon en retard sur 5 min, et avec 8/16/24 voix Odin, à 1024 et 4096 images (Chromium 150) ; tampon 2048 proposé. (b) SF3 proposé : 7,62 Mo contre 32,3 Mo, analyse ×20 (≈ 0,8 s par visite en wasm, calculé) ; écart de rendu −29 dB RMS **à écouter**. (c) service worker : non mesuré, pas au départ. (d) seuils proposés : Start ≤ 10 s au premier chargement à 10 Mbit/s, ≤ 2 s depuis le cache ; wasm de 16 Mo (7,1 Mo gzip) à réduire. (e) déterminisme : 0/66 → 66/66, quatre sites (`algo`, `score`, `generator`, `composer`). Bloqués : onglet masqué mesuré, revalidation, Cache Storage ; Firefox et Safari à mesurer par le propriétaire (§ 6 du rapport) | `s1-sonde-web.md` |
 | S2 | fusionnée (`48fa066`) : `LiveHost` (banque principale, banque de pieds, presets Odin ; `apply`, `pump`, `detached` pour les tests), `EngineCommand` étendu (swing, tempo audible, pieds, intensité) et élagué, REPL migré, OSC dans le host (`--osc`), binaire `harmonium`, `ctrlc`, MIDI live et `LoadFont` supprimés, volume d'écoute réel (rampe 10 ms, hors enregistrements) ; 74 suites vertes, goldens inchangés | `s2-hote-unique.md` |
-| S3 | terminée (branche `wquintal/s3-moteur-wasm`, à fusionner) : tirages `u64` partout (19 appels de `RngCore` et les deux tirages de session, partagés par le composer et le plan), `getrandom` `js` et cpal `wasm-bindgen` sur wasm seulement, OSC exclu de wasm, `web_time::Instant`, travailleur d'enregistrement pompable (`RecorderBackend::pumped`, `LiveHost::pump`), banc permanent `harmonium_determinism` (Node) : 68 / 68 fichiers identiques natif / wasm, sortie native identique à `main` ; CI `wasm` ; constitution 4.3.0 | `s3-moteur-wasm.md` |
+| S3 | fusionnée (`d1e8817`) : tirages `u64` partout (19 appels de `RngCore` et les deux tirages de session, partagés par le composer et le plan), `getrandom` `js` et cpal `wasm-bindgen` sur wasm seulement, OSC exclu de wasm, `web_time::Instant`, travailleur d'enregistrement pompable (`RecorderBackend::pumped`, `LiveHost::pump`), banc permanent `harmonium_determinism` (Node) : 68 / 68 fichiers identiques natif / wasm, sortie native identique à `main` ; CI `wasm` (premier passage réel au premier push) ; constitution 4.3.0 ; 78 suites vertes. Reste : en web, pomper l'enregistreur au moins toutes les ~3 s | `s3-moteur-wasm.md` |
 | S4 | fusionnée (`f01dddd`) : fichiers d'origine embarqués, un seul décodeur multi-fichiers (`load`, `from_files`, `distributed_files`), erreurs `fichier:ligne: champ: message` ; `toml` 0.8.23, une seule version de `toml_edit` ; 73 suites de tests vertes, goldens inchangés | `s4-profils-bruts.md` |
 
 ## Risques
@@ -217,8 +217,8 @@ S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin ré
   threads wasm.
 - **Onglet en arrière-plan** : `requestAnimationFrame` s'arrête, la génération aussi, et l'anticipation
   (4 mesures au moins, anneau de 16) s'épuise.
-- **Divergence natif / wasm** : confirmée par S1, cause trouvée (tirages `usize`) ; le correctif ne change
-  pas la sortie native, donc ni bump de `TUNING_VERSION` ni goldens régénérés. Reste à la garder en CI (S3).
+- **Divergence natif / wasm** : confirmée par S1 (tirages `usize`), corrigée et gardée en CI par S3 (68/68,
+  sortie native inchangée). Le banc compare les snapshots, pas l'audio rendu.
 - **Poids** : 32,3 Mo de banque en SF2 au premier chargement ; en SF3, moins à télécharger mais un
   décodage Vorbis en wasm à chaque visite. Les tables d'ondes d'Odin grossissent le wasm.
 - **Éviction** : Safari efface le cache après 7 jours sans visite, et tout navigateur peut l'effacer sous
