@@ -69,7 +69,10 @@ vues `state`, `beat`, `help`, `quit`.
   `MONITOR_CHANNEL`, l'anneau MIDI vivant, `PlaybackEngine::process_live_midi` et son argument `live_rx` ;
   `transport_position_handle`.
 - `FontQueue`, `MusicComposer.font_queue` (et le paramètre des constructeurs), `add_soundfont`,
-  `flush_fonts`, `PlaybackCommand::LoadFont`.
+  `flush_fonts`, `PlaybackCommand::LoadFont`, puis (reprise de relecture) `AudioEvent::LoadFont`, son
+  traitement dans `SynthBackend`, son bras dans `VoiceManager`, `SynthBackend::add_font` et la doc
+  « silence jusqu'à un `LoadFont` » : les banques ne se chargent plus qu'à la construction
+  (`VoiceManager::add_font` reste, en `pub(crate)`, pour le constructeur).
 - `MusicComposer::seek_writehead` (« legacy, non déterministe », seul appelant : le `seek` du REPL).
 - Du handle : `measures_buffer` et ses accesseurs, `generate_bars`, `reset_composer`,
   `invalidate_and_regenerate`, `regenerate_with_current_params`, `apply_params_preserving_preview`,
@@ -93,8 +96,17 @@ Les garanties temps réel du playback sont inchangées : seule une lecture d'ann
   démarrage).
 - `--osc` est refusé avec `--export`.
 
-À noter, hors périmètre : `SetMasterVolume` est un no-op côté lecture (« appliqué au rendu », mais rien ne
-l'applique) ; la commande `set volume` n'a donc aucun effet audible, comme avant.
+## Volume d'écoute (reprise de relecture)
+
+`SetMasterVolume` était un no-op côté lecture (`set volume` sans effet, avant et après S2). Il est réel :
+`PlaybackEngine` applique un gain linéaire `0..=1` au tampon de sortie après le rendu
+(`apply_master_volume`, fin de `process_buffer`), sans allocation ni verrou. Le gain suit sa cible par une
+rampe linéaire de 10 ms (course 0 ↔ 1) et s'y arrête exactement : volume 0 = silence exact, pas de clic. Les
+valeurs hors `0..=1` sont bornées, les non finies ignorées (l'analyseur du REPL refuse `NaN`). **Les
+enregistrements WAV et MIDI n'en dépendent pas** : le `RecorderBackend` capture à l'intérieur du rendu, avant
+ce gain. Tests (`live_host_tests.rs`, banque `assets/test.sf2`, graine 3) : crête à 0,5 = moitié de celle à
+1,0 (± 1 %), silence exact à 0 après la rampe, WAV enregistré identique aux trois volumes, 3,0 borné à 1,0,
+`NaN` ignoré.
 
 ## Vérification
 

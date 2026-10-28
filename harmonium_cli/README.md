@@ -78,6 +78,8 @@ set lookahead 8
 seek 2 soft
 ```
 
+`set volume <0-1>` règle le volume d'écoute (amplitude linéaire, borné, rampe de
+10 ms) : il agit sur la sortie audio, pas sur les enregistrements WAV/MIDI.
 `set bpm` modifie le tempo nominal des prochaines mesures ; `tempo` pilote
 le tempo audible à la prochaine pulse ou par rampe de N pulses (40–300 BPM).
 `reset bpm` retire la surcharge nominale. Le swing est borné à 0,5–0,75 et

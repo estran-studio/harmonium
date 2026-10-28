@@ -6,9 +6,8 @@
 //! panique ici (profil de débogage, allocateur de contrôle de `harmonium`).
 //! Le thread d'enregistrement alloue librement : le test attend ses fichiers.
 //!
-//! Exceptions documentées, hors de ce test : le chargement d'une SoundFont
-//! (`LoadFont`) et le `Vec` que `oxisynth` alloue à chaque NoteOn
-//! (`allow_allocation` dans `harmonium_audio`).
+//! Exception documentée, hors de ce test : le `Vec` que `oxisynth` alloue à
+//! chaque NoteOn (`allow_allocation` dans `harmonium_audio`).
 
 use std::{
     sync::{Arc, Mutex, atomic::AtomicU64},

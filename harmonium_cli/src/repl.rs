@@ -329,7 +329,7 @@ fn report(command: &EngineCommand, host: &LiveHost) {
             print_success_msg("Tempo audible : retour au tempo des mesures");
         }
         EngineCommand::SetMasterVolume(volume) => {
-            print_success_msg(&format!("Master volume set to {volume:.2}"));
+            print_success_msg(&format!("Master volume set to {:.2}", volume.clamp(0.0, 1.0)));
         }
         EngineCommand::SetChannelGain { channel, gain } => {
             print_success_msg(&format!("Channel {channel} gain set to {gain:.2}"));

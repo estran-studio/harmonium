@@ -145,3 +145,66 @@ fn recording_commands_publish_the_file() -> Result<(), String> {
     assert!(host.take_recordings().is_empty(), "taken once");
     Ok(())
 }
+
+/// Joue 400 tampons (~4 s) sur la banque de test, graine 3, au volume `volume` ;
+/// rend le signal entendu et l'enregistrement WAV pris dans la même lecture.
+fn listen(volume: Option<f32>) -> Result<(Vec<f32>, Vec<u8>), String> {
+    let font = include_bytes!("../../assets/test.sf2");
+    let (mut host, mut playback) = LiveHost::detached(Some(font), None, &[], SAMPLE_RATE)?;
+    host.apply(EngineCommand::SetSeed(3))?;
+    if let Some(volume) = volume {
+        host.apply(EngineCommand::SetMasterVolume(volume))?;
+    }
+    host.apply(EngineCommand::StartRecording(RecordFormat::Wav))?;
+    let mut heard = Vec::new();
+    let mut buffer = [0.0f32; 1024];
+    for _ in 0..400 {
+        host.pump();
+        playback.process_buffer(&mut buffer, 2, Instant::now());
+        heard.extend_from_slice(&buffer);
+    }
+    host.apply(EngineCommand::StopRecording(RecordFormat::Wav))?;
+    host.pump();
+    playback.process_buffer(&mut buffer, 2, Instant::now());
+    let wav = host
+        .take_recordings()
+        .into_iter()
+        .find(|(format, _)| *format == RecordFormat::Wav)
+        .map(|(_, bytes)| bytes)
+        .ok_or("WAV absent")?;
+    Ok((heard, wav))
+}
+
+fn peak(samples: &[f32]) -> f32 {
+    samples.iter().fold(0.0, |peak, s| peak.max(s.abs()))
+}
+
+#[test]
+fn listening_volume_scales_what_is_heard_but_not_what_is_recorded() -> Result<(), String> {
+    let (full, full_wav) = listen(None)?;
+    let (half, half_wav) = listen(Some(0.5))?;
+    let (mute, mute_wav) = listen(Some(0.0))?;
+
+    let full_peak = peak(&full);
+    assert!(full_peak > 0.01, "la banque de test doit sonner : {full_peak}");
+    let ratio = peak(&half) / full_peak;
+    assert!((ratio - 0.5).abs() < 0.01, "crête à 0,5 / crête à 1,0 = {ratio}");
+
+    // Past the ramp (10 ms), volume 0 is exact silence.
+    assert!(mute[2000..].iter().all(|s| *s == 0.0));
+
+    // Recordings are taken before the listening volume.
+    assert_eq!(half_wav, full_wav);
+    assert_eq!(mute_wav, full_wav);
+    Ok(())
+}
+
+#[test]
+fn listening_volume_is_bounded_and_ignores_non_finite_values() -> Result<(), String> {
+    let (loud, _) = listen(Some(3.0))?;
+    let (full, _) = listen(None)?;
+    assert_eq!(peak(&loud), peak(&full), "borné à 1,0");
+    let (nan, _) = listen(Some(f32::NAN))?;
+    assert_eq!(peak(&nan), peak(&full), "NaN ignoré");
+    Ok(())
+}

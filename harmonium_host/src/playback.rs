@@ -22,6 +22,9 @@ use harmonium_core::{
 
 use crate::clock::TransportClock;
 
+/// Duration of a full-scale (0 ↔ 1) listening-volume change.
+const MASTER_RAMP_SECONDS: f32 = 0.01;
+
 /// Capacity of the composer → playback staged-measure ring and of the
 /// playback prefetch window. A loop longer than this is refused on the main
 /// thread (see [`check_loop_len`]).
@@ -135,6 +138,8 @@ pub enum PlaybackCommand {
         bank_id: i32,
     },
     SetOutputMute(bool),
+    /// Listening volume `0..=1` (linear amplitude), applied to the output
+    /// buffer after rendering, with a short ramp. Recordings do not follow it.
     SetMasterVolume(f32),
     Seek(usize),
     SeekPlayhead(usize),
@@ -296,6 +301,10 @@ pub struct PlaybackEngine {
     // One runtime state per logical track: REPL gain and mute edit these slots.
     tracks: [TrackState; 16],
     output_muted: bool,
+    /// Listening volume, `0..=1`, as commanded (`SetMasterVolume`).
+    master_volume: f32,
+    /// Gain in effect: ramps linearly to `master_volume` (see `apply_master_volume`).
+    master_gain: f32,
     mix_tune: Option<usize>,
     pending_mix_reset: bool,
 
@@ -420,6 +429,8 @@ impl PlaybackEngine {
             report_tx,
             transport_position,
             output_muted: false,
+            master_volume: 1.0,
+            master_gain: 1.0,
             tracks,
             mix_tune: None,
             pending_mix_reset: false,
@@ -532,11 +543,36 @@ impl PlaybackEngine {
             }
         }
 
+        self.apply_master_volume(output, channels);
+
         // Zero output when muted or before the first measure is loaded
         // (suppresses DSP-graph initialization transients)
         if self.output_muted || !self.first_measure_loaded {
             for sample in output.iter_mut() {
                 *sample = 0.0;
+            }
+        }
+    }
+
+    /// Listening volume: scales the output buffer after rendering. The gain
+    /// ramps linearly (a full-scale change takes [`MASTER_RAMP_SECONDS`]) and
+    /// lands exactly on the target, so volume 0 is silence and there is no
+    /// click. Recordings are taken inside the renderer, before this point:
+    /// they do not depend on the listening volume. No allocation, no lock.
+    fn apply_master_volume(&mut self, output: &mut [f32], channels: usize) {
+        if self.master_gain == self.master_volume && self.master_gain == 1.0 {
+            return;
+        }
+        let step = 1.0 / (self.sample_rate_hz as f32 * MASTER_RAMP_SECONDS);
+        for frame in output.chunks_mut(channels.max(1)) {
+            let delta = self.master_volume - self.master_gain;
+            self.master_gain = if delta.abs() <= step {
+                self.master_volume
+            } else {
+                self.master_gain + step.copysign(delta)
+            };
+            for sample in frame {
+                *sample *= self.master_gain;
             }
         }
     }
@@ -1082,8 +1118,10 @@ impl PlaybackEngine {
                         }
                     }
                 }
-                PlaybackCommand::SetMasterVolume(_volume) => {
-                    // Master volume is applied during rendering
+                PlaybackCommand::SetMasterVolume(volume) => {
+                    if volume.is_finite() {
+                        self.master_volume = volume.clamp(0.0, 1.0);
+                    }
                 }
                 PlaybackCommand::Seek(bar) => {
                     let target_bar = bar.max(1);

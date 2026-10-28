@@ -17,7 +17,7 @@ pub struct SynthBackend {
 
 impl SynthBackend {
     /// Build the backend. `sf2_bytes = None` starts without any bank loaded:
-    /// the engine renders silence until a `LoadFont` event arrives.
+    /// the engine renders silence.
     /// `feet_sf2_bytes` charge la banque de pieds en banque
     /// [`FEET_BANK_OFFSET`] ; le profil décide qui l'emploie
     /// (`apply_profile_programs`, un seul chemin).
@@ -80,10 +80,6 @@ impl SynthBackend {
         backend
     }
 
-    pub fn add_font(&mut self, id: u32, bytes: &[u8]) {
-        self.voice_manager.add_font(id, bytes);
-    }
-
     pub fn set_channel_route(&mut self, channel: usize, route: ChannelRoute) {
         self.voice_manager.set_channel_route(channel, route);
     }
@@ -138,14 +134,6 @@ impl SynthBackend {
 impl AudioRenderer for SynthBackend {
     fn handle_event(&mut self, event: AudioEvent) {
         match event {
-            AudioEvent::LoadFont { id, bytes } => {
-                // Dette temps réel assumée : analyser et insérer une SoundFont
-                // alloue (oxisynth) ; c'est une opération rare, hors régime
-                // permanent. Le tampon est libéré dans la même portée.
-                let _allowed = crate::realtime::rt_check::allow_allocation();
-                self.voice_manager.add_font(id, &bytes);
-                drop(bytes);
-            }
             AudioEvent::SetChannelRoute { channel, bank } => {
                 self.voice_manager
                     .set_channel_route(channel as usize, ChannelRoute::from_bank_id(bank));

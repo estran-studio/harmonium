@@ -18,7 +18,7 @@ pub enum EngineCommand {
     /// Clear the user's BPM override, returning to emotion-mapped BPM
     ResetBpm,
 
-    /// Set master volume (0.0-1.0)
+    /// Listening volume (0.0-1.0, linear, clamped): scales what is heard, not what is recorded
     SetMasterVolume(f32),
 
     /// Set time signature

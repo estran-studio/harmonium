@@ -83,8 +83,11 @@ fn parse_set_command(tokens: &[&str]) -> Result<EngineCommand> {
         }
 
         "volume" | "master_volume" => {
-            let volume =
-                value.parse::<f32>().map_err(|_| anyhow!("Invalid volume value: {}", value))?;
+            let volume = value
+                .parse::<f32>()
+                .ok()
+                .filter(|v| v.is_finite())
+                .ok_or_else(|| anyhow!("Invalid volume value: {}", value))?;
             Ok(EngineCommand::SetMasterVolume(volume))
         }
 
@@ -384,6 +387,13 @@ mod tests {
     fn test_invalid_command() {
         let result = parse_command("invalid");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_volume() {
+        assert_eq!(parse_command("set volume 0.5").ok(), Some(EngineCommand::SetMasterVolume(0.5)));
+        assert!(parse_command("set volume loud").is_err());
+        assert!(parse_command("set volume NaN").is_err());
     }
 
     #[test]

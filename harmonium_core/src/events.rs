@@ -26,10 +26,6 @@ pub enum AudioEvent {
     AllNotesOff {
         channel: u8,
     },
-    LoadFont {
-        id: u32,
-        bytes: Vec<u8>,
-    },
     /// Route a logical channel to a SoundFont bank (-1 = default bank 0, >=0 = oxisynth bank)
     SetChannelRoute {
         channel: u8,
