@@ -210,8 +210,8 @@ fn batterie_groove_pulsations_accents() -> TestResult {
                     s.index
                 );
             } else {
-                // G7c : charleston sur les pulsations seulement, plus aucun
-                // coup aux pas pairs intermédiaires.
+                // G7d : le charleston est réduit aux accents de temps (pas 0
+                // et 12 à la densité neutre) et reste sous la caisse claire.
                 assert_eq!(n.pitch, 42, "charleston mes. {} : {n:?}", s.index);
                 assert!(
                     [0, 6, 12, 18].contains(&n.start_step),
@@ -229,7 +229,7 @@ fn batterie_groove_pulsations_accents() -> TestResult {
     assert_eq!(snare, BTreeSet::from([2, 10, 14]));
     let hat: BTreeSet<usize> =
         notes(&snapshots[0], 4).iter().filter(|n| n.pitch == 42).map(|n| n.start_step).collect();
-    assert_eq!(hat, BTreeSet::from([0, 6, 12, 18]));
+    assert_eq!(hat, BTreeSet::from([0, 12]));
     // Accents par temps (G7c, essai du propriétaire) : le temps fort sonne
     // plein et porte l'étiquette d'accent, les autres temps sont à ×0,8.
     let velocity = |pitch: u8, step: usize| {
@@ -247,10 +247,26 @@ fn batterie_groove_pulsations_accents() -> TestResult {
         assert!(fort > faible, "temps fort {fort} <= temps {step} {faible}");
     }
     let (fort, _) = velocity(42, 0).expect("charleston au temps fort");
-    for step in [6, 12, 18] {
-        let (faible, _) = velocity(42, step).expect("charleston à accentuer");
-        assert!(fort > faible, "charleston fort {fort} <= temps {step} {faible}");
-    }
+    let (faible, _) = velocity(42, 12).expect("charleston au temps 3");
+    assert!(fort > faible, "charleston fort {fort} <= temps 3 {faible}");
+    // G7d : le charleston sonne en moyenne sous la caisse claire. L'accent
+    // du temps fort (+4) et l'humanisation (±4) se compensent coups à coups :
+    // la marge se vérifie en moyenne sur les 16 mesures, pas par coup.
+    let moyenne = |pitch: u8| {
+        let v: Vec<u8> = snapshots
+            .iter()
+            .flat_map(|s| notes(s, 4))
+            .filter(|n| n.pitch == pitch)
+            .map(|n| n.velocity)
+            .collect();
+        v.iter().map(|&x| u32::from(x)).sum::<u32>() as f32 / v.len() as f32
+    };
+    assert!(
+        moyenne(42) + 3.0 <= moyenne(38),
+        "G7d : charleston ({:.1}) pas sous la caisse claire ({:.1})",
+        moyenne(42),
+        moyenne(38)
+    );
     // Micro-timing (G7c) : des décalages légers sont publiés sur les pieds,
     // bornés à ±0,02 pas.
     let mut decales = 0;

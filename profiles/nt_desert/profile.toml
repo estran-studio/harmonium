@@ -5,7 +5,11 @@
 # alternance G/G#, reprise A1'. G7c (écoute du propriétaire) : sifflement
 # retiré (pas de lead dans Fläshyn), une seule voix grave (scie 81 sur Bass),
 # accords en nappe chaude 89 en tessiture médium, batterie en groove
-# (charleston aux pulsations, accents, micro-timing) et en retrait au mix.
+# (charleston réduit aux accents de temps, G7d) et en retrait au mix.
+# G7d (mixage mesuré) : le gain master ne s'applique qu'aux pistes SoundFont,
+# pas aux voix Odin — il descend à 9 dB et basse/nappe remontent à 0 dB pour
+# que la basse Odin domine la batterie pendant les tenues ; le master du
+# preset basse se morphe par arousal/density (voie prévue, [odin.Bass]).
 # Seuls les presets de assets/nt_desert.sf2 sont employés : 0/81 (scie grave
 # sur Bass), 0/89 (nappe chaude sur Chords), kit 128/0 (touches 36, 38, 42).
 # 0/78 reste déclaré (champ requis par le schéma) mais ne sonne plus, la
@@ -211,6 +215,10 @@ bass_program = 81
 percussion_bank = 128
 percussion_program = 0
 
+# G7d : le preset d'usine sort à −15 dB de master ; la règle master_volume
+# (socle 0,178 + 0,77 arousal + 0,77 density au neutre ≈ ×2, borne 2,0) remonte
+# la basse au-dessus de la batterie pendant les tenues, avec le niveau de
+# piste. Réf. Fläshyn mesurée : basse ≥ batterie + 3 dB RMS sur A1.
 [odin.Bass]
 preset = "basse_saturee"
 morph = [
@@ -218,6 +226,7 @@ morph = [
   { param = "filter_resonance", tension = 0.3 },
   { param = "filter_env_amount", arousal = 0.4 },
   { param = "amp_release", density = 0.3 },
+  { param = "master_volume", arousal = 0.77, density = 0.77 },
 ]
 
 [odin.Chords]
@@ -230,7 +239,7 @@ morph = [
 ]
 
 [mix]
-master_db = 14.0
+master_db = 9.0
 [mix.room]
 room_size = 0.3
 damping = 0.5
@@ -241,21 +250,21 @@ level_db = 0.0
 pan = 0.05
 reverb_send = 0.2
 [mix.tracks.Chords]
-level_db = -4.0
+level_db = 0.0
 pan = -0.3
 reverb_send = 0.25
 [mix.tracks.Bass]
-level_db = -5.0
+level_db = 0.0
 pan = 0.0
 reverb_send = 0.1
 [mix.tracks.Heel]
-level_db = -9.0
+level_db = -5.0
 pan = -0.06
-reverb_send = 0.15
+reverb_send = 0.06
 [mix.tracks.Toe]
-level_db = -10.0
+level_db = -6.0
 pan = 0.06
-reverb_send = 0.15
+reverb_send = 0.06
 [mix.eq]
 highpass_hz = 40.0
 presence_hz = 3000.0

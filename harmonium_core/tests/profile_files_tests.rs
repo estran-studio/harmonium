@@ -142,7 +142,7 @@ fn validation_error_in_a_bank_names_the_bank_file_and_line() -> TestResult {
 #[test]
 fn validation_error_in_the_root_file_names_profile_toml_and_line() -> TestResult {
     let copy = Copy::of("nt_desert", "root_validation")?;
-    let line = copy.replace("profile.toml", "master_db = 14.0", "master_db = 99.0")?;
+    let line = copy.replace("profile.toml", "master_db = 9.0", "master_db = 99.0")?;
     let error = StyleProfile::load(&copy.dir).err().ok_or("gain hors bornes accepté")?;
     assert_eq!(error.field, "mix.master_db");
     assert_eq!(error.file.as_deref(), Some("profile.toml"));

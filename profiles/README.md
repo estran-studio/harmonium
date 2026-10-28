@@ -177,7 +177,8 @@ morph = [
   attaque : Odin ne réattaque pas non plus.
 - **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`) ;
   le gain master du profil, calibré pour les samples SF2, ne s'y applique pas :
-  le niveau propre se règle dans le `master` du preset.
+  le niveau propre se règle dans le `master` du preset, fixe ou morphé par
+  les émotions (`master_volume`, p. ex. `[odin.Bass]` de `nt_desert`, G7d).
 
 ## Percussion : routage par le profil
 
