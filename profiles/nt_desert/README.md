@@ -35,6 +35,23 @@ Les rôles alternent appel et réponse ; les variations `varied_end` et
 transposition d'octave de cellule. L'hétérophonie double le dernier retour
 une octave plus bas, à −14 dB, sans mélodie indépendante.
 
+Mètre 12/8, 24 pas par mesure, 210 noires/min (= 140 noires pointées/min).
+Batterie en groove (G7c/G7d) : grosse caisse aux pas 0/8/20, caisse claire
+aux pas 2/10/14 ; le charleston (seul son de bruit du kit employé) est
+réduit aux accents de temps — pas 0 et 12 à la densité neutre, pulsations
+6/18 seulement à la densité 2 — et sonne sous la caisse claire ; temps fort
+plein, autres temps ×0,8 dans les motifs, accent du temps fort et
+micro-timing ±0,02 pas en `[performance.tracks.Heel/Toe]`. Instruments :
+nappe chaude 89 (vélocité ×0,8, tessiture médium, jamais sous MIDI 48),
+scie grave 81 sur la basse seule (deux octaves plus bas, seule voix grave),
+kit 128/0 (touches 36, 38, 42).
+Le gain master (9 dB, SoundFont seulement) ne touche pas les voix Odin.
+Basse et nappe restent à 0 dB au niveau de piste ; les presets d'usine
+`Sausage Bassener` (Bass) et `Darken Nature [RM]` (Chords) conservent leur
+master, sans boost de compensation de l'ancien moteur. Le morphing pilote
+leurs filtres et enveloppes en unités physiques. Batterie à −5/−6 dB avec
+peu de salle (envois 0,06) ; les autres réglages de mix ne changent pas.
+
 `CopyOf`/`CopyOfPart` copieraient aussi les mesures de basse : ils ne sont pas
 employés pour ne pas effacer la relance d'A1 ni importer le riff d'A2 en B.
 La répétition vient de la cellule d'appel unique et des rôles écrits.

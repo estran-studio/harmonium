@@ -61,7 +61,6 @@ impl AudioRenderer for MidiBackend {
                 self.current_samples_per_step = samples_per_step;
             }
             AudioEvent::UpdateMusicalParams { .. }
-            | AudioEvent::SetOdin { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. } => {
                 // Ignore - only RecorderBackend needs this

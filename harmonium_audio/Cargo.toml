@@ -16,7 +16,8 @@ rtrb = "0.3"
 arrayvec = "0.7"
 
 [dependencies.odin2-core]
-git = "https://github.com/bascanada/odin-rs"
+git = "https://github.com/estran-studio/odin-rs"
+rev = "4718189"
 features = ["std"]
 optional = true
 

@@ -166,9 +166,12 @@ pub enum PlaybackCommand {
     /// Update musical params snapshot for recording/reporting. `Copy`,
     /// prepared on the main thread with `MusicalParams::playback_params`.
     UpdateMusicalParams(PlaybackParams),
-    /// Presets Odin morphés par piste, préparés sur le thread principal
-    /// (`AudioEvent::SetOdin`) ; `Copy`, sans allocation.
+    /// Paramètres Copy préparés sur le thread principal ; avec Odin, la même
+    /// transaction transporte les nouvelles instances et rapporte les anciennes.
+    #[cfg(not(feature = "odin"))]
     SetOdin(harmonium_core::odin::OdinPatches),
+    #[cfg(feature = "odin")]
+    SetOdin(Box<harmonium_audio::odin_bank::OdinUpdate>),
     /// Start (or ramp to) an audible tempo override (D4).
     ///
     /// `ramp_pulses == 0` jumps to `bpm` at the next pulse boundary;
@@ -288,6 +291,10 @@ pub struct PlaybackEngine {
 
     // Command ring buffer (main thread → audio thread)
     cmd_rx: rtrb::Consumer<PlaybackCommand>,
+    #[cfg(feature = "odin")]
+    odin_return: Option<rtrb::Producer<Box<harmonium_audio::odin_bank::OdinUpdate>>>,
+    #[cfg(feature = "odin")]
+    pending_odin_return: Option<Box<harmonium_audio::odin_bank::OdinUpdate>>,
 
     // Report ring buffer (audio thread → main thread)
     report_tx: rtrb::Producer<harmonium_core::EngineReport>,
@@ -424,6 +431,10 @@ impl PlaybackEngine {
             epoch: 0,
             loaded_epoch: None,
             cmd_rx,
+            #[cfg(feature = "odin")]
+            odin_return: None,
+            #[cfg(feature = "odin")]
+            pending_odin_return: None,
             report_tx,
             transport_position,
             output_muted: false,
@@ -442,6 +453,30 @@ impl PlaybackEngine {
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
             first_measure_loaded: false,
+        }
+    }
+
+    #[cfg(feature = "odin")]
+    pub(crate) fn set_odin_return(
+        &mut self,
+        returned: rtrb::Producer<Box<harmonium_audio::odin_bank::OdinUpdate>>,
+    ) {
+        self.odin_return = Some(returned);
+    }
+
+    #[cfg(feature = "odin")]
+    fn flush_odin_return(&mut self) -> bool {
+        let Some(update) = self.pending_odin_return.take() else {
+            return true;
+        };
+        let returned =
+            self.odin_return.as_mut().expect("file de retour Odin installée par build_engine");
+        match returned.push(update) {
+            Ok(()) => true,
+            Err(rtrb::PushError::Full(update)) => {
+                self.pending_odin_return = Some(update);
+                false
+            }
         }
     }
 
@@ -1084,6 +1119,12 @@ impl PlaybackEngine {
     }
 
     fn process_commands(&mut self) {
+        // Contrepression : tant qu'une transaction n'est pas rendue, ne pas
+        // dépiler la suivante (ni perdre/libérer ses ressources dans le callback).
+        #[cfg(feature = "odin")]
+        if !self.flush_odin_return() {
+            return;
+        }
         while let Ok(cmd) = self.cmd_rx.pop() {
             match cmd {
                 PlaybackCommand::SetChannelGain { channel, gain } => {
@@ -1226,8 +1267,15 @@ impl PlaybackEngine {
                         self.reset_profile_mix();
                     }
                 }
-                PlaybackCommand::SetOdin(patches) => {
-                    self.renderer.handle_event(AudioEvent::SetOdin { patches });
+                #[cfg(not(feature = "odin"))]
+                PlaybackCommand::SetOdin(_) => {}
+                #[cfg(feature = "odin")]
+                PlaybackCommand::SetOdin(mut update) => {
+                    self.renderer.apply_odin(&mut update);
+                    self.pending_odin_return = Some(update);
+                    if !self.flush_odin_return() {
+                        break;
+                    }
                 }
                 PlaybackCommand::SetTempo { bpm, ramp_pulses } => {
                     // D4: the audible tempo advances at pulse boundaries only

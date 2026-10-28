@@ -470,6 +470,11 @@ impl AudioRenderer for RecorderBackend {
         }
     }
 
+    #[cfg(feature = "odin")]
+    fn apply_odin(&mut self, update: &mut crate::odin_bank::OdinUpdate) {
+        self.inner.apply_odin(update);
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

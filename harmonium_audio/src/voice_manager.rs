@@ -360,7 +360,6 @@ impl VoiceManager {
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }
-            | AudioEvent::SetOdin { .. }
             | AudioEvent::SetChannelRoute { .. }
             | AudioEvent::StartRecording { .. }
             | AudioEvent::StopRecording { .. }

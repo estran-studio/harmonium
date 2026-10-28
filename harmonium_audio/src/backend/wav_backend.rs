@@ -32,6 +32,11 @@ impl AudioRenderer for WavBackend {
         self.inner.handle_event(event);
     }
 
+    #[cfg(feature = "odin")]
+    fn apply_odin(&mut self, update: &mut crate::odin_bank::OdinUpdate) {
+        self.inner.apply_odin(update);
+    }
+
     fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         self.inner.process_buffer(output, channels);
         for sample in output.iter() {

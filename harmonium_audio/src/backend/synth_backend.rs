@@ -76,7 +76,7 @@ impl SynthBackend {
 
         voice_manager.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
         #[cfg(feature = "odin")]
-        let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32);
+        let odin = crate::odin_voices::OdinMixer::new();
 
         let mix = harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate);
         let mut backend = Self {
@@ -127,28 +127,23 @@ impl SynthBackend {
         #[cfg(feature = "odin")]
         self.odin.apply_mix(mix);
     }
-
-    /// Applique les presets Odin morphés par le thread principal, puis coupe
-    /// les notes des canaux qui changent de côté SoundFont ↔ Odin (aucune
-    /// note pendante).
-    #[cfg(feature = "odin")]
-    fn apply_odin(&mut self, patches: &harmonium_core::odin::OdinPatches) {
-        let mut was = [false; harmonium_core::timeline::TrackId::ALL.len()];
-        for (index, slot) in was.iter_mut().enumerate() {
-            *slot = self.odin.is_odin_channel(index);
-        }
-        self.odin.apply_patches(patches);
-        for (index, was_odin) in was.iter().enumerate() {
-            if *was_odin != self.odin.is_odin_channel(index) {
-                let channel = index as u8;
-                self.voice_manager.process_event(AudioEvent::AllNotesOff { channel });
-                self.odin.all_notes_off(index);
-            }
-        }
-    }
 }
 
 impl AudioRenderer for SynthBackend {
+    /// Bascule SoundFont ↔ Odin et échange des anciennes instances dans la
+    /// transaction ; le callback ne détruit aucune instance.
+    #[cfg(feature = "odin")]
+    fn apply_odin(&mut self, update: &mut crate::odin_bank::OdinUpdate) {
+        let was = std::array::from_fn::<_, { harmonium_core::timeline::TrackId::ALL.len() }, _>(
+            |index| self.odin.is_odin_channel(index),
+        );
+        self.odin.apply_update(update);
+        for (index, was_odin) in was.iter().enumerate() {
+            if *was_odin != self.odin.is_odin_channel(index) {
+                self.voice_manager.process_event(AudioEvent::AllNotesOff { channel: index as u8 });
+            }
+        }
+    }
     fn handle_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::SetChannelRoute { channel, bank } => {
@@ -158,11 +153,9 @@ impl AudioRenderer for SynthBackend {
             AudioEvent::SetMix { mix } => self.apply_mix(mix),
             AudioEvent::UpdateMusicalParams { params } => {
                 self.voice_manager.apply_profile_programs(&params.instruments);
+                #[cfg(feature = "odin")]
+                self.odin.set_tempo(params.bpm);
             }
-            #[cfg(feature = "odin")]
-            AudioEvent::SetOdin { patches } => self.apply_odin(&patches),
-            #[cfg(not(feature = "odin"))]
-            AudioEvent::SetOdin { .. } => {}
             AudioEvent::NoteOn { note, velocity, channel } => {
                 #[cfg(feature = "odin")]
                 if self.odin.is_odin_channel(usize::from(channel)) {
@@ -186,9 +179,13 @@ impl AudioRenderer for SynthBackend {
                 #[cfg(feature = "odin")]
                 self.odin.all_notes_off(usize::from(channel));
             }
-            AudioEvent::TimingUpdate { .. }
-            | AudioEvent::MidiClock { .. }
-            | AudioEvent::MeasureTiming { .. } => {}
+            AudioEvent::MeasureTiming { bpm, .. } => {
+                #[cfg(feature = "odin")]
+                self.odin.set_tempo(bpm);
+                #[cfg(not(feature = "odin"))]
+                let _ = bpm;
+            }
+            AudioEvent::TimingUpdate { .. } | AudioEvent::MidiClock { .. } => {}
             // Contrôleurs et programmes : état SoundFont seulement (le preset
             // Odin et le mix de piste viennent du profil).
             _ => self.voice_manager.process_event(event),

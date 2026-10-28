@@ -1,9 +1,16 @@
 # Profil du désert de Nuclear Throne (Jukio Kallio, 2015).
-# G7f : proposition composée, pas une transcription ni un sifflement supposé.
-# A1 reste une pédale G# ; A2 suit D mineur ; le pont garde ses accords.
-# Motif de dessus sur pad 88 doux, réponses et répétitions plutôt que solos libres.
-# La banque du jeu et GeneralUser possèdent 88, 89, 81 et les toms employés.
-# Le mix G7d et les presets Odin restent inchangés ; aucun algorithme ajouté.
+# Données seulement : pédale phrygienne tenue (G2/G5), basse motivique (G3),
+# forme en boucle sans mélodie (G4, G7c), 12/8 à 140 noires pointées.
+# Arche de Fläshyn : A1 pédale G#, A2 riff D/D# (D mineur), pont de nappes,
+# B en alternance G/G#, reprise A1'. G7c : sifflement retiré, une seule voix
+# grave (scie 81 sur Bass), accords en nappe chaude 89 en médium, batterie en
+# groove (charleston réduit aux accents, G7d) et en retrait au mix.
+# G7f : dessus composé (pas une transcription) sur pad 88 doux, réponses et
+# répétitions plutôt que solos ; doublure brève au dernier retour du second
+# tour. La banque du jeu et GeneralUser possèdent 88, 89, 81 et les toms.
+# G6d : presets Odin fidèles usine (Sausage Bassener sur Bass, Darken Nature
+# [RM] sur Chords) ; le gain master ne s'applique qu'aux pistes SoundFont, les
+# presets gardent leur master d'usine.
 [files]
 cells = "cells.toml"
 feet = "feet.toml"
@@ -229,27 +236,22 @@ operations = [
   { operation = "rest", weight = 3, beats = ["weak"] },
 ]
 
-# G7d : le preset d'usine sort à −15 dB de master ; la règle master_volume
-# (socle 0,178 + 0,77 arousal + 0,77 density au neutre ≈ ×2, borne 2,0) remonte
-# la basse au-dessus de la batterie pendant les tenues, avec le niveau de
-# piste. Réf. Fläshyn mesurée : basse ≥ batterie + 3 dB RMS sur A1.
 [odin.Bass]
-preset = "basse_saturee"
+preset = "Sausage Bassener"
 morph = [
-  { param = "filter_frequency", arousal = 3500.0, tension = 1500.0 },
-  { param = "filter_resonance", tension = 0.3 },
-  { param = "filter_env_amount", arousal = 0.4 },
-  { param = "amp_release", density = 0.3 },
-  { param = "master_volume", arousal = 0.77, density = 0.77 },
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 },
 ]
 
 [odin.Chords]
-preset = "nappe"
+preset = "Darken Nature [RM]"
 morph = [
-  { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
-  { param = "amp_attack", tension = -0.15 },
-  { param = "amp_release", density = 0.6 },
-  { param = "filter_sustain", valence = 0.2 },
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 },
 ]
 
 [mix]

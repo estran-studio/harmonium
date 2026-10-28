@@ -255,15 +255,27 @@ bass_program = 32
 percussion_bank = 128
 percussion_program = 0
 
-# Même nappe Odin sur une valse 3/4 (principe VIII) : preset fourni par l'hôte ;
-# le master du preset se morphe par les émotions (G7d, même règle que la
-# basse saturée de nt_desert).
+# Même nappe Odin sur une valse 3/4 (principe VIII), en unités physiques :
+# filtres en Hz, enveloppes en secondes, master en dB et effets en rapports.
 [odin.Chords]
 preset = "nappe"
 morph = [
-  { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
-  { param = "filter_resonance", tension = 0.5 },
-  { param = "master_volume", arousal = 0.1, density = 0.1 },
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "fil1_res", tension = 0.2 },
+  { param = "fil1_saturation", tension = 0.1 },
+  { param = "fil2_freq", arousal = 500.0 },
+  { param = "fil3_gain", density = 0.5 },
+  { param = "env1_attack", density = 0.1 },
+  { param = "env2_release", valence = 0.2 },
+  { param = "env3_decay", tension = -0.1 },
+  { param = "env4_sustain", valence = 0.1 },
+  { param = "master", arousal = 0.5, density = 0.5 },
+  { param = "dist_boost", tension = 0.1 },
+  { param = "delay_wet", density = 0.05 },
+  { param = "phaser_drywet", valence = 0.05 },
+  { param = "flanger_drywet", tension = 0.05 },
+  { param = "chorus_drywet", valence = 0.1 },
+  { param = "rev_drywet", density = 0.05 },
 ]
 
 [mix]

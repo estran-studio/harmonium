@@ -113,9 +113,9 @@ percussion_program = 0
 [odin.Chords]
 preset = "nappe"
 morph = [
-  { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
-  { param = "amp_attack", density = 0.4 },
-  { param = "filter_resonance", tension = 0.5 },
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", density = 0.4 },
+  { param = "fil1_res", tension = 0.5 },
 ]
 
 [arrangement]

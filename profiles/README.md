@@ -146,8 +146,8 @@ déclarer un preset Odin, en données :
 [odin.Bass]
 preset = "basse_saturee"
 morph = [
-  { param = "filter_frequency", arousal = 3500.0, tension = 1500.0 },
-  { param = "filter_resonance", tension = 0.3 },
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
 ]
 ```
 
@@ -164,28 +164,39 @@ morph = [
   optionnelle : un binaire compilé avec `odin` est GPL.
 - **Morphing par les 4 émotions.** `valeur = socle du preset + arousal×a +
   valence×v + density×d + tension×t` (émotions dans `0..1`), puis bornée.
-  `param` : `filter_frequency` (Hz), `filter_resonance`, `filter_env_amount`,
-  `amp_attack`/`amp_decay`/`amp_sustain`/`amp_release`,
-  `filter_attack`/`filter_decay`/`filter_sustain`/`filter_release` (s),
-  `osc_detune`, `osc1_volume`/`osc2_volume`/`osc3_volume`, `master_volume`.
-  Au plus 8 règles par piste, un paramètre une seule fois. Drive et effets du
-  preset ne sont pas exposés par `odin2-core` (configuration simplifiée du
-  moteur) : un nouveau paramètre s'ajoute dans `OdinVoiceParams`
-  (`harmonium_core/src/odin.rs`, mode d'emploi en commentaire), sans changer le
-  schéma des profils existants. Octaves et demi-tons du preset ne se morphent pas.
+  Noms exacts du catalogue odin-rs, sans alias :
+  `osc1_vol`/`osc2_vol`/`osc3_vol` (−60 à +12 dB),
+  `osc1_detune`/`osc2_detune`/`osc3_detune` (0 à 1) ;
+  pour chacun des filtres `fil1`, `fil2`, `fil3`, suffixes `_freq`
+  (20 à 20 000 Hz), `_res` (0 à 1), `_env` (−1 à 1),
+  `_saturation` (0 à 1), `_gain` (−60 à +12 dB) ;
+  pour chacune des enveloppes `env1` à `env4`, suffixes `_attack`,
+  `_decay`, `_release` (0,001 à 10 s), `_sustain` (0 à 1) ;
+  `master` (−50 à +12 dB), `dist_boost`, `dist_drywet`, `delay_wet`,
+  `phaser_drywet`, `flanger_drywet`, `chorus_drywet`, `rev_drywet`
+  (tous 0 à 1). Le catalogue n'expose pas de seuil de distorsion.
+  Au plus 16 règles par piste, un paramètre une seule fois. Les états
+  marche/arrêt, types, routages et octaves restent ceux du preset d'usine.
+  `OdinMorphParam::{ALL, COUNT, index, name, bounds}` décrit cette table ;
+  `OdinVoiceParams.values` est son tableau fixe, indépendant du code GPL.
+  Aucun boost master de compensation de l'ancien moteur n'est appliqué.
 - **Temps réel.** Le morphing est préparé sur le thread principal : le compositeur
   connaît les socles des presets fournis par l'hôte, calcule le preset morphé de
   chaque piste à chaque changement d'émotion et envoie au callback une charge
-  `Copy` (`PlaybackCommand::SetOdin` → `AudioEvent::SetOdin`). Le callback copie
-  dans le moteur : aucun calcul, allocation ni verrou. Les notes `Tied` (nappes,
-  pédales) n'émettent pas de nouvelle attaque : Odin ne réattaque pas non plus.
+  `Copy` préparée hors callback. L'application audio ne change ni type ni
+  routage du preset et n'alloue pas. Les notes `Tied` (nappes, pédales)
+  n'émettent pas de nouvelle attaque : Odin ne réattaque pas non plus.
+  Les changements de preset voyagent avec leurs instances déjà chargées dans une
+  transaction unique (`MusicComposer::send_odin`). Les anciennes instances reviennent
+  par SPSC au thread principal ; une file de retour pleine suspend le dépilage des
+  commandes, sans libération dans le callback ni perte d'installation.
 - **Preset non chargé.** Un preset déclaré que l'hôte n'a pas fourni (ou illisible,
   ou build sans `odin`) n'a pas de repli implicite autre que le programme SoundFont
   déclaré ; le chargement du profil journalise un avertissement clair.
 - **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`) ;
   le gain master du profil, calibré pour les samples SF2, ne s'y applique pas :
   le niveau propre se règle dans le `master` du preset, fixe ou morphé par
-  les émotions (`master_volume`, p. ex. `[odin.Bass]` de `nt_desert`, G7d).
+  les émotions (`master`, en dB). La compensation de l'ancien moteur a été retirée.
 
 ## Percussion : routage par le profil
 

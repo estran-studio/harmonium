@@ -26,7 +26,7 @@ fn a_valid_odin_track_declared_in_toml_is_accepted() {
     let text = r#"
         [odin.Bass]
         preset = "basse_saturee"
-        morph = [{ param = "filter_frequency", arousal = 3500.0, tension = 1500.0 }]
+        morph = [{ param = "fil1_freq", arousal = 3500.0, tension = 1500.0 }]
     "#;
     let spec: toml::Table = toml::from_str(text).unwrap();
     let bass: OdinTrackSpec = spec["odin"]["Bass"].clone().try_into().unwrap();
@@ -54,16 +54,42 @@ fn preset_names_are_plain_and_bounded() {
 
 #[test]
 fn morph_rules_are_bounded_unique_and_finite() {
-    let too_many = vec![rule(OdinMorphParam::FilterFrequency); ODIN_MAX_RULES + 1];
+    let too_many = vec![rule(OdinMorphParam::Fil1Freq); ODIN_MAX_RULES + 1];
     let profile = with(TrackId::Bass, OdinTrackSpec { preset: "b".into(), morph: too_many });
     assert_eq!(error_field(&profile), "odin.Bass.morph");
 
-    let duplicate = vec![rule(OdinMorphParam::FilterFrequency); 2];
+    let duplicate = vec![rule(OdinMorphParam::Fil1Freq); 2];
     let profile = with(TrackId::Bass, OdinTrackSpec { preset: "b".into(), morph: duplicate });
     assert_eq!(error_field(&profile), "odin.Bass.morph");
 
-    let mut nan = rule(OdinMorphParam::AmpRelease);
+    let mut nan = rule(OdinMorphParam::Env1Release);
     nan.density = f32::NAN;
     let profile = with(TrackId::Bass, OdinTrackSpec { preset: "b".into(), morph: vec![nan] });
     assert_eq!(error_field(&profile), "odin.Bass.morph");
+}
+
+#[test]
+fn obsolete_parameter_names_are_rejected() {
+    for param in [
+        "filter_frequency",
+        "filter_resonance",
+        "filter_env_amount",
+        "amp_attack",
+        "amp_release",
+        "filter_sustain",
+        "osc_detune",
+        "osc1_volume",
+        "master_volume",
+        "reverb_drywet",
+        "dist_threshold",
+    ] {
+        let text = format!("param = {param:?}");
+        assert!(toml::from_str::<OdinMorphRule>(&text).is_err(), "{param}");
+    }
+}
+
+#[test]
+fn sixteen_distinct_catalogue_rules_are_accepted() {
+    let morph = OdinMorphParam::ALL.into_iter().take(ODIN_MAX_RULES).map(rule).collect();
+    with(TrackId::Chords, OdinTrackSpec { preset: "nappe".into(), morph }).validate().unwrap();
 }
