@@ -54,6 +54,11 @@ pub struct BassMotifNote {
     pub velocity: u8,
     #[serde(default)]
     pub tie: bool,
+    /// Legato monophonique : chauffe la note tenue du canal au lieu de la
+    /// détacher (voir `Articulation::Legato`). Indépendant de `tie`, qui lie
+    /// une même hauteur franchissant la barre.
+    #[serde(default)]
+    pub legato: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub doubling: Vec<BassDoubling>,
 }

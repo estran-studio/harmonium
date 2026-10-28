@@ -177,6 +177,7 @@ impl Performance {
                 }
                 if rule.articulation == Articulation::Trigger
                     || rule.articulation == Articulation::Tied
+                    || rule.articulation == Articulation::Legato
                 {
                     return Err(ProfileError::new(
                         format!("{f}.articulation"),

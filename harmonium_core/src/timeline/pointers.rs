@@ -37,11 +37,12 @@ impl Writehead {
     }
 }
 
-/// Rang de tri d'un événement préparé : l'attaque liée précède la fin
-/// coïncidente pour pouvoir fusionner avec elle, puis fins, puis attaques.
-/// Sans liaison, l'ordre historique (fins avant attaques) est inchangé.
+/// Rang de tri d'un événement préparé : l'attaque liée ou legato précède la
+/// fin coïncidente pour pouvoir fusionner (liaison) ou chevaucher (legato),
+/// puis fins, puis attaques. Sans lien, l'ordre historique (fins avant
+/// attaques) est inchangé.
 fn tied_rank(event: &PreparedEvent) -> u8 {
-    if event.on { u8::from(!event.tied) * 2 } else { 1 }
+    if event.on { u8::from(!(event.tied || event.legato)) * 2 } else { 1 }
 }
 /// Événement musical trié sur le thread principal ; temps en millièmes de pas.
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +55,11 @@ pub struct PreparedEvent {
     pub on: bool,
     /// Attaque liée : fusionne avec la fin coïncidente de la note active.
     pub tied: bool,
+    /// Attaque legato : chevauche la note tenue du canal (voir [`Playhead`]).
+    pub legato: bool,
+    /// Fin forcée (chevauchement legato) : émise même si la note active ne
+    /// correspond plus ; ne touche jamais à l'état des voix.
+    pub force_off: bool,
 }
 impl Measure {
     /// Appeler après toute modification de notes, avant le handoff audio.
@@ -71,6 +77,8 @@ impl Measure {
                         velocity: note.velocity,
                         on: true,
                         tied: note.articulation == crate::timeline::Articulation::Tied,
+                        legato: note.articulation == crate::timeline::Articulation::Legato,
+                        force_off: false,
                     };
                     self.playback_events.push(event);
                     self.playback_events.push(PreparedEvent {
@@ -115,6 +123,12 @@ pub struct Playhead {
 // de 128 hauteurs simultanées. Capacité fixe généreuse : au-delà, l'événement
 // est abandonné (jamais de croissance ni de panique dans le callback).
 const EVENT_CAP: usize = 8192;
+
+/// Chevauchement du legato monophonique, en millièmes de pas : la fin de la
+/// note précédente est repoussée d'autant au-delà de l'attaque pour que la
+/// note nouvelle ne soit jamais détachée (≈ 0,2 pas ; ≈ 15–50 ms selon le
+/// tempo). Borné sous un pas : l'attaque et son chevauchement restent voisins.
+const LEGATO_OVERLAP_MILLI_STEPS: i64 = 200;
 
 fn push_capped<T>(items: &mut Vec<T>, item: T) {
     debug_assert!(items.len() < EVENT_CAP, "capacité d'événements dépassée");
@@ -176,6 +190,14 @@ impl Playhead {
         let step = self.position.step_in_bar(self.ticks_per_beat);
         let start = step as i64 * 1000;
         let end = start + 1000;
+        // Longueur de la mesure en millièmes de pas, pour reporter un
+        // chevauchement legato au-delà du pas courant (même barre ou suivante).
+        let length = self
+            .current_measure
+            .as_ref()
+            .map_or_else(|| self.time_signature.steps_per_bar(self.ticks_per_beat), |m| m.steps)
+            .max(1) as i64
+            * 1000;
         if let Some(measure) = &self.current_measure {
             let first = measure.playback_events.partition_point(|e| e.time < start);
             let last = measure.playback_events.partition_point(|e| e.time < end);
@@ -222,11 +244,11 @@ impl Playhead {
         let mut j = 0;
         while j < self.candidates.len() {
             let candidate = self.candidates[j];
-            let slot =
-                &mut self.active[usize::from(candidate.channel)][usize::from(candidate.pitch)];
+            let channel = usize::from(candidate.channel);
+            let pitch = usize::from(candidate.pitch);
             let offset = candidate.time as u16;
             if candidate.on {
-                if candidate.tied && slot.is_some() {
+                if candidate.tied && self.active[channel][pitch].is_some() {
                     // Attaque liée : la note active se prolonge sans réattaque
                     // si sa fin coïncide ici (même instant, canal, hauteur).
                     // Sinon, repli sur l'attaque normale : jamais de note bloquée.
@@ -237,7 +259,7 @@ impl Playhead {
                         if !later.on
                             && later.channel == candidate.channel
                             && later.pitch == candidate.pitch
-                            && Some(later.id) == *slot
+                            && Some(later.id) == self.active[channel][pitch]
                         {
                             merge = true;
                             break;
@@ -245,12 +267,16 @@ impl Playhead {
                         k += 1;
                     }
                     if merge {
-                        *slot = Some(candidate.id);
+                        self.active[channel][pitch] = Some(candidate.id);
                         j += 1;
                         continue;
                     }
                 }
-                if slot.is_some() {
+                if candidate.legato && self.legato_attack(candidate, start, end, length) {
+                    j += 1;
+                    continue;
+                }
+                if self.active[channel][pitch].is_some() {
                     push_capped(
                         &mut self.events,
                         StepEvent {
@@ -262,7 +288,7 @@ impl Playhead {
                         },
                     );
                 }
-                *slot = Some(candidate.id);
+                self.active[channel][pitch] = Some(candidate.id);
                 push_capped(
                     &mut self.events,
                     StepEvent {
@@ -274,8 +300,21 @@ impl Playhead {
                         },
                     },
                 );
-            } else if *slot == Some(candidate.id) {
-                *slot = None;
+            } else if candidate.force_off {
+                // Fin forcée du chevauchement legato : la note précédente est
+                // déjà remplacée, on l'émet ici sans toucher à l'état des voix.
+                push_capped(
+                    &mut self.events,
+                    StepEvent {
+                        offset,
+                        event: AudioEvent::NoteOff {
+                            note: candidate.pitch,
+                            channel: candidate.channel,
+                        },
+                    },
+                );
+            } else if self.active[channel][pitch] == Some(candidate.id) {
+                self.active[channel][pitch] = None;
                 push_capped(
                     &mut self.events,
                     StepEvent {
@@ -289,6 +328,13 @@ impl Playhead {
             }
             j += 1;
         }
+        // L'ordre des événements suit l'offset croissant (le playback s'arrête au
+        // premier événement futur). À offset égal, NoteOff avant NoteOn (l'ordre
+        // détaché) ; le legato, lui, écarte sa fin de l'attaque (offset +200),
+        // donc la paire ne partage jamais le même offset. `sort_unstable_by_key`
+        // n'alloue pas (contrairement au tri stable), exigé dans le callback.
+        self.events
+            .sort_unstable_by_key(|e| (e.offset, matches!(e.event, AudioEvent::NoteOn { .. })));
         let steps = self
             .current_measure
             .as_ref()
@@ -305,6 +351,77 @@ impl Playhead {
                 (step + 1) % self.ticks_per_beat,
             );
         }
+    }
+    /// Legato monophonique : la note nouvelle (autre hauteur) attaque pendant
+    /// que la note tenue du canal se prolonge encore [`LEGATO_OVERLAP_MILLI_STEPS`]
+    /// millièmes de pas, au lieu de se détacher. `start`/`end`/`length` sont en
+    /// millièmes de pas absolus dans la mesure. Retourne `true` si le candidat
+    /// a été consommé ; sinon attaque normale.
+    fn legato_attack(
+        &mut self,
+        candidate: PreparedEvent,
+        start: i64,
+        end: i64,
+        length: i64,
+    ) -> bool {
+        let channel = usize::from(candidate.channel);
+        let held = self.active[channel]
+            .iter()
+            .enumerate()
+            .find(|(p, slot)| *p != usize::from(candidate.pitch) && slot.is_some())
+            .and_then(|(p, slot)| slot.map(|id| (p, id)));
+        let Some((old_pitch, old_id)) = held else { return false };
+
+        // Libère l'ancienne note, enregistre la nouvelle, émet l'attaque.
+        self.active[channel][old_pitch] = None;
+        self.active[channel][usize::from(candidate.pitch)] = Some(candidate.id);
+        push_capped(
+            &mut self.events,
+            StepEvent {
+                offset: candidate.time as u16,
+                event: AudioEvent::NoteOn {
+                    note: candidate.pitch,
+                    velocity: candidate.velocity,
+                    channel: candidate.channel,
+                },
+            },
+        );
+
+        // La fin de l'ancienne note chevauche l'attaque (léger overlap). Dans le
+        // pas courant elle part tout de suite ; au-delà elle est reportée (même
+        // barre, ou barre suivante s'il franchit la mesure).
+        let off_abs = start + candidate.time + LEGATO_OVERLAP_MILLI_STEPS;
+        let off = |time: i64| PreparedEvent {
+            time,
+            id: old_id,
+            channel: candidate.channel,
+            pitch: old_pitch as u8,
+            velocity: 0,
+            on: false,
+            tied: false,
+            legato: false,
+            force_off: true,
+        };
+        if off_abs < end {
+            push_capped(
+                &mut self.events,
+                StepEvent {
+                    offset: (off_abs - start) as u16,
+                    event: AudioEvent::NoteOff {
+                        note: old_pitch as u8,
+                        channel: candidate.channel,
+                    },
+                },
+            );
+        } else if off_abs < length {
+            push_capped(&mut self.pending, Spill { bar: self.position.bar, event: off(off_abs) });
+        } else {
+            push_capped(
+                &mut self.pending,
+                Spill { bar: self.position.bar + 1, event: off(off_abs - length) },
+            );
+        }
+        true
     }
     #[must_use]
     pub fn needs_measure(&self) -> bool {

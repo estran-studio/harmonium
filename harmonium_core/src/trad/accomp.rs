@@ -349,6 +349,13 @@ pub(crate) fn bass_motif_bar(
             &params.bass,
             steps_per_chord,
         );
+        let articulation = if tied {
+            Articulation::Tied
+        } else if note.legato {
+            Articulation::Legato
+        } else {
+            Articulation::Normal
+        };
         push_with_doublings(
             &mut notes,
             primary,
@@ -356,7 +363,7 @@ pub(crate) fn bass_motif_bar(
             local_start,
             duration,
             note.velocity,
-            if tied { Articulation::Tied } else { Articulation::Normal },
+            articulation,
             key,
             mode,
             next_id,
