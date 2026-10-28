@@ -12,7 +12,7 @@ use midly::{MidiMessage, Smf, TrackEventKind};
 #[test]
 fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<(), String> {
     let (mut composer, mut playback, mut commands, _, _, finished) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     let mut profile = StyleProfile::builtin().clone();
     profile.mix.tracks.melody = TrackMix { level_db: -12.0, pan: -1.0, reverb_send: 1.0 };
     profile.mix.tracks.chords = TrackMix { level_db: -6.0, pan: 1.0, reverb_send: 0.5 };
@@ -88,7 +88,7 @@ fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<
 #[test]
 fn next_tune_restores_profile_levels_but_preserves_solo_mutes() -> Result<(), String> {
     let (mut composer, mut playback, mut commands, mut reports, _, finished) =
-        create_offline_engine(None, None, 44100.0)?;
+        create_offline_engine(None, None, &[], 44100.0)?;
     composer.set_seed(3);
     composer.set_tours_per_tune(1)?;
     composer.generate_bars(40);

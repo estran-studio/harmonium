@@ -1,6 +1,9 @@
 pub mod backend;
 pub mod realtime;
 pub mod voice_manager;
+pub mod odin_source;
+#[cfg(feature = "odin")]
+pub mod odin_voices;
 
 use harmonium_core::events::AudioEvent;
 

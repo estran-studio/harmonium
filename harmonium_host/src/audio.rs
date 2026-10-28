@@ -37,6 +37,7 @@ use crate::{
 pub fn create_timeline_stream(
     sf2_bytes: Option<&[u8]>,
     feet_sf2_bytes: Option<&[u8]>,
+    odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
 ) -> Result<
     (
         cpal::Stream,
@@ -84,8 +85,13 @@ pub fn create_timeline_stream(
 
     // Create renderer: every logical channel on SoundFont bank 0
     let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
-    let inner_backend: Box<dyn AudioRenderer> =
-        Box::new(SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing));
+    let inner_backend: Box<dyn AudioRenderer> = Box::new(SynthBackend::new(
+        sample_rate,
+        sf2_bytes,
+        feet_sf2_bytes,
+        &default_routing,
+        odin_presets,
+    ));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     let recorder_backend = Box::new(RecorderBackend::new(
@@ -168,6 +174,7 @@ pub fn create_timeline_stream(
 pub fn create_offline_engine(
     sf2_bytes: Option<&[u8]>,
     feet_sf2_bytes: Option<&[u8]>,
+    odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     sample_rate: f64,
 ) -> Result<
     (
@@ -200,8 +207,13 @@ pub fn create_offline_engine(
     let font_queue = Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
-    let inner_backend: Box<dyn AudioRenderer> =
-        Box::new(SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing));
+    let inner_backend: Box<dyn AudioRenderer> = Box::new(SynthBackend::new(
+        sample_rate,
+        sf2_bytes,
+        feet_sf2_bytes,
+        &default_routing,
+        odin_presets,
+    ));
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     // Offline there is no deadline: block rather than drop, so recordings are
@@ -246,7 +258,7 @@ mod tests {
         let channels = 2;
 
         let (mut composer, mut playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
 
         // Pre-generate bars
         composer.set_writehead_lookahead(16);
@@ -276,7 +288,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
 
         // Generate 8 bars with default params
         composer.set_writehead_lookahead(16);
@@ -328,7 +340,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
 
         // Set explicit BPM override
         composer.set_bpm(140.0);
@@ -354,7 +366,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
 
         // Switch to emotion mode and set emotions to establish a mapped BPM
         composer.use_emotion_mode();
@@ -383,7 +395,7 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
         let nominal_bpm = composer.profile().meter.default_bpm;
 
         // In direct mode, set_bpm should work normally

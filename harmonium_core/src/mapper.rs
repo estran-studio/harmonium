@@ -122,4 +122,16 @@ impl GameControls {
     pub const fn emotion_mapped_bpm(&self) -> f32 {
         self.emotion_mapped_bpm
     }
+
+    /// Émotions courantes `[arousal, valence, density, tension]` (même hors
+    /// mode émotion : valeurs par défaut) pour le morphing Odin audio.
+    #[must_use]
+    pub const fn emotions(&self) -> [f32; 4] {
+        [
+            self.emotions.arousal,
+            self.emotions.valence,
+            self.emotions.density,
+            self.emotions.tension,
+        ]
+    }
 }

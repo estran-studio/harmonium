@@ -25,7 +25,7 @@ const BUFFERS: usize = 400;
 fn full_recording_callback_is_allocation_free() -> Result<(), String> {
     let font = include_bytes!("../../assets/test.sf2");
     let finished = Arc::new(Mutex::new(Vec::new()));
-    let synth = SynthBackend::new(44100.0, Some(font), None, &[]);
+    let synth = SynthBackend::new(44100.0, Some(font), None, &[], &[]);
     let mut recorder = RecorderBackend::new(Box::new(synth), finished.clone(), 44100);
     let stats = recorder.stats();
 

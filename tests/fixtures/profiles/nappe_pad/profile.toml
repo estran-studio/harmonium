@@ -110,6 +110,14 @@ bass_program = 32
 percussion_bank = 128
 percussion_program = 0
 
+[odin.Chords]
+preset = "nappe"
+morph = [
+  { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
+  { param = "amp_attack", density = 0.4 },
+  { param = "filter_resonance", tension = 0.5 },
+]
+
 [arrangement]
 tours_per_tune = 1
 [arrangement.entries]

@@ -37,6 +37,12 @@ struct Args {
     /// when present (else the feet fall back to the GM kit on channel 9).
     #[arg(long)]
     feet_soundfont: Option<String>,
+    /// Dossier de presets Odin (`.odin` fournis par le jeu) : chaque piste
+    /// qui déclare le preset en données joue Odin, les autres SoundFont.
+    /// Sans effet sans la compilation `--features odin`.
+    #[cfg(feature = "odin")]
+    #[arg(long, value_name = "DOSSIER")]
+    odin_presets: Option<std::path::PathBuf>,
 
     /// Export mode: skip REPL, run engine offline and save recordings
     #[arg(long)]
@@ -143,6 +149,16 @@ fn main() -> Result<()> {
 
     let sf2_bytes = harmonium::load_soundfont(args.soundfont.as_deref())?;
     let feet_sf2_bytes = harmonium::load_feet_soundfont(args.feet_soundfont.as_deref())?;
+    #[cfg(feature = "odin")]
+    let odin_owned = load_odin_presets(args.odin_presets.as_deref())?;
+    #[cfg(feature = "odin")]
+    let odin_presets: Vec<harmonium_audio::odin_source::OdinPresetSource> =
+        odin_owned.iter().map(|(name, bytes)| harmonium_audio::odin_source::OdinPresetSource {
+            name,
+            bytes,
+        }).collect();
+    #[cfg(not(feature = "odin"))]
+    let odin_presets: Vec<harmonium_audio::odin_source::OdinPresetSource> = Vec::new();
 
     if args.export {
         // Export mode: offline rendering, no audio device
@@ -159,6 +175,7 @@ fn main() -> Result<()> {
         export::run(
             sf2_bytes.as_deref(),
             feet_sf2_bytes.as_deref(),
+            &odin_presets,
             args.duration,
             args.bars,
             args.solo_track,
@@ -188,7 +205,11 @@ fn main() -> Result<()> {
             _transport_position,
             clock_reader,
             finished_recordings,
-        ) = audio::create_timeline_stream(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref())
+        ) = audio::create_timeline_stream(
+            sf2_bytes.as_deref(),
+            feet_sf2_bytes.as_deref(),
+            &odin_presets,
+        )
             .map_err(|e| anyhow::anyhow!(e))?;
 
         // Wrap composer in Arc for sharing with the generation thread
@@ -245,4 +266,26 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Charge les presets `.odin` d'un dossier (nom = tige du fichier, trié) ;
+/// `None` = aucun preset (tout SoundFont). Dossier hors dépôt, fourni par le jeu.
+#[cfg(feature = "odin")]
+fn load_odin_presets(dir: Option<&std::path::Path>) -> Result<Vec<(String, Vec<u8>)>> {
+    let Some(dir) = dir else { return Ok(Vec::new()) };
+    let mut presets = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("odin")) {
+            let name = path
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let bytes = std::fs::read(&path)?;
+            println!("Preset Odin : {} ({} octets)", name, bytes.len());
+            presets.push((name, bytes));
+        }
+    }
+    presets.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(presets)
 }

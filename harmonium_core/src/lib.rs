@@ -7,6 +7,7 @@ pub mod mapper;
 pub mod mix;
 pub mod models;
 pub mod ornaments;
+pub mod odin;
 pub mod params;
 pub mod performance;
 pub mod report;

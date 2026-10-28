@@ -15,6 +15,9 @@ required-features = ["standalone"]
 [features]
 default = ["standalone"]
 standalone = ["cpal"]
+# Synthé Odin par piste (GPLv3 via `harmonium_audio/odin`) : un binaire
+# compilé avec `odin` est GPL ; 1837 compile sans, en SoundFont.
+odin = ["harmonium_audio/odin"]
 
 [dependencies]
 harmonium_core = { path = "../harmonium_core" }

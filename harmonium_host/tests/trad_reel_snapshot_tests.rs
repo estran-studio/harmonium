@@ -48,7 +48,7 @@ fn generate_offline_reel_stream(
     feet_density: u8,
 ) -> Result<(harmonium::composer::MusicComposer, Vec<MeasureSnapshot>), String> {
     let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, &[], SAMPLE_RATE)?;
 
     composer.set_tuning(flat_tuning());
 
@@ -236,7 +236,7 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         let (_, linear) = generate_offline_reel_stream(seed, 1)?;
 
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, SAMPLE_RATE)?;
+            create_offline_engine(None, None, &[], SAMPLE_RATE)?;
         composer.set_tuning(flat_tuning());
 
         composer.set_seed(seed);

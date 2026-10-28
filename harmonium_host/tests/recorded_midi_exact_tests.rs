@@ -46,7 +46,7 @@ fn render(
     options: Options,
 ) -> Result<Render, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, &[], SAMPLE_RATE)?;
     composer.set_seed(seed);
     composer.set_profile_id(profile)?;
     composer.use_emotion_mode();

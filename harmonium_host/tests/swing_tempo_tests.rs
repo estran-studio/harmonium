@@ -49,7 +49,7 @@ fn quarter_profile() -> harmonium_core::StyleProfile {
 #[test]
 fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
     let (mut composer, mut playback, _cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, &[], SAMPLE_RATE)?;
 
     composer.set_profile(quarter_profile())?;
     composer.set_bpm(120.0);
@@ -104,7 +104,7 @@ fn swing_quarter_lasts_exactly_22050_frames() -> Result<(), String> {
 #[test]
 fn tempo_ramp_reaches_target_then_clears() -> Result<(), String> {
     let (mut composer, mut playback, mut cmd_tx, _report_rx, mut clock_reader, _recordings) =
-        create_offline_engine(None, None, SAMPLE_RATE)?;
+        create_offline_engine(None, None, &[], SAMPLE_RATE)?;
 
     composer.set_profile(quarter_profile())?;
     composer.set_swing_ratio(0.5);

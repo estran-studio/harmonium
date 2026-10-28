@@ -297,6 +297,9 @@ pub struct MusicalParams {
     /// Contrôleurs et coefficients préparés sur le thread principal au taux de l'hôte.
     #[serde(default = "default_profile_mix")]
     pub profile_mix: crate::mix::PreparedMix,
+    /// Pistes Odin résolues sur le thread principal (noms + règles, `Copy`).
+    #[serde(default = "default_profile_odin")]
+    pub profile_odin: [crate::odin::OdinTrackDesc; crate::timeline::TrackId::ALL.len()],
 
     /// Densité de podorythmie (0..=2, défaut 1 ; bornée via [`MusicalParams::set_feet_density`]).
     #[serde(default = "default_feet_density")]
@@ -425,6 +428,26 @@ fn default_profile_instruments() -> crate::style_profile::ProfileInstruments {
 fn default_profile_mix() -> crate::mix::PreparedMix {
     crate::StyleProfile::builtin().mix.prepare(44100.0)
 }
+fn default_profile_odin() -> [crate::odin::OdinTrackDesc; crate::timeline::TrackId::ALL.len()] {
+    describe_odin_tracks(&std::collections::BTreeMap::new())
+}
+
+/// Vue `Copy` des pistes Odin d'un profil, résolue sur le thread principal.
+#[must_use]
+pub fn describe_odin_tracks(
+    odin: &std::collections::BTreeMap<crate::timeline::TrackId, crate::odin::OdinTrackSpec>,
+) -> [crate::odin::OdinTrackDesc; crate::timeline::TrackId::ALL.len()] {
+    let mut descs = [crate::odin::OdinTrackDesc::default(); crate::timeline::TrackId::ALL.len()];
+    for (index, track) in crate::timeline::TrackId::ALL.iter().enumerate() {
+        if let Some(spec) = odin.get(track) {
+            // Profil validé au chargement : la description réussit toujours.
+            if let Ok(desc) = spec.describe(*track) {
+                descs[index] = desc;
+            }
+        }
+    }
+    descs
+}
 
 /// Longueur maximale d'un identifiant de profil porté par [`PlaybackParams`].
 pub const PROFILE_ID_CAP: usize = 64;
@@ -446,6 +469,8 @@ pub struct PlaybackParams {
     pub profile_id: arrayvec::ArrayString<PROFILE_ID_CAP>,
     pub instruments: crate::style_profile::ProfileInstruments,
     pub mix: crate::mix::PreparedMix,
+    /// Pistes Odin (`[odin.<Piste>]` du profil), vide = tout SoundFont.
+    pub odin: [crate::odin::OdinTrackDesc; crate::timeline::TrackId::ALL.len()],
     pub feet_density: u8,
     pub enable_rhythm: bool,
     pub enable_harmony: bool,
@@ -486,6 +511,7 @@ impl MusicalParams {
             profile_id,
             instruments: self.profile_instruments,
             mix: self.profile_mix,
+            odin: self.profile_odin,
             feet_density: self.feet_density,
             enable_rhythm: self.enable_rhythm,
             enable_harmony: self.enable_harmony,
@@ -508,6 +534,7 @@ impl Default for MusicalParams {
             profile_id: default_profile_id(),
             profile_instruments: default_profile_instruments(),
             profile_mix: default_profile_mix(),
+            profile_odin: default_profile_odin(),
             feet_density: default_feet_density(),
             intensity: default_density(),
             arousal: default_density(),
@@ -822,6 +849,14 @@ pub struct EngineParams {
 impl Default for EngineParams {
     fn default() -> Self {
         Self { arousal: 0.5, valence: 0.3, density: 0.2, tension: 0.4, smoothness: 0.7 }
+    }
+}
+
+impl EngineParams {
+    /// Axes `[arousal, valence, density, tension]` pour le morphing Odin.
+    #[must_use]
+    pub const fn emotions(&self) -> [f32; 4] {
+        [self.arousal, self.valence, self.density, self.tension]
     }
 }
 

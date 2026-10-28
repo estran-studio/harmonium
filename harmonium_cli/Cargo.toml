@@ -13,6 +13,12 @@ workspace = true
 name = "harmonium-cli"
 path = "src/main.rs"
 
+[features]
+default = []
+# Synthé Odin par piste (GPLv3 via `odin2-core`) : ce binaire compilé avec
+# `odin` est GPL. Active `--odin-presets`.
+odin = ["harmonium/odin", "harmonium_audio/odin"]
+
 [dependencies]
 # Core Harmonium dependencies
 harmonium_core = { path = "../harmonium_core" }

@@ -101,7 +101,7 @@ fn first_diff_location(a: &str, b: &str) -> (usize, usize) {
 #[test]
 fn snapshot_stream_unchanged() {
     let (mut composer, mut playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
-        create_offline_engine(None, None, SAMPLE_RATE).expect("create_offline_engine failed");
+        create_offline_engine(None, None, &[], SAMPLE_RATE).expect("create_offline_engine failed");
 
     // Fixed seed: reproducible across runs and machines. set_seed resets
     // writehead, staged measures and the RNG-driven session (key/scale) —
