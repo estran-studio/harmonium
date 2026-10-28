@@ -25,11 +25,11 @@
   identiques.
 - **Nouveau module** `harmonium_core/src/profile_source.rs` (privé) : monte chaque fichier lu à son endroit de
   l'arbre du profil et situe une erreur de champ dans le fichier qui le porte.
-- **Dépendance** : `toml_edit = "0.22"` dans `harmonium_core`. `toml::Spanned` ne convient pas : toml 0.8
+- **Dépendance** : `toml_edit = "0.22.27"` (même version que celle de `toml` 0.8.23, après `cargo update -p toml` : une seule version de `toml_edit` dans le graphe) dans `harmonium_core`. `toml::Spanned` ne convient pas : toml 0.8
   refuse de le désérialiser sur les tables implicites (`[harmony.parts.A1]` sans `[harmony.parts]`), et
   `toml_edit` 0.20 (celui de `toml` 0.8.2) efface les positions à l'analyse. `toml_edit` 0.22 les conserve
-  (`ImDocument`, `Key::span`). `Cargo.lock` : ajout de `toml_edit 0.22.27` et `toml_write`, et
-  `toml_datetime` passe de 0.6.3 à 0.6.11.
+  (`ImDocument`, `Key::span`). `Cargo.lock` : `toml` passe à 0.8.23, `toml_edit` à 0.22.27 (unique),
+  ajout de `toml_write`, `toml_datetime` 0.6.11.
 - **Nom de champ corrigé** : `validate()` signalait `melody.cells[i].notes` alors que la donnée est à
   `melody.cells.cells[i].notes` (le fichier `cells.toml` a une clé `cells`). Le champ suit maintenant le
   chemin réel, ce qui permet de le situer ; `style_profile_tests.rs` est mis à jour.
