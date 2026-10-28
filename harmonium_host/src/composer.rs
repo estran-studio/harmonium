@@ -52,7 +52,7 @@ pub struct MusicComposer {
     epoch: u64,
     // Smallest bar the playback engine must evict (>= bar), set by the last
     // invalidation/seek/reset. Drained by whoever owns the command ring
-    // (NativeHandle, REPL) via `take_pending_drop`, as `DropFrom`.
+    // (the live host) via `take_pending_drop`, as `DropFrom`.
     pending_drop: Option<usize>,
     // Pending GM Program Change commands `(channel, program)` queued on style change.
     pending_program_changes: Vec<(u8, u8)>,
@@ -82,9 +82,6 @@ pub struct MusicComposer {
     // Shared transport position, packed (bar, step) — written by
     // PlaybackEngine, read here as the bar
     transport_position: Arc<AtomicU64>,
-
-    // Font queue (shared with PlaybackEngine via NativeHandle)
-    pub font_queue: crate::FontQueue,
 }
 
 impl MusicComposer {
@@ -94,18 +91,10 @@ impl MusicComposer {
         measure_tx: rtrb::Producer<TaggedMeasure>,
         return_rx: rtrb::Consumer<TaggedMeasure>,
         transport_position: Arc<AtomicU64>,
-        font_queue: crate::FontQueue,
     ) -> Self {
         use rand::Rng;
         let session_seed: u64 = rand::thread_rng().r#gen();
-        Self::new_with_seed(
-            sample_rate,
-            measure_tx,
-            return_rx,
-            transport_position,
-            font_queue,
-            session_seed,
-        )
+        Self::new_with_seed(sample_rate, measure_tx, return_rx, transport_position, session_seed)
     }
 
     /// Create with explicit seed for deterministic output.
@@ -114,7 +103,6 @@ impl MusicComposer {
         measure_tx: rtrb::Producer<TaggedMeasure>,
         return_rx: rtrb::Consumer<TaggedMeasure>,
         transport_position: Arc<AtomicU64>,
-        font_queue: crate::FontQueue,
         session_seed: u64,
     ) -> Self {
         use rand::Rng;
@@ -202,7 +190,6 @@ impl MusicComposer {
             pending_measure_snapshots: Vec::new(),
             score_recording: None,
             transport_position,
-            font_queue,
         }
     }
 
@@ -374,7 +361,7 @@ impl MusicComposer {
         self.epoch
     }
 
-    /// Drain pending measure snapshots (called by NativeHandle).
+    /// Drain pending measure snapshots (called by the live host).
     pub fn take_snapshots(&mut self) -> Vec<harmonium_core::report::MeasureSnapshot> {
         std::mem::take(&mut self.pending_measure_snapshots)
     }
@@ -455,11 +442,6 @@ impl MusicComposer {
         self.epoch += 1;
         self.published.clear();
         self.pending_drop = Some(1);
-    }
-
-    /// Seek the writehead to a specific bar (legacy, non-deterministic).
-    pub fn seek_writehead(&mut self, bar: usize) {
-        self.writehead.current_bar = bar;
     }
 
     /// Deterministic seek: reset RNG + generator, replay to target bar.
@@ -776,29 +758,6 @@ impl MusicComposer {
     /// Sync generator with current musical params (call after batch param changes).
     pub fn sync_generator(&mut self) {
         self.generator.update_params(self.musical_params.clone());
-    }
-
-    /// Export timeline to MusicXML.
-    pub fn export_timeline(&self, format: harmonium_core::events::RecordFormat) {
-        match format {
-            harmonium_core::events::RecordFormat::MusicXml => {
-                let xml = harmonium_core::timeline::timeline_to_musicxml_with_instruments(
-                    &self.writehead.timeline,
-                    "Harmonium Export",
-                    &self.musical_params.instrument_lead,
-                    &self.musical_params.instrument_bass,
-                );
-                if let Ok(()) = std::fs::write("timeline_export.musicxml", &xml) {
-                    log::info(&format!(
-                        "Timeline exported to timeline_export.musicxml ({} bytes)",
-                        xml.len()
-                    ));
-                }
-            }
-            _ => {
-                log::warn(&format!("Timeline export only supports MusicXML, got {:?}", format));
-            }
-        }
     }
 
     // === Getters for report building ===

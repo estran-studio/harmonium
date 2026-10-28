@@ -157,7 +157,7 @@ morph = [
   piste (`Melody`, `Chords`, `Bass`, `Countermelody`) ; `Heel` et `Toe` restent
   SoundFont.
 - **Presets fournis par l'hôte**, comme les octets SF2 : `create_offline_engine`
-  / `NativeHandle::start` reçoivent des `OdinPresetSource { name, bytes }`
+  / `LiveHost::start` reçoivent des `OdinPresetSource { name, bytes }`
   (`name` = nom du fichier sans `.odin`) ; CLI : `--odin-presets <dossier>`,
   sous `--features odin`. **Aucun fichier `.odin` ni code GPL dans ce dépôt**
   (licence MIT OR Apache-2.0) ; `odin2-core` (GPLv3) est une dépendance git

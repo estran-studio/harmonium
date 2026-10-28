@@ -20,8 +20,8 @@ use std::sync::{
 use harmonium::{
     composer::MusicComposer,
     playback::{
-        LiveMidiEvent, MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP,
-        TaggedMeasure, check_loop_len, unpack,
+        MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure,
+        check_loop_len, unpack,
     },
 };
 use harmonium_audio::backend::AudioRenderer;
@@ -89,21 +89,13 @@ struct Harness {
 
 fn make_harness(seed: u64) -> Harness {
     let (cmd_tx, cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    let (_live_tx, live_rx) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (report_tx, report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
     let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
 
     let transport = Arc::new(AtomicU64::new(harmonium::playback::pack(1, 0)));
-    let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let mut composer = MusicComposer::new_with_seed(
-        SAMPLE_RATE,
-        measure_tx,
-        return_rx,
-        transport.clone(),
-        font_queue,
-        seed,
-    );
+    let mut composer =
+        MusicComposer::new_with_seed(SAMPLE_RATE, measure_tx, return_rx, transport.clone(), seed);
     // Grille exacte : ce test vérifie les index de mesure, pas l'interprétation.
     let mut profile = composer.profile().clone();
     profile.performance = Default::default();
@@ -123,7 +115,6 @@ fn make_harness(seed: u64) -> Harness {
         measure_rx,
         return_tx,
         cmd_rx,
-        live_rx,
         report_tx,
         transport.clone(),
         clock_tx,
@@ -230,7 +221,7 @@ fn seek_then_invalidate_never_plays_stale_bar() {
     h.render_checked_bar(1);
     h.render_checked_bar(2);
 
-    // Deterministic seek to bar 5, exactly like NativeHandle::seek:
+    // Deterministic seek to bar 5, exactly like `LiveHost::apply(Seek)`:
     // composer reset, DropFrom, then Seek.
     h.composer.deterministic_seek(5);
     let pending = h.composer.take_pending_drop();

@@ -98,8 +98,10 @@ son style d'origine est un défaut.
 - `harmonium_audio` — rendu SoundFont (oxisynth) et, derrière l'option de
   compilation `odin`, synthé Odin (`odin2-core`) ; enregistrement WAV/MIDI/MusicXML.
 - `harmonium_host` — `MusicComposer` (thread principal), `PlaybackEngine`
-  (callback cpal), `NativeHandle`, `create_offline_engine`, binaire
-  `harmonium` avec contrôle OSC.
+  (callback cpal), `LiveHost` (l'hôte vivant : exécute les `EngineCommand`,
+  génération pilotée par l'appelant via `pump`), module OSC,
+  `create_offline_engine`. Aucun binaire : le REPL de `harmonium_cli` et le
+  studio sont ses seuls hôtes.
 - `harmonium_cli` — REPL d'écoute et de test.
 - `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
 - `harmonium_studio` — application egui : vitrine publique sur le web (WASM)

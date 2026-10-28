@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug play test test/sheet test/lab-export fmt lint audit quality
+.PHONY: soundfont run run/debug test test/sheet test/lab-export fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -36,10 +36,6 @@ run:
 
 run/debug:
 	HARMONIUM_CLI=1 cargo run -p harmonium-cli -- $(ARGS)
-
-## Standalone player with OSC control (binary `harmonium`)
-play:
-	cargo run -p harmonium --release --bin harmonium -- $(ARGS)
 
 # ════════════════════════════════════════════════════════════════════
 # TESTS

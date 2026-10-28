@@ -51,6 +51,13 @@ impl HarmoniumCompleter {
                 "gain",
                 "mute",
                 "unmute",
+                "rhythm",
+                "harmony",
+                "melody",
+                "route",
+                "output",
+                "lookahead",
+                "seed",
             ],
             record_formats: vec!["wav", "midi", "musicxml"],
         }
@@ -100,6 +107,14 @@ impl HarmoniumCompleter {
                                 display: sig.to_string(),
                                 replacement: sig.to_string(),
                             })
+                            .collect(),
+                        "rhythm" | "harmony" | "melody" => ["on", "off"]
+                            .iter()
+                            .map(|&v| Pair { display: v.to_string(), replacement: v.to_string() })
+                            .collect(),
+                        "output" => ["mute", "unmute"]
+                            .iter()
+                            .map(|&v| Pair { display: v.to_string(), replacement: v.to_string() })
                             .collect(),
                         _ => vec![],
                     }

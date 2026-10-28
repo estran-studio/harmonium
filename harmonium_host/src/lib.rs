@@ -22,15 +22,16 @@ pub use harmonium_core::{events, log, mapper, params};
 static GLOBAL: harmonium_audio::realtime::rt_check::RTCheckAllocator =
     harmonium_audio::realtime::rt_check::RTCheckAllocator;
 
-// Audio stream (cpal) and native handle require the `standalone` feature
+// Audio stream (cpal), live host and OSC listener require the `standalone` feature
 #[cfg(feature = "standalone")]
 pub mod audio;
 #[cfg(feature = "standalone")]
-pub mod native_handle;
+pub mod live_host;
+#[cfg(feature = "standalone")]
+pub mod osc;
 pub use harmonium_core::params::MusicalParams;
 #[cfg(feature = "standalone")]
-pub use native_handle::{LiveMidiSender, NativeHandle};
+pub use live_host::LiveHost;
 
 // Type aliases for complex types
-pub type FontQueue = Arc<Mutex<Vec<(u32, Vec<u8>)>>>;
 pub type FinishedRecordings = Arc<Mutex<Vec<(events::RecordFormat, Vec<u8>)>>>;

@@ -117,23 +117,6 @@ impl TransportPosition {
     }
 }
 
-/// MIDI channel reserved for monitoring the player's own input ("hear
-/// yourself"). Channels 0–4 are the sequenced tracks (melody/chords/bass/heel/toe)
-/// and 9 is GM percussion, so 8 is free and tonal.
-pub const MONITOR_CHANNEL: u8 = 8;
-
-/// A live note the player pressed on their MIDI controller, forwarded from
-/// the MIDI input thread to the audio thread so it can be voiced through the
-/// same synth as the backing track. Single-producer/single-consumer: the MIDI
-/// callback owns the producer, the audio thread the consumer.
-#[derive(Clone, Copy, Debug)]
-pub struct LiveMidiEvent {
-    /// true = note-on, false = note-off.
-    pub on: bool,
-    pub note: u8,
-    pub velocity: u8,
-}
-
 /// Commands sent from the main thread to the PlaybackEngine (audio thread).
 // Variantes volumineuses gardées en ligne : un `Box` serait libéré sur le thread audio
 // (allocation interdite dans le callback, principe III).
@@ -150,10 +133,6 @@ pub enum PlaybackCommand {
     SetChannelRoute {
         channel: u8,
         bank_id: i32,
-    },
-    SetVelocityBase {
-        channel: u8,
-        velocity: u8,
     },
     SetOutputMute(bool),
     SetMasterVolume(f32),
@@ -174,10 +153,6 @@ pub enum PlaybackCommand {
     ClearLoop,
     StartRecording(harmonium_core::events::AudioRecordFormat),
     StopRecording(harmonium_core::events::AudioRecordFormat),
-    LoadFont {
-        id: u32,
-        bytes: Vec<u8>,
-    },
     ProgramChange {
         channel: u8,
         program: u8,
@@ -311,10 +286,6 @@ pub struct PlaybackEngine {
     // Command ring buffer (main thread → audio thread)
     cmd_rx: rtrb::Consumer<PlaybackCommand>,
 
-    // Live MIDI monitor ring buffer (MIDI input thread → audio thread).
-    // Notes the player presses, voiced through the synth on MONITOR_CHANNEL.
-    live_rx: rtrb::Consumer<LiveMidiEvent>,
-
     // Report ring buffer (audio thread → main thread)
     report_tx: rtrb::Producer<harmonium_core::EngineReport>,
 
@@ -371,8 +342,8 @@ struct TempoRamp {
 impl PlaybackEngine {
     /// Create a new PlaybackEngine.
     ///
-    /// Nine arguments is the whole wiring (renderer, three rings,
-    /// transport, clock producer): bundling them would only rename the tuple.
+    /// Eight arguments is the whole wiring (renderer, rings, transport,
+    /// clock producer): bundling them would only rename the tuple.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         sample_rate: f64,
@@ -380,7 +351,6 @@ impl PlaybackEngine {
         measure_rx: rtrb::Consumer<TaggedMeasure>,
         return_tx: rtrb::Producer<TaggedMeasure>,
         cmd_rx: rtrb::Consumer<PlaybackCommand>,
-        live_rx: rtrb::Consumer<LiveMidiEvent>,
         report_tx: rtrb::Producer<harmonium_core::EngineReport>,
         transport_position: Arc<AtomicU64>,
         clock_tx: triple_buffer::Input<TransportClock>,
@@ -447,7 +417,6 @@ impl PlaybackEngine {
             epoch: 0,
             loaded_epoch: None,
             cmd_rx,
-            live_rx,
             report_tx,
             transport_position,
             output_muted: false,
@@ -484,8 +453,6 @@ impl PlaybackEngine {
         let _rt = RtGuard::enter();
         // Process commands first
         self.process_commands();
-        // Voice any notes the player pressed on their MIDI controller.
-        self.process_live_midi();
 
         // Publish the buffer anchor once per buffer: the wall-clock/frame
         // mapping the reader interpolates from.
@@ -1067,25 +1034,6 @@ impl PlaybackEngine {
         }
     }
 
-    /// Drain the live-MIDI ring and voice the player's notes through the
-    /// synth on the dedicated monitor channel. Note-off respects an empty
-    /// ring (producer may not exist when MIDI input is off) — it simply
-    /// no-ops, so this is safe to call every buffer.
-    fn process_live_midi(&mut self) {
-        while let Ok(ev) = self.live_rx.pop() {
-            let event = if ev.on {
-                AudioEvent::NoteOn {
-                    note: ev.note,
-                    velocity: ev.velocity,
-                    channel: MONITOR_CHANNEL,
-                }
-            } else {
-                AudioEvent::NoteOff { note: ev.note, channel: MONITOR_CHANNEL }
-            };
-            self.renderer.handle_event(event);
-        }
-    }
-
     fn emit_mix(&mut self) {
         let mut mix = self.musical_params.mix;
         for (control, track) in mix.tracks.iter_mut().zip(&self.tracks) {
@@ -1124,9 +1072,6 @@ impl PlaybackEngine {
                         self.renderer
                             .handle_event(AudioEvent::SetChannelRoute { channel, bank: bank_id });
                     }
-                }
-                PlaybackCommand::SetVelocityBase { .. } => {
-                    // Velocity base is handled in generation, not playback
                 }
                 PlaybackCommand::SetOutputMute(muted) => {
                     self.output_muted = muted;
@@ -1216,9 +1161,6 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::StopRecording(format) => {
                     self.renderer.handle_event(AudioEvent::StopRecording { format });
-                }
-                PlaybackCommand::LoadFont { id, bytes } => {
-                    self.renderer.handle_event(AudioEvent::LoadFont { id, bytes });
                 }
                 PlaybackCommand::ProgramChange { channel, program } => {
                     self.renderer.handle_event(AudioEvent::ProgramChange { channel, program });

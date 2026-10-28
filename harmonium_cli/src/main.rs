@@ -1,6 +1,6 @@
 //! Harmonium CLI - Interactive command-line interface for the Harmonium music engine
 //!
-//! Uses the decoupled MusicComposer + PlaybackEngine architecture.
+//! The REPL drives a `LiveHost` (decoupled MusicComposer + PlaybackEngine).
 //! Use `--export` mode for headless batch export (no REPL, runs as fast as possible).
 
 mod automation;
@@ -11,14 +11,10 @@ mod help;
 mod parser;
 mod repl;
 
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-
 use anyhow::Result;
 use clap::Parser;
-use harmonium::audio;
+use harmonium::LiveHost;
+use harmonium_core::EngineCommand;
 
 #[derive(Parser)]
 #[command(name = "harmonium-cli")]
@@ -43,6 +39,11 @@ struct Args {
     #[cfg(feature = "odin")]
     #[arg(long, value_name = "DOSSIER")]
     odin_presets: Option<std::path::PathBuf>,
+
+    /// Écoute OSC dans le REPL : `/harmonium/params` (arousal valence density
+    /// tension, quatre flottants) sur UDP 127.0.0.1:8080 pilote les émotions.
+    #[arg(long, conflicts_with = "export")]
+    osc: bool,
 
     /// Export mode: skip REPL, run engine offline and save recordings
     #[arg(long)]
@@ -193,75 +194,24 @@ fn main() -> Result<()> {
         // Interactive REPL mode: needs audio device
         println!("Initializing Harmonium engine...");
 
-        let (
-            _stream,
-            config,
-            composer_mutex,
-            mut playback_cmd_tx,
-            _live_midi_tx,
-            report_rx,
-            _font_queue,
-            _transport_position,
-            clock_reader,
-            finished_recordings,
-        ) = audio::create_timeline_stream(
-            sf2_bytes.as_deref(),
-            feet_sf2_bytes.as_deref(),
-            &odin_presets,
-        )
-        .map_err(|e| anyhow::anyhow!(e))?;
-
-        // Wrap composer in Arc for sharing with the generation thread
-        let composer = Arc::new(composer_mutex);
-        {
-            let mut c = composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-            if let Some(seed) = args.seed {
-                c.set_seed(seed);
-            }
-            if let Some(style) = parsed_style {
-                c.set_profile(*style).map_err(|e| anyhow::anyhow!(e))?;
-            }
-            c.invalidate_future();
-            if let Some((bar, _)) = c.take_pending_drop() {
-                playback_cmd_tx
-                    .push(harmonium::playback::PlaybackCommand::DropFrom { bar })
-                    .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
-            }
-            for (channel, program) in c.take_pending_program_changes() {
-                playback_cmd_tx
-                    .push(harmonium::playback::PlaybackCommand::ProgramChange { channel, program })
-                    .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
-            }
-            playback_cmd_tx
-                .push(harmonium::playback::PlaybackCommand::UpdateMusicalParams(
-                    c.musical_params().playback_params(),
-                ))
-                .map_err(|_| anyhow::anyhow!("file de commandes audio pleine"))?;
+        let mut host =
+            LiveHost::start(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref(), &odin_presets)
+                .map_err(|e| anyhow::anyhow!(e))?;
+        if let Some(seed) = args.seed {
+            host.apply(EngineCommand::SetSeed(seed)).map_err(|e| anyhow::anyhow!(e))?;
+        }
+        if let Some(style) = parsed_style {
+            host.apply(EngineCommand::SetStyleProfile(style)).map_err(|e| anyhow::anyhow!(e))?;
         }
 
-        // Spawn a generation thread to continuously feed the ring buffer
-        let gen_composer = composer.clone();
-        let gen_shutdown = Arc::new(AtomicBool::new(false));
-        let gen_shutdown_flag = gen_shutdown.clone();
-        std::thread::spawn(move || loop {
-            if gen_shutdown_flag.load(Ordering::Relaxed) {
-                break;
-            }
-            if let Ok(mut c) = gen_composer.lock() {
-                c.generate_ahead();
-            }
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        });
-
+        let config = host.session_config();
         println!("Engine initialized");
         println!("  Sample rate: 44100 Hz");
         println!("  Key: {} {}", config.key, config.scale);
         println!("  BPM: {:.1}", config.bpm);
         println!();
 
-        repl::run(composer, playback_cmd_tx, report_rx, clock_reader, finished_recordings)?;
-        // Signal generation thread to stop
-        gen_shutdown.store(true, Ordering::Relaxed);
+        repl::run(host, args.osc)?;
     }
 
     Ok(())

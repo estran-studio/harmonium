@@ -11,7 +11,7 @@ use harmonium::{
     TransportClock,
     backend::AudioRenderer,
     events::AudioEvent,
-    playback::{LiveMidiEvent, PlaybackCommand, PlaybackEngine, TaggedMeasure, pack},
+    playback::{PlaybackCommand, PlaybackEngine, TaggedMeasure, pack},
 };
 use harmonium_core::{
     params::{PulseSpec, TimeSignature},
@@ -64,7 +64,6 @@ fn fractional_attacks_gates_barline_and_opening_keep_clock_on_grid() {
     let (mut tx, rx) = rtrb::RingBuffer::<TaggedMeasure>::new(16);
     let (return_tx, _return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(64);
     let (_commands, commands) = rtrb::RingBuffer::<PlaybackCommand>::new(16);
-    let (_live, live) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (reports, _reports) = rtrb::RingBuffer::new(128);
     let recorded = Arc::new(std::array::from_fn(|_| AtomicU64::new(0)));
     let initial = TransportClock::initial(8000);
@@ -93,7 +92,6 @@ fn fractional_attacks_gates_barline_and_opening_keep_clock_on_grid() {
         rx,
         return_tx,
         commands,
-        live,
         reports,
         Arc::new(AtomicU64::new(pack(1, 0))),
         clock_tx,
@@ -158,7 +156,6 @@ fn prepared_strum_and_bass_walk_cross_the_bar_under_rt_allocator() {
     let (mut tx, rx) = rtrb::RingBuffer::<TaggedMeasure>::new(16);
     let (return_tx, _return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(64);
     let (_commands, commands) = rtrb::RingBuffer::<PlaybackCommand>::new(16);
-    let (_live, live) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (reports, _reports) = rtrb::RingBuffer::new(128);
     let recorded = Arc::new(std::array::from_fn(|_| AtomicU64::new(0)));
     let initial = TransportClock::initial(8000);
@@ -186,7 +183,6 @@ fn prepared_strum_and_bass_walk_cross_the_bar_under_rt_allocator() {
         rx,
         return_tx,
         commands,
-        live,
         reports,
         Arc::new(AtomicU64::new(pack(1, 0))),
         clock_tx,

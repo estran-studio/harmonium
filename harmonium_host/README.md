@@ -1,6 +1,6 @@
 # Harmonium Host
 
-`harmonium_host` (crate `harmonium`) wires the pure music logic of `harmonium_core` to the oxisynth renderer of `harmonium_audio` and to a `cpal` output stream. It exposes a native Rust API (`NativeHandle`) and a CLI binary.
+`harmonium_host` (crate `harmonium`) wires the pure music logic of `harmonium_core` to the oxisynth renderer of `harmonium_audio` and to a `cpal` output stream. It exposes one native Rust API, `LiveHost`, the single live host of the engine: the REPL (`harmonium_cli`) and the studio drive the same object. There is no binary.
 
 ## Architecture
 
@@ -13,30 +13,21 @@ graph LR
     Composer -- PlaybackCommand (rtrb) --> Playback
     Playback -- EngineReport (rtrb) --> Composer
     Playback -- AtomicU64 (bar, step) --> Composer
-    MIDI[LiveMidiSender] -- LiveMidiEvent (rtrb) --> Playback
 ```
 
 *   **`MusicComposer`** (`src/composer.rs`): main-thread generation. Owns the `TradGenerator` (piloté par le profil de style actif, `reel_quebecois` par défaut), `Writehead`, `MusicalParams` and the `EmotionMapper` (from `harmonium_core::mapper`). `generate_ahead()` stages `Box<Measure>`s through an SPSC ring (`composer → playback`, capacity 16) ahead of the transport, drains the return ring (deallocating played boxes on the main thread), and emits `MeasureSnapshot`s.
 *   **`PlaybackEngine`** (`src/playback.rs`): audio-thread playback. Reads staged measures from the ring into an ordered prefetch window, ticks the `Playhead`, feeds `AudioEvent`s to the `AudioRenderer` (oxisynth), and handles recording (WAV / MIDI / MusicXML). Played boxes are handed back through the return ring (`playback → composer`) so they are only ever dropped on the main thread. No allocation in steady state (enforced in debug builds by `RTCheckAllocator`).
 *   **Transport position**: packed `(bar, step)` in a single `Arc<AtomicU64>` (`playback::pack` / `playback::unpack`), written by the audio thread and read lock-free by anyone holding the `Arc`. `TransportPosition::from_packed` derives the beat on a `TICKS_PER_BEAT` grid.
-*   **`audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes)`** (`src/audio.rs`): builds the whole graph plus a `cpal::Stream`. `audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, sample_rate)` builds the same graph without a stream, for tests and offline rendering. `sf2_bytes = None` runs oxisynth without a bank (silence, but the engine and snapshot stream work); `feet_sf2_bytes` charge la banque de pieds dédiée (Heel/Toe → canaux 3/4).
-*   **`NativeHandle`** (`src/native_handle.rs`): owned handle over the stream, composer and command producer. `NativeHandle::start(sf2)` / `start_paused(sf2)`, transport control, emotion/mixer setters, `take_live_midi_sender()` for monitoring the player's own MIDI input on `MONITOR_CHANNEL`.
+*   **`audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets)`** (`src/audio.rs`): builds the whole graph plus a `cpal::Stream`. `audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, odin_presets, sample_rate)` builds the same graph without a stream, for tests and offline rendering. `sf2_bytes = None` runs oxisynth without a bank (silence, but the engine and snapshot stream work); `feet_sf2_bytes` charge la banque de pieds dédiée (Heel/Toe → canaux 3/4).
+*   **`LiveHost`** (`src/live_host.rs`): owns the stream, the composer, the command producer, the report consumer, the transport position and the clock reader.
+    *   `LiveHost::start(sf2, feet_sf2, odin_presets)` / `start_paused(…)` open the default output device; `LiveHost::detached(…, sample_rate)` builds a host without device and hands back the `PlaybackEngine` for the caller to run (tests, rendering).
+    *   **`apply(EngineCommand)`** is the only way to change the engine. Generation changes invalidate the future measures (the bar under the playhead is kept) and evict them from playback; playback commands (mixer, loop, audible tempo, recording) go through the lock-free ring. `harmonium_core::EngineCommand` lists every command: emotions and modes, BPM, time signature, swing, audible tempo (ramp / clear), style profile, feet density, intensity, module toggles, mixer, routing, output mute, seed, seek (deterministic or soft), loop, writehead lookahead, recording, reset.
+    *   **`pump()`** is the generation driver: it composes ahead of the playhead, frees the played boxes, drains the audio thread's reports and returns the `MeasureSnapshot`s composed since the last call. The caller decides where it runs (a thread every ~50 ms in the REPL, the UI loop in the studio). `apply` never composes: the replacement bars come from the next `pump`.
+    *   **Published state**: `poll_state()` (last `EngineReport`), `transport_position()` (lock-free), `beat_info(now)` / `take_clock_reader()` / `restore_clock_reader()` (predictive clock), `take_recordings()`, `musical_params()`, `emotions()`, `session_seed()`, `session_config()`, `profile_bar_info(bar)`.
+    *   `apply` and `pump` take `&mut self`: a host shared between threads sits behind a `Mutex` (as in the REPL).
+*   **`osc`** (`src/osc.rs`): native OSC listener on UDP (`rosc`). `/harmonium/params <arousal> <valence> <density> <tension>` (4 floats) becomes `EngineCommand::SetEmotionParams`, handed to a callback that applies it to the host: `OscListener::spawn(osc::DEFAULT_ADDR, |command| …)`. `harmonium-cli --osc` opens it on `127.0.0.1:8080`.
 
 ## Features
 
-*   `standalone` (default): enables `cpal`, `audio`, `native_handle` and the binary. `composer` and `playback` are always available.
-
-## CLI
-
-Binary `harmonium` (`src/main.rs`):
-
-```bash
-cargo run --release --bin harmonium -- [OPTIONS] [SOUNDFONT.sf2]
-```
-
-Options:
-
-*   `--osc` — listen on UDP `127.0.0.1:8080`; `/harmonium/params <arousal> <valence> <density> <tension>` (4 floats) updates the emotion mapper.
-*   `--simulate` — randomly change emotions every 5 s.
-*   `--record-wav [PATH]`, `--record-midi [PATH]`, `--record-musicxml [PATH]` — record; finalized on Ctrl+C or when `--duration <SECONDS>` elapses.
-*   `--soundfont, -s [PATH]` — chemin vers une banque SoundFont (.sf2).
+*   `standalone` (default): enables `cpal`, `rosc`, and the `audio`, `live_host` and `osc` modules. `composer` and `playback` are always available.
+*   `odin`: per-track Odin synth (GPLv3, see the root README); presets are provided by the caller as `OdinPresetSource { name, bytes }`.

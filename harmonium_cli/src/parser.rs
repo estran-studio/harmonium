@@ -1,11 +1,20 @@
 //! Command parser for Harmonium CLI
 //!
-//! Parses user input into EngineCommand variants
+//! Parses user input into `EngineCommand` variants: the REPL keeps the text,
+//! the host (`LiveHost::apply`) executes the command.
 
 use anyhow::{anyhow, Result};
-use harmonium_core::EngineCommand;
+use harmonium_core::{events::RecordFormat, EngineCommand};
 
-/// Parse a command line into an EngineCommand
+/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
+pub const SWING_MIN: f32 = 0.5;
+/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
+pub const SWING_MAX: f32 = 0.75;
+
+/// Parse a command line into an EngineCommand.
+///
+/// Commands that are not engine commands (`help`, `quit`, `state`, `beat`,
+/// bare `stop`) belong to the REPL and are answered before this parser.
 pub fn parse_command(line: &str) -> Result<EngineCommand> {
     let line = line.trim();
 
@@ -20,16 +29,6 @@ pub fn parse_command(line: &str) -> Result<EngineCommand> {
     match tokens[0] {
         // === GLOBAL ===
         "set" => parse_set_command(&tokens[1..]),
-
-        // === CONTROL MODE ===
-        "emotion" => parse_emotion_command(&tokens[1..]),
-        "direct" => parse_direct_command(&tokens[1..]),
-
-        // === RECORDING ===
-        "record" => parse_record_command(&tokens[1..]),
-
-        // === UTILITY ===
-        "state" | "show" | "status" => Ok(EngineCommand::GetState),
         "reset" => {
             if tokens.get(1).copied() == Some("bpm") {
                 Ok(EngineCommand::ResetBpm)
@@ -38,15 +37,30 @@ pub fn parse_command(line: &str) -> Result<EngineCommand> {
             }
         }
 
-        "seed" => {
-            let val = tokens.get(1).ok_or_else(|| anyhow!("Usage: seed <u64>"))?;
-            let seed = val.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {val}"))?;
-            Ok(EngineCommand::SetSeed(seed))
+        // === CONTROL MODE ===
+        "emotion" => parse_emotion_command(&tokens[1..]),
+        "direct" => parse_direct_command(&tokens[1..]),
+
+        // === RECORDING ===
+        "record" => parse_record_command(&tokens[1..]),
+        "stop" => {
+            let format = tokens.get(1).ok_or_else(|| anyhow!("Usage: stop [wav|midi|musicxml]"))?;
+            Ok(EngineCommand::StopRecording(parse_record_format(format)?))
         }
-        // === HELP ===
-        "help" | "?" => Err(anyhow!("help")), // Special case handled by REPL
-        "quit" | "exit" => Err(anyhow!("quit")), // Special case handled by REPL
-        "stop" => Err(anyhow!("stop")),       // Special case handled by REPL
+
+        // === SESSION ===
+        "seed" => parse_seed_command(&tokens[1..]),
+
+        // === TIMELINE ===
+        "seek" => parse_seek_command(&tokens[1..]),
+        "loop" => parse_loop_command(&tokens[1..]),
+
+        // === TEMPO, GROOVE AND STYLE ===
+        "swing" => parse_swing_command(&tokens[1..]),
+        "tempo" => parse_tempo_command(&tokens[1..]),
+        "style" => parse_style_command(&tokens[1..]),
+        "feet" => parse_feet_command(&tokens[1..]),
+        "intensity" => parse_intensity_command(&tokens[1..]),
 
         _ => Err(anyhow!("Unknown command: {}. Type 'help' for available commands.", tokens[0])),
     }
@@ -88,6 +102,11 @@ fn parse_set_command(tokens: &[&str]) -> Result<EngineCommand> {
             Ok(EngineCommand::SetTimeSignature { numerator, denominator })
         }
 
+        // === MODULES ===
+        "rhythm" => Ok(EngineCommand::EnableRhythm(parse_on_off(value)?)),
+        "harmony" => Ok(EngineCommand::EnableHarmony(parse_on_off(value)?)),
+        "melody" => Ok(EngineCommand::EnableMelody(parse_on_off(value)?)),
+
         // === MIXER ===
         "gain" => {
             let channel = tokens.get(1).ok_or_else(|| anyhow!("Missing channel number"))?;
@@ -108,15 +127,44 @@ fn parse_set_command(tokens: &[&str]) -> Result<EngineCommand> {
             Ok(EngineCommand::SetChannelMute { channel, muted: false })
         }
 
+        "route" => {
+            let bank = tokens.get(2).ok_or_else(|| anyhow!("Usage: set route <channel> <bank>"))?;
+            let channel = value.parse::<u8>().map_err(|_| anyhow!("Invalid channel: {}", value))?;
+            let bank_id = bank.parse::<i32>().map_err(|_| anyhow!("Invalid bank: {}", bank))?;
+            Ok(EngineCommand::SetChannelRoute { channel, bank_id })
+        }
+
+        "output" => match value.to_lowercase().as_str() {
+            "mute" => Ok(EngineCommand::SetOutputMute(true)),
+            "unmute" => Ok(EngineCommand::SetOutputMute(false)),
+            _ => Err(anyhow!("Usage: set output <mute|unmute>")),
+        },
+
+        // === SESSION ===
         "seed" => {
             let seed =
                 value.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {}", value))?;
             Ok(EngineCommand::SetSeed(seed))
         }
 
+        "lookahead" => {
+            let bars =
+                value.parse::<usize>().map_err(|_| anyhow!("Invalid lookahead: {}", value))?;
+            Ok(EngineCommand::SetWriteheadLookahead(bars))
+        }
+
         _ => {
             Err(anyhow!("Unknown parameter: {}. Type 'help set' for available parameters.", param))
         }
+    }
+}
+
+/// Parse an `on|off` value (also `true|false`).
+fn parse_on_off(value: &str) -> Result<bool> {
+    match value.to_lowercase().as_str() {
+        "on" | "true" => Ok(true),
+        "off" | "false" => Ok(false),
+        _ => Err(anyhow!("Invalid value: {value}. Use: on, off")),
     }
 }
 
@@ -149,80 +197,60 @@ fn parse_direct_command(_tokens: &[&str]) -> Result<EngineCommand> {
     Ok(EngineCommand::UseDirectMode)
 }
 
+/// Parse a recording format name (`wav`, `midi`, `musicxml`).
+fn parse_record_format(raw: &str) -> Result<RecordFormat> {
+    match raw.to_lowercase().as_str() {
+        "wav" => Ok(RecordFormat::Wav),
+        "midi" | "mid" => Ok(RecordFormat::Midi),
+        "musicxml" | "xml" => Ok(RecordFormat::MusicXml),
+        _ => Err(anyhow!("Unknown format: {raw}. Use: wav, midi, musicxml")),
+    }
+}
+
 /// Parse "record <wav|midi|musicxml>" command
 /// Note: filename is not supported yet in the command interface
 fn parse_record_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.is_empty() {
         return Err(anyhow!("Usage: record <wav|midi|musicxml>"));
     }
-
-    let format = match tokens[0].to_lowercase().as_str() {
-        "wav" => harmonium_core::events::RecordFormat::Wav,
-        "midi" | "mid" => harmonium_core::events::RecordFormat::Midi,
-        "musicxml" | "xml" => harmonium_core::events::RecordFormat::MusicXml,
-        _ => return Err(anyhow!("Unknown format: {}. Use: wav, midi, musicxml", tokens[0])),
-    };
-
-    Ok(EngineCommand::StartRecording(format))
+    Ok(EngineCommand::StartRecording(parse_record_format(tokens[0])?))
 }
 
-/// CLI-only commands, handled directly by the REPL (they need the playback
-/// ring or the clock reader, so they do not go through `EngineCommand`).
-#[derive(Clone, Debug, PartialEq)]
-pub enum CliCommand {
-    /// Set the swing ratio (already clamped to 0.5..=0.75; `clamped` tells
-    /// whether the user's value was out of range).
-    Swing { ratio: f32, clamped: bool },
-    /// Audible tempo override, reached linearly over `ramp_pulses` pulse
-    /// boundaries (`0` = jump at the next boundary).
-    Tempo { bpm: f32, ramp_pulses: u8 },
-    /// Back to the measures' tempo at the next pulse boundary.
-    ClearTempo,
-    /// Live visual metronome from `BeatInfo`.
-    Beat,
-    /// Sélection du générateur ou d'un profil validé.
-    Style(Box<harmonium_core::StyleProfile>),
-    /// Set reel podorythmie density (`0`, `1` or `2`).
-    Feet(u8),
-    /// Énergie du style, bornée explicitement à 0..1.
-    Intensity(f32),
-}
-
-/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
-pub const SWING_MIN: f32 = 0.5;
-/// Swing bounds (phase 0, D3): 0.5 = straight, 0.75 = hard swing.
-pub const SWING_MAX: f32 = 0.75;
-
-/// Parse the CLI-only commands (`swing`, `tempo`, `beat`). `tokens[0]` is the
-/// command name; anything else is an error (this parser never shadows the
-/// `EngineCommand` table above).
-pub fn parse_cli_command(tokens: &[&str]) -> Result<CliCommand> {
-    match tokens.first().copied() {
-        Some("swing") => parse_swing_command(&tokens[1..]),
-        Some("tempo") => parse_tempo_command(&tokens[1..]),
-        Some("beat") => {
-            if tokens.len() == 1 {
-                Ok(CliCommand::Beat)
-            } else {
-                Err(anyhow!("Usage: beat"))
-            }
-        }
-        Some("style") => parse_style_command(&tokens[1..]),
-        Some("feet") => parse_feet_command(&tokens[1..]),
-        Some("intensity") => {
-            if tokens.len() != 2 {
-                return Err(anyhow!("Usage: intensity <0..1>"));
-            }
-            let value: f32 =
-                tokens[1].parse().map_err(|_| anyhow!("Intensité invalide: {}", tokens[1]))?;
-            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
-                return Err(anyhow!("Intensité invalide: {} (attendu 0..1)", tokens[1]));
-            }
-            Ok(CliCommand::Intensity(value))
-        }
-        Some(other) => Err(anyhow!("Not a CLI command: {other}")),
-        None => Err(anyhow!("Empty command")),
+/// Parse `seed <n>` (explicit seed) or `seed new` (fresh random seed).
+fn parse_seed_command(tokens: &[&str]) -> Result<EngineCommand> {
+    let val = tokens.first().ok_or_else(|| anyhow!("Usage: seed <u64> | seed new"))?;
+    if val.eq_ignore_ascii_case("new") {
+        return Ok(EngineCommand::NewMelody);
     }
+    let seed = val.parse::<u64>().map_err(|_| anyhow!("Invalid seed value: {val}"))?;
+    Ok(EngineCommand::SetSeed(seed))
+}
+
+/// Parse `seek <bar>` (deterministic) or `seek <bar> soft` (playhead only).
+fn parse_seek_command(tokens: &[&str]) -> Result<EngineCommand> {
+    let usage = || anyhow!("Usage: seek <bar_number> [soft]");
+    let bar = tokens.first().and_then(|t| t.parse::<usize>().ok()).ok_or_else(usage)?;
+    match tokens.get(1).copied() {
+        None => Ok(EngineCommand::Seek(bar)),
+        Some("soft") if tokens.len() == 2 => Ok(EngineCommand::SeekPlayhead(bar)),
+        Some(_) => Err(usage()),
+    }
+}
+
+/// Parse `loop <start> <end>` or `loop off`.
+fn parse_loop_command(tokens: &[&str]) -> Result<EngineCommand> {
+    if tokens.len() > 1 {
+        if let (Ok(start_bar), Ok(end_bar)) =
+            (tokens[0].parse::<usize>(), tokens[1].parse::<usize>())
+        {
+            return Ok(EngineCommand::SetLoop { start_bar, end_bar });
+        }
+        return Err(anyhow!("Usage: loop <start_bar> <end_bar>"));
+    }
+    if tokens.first().copied() == Some("off") {
+        return Ok(EngineCommand::ClearLoop);
+    }
+    Err(anyhow!("Usage: loop <start> <end> | loop off"))
 }
 
 /// Sélecteur partagé par le démarrage CLI et la commande interactive `style`.
@@ -235,15 +263,15 @@ pub fn parse_style_value(raw: &str) -> Result<Box<harmonium_core::StyleProfile>>
     Ok(Box::new(profile))
 }
 
-fn parse_style_command(tokens: &[&str]) -> Result<CliCommand> {
+fn parse_style_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() != 1 {
         return Err(anyhow!("Usage: style <identifiant|dossier>"));
     }
-    Ok(CliCommand::Style(parse_style_value(tokens[0])?))
+    Ok(EngineCommand::SetStyleProfile(parse_style_value(tokens[0])?))
 }
 
 /// Parse `feet <0|1|2>`.
-fn parse_feet_command(tokens: &[&str]) -> Result<CliCommand> {
+fn parse_feet_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() != 1 {
         return Err(anyhow!("Usage: feet <0|1|2>"));
     }
@@ -253,7 +281,19 @@ fn parse_feet_command(tokens: &[&str]) -> Result<CliCommand> {
     if density > 2 {
         return Err(anyhow!("Densité hors plage ({density}). Utiliser: feet 0|1|2"));
     }
-    Ok(CliCommand::Feet(density))
+    Ok(EngineCommand::SetFeetDensity(density))
+}
+
+/// Parse `intensity <0..1>`.
+fn parse_intensity_command(tokens: &[&str]) -> Result<EngineCommand> {
+    if tokens.len() != 1 {
+        return Err(anyhow!("Usage: intensity <0..1>"));
+    }
+    let value: f32 = tokens[0].parse().map_err(|_| anyhow!("Intensité invalide: {}", tokens[0]))?;
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        return Err(anyhow!("Intensité invalide: {} (attendu 0..1)", tokens[0]));
+    }
+    Ok(EngineCommand::SetIntensity(value))
 }
 
 /// Export `--feet` value: a podorythmie density (`0|1|2`) or `off`, which
@@ -277,9 +317,9 @@ pub fn parse_feet_value(raw: &str) -> Result<FeetOpt> {
     Ok(FeetOpt::Density(density))
 }
 
-/// Parse `swing <ratio>`: a finite positive number, clamped to
-/// 0.5..=0.75 (out-of-range values are clamped, not rejected).
-fn parse_swing_command(tokens: &[&str]) -> Result<CliCommand> {
+/// Parse `swing <ratio>`: a finite positive number. The host bounds it to
+/// `SWING_MIN..=SWING_MAX`; the REPL tells the user when it did.
+fn parse_swing_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() != 1 {
         return Err(anyhow!("Usage: swing <0.5-0.75>"));
     }
@@ -288,15 +328,14 @@ fn parse_swing_command(tokens: &[&str]) -> Result<CliCommand> {
     if !ratio.is_finite() || ratio <= 0.0 {
         return Err(anyhow!("Invalid swing ratio: {}", tokens[0]));
     }
-    let clamped = ratio.clamp(SWING_MIN, SWING_MAX);
-    Ok(CliCommand::Swing { ratio: clamped, clamped: clamped != ratio })
+    Ok(EngineCommand::SetSwing(ratio))
 }
 
 /// Parse `tempo <bpm> [pulses]` or `tempo off`. The engine clamps the BPM to
 /// its 40–300 range; `pulses` is a `u8` ramp length (`0` = jump).
-fn parse_tempo_command(tokens: &[&str]) -> Result<CliCommand> {
+fn parse_tempo_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() == 1 && tokens[0].eq_ignore_ascii_case("off") {
-        return Ok(CliCommand::ClearTempo);
+        return Ok(EngineCommand::ClearAudibleTempo);
     }
     if tokens.len() != 1 && tokens.len() != 2 {
         return Err(anyhow!("Usage: tempo <bpm> [pulses] | tempo off"));
@@ -310,7 +349,7 @@ fn parse_tempo_command(tokens: &[&str]) -> Result<CliCommand> {
     } else {
         0u8
     };
-    Ok(CliCommand::Tempo { bpm, ramp_pulses })
+    Ok(EngineCommand::SetAudibleTempo { bpm, ramp_pulses })
 }
 
 #[cfg(test)]
@@ -349,87 +388,143 @@ mod tests {
 
     #[test]
     fn test_parse_swing() {
-        assert!(matches!(
-            parse_cli_command(&["swing", "0.6"]),
-            Ok(CliCommand::Swing { ratio, clamped: false }) if ratio == 0.6
-        ));
-        assert!(matches!(
-            parse_cli_command(&["swing", "0.5"]),
-            Ok(CliCommand::Swing { ratio, clamped: false }) if ratio == 0.5
-        ));
+        assert_eq!(parse_command("swing 0.6").ok(), Some(EngineCommand::SetSwing(0.6)));
+        assert_eq!(parse_command("swing 0.5").ok(), Some(EngineCommand::SetSwing(0.5)));
     }
 
     #[test]
-    fn test_parse_swing_clamps_out_of_range() {
-        assert!(matches!(
-            parse_cli_command(&["swing", "0.9"]),
-            Ok(CliCommand::Swing { ratio, clamped: true }) if ratio == SWING_MAX
-        ));
-        assert!(matches!(
-            parse_cli_command(&["swing", "0.1"]),
-            Ok(CliCommand::Swing { ratio, clamped: true }) if ratio == SWING_MIN
-        ));
+    fn test_parse_swing_keeps_out_of_range_for_the_host_to_bound() {
+        assert_eq!(parse_command("swing 0.9").ok(), Some(EngineCommand::SetSwing(0.9)));
+        assert_eq!(parse_command("swing 0.1").ok(), Some(EngineCommand::SetSwing(0.1)));
     }
 
     #[test]
     fn test_parse_swing_invalid() {
-        assert!(parse_cli_command(&["swing"]).is_err());
-        assert!(parse_cli_command(&["swing", "0.6", "0.7"]).is_err());
-        assert!(parse_cli_command(&["swing", "lourd"]).is_err());
-        assert!(parse_cli_command(&["swing", "-1.0"]).is_err());
-        assert!(parse_cli_command(&["swing", "NaN"]).is_err());
+        assert!(parse_command("swing").is_err());
+        assert!(parse_command("swing 0.6 0.7").is_err());
+        assert!(parse_command("swing lourd").is_err());
+        assert!(parse_command("swing -1.0").is_err());
+        assert!(parse_command("swing NaN").is_err());
     }
 
     #[test]
     fn test_parse_tempo() {
-        assert!(matches!(
-            parse_cli_command(&["tempo", "200"]),
-            Ok(CliCommand::Tempo { bpm, ramp_pulses: 0 }) if bpm == 200.0
-        ));
-        assert!(matches!(
-            parse_cli_command(&["tempo", "200", "8"]),
-            Ok(CliCommand::Tempo { bpm, ramp_pulses: 8 }) if bpm == 200.0
-        ));
+        assert_eq!(
+            parse_command("tempo 200").ok(),
+            Some(EngineCommand::SetAudibleTempo { bpm: 200.0, ramp_pulses: 0 })
+        );
+        assert_eq!(
+            parse_command("tempo 200 8").ok(),
+            Some(EngineCommand::SetAudibleTempo { bpm: 200.0, ramp_pulses: 8 })
+        );
     }
 
     #[test]
     fn test_parse_tempo_off() {
-        assert!(matches!(parse_cli_command(&["tempo", "off"]), Ok(CliCommand::ClearTempo)));
-        assert!(matches!(parse_cli_command(&["tempo", "OFF"]), Ok(CliCommand::ClearTempo)));
+        assert_eq!(parse_command("tempo off").ok(), Some(EngineCommand::ClearAudibleTempo));
+        assert_eq!(parse_command("tempo OFF").ok(), Some(EngineCommand::ClearAudibleTempo));
     }
 
     #[test]
     fn test_parse_tempo_invalid() {
-        assert!(parse_cli_command(&["tempo"]).is_err());
-        assert!(parse_cli_command(&["tempo", "vite"]).is_err());
-        assert!(parse_cli_command(&["tempo", "-40"]).is_err());
-        assert!(parse_cli_command(&["tempo", "200", "huit"]).is_err());
-        assert!(parse_cli_command(&["tempo", "200", "300"]).is_err());
-        assert!(parse_cli_command(&["tempo", "200", "8", "x"]).is_err());
+        assert!(parse_command("tempo").is_err());
+        assert!(parse_command("tempo vite").is_err());
+        assert!(parse_command("tempo -40").is_err());
+        assert!(parse_command("tempo 200 huit").is_err());
+        assert!(parse_command("tempo 200 300").is_err());
+        assert!(parse_command("tempo 200 8 x").is_err());
     }
 
     #[test]
-    fn test_parse_beat() {
-        assert!(matches!(parse_cli_command(&["beat"]), Ok(CliCommand::Beat)));
-        assert!(parse_cli_command(&["beat", "vite"]).is_err());
-    }
-
-    #[test]
-    fn test_parse_cli_rejects_other_commands() {
-        assert!(parse_cli_command(&["set", "bpm", "140"]).is_err());
-        assert!(parse_cli_command(&[]).is_err());
-    }
-
-    #[test]
-    fn test_parse_style_and_feet() {
+    fn test_parse_feet() {
         for d in 0..=2u8 {
-            let s = d.to_string();
-            assert_eq!(parse_cli_command(&["feet", &s]).ok(), Some(CliCommand::Feet(d)));
+            assert_eq!(
+                parse_command(&format!("feet {d}")).ok(),
+                Some(EngineCommand::SetFeetDensity(d))
+            );
         }
-        assert!(parse_cli_command(&["feet"]).is_err());
-        assert!(parse_cli_command(&["feet", "3"]).is_err());
-        assert!(parse_cli_command(&["feet", "dense"]).is_err());
+        assert!(parse_command("feet").is_err());
+        assert!(parse_command("feet 3").is_err());
+        assert!(parse_command("feet dense").is_err());
     }
+
+    #[test]
+    fn test_parse_intensity() {
+        assert_eq!(parse_command("intensity 0.7").ok(), Some(EngineCommand::SetIntensity(0.7)));
+        assert!(parse_command("intensity").is_err());
+        assert!(parse_command("intensity 1.5").is_err());
+        assert!(parse_command("intensity NaN").is_err());
+    }
+
+    #[test]
+    fn test_parse_seek_and_loop() {
+        assert_eq!(parse_command("seek 5").ok(), Some(EngineCommand::Seek(5)));
+        assert_eq!(parse_command("seek 5 soft").ok(), Some(EngineCommand::SeekPlayhead(5)));
+        assert!(parse_command("seek").is_err());
+        assert!(parse_command("seek x").is_err());
+        assert!(parse_command("seek 5 hard").is_err());
+        assert_eq!(
+            parse_command("loop 4 8").ok(),
+            Some(EngineCommand::SetLoop { start_bar: 4, end_bar: 8 })
+        );
+        assert_eq!(parse_command("loop off").ok(), Some(EngineCommand::ClearLoop));
+        assert!(parse_command("loop").is_err());
+        assert!(parse_command("loop 4 x").is_err());
+    }
+
+    #[test]
+    fn test_parse_seed() {
+        assert_eq!(parse_command("seed 42").ok(), Some(EngineCommand::SetSeed(42)));
+        assert_eq!(parse_command("seed new").ok(), Some(EngineCommand::NewMelody));
+        assert!(parse_command("seed").is_err());
+        assert!(parse_command("seed x").is_err());
+    }
+
+    #[test]
+    fn test_parse_recording() {
+        assert_eq!(
+            parse_command("record midi").ok(),
+            Some(EngineCommand::StartRecording(RecordFormat::Midi))
+        );
+        assert_eq!(
+            parse_command("stop wav").ok(),
+            Some(EngineCommand::StopRecording(RecordFormat::Wav))
+        );
+        assert!(parse_command("record flac").is_err());
+        assert!(parse_command("stop").is_err());
+    }
+
+    #[test]
+    fn test_parse_modules_route_output_lookahead() {
+        assert_eq!(parse_command("set rhythm off").ok(), Some(EngineCommand::EnableRhythm(false)));
+        assert_eq!(parse_command("set harmony on").ok(), Some(EngineCommand::EnableHarmony(true)));
+        assert_eq!(parse_command("set melody OFF").ok(), Some(EngineCommand::EnableMelody(false)));
+        assert!(parse_command("set melody maybe").is_err());
+        assert_eq!(
+            parse_command("set route 2 -1").ok(),
+            Some(EngineCommand::SetChannelRoute { channel: 2, bank_id: -1 })
+        );
+        assert!(parse_command("set route 2").is_err());
+        assert_eq!(parse_command("set output mute").ok(), Some(EngineCommand::SetOutputMute(true)));
+        assert_eq!(
+            parse_command("set output unmute").ok(),
+            Some(EngineCommand::SetOutputMute(false))
+        );
+        assert!(parse_command("set output half").is_err());
+        assert_eq!(
+            parse_command("set lookahead 8").ok(),
+            Some(EngineCommand::SetWriteheadLookahead(8))
+        );
+        assert!(parse_command("set lookahead x").is_err());
+    }
+
+    #[test]
+    fn test_repl_only_words_are_not_engine_commands() {
+        for word in ["help", "quit", "state", "beat", "stop"] {
+            assert!(parse_command(word).is_err(), "{word}");
+        }
+    }
+
     #[test]
     fn test_parse_feet_value() {
         assert_eq!(parse_feet_value("0").ok(), Some(FeetOpt::Density(0)));

@@ -17,10 +17,7 @@ use std::{
 
 use harmonium::{
     composer::MusicComposer,
-    playback::{
-        LiveMidiEvent, MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP,
-        TaggedMeasure,
-    },
+    playback::{MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure},
 };
 use harmonium_audio::backend::{recorder::RecorderBackend, synth_backend::SynthBackend};
 use harmonium_core::events::{AudioRecordFormat, RecordFormat};
@@ -43,19 +40,12 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
     let stats = recorder.stats();
 
     let (mut cmd_tx, cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
-    let (_live_tx, live_rx) = rtrb::RingBuffer::<LiveMidiEvent>::new(1);
     let (report_tx, mut report_rx) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
     let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     let transport = Arc::new(AtomicU64::new(harmonium::playback::pack(1, 0)));
-    let mut composer = MusicComposer::new_with_seed(
-        SAMPLE_RATE,
-        measure_tx,
-        return_rx,
-        transport.clone(),
-        Arc::new(Mutex::new(Vec::new())),
-        7,
-    );
+    let mut composer =
+        MusicComposer::new_with_seed(SAMPLE_RATE, measure_tx, return_rx, transport.clone(), 7);
     let mut profile = harmonium_core::StyleProfile::builtin().clone();
     profile.arrangement = harmonium_core::trad::ReelArrangement::from_start(2, Default::default());
     profile.instruments.countermelody_program = Some(0);
@@ -71,7 +61,6 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
         measure_rx,
         return_tx,
         cmd_rx,
-        live_rx,
         report_tx,
         transport,
         clock_tx,

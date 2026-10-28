@@ -6,7 +6,7 @@
 //! 3. NewMelody produces different content
 //! 4. SetSeed restores an identical session
 
-use std::sync::{Arc, Mutex, atomic::AtomicU64};
+use std::sync::{Arc, atomic::AtomicU64};
 
 use harmonium::{
     composer::MusicComposer,
@@ -24,15 +24,8 @@ fn create_composer(
     let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
     let transport_position = Arc::new(AtomicU64::new(harmonium::playback::pack(1, 0)));
-    let font_queue = Arc::new(Mutex::new(Vec::new()));
-    let composer = MusicComposer::new_with_seed(
-        44100.0,
-        measure_tx,
-        return_rx,
-        transport_position,
-        font_queue,
-        seed,
-    );
+    let composer =
+        MusicComposer::new_with_seed(44100.0, measure_tx, return_rx, transport_position, seed);
     (composer, measure_rx, return_tx)
 }
 

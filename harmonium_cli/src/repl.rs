@@ -1,113 +1,99 @@
 //! REPL (Read-Eval-Print Loop) for Harmonium CLI
 //!
-//! Uses the decoupled MusicComposer + PlaybackEngine architecture.
-//! Generation commands go to the composer directly; playback commands
-//! go to the PlaybackEngine via a lock-free ring buffer.
+//! Text in, display out: every engine command is parsed into an
+//! `EngineCommand` and executed by the live host (`LiveHost::apply`), the same
+//! executor the OSC listener (`--osc`) and the studio use. The host composes
+//! ahead through `LiveHost::pump`, called from a generation thread.
 
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, MutexGuard,
+    },
+    time::Duration,
+};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::Colorize;
-use harmonium::{composer::MusicComposer, playback::PlaybackCommand, BeatInfo, ClockReader};
-use harmonium_core::{events::RecordFormat, EngineCommand, EngineReport};
+use harmonium::{osc, BeatInfo, ClockReader, LiveHost};
+use harmonium_core::{events::RecordFormat, EngineCommand};
 use rustyline::{error::ReadlineError, Editor};
 
 use crate::{
     completer::HarmoniumCompleter,
-    help,
-    parser::{self, CliCommand},
+    help, parser,
+    parser::{SWING_MAX, SWING_MIN},
 };
 
-/// Emotion state for relative adjustments
-struct EmotionState {
-    arousal: f32,
-    valence: f32,
-    density: f32,
-    tension: f32,
-}
+/// Interval between two `LiveHost::pump` calls of the generation thread.
+const PUMP_INTERVAL: Duration = Duration::from_millis(50);
 
-impl Default for EmotionState {
-    fn default() -> Self {
-        Self { arousal: 0.5, valence: 0.0, density: 0.5, tension: 0.5 }
-    }
-}
-
-/// REPL state wrapping all engine handles
+/// REPL state: the shared host and the beat clock reader (taken from the host
+/// so the `beat` view reads it without locking).
 struct ReplState {
-    composer: Arc<Mutex<MusicComposer>>,
-    playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
-    report_rx: rtrb::Consumer<EngineReport>,
+    host: Arc<Mutex<LiveHost>>,
     clock_reader: ClockReader,
-    cached_state: Option<EngineReport>,
-    emotion_state: EmotionState,
-    finished_recordings: Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>,
 }
 
 impl ReplState {
-    fn start_recording(&mut self, format: RecordFormat) -> Result<()> {
-        self.composer
-            .lock()
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?
-            .start_recording(format, &mut self.playback_cmd_tx)
-            .map_err(anyhow::Error::msg)
+    fn new(host: Arc<Mutex<LiveHost>>) -> Result<Self> {
+        let clock_reader = lock(&host)?
+            .take_clock_reader()
+            .ok_or_else(|| anyhow!("horloge de pulsation déjà prise"))?;
+        Ok(Self { host, clock_reader })
     }
 
-    fn stop_recording(&mut self, format: RecordFormat) -> Result<()> {
-        self.composer
-            .lock()
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?
-            .stop_recording(format, &mut self.playback_cmd_tx, &self.finished_recordings)
-            .map_err(anyhow::Error::msg)
-    }
-    fn poll_reports(&mut self) {
-        while let Ok(report) = self.report_rx.pop() {
-            self.cached_state = Some(report);
-        }
-    }
-
-    fn get_state(&self) -> Option<&EngineReport> {
-        self.cached_state.as_ref()
-    }
-
-    /// After param changes: forward the pending eviction (if the timeline
-    /// changed), generate 1 bar ahead for playback, and sync musical params
-    /// to the playback engine for reporting.
-    fn send_invalidate(&mut self) {
-        if let Ok(mut c) = self.composer.lock() {
-            if let Some((bar, _)) = c.take_pending_drop() {
-                let _ = self.playback_cmd_tx.push(PlaybackCommand::DropFrom { bar });
-            }
-            for (channel, program) in c.take_pending_program_changes() {
-                let _ =
-                    self.playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
-            }
-            c.generate_bars(1);
-            let _ = self
-                .playback_cmd_tx
-                .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()));
-            let _ = self.playback_cmd_tx.push(PlaybackCommand::SetEmotions(c.emotions()));
-        }
+    fn host(&self) -> Result<MutexGuard<'_, LiveHost>> {
+        lock(&self.host)
     }
 }
 
-/// Run the interactive REPL
-pub fn run(
-    composer: Arc<Mutex<MusicComposer>>,
-    playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
-    report_rx: rtrb::Consumer<EngineReport>,
-    clock_reader: ClockReader,
-    finished_recordings: Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>,
-) -> Result<()> {
-    let mut state = ReplState {
-        composer,
-        playback_cmd_tx,
-        report_rx,
-        clock_reader,
-        cached_state: None,
-        emotion_state: EmotionState::default(),
-        finished_recordings,
+fn lock(host: &Mutex<LiveHost>) -> Result<MutexGuard<'_, LiveHost>> {
+    host.lock().map_err(|e| anyhow!(e.to_string()))
+}
+
+/// Run the interactive REPL on `host`: starts the generation thread and, with
+/// `osc`, the OSC listener (`/harmonium/params` on `osc::DEFAULT_ADDR`).
+pub fn run(host: LiveHost, osc: bool) -> Result<()> {
+    let host = Arc::new(Mutex::new(host));
+    let mut state = ReplState::new(host.clone())?;
+
+    // Generation thread: keeps the playback window fed.
+    let pump_host = host.clone();
+    let pump_stop = Arc::new(AtomicBool::new(false));
+    let pump_flag = pump_stop.clone();
+    let pump_thread = std::thread::spawn(move || {
+        while !pump_flag.load(Ordering::Relaxed) {
+            if let Ok(mut host) = pump_host.lock() {
+                host.pump();
+            }
+            std::thread::sleep(PUMP_INTERVAL);
+        }
+    });
+
+    // OSC: the same executor, driven from another thread.
+    let _osc_listener = if osc {
+        let osc_host = host.clone();
+        let listener = osc::OscListener::spawn(osc::DEFAULT_ADDR, move |command| {
+            if let Ok(mut host) = osc_host.lock() {
+                let _ = host.apply(command);
+            }
+        })
+        .map_err(|e| anyhow!(e))?;
+        println!("OSC listening on {} ({})", listener.local_addr(), osc::PARAMS_ADDRESS);
+        Some(listener)
+    } else {
+        None
     };
 
+    let result = read_eval_loop(&mut state);
+
+    pump_stop.store(true, Ordering::Relaxed);
+    let _ = pump_thread.join();
+    result
+}
+
+fn read_eval_loop(state: &mut ReplState) -> Result<()> {
     // Create readline editor with autocomplete
     let helper = HarmoniumCompleter::new();
     let mut rl = Editor::new()?;
@@ -128,41 +114,32 @@ pub fn run(
 
     // Main REPL loop
     loop {
-        // Poll for reports from engine
-        state.poll_reports();
-
         // Poll for finished recordings and save them
-        if let Ok(mut queue) = state.finished_recordings.lock() {
-            while let Some((format, data)) = queue.pop() {
-                let filename = match format {
-                    RecordFormat::Wav => "output.wav",
-                    RecordFormat::Midi => "output.mid",
-                    RecordFormat::MusicXml => "output.musicxml",
-                };
+        let recordings = state.host()?.take_recordings();
+        for (format, data) in recordings {
+            let filename = match format {
+                RecordFormat::Wav => "output.wav",
+                RecordFormat::Midi => "output.mid",
+                RecordFormat::MusicXml => "output.musicxml",
+            };
 
-                match std::fs::write(filename, &data) {
-                    Ok(_) => {
-                        println!(
-                            "\n{} Saved {} ({} bytes)",
-                            "[RECORDING]".cyan().bold(),
-                            filename.green(),
-                            data.len()
-                        );
-                    }
-                    Err(e) => {
-                        println!(
-                            "\n{} Failed to write {}: {}",
-                            "[ERROR]".red().bold(),
-                            filename,
-                            e
-                        );
-                    }
+            match std::fs::write(filename, &data) {
+                Ok(_) => {
+                    println!(
+                        "\n{} Saved {} ({} bytes)",
+                        "[RECORDING]".cyan().bold(),
+                        filename.green(),
+                        data.len()
+                    );
+                }
+                Err(e) => {
+                    println!("\n{} Failed to write {}: {}", "[ERROR]".red().bold(), filename, e);
                 }
             }
         }
 
         // Create prompt with current state
-        let prompt = create_prompt(&state);
+        let prompt = create_prompt(state)?;
 
         // Read line
         match rl.readline(&prompt) {
@@ -171,7 +148,7 @@ pub fn run(
                 let _ = rl.add_history_entry(line.trim());
 
                 // Handle command
-                match handle_command(&line, &mut state) {
+                match handle_command(&line, state) {
                     Ok(should_continue) => {
                         if !should_continue {
                             break; // User requested quit
@@ -218,6 +195,7 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
 
     let tokens: Vec<&str> = line.split_whitespace().collect();
 
+    // REPL-only words: display and views, no engine command behind them.
     match tokens[0] {
         "help" | "?" => {
             if tokens.len() > 1 {
@@ -233,197 +211,161 @@ fn handle_command(line: &str, state: &mut ReplState) -> Result<bool> {
         }
 
         "state" | "show" | "status" => {
-            print_state(state);
+            print_state(&mut *state.host()?);
             return Ok(true);
         }
 
-        "stop" => {
-            if tokens.len() > 1 {
-                let format = match tokens[1].to_lowercase().as_str() {
-                    "wav" => RecordFormat::Wav,
-                    "midi" | "mid" => RecordFormat::Midi,
-                    "musicxml" | "xml" => RecordFormat::MusicXml,
-                    _ => {
-                        println!(
-                            "{} Unknown format: {}. Use: wav, midi, musicxml",
-                            "[ERROR]".red().bold(),
-                            tokens[1]
-                        );
-                        return Ok(true);
-                    }
-                };
-                state.stop_recording(format)?;
-                println!("{} Recording {:?} stopped", "[OK]".green().bold(), format);
-            } else {
-                for format in [RecordFormat::Wav, RecordFormat::Midi, RecordFormat::MusicXml] {
-                    state.stop_recording(format)?;
-                }
-                println!("{} All recordings stopped", "[OK]".green().bold());
+        "beat" => {
+            if tokens.len() != 1 {
+                println!("{} Usage: beat", "[ERROR]".red().bold());
+                return Ok(true);
             }
-            return Ok(true);
+            return run_beat(state);
         }
 
-        "seek" => {
-            if tokens.len() > 1 {
-                if let Ok(bar) = tokens[1].parse::<usize>() {
-                    let target_bar = bar.max(1);
-                    if let Ok(mut c) = state.composer.lock() {
-                        c.seek_writehead(target_bar);
-                    }
-                    let _ = state.playback_cmd_tx.push(PlaybackCommand::Seek(target_bar));
-                    // Pre-generate bars at the new position
-                    if let Ok(mut c) = state.composer.lock() {
-                        c.generate_bars(8);
-                    }
-                    println!("{} Seeking to bar {target_bar}", "[OK]".green().bold());
-                } else {
-                    println!("{} Usage: seek <bar_number>", "[ERROR]".red().bold());
-                }
-            } else {
-                println!("{} Usage: seek <bar_number>", "[ERROR]".red().bold());
+        // Bare `stop` ends every recording; `stop <format>` is an engine command.
+        "stop" if tokens.len() == 1 => {
+            for format in [RecordFormat::Wav, RecordFormat::Midi, RecordFormat::MusicXml] {
+                state
+                    .host()?
+                    .apply(EngineCommand::StopRecording(format))
+                    .map_err(|e| anyhow!(e))?;
             }
+            print_success_msg("All recordings stopped");
             return Ok(true);
         }
 
-        "loop" => {
-            if tokens.len() > 2 {
-                if let (Ok(start), Ok(end)) =
-                    (tokens[1].parse::<usize>(), tokens[2].parse::<usize>())
-                {
-                    if !harmonium::playback::check_loop_len(start, end) {
-                        println!(
-                            "{} Loop too long: at most {} bars fit the playback window",
-                            "[ERROR]".red().bold(),
-                            harmonium::playback::MEASURE_WINDOW_CAP
-                        );
-                    } else {
-                        let _ = state
-                            .playback_cmd_tx
-                            .push(PlaybackCommand::SetLoop { start_bar: start, end_bar: end });
-                        println!("{} Loop set: bars {start}-{end}", "[OK]".green().bold());
-                    }
-                } else {
-                    println!("{} Usage: loop <start_bar> <end_bar>", "[ERROR]".red().bold());
-                }
-            } else if tokens.len() > 1 && tokens[1] == "off" {
-                let _ = state.playback_cmd_tx.push(PlaybackCommand::ClearLoop);
-                println!("{} Loop cleared", "[OK]".green().bold());
-            } else {
-                println!("{} Usage: loop <start> <end> | loop off", "[ERROR]".red().bold());
-            }
-            return Ok(true);
-        }
-
-        // Handle relative emotion adjustments
+        // Relative emotion adjustments (e.g. `emotion a+0.1 v-0.2`)
         "emotion" if tokens.len() > 1 && has_relative_values(&tokens[1..]) => {
             return handle_relative_emotion(state, &tokens[1..]);
-        }
-
-        // Commandes CLI trad et horloge (hors EngineCommand).
-        "swing" | "tempo" | "beat" | "style" | "feet" | "intensity" => {
-            return handle_clock_command(state, &tokens);
         }
         _ => {}
     }
 
-    // Parse command via existing parser (returns EngineCommand)
     match parser::parse_command(line) {
-        Ok(cmd) => {
-            dispatch_command(state, cmd)?;
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            if msg != "help" && msg != "quit" && msg != "stop" {
-                println!("{} {}", "[ERROR]".red().bold(), e);
-            }
-        }
+        Ok(command) => execute(state, command)?,
+        Err(e) => println!("{} {}", "[ERROR]".red().bold(), e),
     }
 
     Ok(true)
 }
 
-// ---------------------------------------------------------------------------
-// Phase-0 clock commands: swing, tempo, beat
-// ---------------------------------------------------------------------------
+/// Execute `command` on the host, then tell the user what happened.
+fn execute(state: &mut ReplState, command: EngineCommand) -> Result<()> {
+    let mut host = state.host()?;
+    host.apply(command.clone()).map_err(|e| anyhow!(e))?;
+    report(&command, &host);
+    Ok(())
+}
 
-/// Handle `swing`, `tempo` and `beat` (parsed by `parser::parse_cli_command`).
-fn handle_clock_command(state: &mut ReplState, tokens: &[&str]) -> Result<bool> {
-    match parser::parse_cli_command(tokens) {
-        Ok(CliCommand::Swing { ratio, clamped }) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_swing_ratio(ratio);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            if clamped {
+/// Confirmation line of an executed command, read back from the host where
+/// the host decided (bounds, derived tempo).
+fn report(command: &EngineCommand, host: &LiveHost) {
+    let params = host.musical_params();
+    match command {
+        EngineCommand::SetEmotionParams { arousal, valence, density, tension } => {
+            print_emotions(*arousal, *valence, *density, *tension, host);
+        }
+        EngineCommand::UseEmotionMode => print_success_msg("Switched to Emotion mode"),
+        EngineCommand::UseDirectMode => print_success_msg("Switched to Direct mode"),
+        EngineCommand::SetBpm(bpm) => print_success_msg(&format!("BPM set to {bpm}")),
+        EngineCommand::ResetBpm => {
+            print_success_msg("BPM override cleared, returning to emotion-mapped BPM");
+        }
+        EngineCommand::SetTimeSignature { numerator, denominator } => {
+            print_success_msg(&format!("Time signature set to {numerator}/{denominator}"));
+        }
+        EngineCommand::EnableRhythm(enabled) => {
+            print_success_msg(&format!("Rhythm {}", if *enabled { "enabled" } else { "disabled" }))
+        }
+        EngineCommand::EnableHarmony(enabled) => {
+            print_success_msg(&format!("Harmony {}", if *enabled { "enabled" } else { "disabled" }))
+        }
+        EngineCommand::EnableMelody(enabled) => {
+            print_success_msg(&format!("Melody {}", if *enabled { "enabled" } else { "disabled" }))
+        }
+        EngineCommand::Reset => print_success_msg("Engine reset to defaults"),
+        EngineCommand::SetSeed(seed) => print_success_msg(&format!("Seed réglé à {seed}")),
+        EngineCommand::NewMelody => {
+            print_success_msg(&format!("Nouvelle graine : {}", host.session_seed()));
+        }
+        EngineCommand::SetWriteheadLookahead(bars) => print_success_msg(&format!(
+            "Anticipation réglée à {} mesures",
+            (*bars).max(MIN_LOOKAHEAD_BARS)
+        )),
+        EngineCommand::SetStyleProfile(_) => {
+            let ts = params.time_signature;
+            print_success_msg(&format!(
+                "Style réglé à {} (BPM {:.0}, swing {:.2}, signature {}/{})",
+                params.profile_id, params.bpm, params.swing_ratio, ts.numerator, ts.denominator
+            ));
+        }
+        EngineCommand::SetSwing(ratio) => {
+            if !(SWING_MIN..=SWING_MAX).contains(ratio) {
                 println!(
                     "{} Swing hors plage (0.5–0.75), borné à {:.2}",
                     "[WARN]".yellow().bold(),
-                    ratio
+                    params.swing_ratio
                 );
             }
             print_success_msg(&format!(
-                "Swing réglé à {ratio:.2} (prend effet à la prochaine mesure)"
+                "Swing réglé à {:.2} (prend effet à la prochaine mesure)",
+                params.swing_ratio
             ));
         }
-        Ok(CliCommand::Tempo { bpm, ramp_pulses }) => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::SetTempo { bpm, ramp_pulses });
-            if ramp_pulses == 0 {
-                print_success_msg(&format!(
-                    "Tempo {bpm:.0} BPM : saut à la prochaine pulse (moteur borne à 40–300)"
-                ));
-            } else {
-                print_success_msg(&format!(
-                    "Tempo {bpm:.0} BPM : rampe sur {ramp_pulses} pulses (moteur borne à 40–300)"
-                ));
-            }
-        }
-        Ok(CliCommand::ClearTempo) => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::ClearTempo);
-            print_success_msg("Tempo audible : retour au tempo des mesures");
-        }
-        Ok(CliCommand::Beat) => {
-            return run_beat(state);
-        }
-        Ok(CliCommand::Style(style)) => {
-            let (label, bpm, swing, ts) = {
-                let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-                c.set_profile(*style).map_err(|e| anyhow::anyhow!(e))?;
-                c.invalidate_future();
-                let mp = c.musical_params();
-                let label = mp.profile_id.to_string();
-                (label, mp.bpm, mp.swing_ratio, mp.time_signature)
-            };
-            state.send_invalidate();
-            print_success_msg(&format!(
-                "Style réglé à {} (BPM {:.0}, swing {:.2}, signature {}/{})",
-                label, bpm, swing, ts.numerator, ts.denominator
-            ));
-        }
-        Ok(CliCommand::Feet(density)) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_feet_density(density);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!(
-                "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
-            ));
-        }
-        Ok(CliCommand::Intensity(value)) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_intensity(value);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
+        EngineCommand::SetFeetDensity(density) => print_success_msg(&format!(
+            "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
+        )),
+        EngineCommand::SetIntensity(value) => {
             print_success_msg(&format!("Intensité {value:.2} : effet à la prochaine mesure"));
         }
-        Err(e) => {
-            println!("{} {}", "[ERROR]".red().bold(), e);
+        EngineCommand::SetAudibleTempo { bpm, ramp_pulses: 0 } => print_success_msg(&format!(
+            "Tempo {bpm:.0} BPM : saut à la prochaine pulse (moteur borne à 40–300)"
+        )),
+        EngineCommand::SetAudibleTempo { bpm, ramp_pulses } => print_success_msg(&format!(
+            "Tempo {bpm:.0} BPM : rampe sur {ramp_pulses} pulses (moteur borne à 40–300)"
+        )),
+        EngineCommand::ClearAudibleTempo => {
+            print_success_msg("Tempo audible : retour au tempo des mesures");
         }
+        EngineCommand::SetMasterVolume(volume) => {
+            print_success_msg(&format!("Master volume set to {volume:.2}"));
+        }
+        EngineCommand::SetChannelGain { channel, gain } => {
+            print_success_msg(&format!("Channel {channel} gain set to {gain:.2}"));
+        }
+        EngineCommand::SetChannelMute { channel, muted } => print_success_msg(&format!(
+            "Channel {channel} {}",
+            if *muted { "muted" } else { "unmuted" }
+        )),
+        EngineCommand::SetChannelRoute { channel, bank_id } => {
+            print_success_msg(&format!("Channel {channel} routed to bank {bank_id}"));
+        }
+        EngineCommand::SetOutputMute(muted) => {
+            print_success_msg(&format!("Output {}", if *muted { "muted" } else { "unmuted" }))
+        }
+        EngineCommand::StartRecording(format) => {
+            print_success_msg(&format!("Recording {format:?} started"));
+        }
+        EngineCommand::StopRecording(format) => {
+            print_success_msg(&format!("Recording {format:?} stopped"));
+        }
+        EngineCommand::Seek(bar) => {
+            print_success_msg(&format!("Seeking to bar {}", (*bar).max(1)));
+        }
+        EngineCommand::SeekPlayhead(bar) => print_success_msg(&format!(
+            "Playhead moved to bar {} (nothing recomposed)",
+            (*bar).max(1)
+        )),
+        EngineCommand::SetLoop { start_bar, end_bar } => {
+            print_success_msg(&format!("Loop set: bars {start_bar}-{end_bar}"));
+        }
+        EngineCommand::ClearLoop => print_success_msg("Loop cleared"),
     }
-    Ok(true)
 }
+
+/// Smallest writehead lookahead the composer accepts (it raises smaller values).
+const MIN_LOOKAHEAD_BARS: usize = 4;
 
 /// Live visual metronome driven only by `BeatInfo` (~60 reads/s, one rewritten
 /// line). Exit with Enter, Esc, `q` or Ctrl+C; the REPL resumes afterwards.
@@ -504,199 +446,18 @@ fn run_beat(state: &mut ReplState) -> Result<bool> {
     Ok(true)
 }
 
-/// Route an EngineCommand to the appropriate target (composer or playback).
-fn dispatch_command(state: &mut ReplState, cmd: EngineCommand) -> Result<()> {
-    match cmd {
-        // === Emotion handling ===
-        EngineCommand::SetEmotionParams { arousal, valence, density, tension } => {
-            state.emotion_state.arousal = arousal;
-            state.emotion_state.valence = valence;
-            state.emotion_state.density = density;
-            state.emotion_state.tension = tension;
-
-            if let Ok(mut c) = state.composer.lock() {
-                c.use_emotion_mode();
-                c.set_emotions(arousal, valence, density, tension);
-                let bpm = c.musical_params().bpm;
-                let density_mapped = c.musical_params().rhythm_density;
-                c.invalidate_future();
-                println!(
-                    "{} A={:.2} V={:.2} D={:.2} T={:.2} → BPM={:.0} Density={:.2}",
-                    "[OK]".green().bold(),
-                    arousal,
-                    valence,
-                    density,
-                    tension,
-                    bpm,
-                    density_mapped
-                );
-            }
-            state.send_invalidate();
-        }
-
-        EngineCommand::UseEmotionMode => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.use_emotion_mode();
-            }
-            print_success_msg("Switched to Emotion mode");
-        }
-
-        EngineCommand::UseDirectMode => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.use_direct_mode();
-            }
-            print_success_msg("Switched to Direct mode");
-        }
-
-        // === Generation params → composer ===
-        EngineCommand::SetBpm(bpm) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_bpm(bpm);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("BPM set to {}", bpm));
-        }
-
-        EngineCommand::SetTimeSignature { numerator, denominator } => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_time_signature(numerator, denominator);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Time signature set to {}/{}", numerator, denominator));
-        }
-
-        EngineCommand::EnableRhythm(enabled) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.enable_rhythm(enabled);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Rhythm {}", if enabled { "enabled" } else { "disabled" }));
-        }
-
-        EngineCommand::EnableHarmony(enabled) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.enable_harmony(enabled);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Harmony {}", if enabled { "enabled" } else { "disabled" }));
-        }
-
-        EngineCommand::EnableMelody(enabled) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.enable_melody(enabled);
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg(&format!("Melody {}", if enabled { "enabled" } else { "disabled" }));
-        }
-
-        EngineCommand::ResetBpm => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.reset_bpm();
-                c.invalidate_future();
-            }
-            state.send_invalidate();
-            print_success_msg("BPM override cleared, returning to emotion-mapped BPM");
-        }
-
-        EngineCommand::Reset => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.reset();
-            }
-            state.send_invalidate();
-            print_success_msg("Engine reset to defaults");
-        }
-
-        EngineCommand::SetSeed(seed) => {
-            if let Ok(mut c) = state.composer.lock() {
-                c.set_seed(seed);
-            }
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::Seek(1));
-            state.send_invalidate();
-            print_success_msg(&format!("Seed réglé à {seed}"));
-        }
-
-        EngineCommand::SetStyleProfile(profile) => {
-            let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-            c.set_profile(*profile).map_err(|e| anyhow::anyhow!(e))?;
-            drop(c);
-            state.send_invalidate();
-        }
-        EngineCommand::ClearStyleProfile => {
-            let mut c = state.composer.lock().map_err(|e| anyhow::anyhow!(e.to_string()))?;
-            c.set_profile(harmonium_core::StyleProfile::default())
-                .map_err(|e| anyhow::anyhow!(e))?;
-            drop(c);
-            state.send_invalidate();
-        }
-
-        // === Playback commands → audio thread ===
-        EngineCommand::SetChannelGain { channel, gain } => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::SetChannelGain { channel, gain });
-            print_success_msg(&format!("Channel {} gain set to {:.2}", channel, gain));
-        }
-
-        EngineCommand::SetChannelMute { channel, muted } => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::SetChannelMute { channel, muted });
-            print_success_msg(&format!(
-                "Channel {} {}",
-                channel,
-                if muted { "muted" } else { "unmuted" }
-            ));
-        }
-
-        EngineCommand::SetChannelRoute { channel, bank_id } => {
-            let _ =
-                state.playback_cmd_tx.push(PlaybackCommand::SetChannelRoute { channel, bank_id });
-            print_success_msg(&format!("Channel {} routed to bank {}", channel, bank_id));
-        }
-
-        EngineCommand::SetVelocityBase { channel, velocity } => {
-            let _ =
-                state.playback_cmd_tx.push(PlaybackCommand::SetVelocityBase { channel, velocity });
-            print_success_msg(&format!("Channel {} velocity base set to {}", channel, velocity));
-        }
-
-        EngineCommand::SetMasterVolume(volume) => {
-            let _ = state.playback_cmd_tx.push(PlaybackCommand::SetMasterVolume(volume));
-            print_success_msg(&format!("Master volume set to {:.2}", volume));
-        }
-
-        EngineCommand::StartRecording(format) => {
-            state.start_recording(format)?;
-            print_success_msg(&format!("Recording {:?} started", format));
-        }
-
-        EngineCommand::StopRecording(format) => {
-            state.stop_recording(format)?;
-            print_success_msg(&format!("Recording {:?} stopped", format));
-        }
-
-        // Ignored / no-op commands
-        EngineCommand::GetState => {
-            print_state(state);
-        }
-
-        _ => {
-            println!("{} Unhandled command: {:?}", "[WARN]".yellow().bold(), cmd);
-        }
-    }
-
-    Ok(())
-}
-
 /// Seules les formes préfixées a+/v-/d+/t- sont relatives ; une valence
 /// numérique négative appartient à la commande absolue à quatre axes.
 fn has_relative_values(tokens: &[&str]) -> bool {
     tokens.iter().any(|t| matches!(t.as_bytes(), [b'a' | b'v' | b'd' | b't', b'+' | b'-', ..]))
 }
 
-/// Handle relative emotion adjustments (e.g., "emotion a+0.1 v-0.2")
+/// Handle relative emotion adjustments (e.g., "emotion a+0.1 v-0.2"), from
+/// the emotions now in effect on the host.
 fn handle_relative_emotion(state: &mut ReplState, tokens: &[&str]) -> Result<bool> {
+    let mut host = state.host()?;
+    let [mut a, mut v, mut d, mut t] = host.emotions();
+
     for token in tokens {
         if token.len() < 2 {
             continue;
@@ -712,50 +473,36 @@ fn handle_relative_emotion(state: &mut ReplState, tokens: &[&str]) -> Result<boo
         };
 
         match param.as_str() {
-            "a" => {
-                state.emotion_state.arousal = (state.emotion_state.arousal + delta).clamp(0.0, 1.0)
-            }
-            "v" => {
-                state.emotion_state.valence = (state.emotion_state.valence + delta).clamp(-1.0, 1.0)
-            }
-            "d" => {
-                state.emotion_state.density = (state.emotion_state.density + delta).clamp(0.0, 1.0)
-            }
-            "t" => {
-                state.emotion_state.tension = (state.emotion_state.tension + delta).clamp(0.0, 1.0)
-            }
+            "a" => a = (a + delta).clamp(0.0, 1.0),
+            "v" => v = (v + delta).clamp(-1.0, 1.0),
+            "d" => d = (d + delta).clamp(0.0, 1.0),
+            "t" => t = (t + delta).clamp(0.0, 1.0),
             _ => {
                 println!("{} Unknown emotion parameter: {}", "[WARN]".yellow().bold(), param);
             }
         }
     }
 
-    // Apply updated emotions via the composer
-    let a = state.emotion_state.arousal;
-    let v = state.emotion_state.valence;
-    let d = state.emotion_state.density;
-    let t = state.emotion_state.tension;
-
-    if let Ok(mut c) = state.composer.lock() {
-        c.use_emotion_mode();
-        c.set_emotions(a, v, d, t);
-        let bpm = c.musical_params().bpm;
-        let density_mapped = c.musical_params().rhythm_density;
-        c.invalidate_future();
-        println!(
-            "{} A={:.2} V={:.2} D={:.2} T={:.2} → BPM={:.0} Density={:.2}",
-            "[OK]".green().bold(),
-            a,
-            v,
-            d,
-            t,
-            bpm,
-            density_mapped
-        );
-    }
-    state.send_invalidate();
+    host.apply(EngineCommand::SetEmotionParams { arousal: a, valence: v, density: d, tension: t })
+        .map_err(|e| anyhow!(e))?;
+    print_emotions(a, v, d, t, &host);
 
     Ok(true)
+}
+
+/// Confirmation of an emotion change, with the tempo and density it maps to.
+fn print_emotions(a: f32, v: f32, d: f32, t: f32, host: &LiveHost) {
+    let params = host.musical_params();
+    println!(
+        "{} A={:.2} V={:.2} D={:.2} T={:.2} → BPM={:.0} Density={:.2}",
+        "[OK]".green().bold(),
+        a,
+        v,
+        d,
+        t,
+        params.bpm,
+        params.rhythm_density
+    );
 }
 
 fn print_success_msg(msg: &str) {
@@ -777,8 +524,9 @@ fn print_welcome() {
 }
 
 /// Create prompt string with current state
-fn create_prompt(state: &ReplState) -> String {
-    if let Some(report) = state.get_state() {
+fn create_prompt(state: &ReplState) -> Result<String> {
+    let mut host = state.host()?;
+    Ok(if let Some(report) = host.poll_state() {
         let bpm = report.musical_params.bpm;
         let chord = &report.current_chord;
         let bar = report.current_bar + 1;
@@ -792,7 +540,7 @@ fn create_prompt(state: &ReplState) -> String {
         )
     } else {
         format!("{} ", "harmonium".cyan().bold())
-    }
+    })
 }
 
 /// Position dans la forme décrite par le profil.
@@ -812,28 +560,19 @@ pub fn format_profile_tune_key_mode(plan: &harmonium_core::trad::TunePlan) -> St
 }
 
 /// Print current engine state
-fn print_state(state: &mut ReplState) {
-    state.poll_reports();
+fn print_state(host: &mut LiveHost) {
+    let reported_bar = host.poll_state().map(|r| r.current_bar.max(1));
+    let bar = reported_bar.unwrap_or_else(|| host.playhead_bar());
+    let composer_snapshot = (
+        host.musical_params().profile_id.clone(),
+        host.musical_params().feet_density,
+        host.profile_bar_info(bar),
+        host.session_config().key.clone(),
+        host.session_config().scale.clone(),
+    );
 
-    let composer_snapshot = state.composer.lock().ok().map(|c| {
-        let bar = state.get_state().map_or_else(|| c.playhead_bar(), |r| r.current_bar.max(1));
-        (
-            c.musical_params().profile_id.clone(),
-            c.musical_params().feet_density,
-            c.profile_bar_info(bar),
-            c.config.key.clone(),
-            c.config.scale.clone(),
-        )
-    });
-
-    if let Some(report) = state.get_state() {
-        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot.unwrap_or((
-            std::sync::Arc::from(report.musical_params.profile_id.as_str()),
-            report.musical_params.feet_density,
-            None,
-            report.session_key.to_string(),
-            report.session_scale.to_string(),
-        ));
+    if let Some(report) = host.poll_state() {
+        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot;
 
         println!();
         println!("{}", "╔══════════════════════════════════════════════════╗".cyan());
@@ -908,7 +647,8 @@ fn print_state(state: &mut ReplState) {
             if report.musical_params.enable_melody { "ON".green() } else { "OFF".red() }
         );
         println!();
-    } else if let Some((style, feet_density, reel_info, comp_key, comp_scale)) = composer_snapshot {
+    } else {
+        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot;
         println!();
         println!("{}", "STYLE:".yellow().bold());
         println!("  Style: {}", format!("{style:?}").green());
@@ -923,8 +663,6 @@ fn print_state(state: &mut ReplState) {
             println!("  Key: {}", format!("{comp_key} {comp_scale}").green());
         }
         println!();
-    } else {
-        println!("{}", "No state available yet. Engine may still be initializing.".yellow());
     }
 }
 
@@ -932,33 +670,97 @@ fn print_state(state: &mut ReplState) {
 mod tests {
     use super::*;
 
+    /// A REPL over a host without audio device (the engine is never run).
+    fn repl() -> Result<ReplState> {
+        let (host, _playback) =
+            LiveHost::detached(None, None, &[], 44100.0).map_err(|e| anyhow!(e))?;
+        ReplState::new(Arc::new(Mutex::new(host)))
+    }
+
     #[test]
     fn negative_absolute_valence_reaches_the_trad_mapper() -> Result<()> {
-        let (composer, _playback, playback_cmd_tx, report_rx, clock_reader, finished_recordings) =
-            harmonium::audio::create_offline_engine(None, None, &[], 44100.0)
-                .map_err(|e| anyhow::anyhow!(e))?;
-        let mut state = ReplState {
-            composer: Arc::new(Mutex::new(composer)),
-            playback_cmd_tx,
-            report_rx,
-            clock_reader,
-            finished_recordings,
-            cached_state: None,
-            emotion_state: EmotionState::default(),
-        };
+        let mut state = repl()?;
         handle_command("style reel", &mut state)?;
         handle_command("emotion 0.8 -0.5 0.9 0.7", &mut state)?;
         {
-            let composer = state.composer.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
-            let params = composer.musical_params();
+            let host = state.host()?;
+            let params = host.musical_params();
             assert_eq!(params.harmony_valence, -0.5);
             assert_eq!(params.rhythm_density, 0.9);
             assert_eq!(params.harmony_tension, 0.7);
             assert!(params.intensity > 0.8);
         }
         handle_command("emotion v+0.1", &mut state)?;
-        let composer = state.composer.lock().map_err(|e| anyhow::anyhow!("{e}"))?;
-        assert!((composer.musical_params().harmony_valence + 0.4).abs() < 0.0001);
+        let host = state.host()?;
+        assert!((host.musical_params().harmony_valence + 0.4).abs() < 0.0001);
+        Ok(())
+    }
+
+    #[test]
+    fn relative_emotion_starts_from_the_emotions_in_effect() -> Result<()> {
+        let mut state = repl()?;
+        // An absolute change made elsewhere (OSC, studio) is the base.
+        state
+            .host()?
+            .apply(EngineCommand::SetEmotionParams {
+                arousal: 0.2,
+                valence: -0.3,
+                density: 0.6,
+                tension: 0.1,
+            })
+            .map_err(|e| anyhow!(e))?;
+        handle_command("emotion a+0.1", &mut state)?;
+        let emotions = state.host()?.emotions();
+        for (got, want) in emotions.iter().zip([0.3, -0.3, 0.6, 0.1]) {
+            assert!((got - want).abs() < 0.0001, "{emotions:?}");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn module_commands_toggle_the_module() -> Result<()> {
+        let mut state = repl()?;
+        handle_command("set rhythm off", &mut state)?;
+        handle_command("set melody off", &mut state)?;
+        {
+            let host = state.host()?;
+            assert!(!host.musical_params().enable_rhythm);
+            assert!(!host.musical_params().enable_melody);
+            assert!(host.musical_params().enable_harmony);
+        }
+        handle_command("set rhythm on", &mut state)?;
+        assert!(state.host()?.musical_params().enable_rhythm);
+        Ok(())
+    }
+
+    #[test]
+    fn swing_feet_and_intensity_reach_the_composer() -> Result<()> {
+        let mut state = repl()?;
+        handle_command("swing 0.9", &mut state)?;
+        handle_command("feet 2", &mut state)?;
+        handle_command("intensity 0.8", &mut state)?;
+        let host = state.host()?;
+        assert_eq!(host.musical_params().swing_ratio, SWING_MAX);
+        assert_eq!(host.musical_params().feet_density, 2);
+        assert!((host.musical_params().intensity - 0.8).abs() < 0.0001);
+        Ok(())
+    }
+
+    #[test]
+    fn seed_commands_set_then_renew_the_session_seed() -> Result<()> {
+        let mut state = repl()?;
+        handle_command("seed 7", &mut state)?;
+        assert_eq!(state.host()?.session_seed(), 7);
+        handle_command("seed new", &mut state)?;
+        assert_ne!(state.host()?.session_seed(), 7);
+        Ok(())
+    }
+
+    #[test]
+    fn a_loop_longer_than_the_window_is_refused() -> Result<()> {
+        let mut state = repl()?;
+        assert!(handle_command("loop 1 40", &mut state).is_err());
+        assert!(handle_command("loop 4 8", &mut state).is_ok());
         Ok(())
     }
 }

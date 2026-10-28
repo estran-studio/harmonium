@@ -180,15 +180,8 @@ mod tests {
         let transport = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(pack(1, 0)));
         let (measure_tx, _measure_rx) = rtrb::RingBuffer::new(256);
         let (_return_tx, return_rx) = rtrb::RingBuffer::new(256);
-        let font_queue = Default::default();
-        let mut composer = MusicComposer::new_with_seed(
-            44100.0,
-            measure_tx,
-            return_rx,
-            transport.clone(),
-            font_queue,
-            seed,
-        );
+        let mut composer =
+            MusicComposer::new_with_seed(44100.0, measure_tx, return_rx, transport.clone(), seed);
 
         composer.set_tuning(TuningParams {
             profile: {
@@ -280,7 +273,6 @@ mod tests {
                     measure_tx,
                     return_rx,
                     transport.clone(),
-                    Default::default(),
                     seed,
                 );
                 if without_heterophony {
