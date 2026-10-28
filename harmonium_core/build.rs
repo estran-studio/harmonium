@@ -1,13 +1,36 @@
 //! Build script for `harmonium_core`
 //!
 //! Captures git version information at compile time to avoid runtime git dependencies,
-//! and bundles distributed style profiles into `$OUT_DIR/distributed_profiles.toml`.
+//! and lists the original files of the distributed style profiles in
+//! `$OUT_DIR/distributed_profiles.rs` (embedded verbatim, decoded at runtime).
 
 use std::{
     path::{Path, PathBuf},
     process::Command,
 };
 
+/// Les fichiers d'un profil distribué : `profile.toml`, puis chaque banque de son `[files]`.
+fn profile_files(dir: &Path) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let profile_path = dir.join("profile.toml");
+    let root: toml::Table = toml::from_str(&std::fs::read_to_string(&profile_path)?)?;
+    let mut names = vec!["profile.toml".to_string()];
+    if let Some(files) = root.get("files") {
+        let files = files
+            .as_table()
+            .ok_or_else(|| format!("files : table attendue dans {}", profile_path.display()))?;
+        for (key, name) in files {
+            let name = name
+                .as_str()
+                .ok_or_else(|| format!("files.{key} dans {}", profile_path.display()))?;
+            names.push(name.to_string());
+        }
+    }
+    Ok(names)
+}
+
+/// Génère `$OUT_DIR/distributed_profiles.rs` : pour chaque profil distribué, ses fichiers
+/// d'origine inclus tels quels (`include_str!`). Aucune fusion : le décodeur du moteur lit
+/// ces fichiers comme il lit un dossier.
 fn bundle_profiles() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = std::env::var("OUT_DIR")?;
     let profiles_dir = Path::new("../profiles");
@@ -33,63 +56,23 @@ fn bundle_profiles() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let mut profile_strings = Vec::new();
+    let mut source = String::from("&[\n");
     for dir in &dirs {
         for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
             println!("cargo:rerun-if-changed={}", entry.path().display());
         }
-        let profile_path = dir.join("profile.toml");
-        let text = std::fs::read_to_string(&profile_path)?;
-        let mut root: toml::Value = toml::from_str(&text)?;
-
-        if let Some(files) = root.as_table_mut().and_then(|t| t.remove("files"))
-            && let Some(files_tbl) = files.as_table()
-        {
-            for (key, filename) in files_tbl {
-                let fname = filename
-                    .as_str()
-                    .ok_or_else(|| format!("files.{key} dans {}", profile_path.display()))?;
-                let target = match key.as_str() {
-                    "cells" => "melody.cells",
-                    "feet" => "percussion",
-                    "arrangement" => "arrangement",
-                    "dynamics" => "dynamics",
-                    "set" => "set",
-                    _ => return Err(format!("banque {key}").into()),
-                };
-                let bank_path = dir.join(fname);
-                let bank_text = std::fs::read_to_string(&bank_path)?;
-                let bank_val: toml::Value = toml::from_str(&bank_text)?;
-                if target == "melody.cells" {
-                    if let Some(melody) = root.get_mut("melody").and_then(toml::Value::as_table_mut)
-                    {
-                        melody.insert("cells".into(), bank_val);
-                    }
-                } else if let Some(tbl) = root.as_table_mut() {
-                    tbl.insert(target.into(), bank_val);
-                }
-            }
+        source.push_str("    &[\n");
+        for name in profile_files(dir)? {
+            let path = std::fs::canonicalize(dir.join(&name))?;
+            source.push_str(&format!(
+                "        ({name:?}, include_str!({:?})),\n",
+                path.display().to_string()
+            ));
         }
-
-        if let Some(intro) = root.as_table_mut().and_then(|table| table.remove("intro"))
-            && let Some(arrangement) =
-                root.get_mut("arrangement").and_then(toml::Value::as_table_mut)
-        {
-            arrangement.insert("intro".into(), intro);
-        }
-
-        let inlined = toml::to_string(&root)?;
-        profile_strings.push(inlined);
+        source.push_str("    ],\n");
     }
-
-    let mut bundle = toml::map::Map::new();
-    bundle.insert(
-        "profiles".to_string(),
-        toml::Value::Array(profile_strings.into_iter().map(toml::Value::String).collect()),
-    );
-    let bundle_toml = toml::to_string(&toml::Value::Table(bundle))?;
-    let dest = Path::new(&out_dir).join("distributed_profiles.toml");
-    std::fs::write(&dest, bundle_toml)?;
+    source.push_str("]\n");
+    std::fs::write(Path::new(&out_dir).join("distributed_profiles.rs"), source)?;
     Ok(())
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {

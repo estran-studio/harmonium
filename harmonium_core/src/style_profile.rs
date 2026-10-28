@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     params::{PulseSpec, TimeSignature},
+    profile_source::{Mount, locate, one_line, parse},
     timeline::TrackId,
     trad::{
         Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
@@ -554,30 +555,61 @@ impl StyleProfile {
         }
     }
 }
+/// Erreur de profil : chemin du champ fautif, message, et fichier source avec la ligne de la
+/// valeur quand elles sont connus. Les profils lus par [`StyleProfile::load`] ou
+/// [`StyleProfile::from_files`] situent leurs erreurs ; un profil construit en mémoire ou lu
+/// par [`StyleProfile::from_toml`] ne porte que le chemin du champ.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProfileError {
+    /// Chemin du champ (`melody.cells.cells[2].notes`) ; vide pour une erreur de syntaxe TOML.
     pub field: String,
     pub message: String,
+    /// Nom du fichier qui porte le champ (`profile.toml`, `cells.toml`…), relatif au profil.
+    pub file: Option<String>,
+    /// Ligne (base 1) de la valeur fautive dans `file`.
+    pub line: Option<usize>,
+    /// Colonne (base 1, en caractères), connue pour les erreurs de syntaxe seulement.
+    pub column: Option<usize>,
 }
 impl ProfileError {
     pub(crate) fn new(field: impl Into<String>, message: impl ToString) -> Self {
-        Self { field: field.into(), message: message.to_string() }
+        Self {
+            field: field.into(),
+            message: message.to_string(),
+            file: None,
+            line: None,
+            column: None,
+        }
+    }
+    fn in_file(file: impl Into<String>, message: impl ToString) -> Self {
+        Self { file: Some(file.into()), ..Self::new("", message) }
     }
 }
+/// Format : `fichier:ligne: champ: message`, sans les parties inconnues.
 impl fmt::Display for ProfileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.field, self.message)
+        if let Some(file) = &self.file {
+            write!(f, "{file}")?;
+            if let Some(line) = self.line {
+                write!(f, ":{line}")?;
+            }
+            f.write_str(": ")?;
+        }
+        if !self.field.is_empty() {
+            write!(f, "{}: ", self.field)?;
+        }
+        f.write_str(&self.message)
     }
 }
 impl std::error::Error for ProfileError {}
 
-#[derive(Deserialize)]
-struct DistributedBundle {
-    profiles: Vec<String>,
-}
+/// Fichiers d'origine de chaque profil distribué (`profile.toml` puis ses banques), générés
+/// par `build.rs` : `[(nom relatif, contenu)]`, `reel_quebecois` d'abord.
+const DISTRIBUTED_FILES: &[&[(&str, &str)]] =
+    include!(concat!(env!("OUT_DIR"), "/distributed_profiles.rs"));
 
-const DISTRIBUTED_BUNDLE_TOML: &str =
-    include_str!(concat!(env!("OUT_DIR"), "/distributed_profiles.toml"));
+/// Nom du fichier racine d'un profil.
+const PROFILE_FILE: &str = "profile.toml";
 
 impl Default for StyleProfile {
     fn default() -> Self {
@@ -585,18 +617,29 @@ impl Default for StyleProfile {
     }
 }
 impl StyleProfile {
-    /// Profils distribués embarqués avec le moteur.
+    /// Fichiers d'origine des profils distribués, tels qu'ils sont dans `profiles/<id>/` :
+    /// `profile.toml` puis chaque banque de son `[files]`, avec commentaires. Même ordre que
+    /// [`Self::distributed`] ; chaque entrée se relit avec [`Self::from_files`].
+    pub fn distributed_files() -> &'static [&'static [(&'static str, &'static str)]] {
+        DISTRIBUTED_FILES
+    }
+    /// Profils distribués embarqués avec le moteur, décodés de [`Self::distributed_files`] par
+    /// le même décodeur que [`Self::load`].
     pub fn distributed() -> &'static [Self] {
         static PROFILES: LazyLock<Vec<StyleProfile>> = LazyLock::new(|| {
-            let bundle: Result<DistributedBundle, _> = toml::from_str(DISTRIBUTED_BUNDLE_TOML);
-            match bundle {
-                Ok(b) => b
-                    .profiles
-                    .iter()
-                    .filter_map(|text| StyleProfile::from_toml(text).ok())
-                    .collect(),
-                Err(_) => Vec::new(),
-            }
+            DISTRIBUTED_FILES
+                .iter()
+                .map(|files| {
+                    StyleProfile::from_files(files.iter().copied()).unwrap_or_else(|error| {
+                        // Données embarquées à la compilation : l'échec est un défaut du dépôt,
+                        // que les tests de profils révèlent.
+                        #[allow(clippy::panic)]
+                        {
+                            panic!("profil distribué invalide : {error}")
+                        }
+                    })
+                })
+                .collect()
         });
         &PROFILES
     }
@@ -620,23 +663,62 @@ impl StyleProfile {
             .cloned()
             .ok_or_else(|| ProfileError::new("meta.id", format!("profil inconnu : {id}")))
     }
+    /// Lit un profil sur disque : le dossier du profil, ou le chemin de son `profile.toml`.
+    /// Les banques de `[files]` se lisent relativement au dossier du fichier racine.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ProfileError> {
         let path = path.as_ref();
-        let file = if path.is_dir() { path.join("profile.toml") } else { path.to_path_buf() };
+        let file = if path.is_dir() { path.join(PROFILE_FILE) } else { path.to_path_buf() };
+        let dir = file.parent().unwrap_or(Path::new(""));
+        let name = file.file_name().map_or(PROFILE_FILE.into(), |n| n.to_string_lossy());
         let text = std::fs::read_to_string(&file)
-            .map_err(|e| ProfileError::new(file.display().to_string(), e))?;
-        Self::decode(&text, file.parent())
+            .map_err(|e| ProfileError::in_file(file.display().to_string(), e))?;
+        Self::decode(&name, &text, &|relative| {
+            std::fs::read_to_string(dir.join(relative)).map_err(|e| e.to_string())
+        })
+    }
+    /// Lit un profil multi-fichiers en mémoire : `(nom relatif, contenu)` pour `profile.toml`
+    /// et chaque fichier que son `[files]` référence, avec les noms qu'il y emploie. Même
+    /// décodage et mêmes erreurs (fichier, ligne) que [`Self::load`] ; sert aux profils
+    /// embarqués et à l'atelier web, sans accès au disque.
+    pub fn from_files<K: AsRef<str>, V: AsRef<str>>(
+        files: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Self, ProfileError> {
+        let files: Vec<(K, V)> = files.into_iter().collect();
+        let find = |name: &str| {
+            files.iter().find(|(key, _)| key.as_ref() == name).map(|(_, text)| text.as_ref())
+        };
+        let root = find(PROFILE_FILE)
+            .ok_or_else(|| ProfileError::in_file(PROFILE_FILE, "fichier racine absent"))?;
+        Self::decode(PROFILE_FILE, root, &|relative| {
+            find(relative).map(str::to_owned).ok_or_else(|| "fichier absent".to_owned())
+        })
     }
     /// Lecture d'un profil autonome (banques inline, sans accès au disque).
     pub fn from_toml(text: &str) -> Result<Self, ProfileError> {
-        Self::decode(text, None)
+        Self::decode(PROFILE_FILE, text, &|_| {
+            Err("référence externe : utiliser load(dossier)".into())
+        })
     }
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
         toml::to_string_pretty(self)
     }
-    fn decode(text: &str, base: Option<&Path>) -> Result<Self, ProfileError> {
-        let mut root: toml::Value =
-            toml::from_str(text).map_err(|e| ProfileError::new("profile.toml", e))?;
+    /// Décodeur unique : `profile.toml` (`root_text`, nommé `root_name`) plus les banques que
+    /// `fetch` livre par nom relatif. Les erreurs sont situées dans leur fichier source.
+    fn decode(
+        root_name: &str,
+        root_text: &str,
+        fetch: &dyn Fn(&str) -> Result<String, String>,
+    ) -> Result<Self, ProfileError> {
+        let mut mounts =
+            vec![Mount { at: "", as_path: "", file: root_name.to_owned(), text: root_text.into() }];
+        Self::assemble(&mut mounts, fetch).map_err(|error| locate(&mounts, error))
+    }
+    /// Fusionne les banques dans l'arbre du profil, désérialise puis valide.
+    fn assemble(
+        mounts: &mut Vec<Mount<'_>>,
+        fetch: &dyn Fn(&str) -> Result<String, String>,
+    ) -> Result<Self, ProfileError> {
+        let mut root = parse(&mounts[0])?;
         let files = root.as_table_mut().and_then(|t| t.remove("files"));
         if let Some(files) = files {
             let files =
@@ -653,23 +735,21 @@ impl StyleProfile {
                 let name = filename
                     .as_str()
                     .ok_or_else(|| ProfileError::new(format!("files.{key}"), "chemin attendu"))?;
-                let relative = Path::new(name);
-                if relative.components().any(|c| !matches!(c, Component::Normal(_))) {
+                if Path::new(name).components().any(|c| !matches!(c, Component::Normal(_))) {
                     return Err(ProfileError::new(
                         format!("files.{key}"),
                         "chemin relatif sans .. requis",
                     ));
                 }
-                let base = base.ok_or_else(|| {
-                    ProfileError::new(
-                        format!("files.{key}"),
-                        "référence externe : utiliser load(dossier)",
-                    )
-                })?;
-                let contents = std::fs::read_to_string(base.join(relative))
-                    .map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
-                let value = toml::from_str(&contents)
-                    .map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
+                let contents =
+                    fetch(name).map_err(|e| ProfileError::new(format!("files.{key}"), e))?;
+                mounts.push(Mount {
+                    at: target,
+                    as_path: "",
+                    file: name.to_owned(),
+                    text: contents.into(),
+                });
+                let value = parse(&mounts[mounts.len() - 1])?;
                 if target == "melody.cells" {
                     root.get_mut("melody")
                         .and_then(toml::Value::as_table_mut)
@@ -677,7 +757,7 @@ impl StyleProfile {
                         .insert("cells".into(), value);
                 } else {
                     root.as_table_mut()
-                        .ok_or_else(|| ProfileError::new("profile.toml", "table requise"))?
+                        .ok_or_else(|| ProfileError::new(PROFILE_FILE, "table requise"))?
                         .insert(target.to_string(), value);
                 }
             }
@@ -690,9 +770,11 @@ impl StyleProfile {
             if arrangement.insert("intro".into(), intro).is_some() {
                 return Err(ProfileError::new("intro", "déjà défini dans arrangement.intro"));
             }
+            let (file, text) = (mounts[0].file.clone(), mounts[0].text.clone());
+            mounts.push(Mount { at: "arrangement.intro", as_path: "intro", file, text });
         }
         let profile: Self = serde_path_to_error::deserialize(root)
-            .map_err(|e| ProfileError::new(e.path().to_string(), e.inner()))?;
+            .map_err(|e| ProfileError::new(e.path().to_string(), one_line(e.inner().message())))?;
         profile.validate()?;
         Ok(profile)
     }
@@ -948,7 +1030,7 @@ impl StyleProfile {
         for (i, cell) in self.melody.cells.cells.iter().enumerate() {
             check(
                 cell.notes.len() == self.melody.cell_units,
-                &format!("melody.cells[{i}].notes"),
+                &format!("melody.cells.cells[{i}].notes"),
                 "longueur différente de cell_units",
             )?;
         }

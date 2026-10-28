@@ -29,7 +29,9 @@ air) pris avant l'air 1 de chaque set (`set.toml`, module `trad::set`).
 
 ## Modules
 
-- `style_profile` : chargeur TOML validé, profils embarqués et dossiers externes.
+- `style_profile` : chargeur TOML validé ; un seul décodeur multi-fichiers pour les profils
+  embarqués (fichiers d'origine inclus par `build.rs`), les dossiers (`load`) et la mémoire
+  (`from_files`) ; erreurs situées par fichier et ligne.
 - `trad` : réalisation des cellules et des reprises, harmonisation,
   accompagnement, percussions, arrangement, intros et dynamique.
 - `models` : sélection du modèle harmonique depuis `[harmony]` ;

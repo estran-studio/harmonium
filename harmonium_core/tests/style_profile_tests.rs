@@ -148,7 +148,7 @@ fn cross_section_bounds_reject_before_generation() -> Result<(), Box<dyn std::er
     assert_eq!(p.validate().unwrap_err().field, "form.parts[0].roles[0]");
     p = variable_profile()?;
     p.melody.cells.cells[0].notes.pop();
-    assert_eq!(p.validate().unwrap_err().field, "melody.cells[0].notes");
+    assert_eq!(p.validate().unwrap_err().field, "melody.cells.cells[0].notes");
     p = variable_profile()?;
     p.arrangement.entries.melody = Some(EntryPoint { tour: 1, part: Part(0), pass: 3 });
     assert_eq!(p.validate().unwrap_err().field, "arrangement.entries.Melody.pass");
