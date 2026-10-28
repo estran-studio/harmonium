@@ -203,7 +203,7 @@ S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin ré
 | G6b (phase 014) | fusionnée (`113fe81`) : Odin par piste, presets fournis par l'hôte, pieds routés par le profil | `specs/014-styles-de-jeu/g6b-odin.md` |
 | S1 | en cours (worktree `s1-sonde-web`). Déterminisme mesuré : 0/66 fichiers de snapshots identiques natif / wasm (11 profils, graines 1–3, deux réglages d'émotions, 64 mesures) ; cause : `gen_range` sur `usize` ; après tirages en `u64`, 66/66 identiques et sortie native inchangée | `s1-sonde-web.md` (à venir) |
 | S2 | en cours (worktree `s2-hote-unique`) | — |
-| S4 | faite (`5a134fc`, worktree `s4-profils-bruts`) ; rebase sur G6b et dépendance `toml_edit` unique en cours | `s4-profils-bruts.md` (branche) |
+| S4 | fusionnée (`f01dddd`) : fichiers d'origine embarqués, un seul décodeur multi-fichiers (`load`, `from_files`, `distributed_files`), erreurs `fichier:ligne: champ: message` ; `toml` 0.8.23, une seule version de `toml_edit` ; 73 suites de tests vertes, goldens inchangés | `s4-profils-bruts.md` |
 
 ## Risques
 
