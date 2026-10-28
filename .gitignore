@@ -17,3 +17,7 @@ demos/
 
 assets/*.sf2
 !assets/test.sf2
+
+# Studio : ressources générées (banques copiées) et build web
+/harmonium_studio/resources/
+/harmonium_studio/dist/

@@ -195,7 +195,7 @@ fn main() -> Result<()> {
         println!("Initializing Harmonium engine...");
 
         let mut host =
-            LiveHost::start(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref(), &odin_presets)
+            LiveHost::start(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref(), &odin_presets, None)
                 .map_err(|e| anyhow::anyhow!(e))?;
         if let Some(seed) = args.seed {
             host.apply(EngineCommand::SetSeed(seed)).map_err(|e| anyhow::anyhow!(e))?;

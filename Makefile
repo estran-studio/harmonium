@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
+.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -36,6 +36,36 @@ run:
 
 run/debug:
 	HARMONIUM_CLI=1 cargo run -p harmonium-cli -- $(ARGS)
+
+# ════════════════════════════════════════════════════════════════════
+# STUDIO (harmonium_studio : natif et web)
+# ════════════════════════════════════════════════════════════════════
+
+## Dossier des banques (hors git) : par défaut `assets/` du checkout principal, aussi depuis un worktree.
+STUDIO_BANKS ?= $(shell dirname "$$(git rev-parse --path-format=absolute --git-common-dir)")/assets
+## Dossier de presets Odin (`*.odin`) ; vide : aucun.
+STUDIO_ODIN ?=
+STUDIO_RESOURCES := harmonium_studio/resources
+
+## Copie les banques en fichiers à empreinte dans harmonium_studio/resources, avec assets.json
+studio/assets:
+	cargo run -q -p harmonium_studio --no-default-features --bin studio_assets -- \
+		--main-bank $(STUDIO_BANKS)/GeneralUser-GS.sf2 \
+		--feet-bank $(STUDIO_BANKS)/harmonium_trad.sf2 \
+		$(if $(STUDIO_ODIN),--odin-dir $(STUDIO_ODIN)) \
+		--out $(STUDIO_RESOURCES)
+
+## Studio natif (fenêtre)
+studio: studio/assets
+	cargo run -p harmonium_studio --release -- $(ARGS)
+
+## Studio web : build Trunk dans harmonium_studio/dist (demande `trunk` et `rustup target add wasm32-unknown-unknown`)
+studio/web/build: studio/assets
+	cd harmonium_studio && trunk build --release
+
+## Studio web servi en local (http://127.0.0.1:8787)
+studio/web/serve: studio/assets
+	cd harmonium_studio && trunk serve --release
 
 # ════════════════════════════════════════════════════════════════════
 # TESTS
