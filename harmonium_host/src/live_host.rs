@@ -1,17 +1,16 @@
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
-    time::Instant,
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
 };
 
+use harmonium_audio::backend::recorder::RecorderWorker;
 use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot, MusicalParams,
     events::RecordFormat,
     params::SessionConfig,
     trad::{BarRole, TunePlan},
 };
+use web_time::Instant;
 
 use crate::{
     FinishedRecordings,
@@ -21,15 +20,22 @@ use crate::{
     playback::{PlaybackCommand, PlaybackEngine, TransportPosition},
 };
 
-/// Wrapper that makes `cpal::Stream` `Send + Sync`.
-struct SendStream(cpal::Stream);
+/// The output stream held by the host.
+///
+/// Desktop: `cpal::Stream` is `Send + Sync` here (see the SAFETY note), so a
+/// host behind a `Mutex` can be shared between the REPL's threads. Wasm: the
+/// stream wraps JS objects of the page's one thread and is not `Send`, so
+/// neither is the host there: it lives on the thread that created it.
+struct OutputStream(cpal::Stream);
 
 // SAFETY: cpal::Stream on desktop platforms (CoreAudio, WASAPI, ALSA) uses
 // thread-safe OS handles. We only interact via play()/pause()/drop().
+#[cfg(not(target_arch = "wasm32"))]
 #[allow(unsafe_code)]
-unsafe impl Send for SendStream {}
+unsafe impl Send for OutputStream {}
+#[cfg(not(target_arch = "wasm32"))]
 #[allow(unsafe_code)]
-unsafe impl Sync for SendStream {}
+unsafe impl Sync for OutputStream {}
 
 /// The one live host of the Harmonium engine: REPL, OSC and studio drive the
 /// same object.
@@ -48,7 +54,7 @@ unsafe impl Sync for SendStream {}
 /// behind a `Mutex`.
 pub struct LiveHost {
     /// Output stream; `None` for a [detached](Self::detached) host.
-    stream: Option<SendStream>,
+    stream: Option<OutputStream>,
     composer: MusicComposer,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
     report_rx: rtrb::Consumer<EngineReport>,
@@ -61,6 +67,9 @@ pub struct LiveHost {
     /// `None` rather than a false beat.
     clock_reader: Option<ClockReader>,
     finished_recordings: FinishedRecordings,
+    /// Recorder encoder without its own thread (wasm), advanced by `pump`;
+    /// `None` natively, where a thread encodes.
+    recorder: Option<RecorderWorker>,
     /// Last report received from the audio thread.
     cached_state: Option<EngineReport>,
 }
@@ -79,7 +88,7 @@ impl LiveHost {
     ) -> Result<Self, String> {
         let (stream, controls) =
             audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets)?;
-        Self::from_controls(Some(SendStream(stream)), controls)
+        Self::from_controls(Some(OutputStream(stream)), controls)
     }
 
     /// Start the engine in a paused state.
@@ -95,7 +104,9 @@ impl LiveHost {
 
     /// A host without output device: returns the [`PlaybackEngine`] for the
     /// caller to run (`process_buffer`), at `sample_rate`. The recorder blocks
-    /// instead of dropping, as in offline rendering. For tests and rendering.
+    /// instead of dropping, as in offline rendering (wasm: no thread to block
+    /// on, so it drops and counts when the caller lets [`Self::pump`] lag
+    /// behind). For tests and rendering.
     pub fn detached(
         sf2_bytes: Option<&[u8]>,
         feet_sf2_bytes: Option<&[u8]>,
@@ -114,7 +125,10 @@ impl LiveHost {
 
     /// Wrap the control side and publish the composer's initial state (its
     /// parameters and the style's program changes) to the audio thread.
-    fn from_controls(stream: Option<SendStream>, controls: EngineControls) -> Result<Self, String> {
+    fn from_controls(
+        stream: Option<OutputStream>,
+        controls: EngineControls,
+    ) -> Result<Self, String> {
         let mut host = Self {
             stream,
             composer: controls.composer,
@@ -123,6 +137,7 @@ impl LiveHost {
             transport_position: controls.transport_position,
             clock_reader: Some(controls.clock_reader),
             finished_recordings: controls.finished_recordings,
+            recorder: controls.recorder,
             cached_state: None,
         };
         host.publish()?;
@@ -185,8 +200,12 @@ impl LiveHost {
     /// Call periodically (every ~50 ms): it stages measures for playback, frees
     /// the played ones on this thread and refreshes [`Self::poll_state`].
     /// Returns the snapshots of the measures composed (or restaged) since the
-    /// last call, for a caller that draws them.
+    /// last call, for a caller that draws them. Without an encoder thread
+    /// (wasm), it also advances the recorder: recordings finish through here.
     pub fn pump(&mut self) -> Vec<MeasureSnapshot> {
+        if let Some(recorder) = &mut self.recorder {
+            recorder.pump();
+        }
         self.composer.generate_ahead();
         self.drain_reports();
         self.composer.take_snapshots()

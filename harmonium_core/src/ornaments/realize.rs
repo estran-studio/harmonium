@@ -453,7 +453,7 @@ impl Work<'_> {
         if options.is_empty() {
             return Err(note);
         }
-        let pick = rng.map_or(0, |r| r.next_range_usize(0..options.len()));
+        let pick = rng.map_or(0, |r| r.next_range_u64(0..options.len() as u64) as usize);
         let velocity = scaled(note.velocity, c.rule.velocity_scale);
         let extra: Vec<TimelineNote> =
             options[pick].iter().map(|&p| self.added(&note, p, velocity)).collect();

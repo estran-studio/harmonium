@@ -304,12 +304,12 @@ impl StyleDynamics {
     pub(crate) fn draw_parallel_dark(&self, bright: Mode, rng: &mut dyn RngCore) -> Mode {
         let total: u32 =
             self.parallel_modes.iter().filter(|c| c.bright == bright).map(|c| c.weight).sum();
-        let mut pick = rng.next_range_usize(0..total as usize);
+        let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
         for choice in self.parallel_modes.iter().filter(|c| c.bright == bright) {
-            if pick < choice.weight as usize {
+            if pick < choice.weight {
                 return choice.dark;
             }
-            pick -= choice.weight as usize;
+            pick -= choice.weight;
         }
         bright
     }

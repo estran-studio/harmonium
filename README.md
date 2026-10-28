@@ -17,6 +17,7 @@ Phase en cours : [`specs/009-phase1-reel/plan.md`](specs/008-phase0-clock-playba
 | `harmonium_host` | `MusicComposer` (thread principal) + `PlaybackEngine` (callback cpal), transport lock-free, `LiveHost` (hôte vivant : exécuteur d'`EngineCommand`, `pump`), module OSC, `create_offline_engine`. |
 | `harmonium_cli` | REPL d'écoute et de test (`harmonium-cli`), contrôle OSC par `--osc`. |
 | `harmonium_lab` | Ingestion de corpus MusicXML, métriques de distance, tuning assisté. |
+| `harmonium_determinism` | Harnais : les mêmes snapshots en natif et en `wasm32-unknown-unknown`, comparés octet par octet. |
 
 ## Démarrer
 
@@ -27,6 +28,8 @@ make run ARGS="--soundfont path/to/bank.sf2"
 make run ARGS="--osc"   # REPL + OSC : /harmonium/params (arousal valence density tension) sur UDP 127.0.0.1:8080
 make test                # cargo test --workspace
 make quality             # fmt + clippy + tests
+make wasm/check          # le moteur compile pour wasm32-unknown-unknown, avec et sans Odin
+make test/determinism    # snapshots natif = wasm (Node, CLI wasm-bindgen de la version de Cargo.lock)
 ```
 
 ## Architecture d'exécution

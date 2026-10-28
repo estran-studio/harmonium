@@ -65,3 +65,42 @@ jobs:
         uses: swatinem/rust-cache@v2
       - name: Run Tests
         run: make test
+
+  wasm:
+    name: WebAssembly (compilation, déterminisme natif / wasm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config
+      - name: Install Rust (stable + wasm32)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Compilation wasm, avec et sans Odin
+        run: make wasm/check
+
+      # Le CLI doit avoir la version du crate `wasm-bindgen` de Cargo.lock.
+      - name: Version du CLI wasm-bindgen
+        id: bindgen
+        run: echo "version=$(harmonium_determinism/scripts/run.sh --locked-version)" >> "$GITHUB_OUTPUT"
+      - name: Cache wasm-bindgen CLI
+        uses: actions/cache@v4
+        id: cache-bindgen
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: ${{ runner.os }}-wasm-bindgen-${{ steps.bindgen.outputs.version }}
+      - name: Install wasm-bindgen CLI
+        if: steps.cache-bindgen.outputs.cache-hit != 'true'
+        run: cargo install --locked wasm-bindgen-cli --version "${{ steps.bindgen.outputs.version }}"
+
+      - name: Snapshots identiques en natif et en wasm
+        run: make test/determinism

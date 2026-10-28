@@ -22,12 +22,13 @@ pub use harmonium_core::{events, log, mapper, params};
 static GLOBAL: harmonium_audio::realtime::rt_check::RTCheckAllocator =
     harmonium_audio::realtime::rt_check::RTCheckAllocator;
 
-// Audio stream (cpal), live host and OSC listener require the `standalone` feature
+// Audio stream (cpal) and live host require the `standalone` feature; the OSC listener also needs a
+// socket and a thread, so it does not exist on wasm.
 #[cfg(feature = "standalone")]
 pub mod audio;
 #[cfg(feature = "standalone")]
 pub mod live_host;
-#[cfg(feature = "standalone")]
+#[cfg(all(feature = "standalone", not(target_arch = "wasm32")))]
 pub mod osc;
 pub use harmonium_core::params::MusicalParams;
 #[cfg(feature = "standalone")]

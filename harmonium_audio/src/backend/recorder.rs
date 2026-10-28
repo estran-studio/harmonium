@@ -10,9 +10,11 @@
 //! - des événements MIDI `Copy`, horodatés en **frames** ;
 //! - les commandes de début/fin (places réservées : une fin entre toujours).
 //!
-//! Un thread d'enregistrement, créé à la construction, encode le WAV et le
-//! MIDI, possède toute la croissance mémoire et publie le résultat dans
-//! `finished_recordings` (`worker`).
+//! Un travailleur d'enregistrement encode le WAV et le MIDI, possède toute la
+//! croissance mémoire et publie le résultat dans `finished_recordings`
+//! (`worker`). Natif, c'est un thread créé à la construction ; sans thread
+//! (wasm), [`RecorderBackend::pumped`] rend le travailleur, que l'hôte fait
+//! avancer depuis son propre fil ([`RecorderWorker::pump`]) : même encodeur.
 //!
 //! # Débordement
 //!
@@ -56,6 +58,7 @@ use protocol::{
     CONTROL_RESERVE, MidiEvent, PCM_BLOCK_SAMPLES, PCM_POOL_BLOCKS, PcmBlock, QUEUE_CAPACITY,
     RecordMsg,
 };
+pub use worker::RecorderWorker;
 use worker::{DEFAULT_TICKS_PER_FRAME, WorkerPorts};
 
 pub type FinishedRecordings = Arc<Mutex<Vec<(RecordFormat, Vec<u8>)>>>;
@@ -142,6 +145,21 @@ impl RecorderBackend {
             backend.alive.store(false, Ordering::Release);
         }
         backend
+    }
+
+    /// Enregistreur sans thread, [`OverflowPolicy::DropAndCount`] : rend le
+    /// travailleur, que l'appelant fait avancer par [`RecorderWorker::pump`]
+    /// (l'hôte wasm, à chaque tour de sa boucle). Le callback ne bloque jamais ; ce
+    /// que le travailleur n'a pas vidé à temps est perdu et compté
+    /// ([`RecorderStats`]). [`wait_idle`](Self::wait_idle) n'y a pas de sens.
+    pub fn pumped(
+        inner: Box<dyn AudioRenderer>,
+        finished_recordings: FinishedRecordings,
+        sample_rate: u32,
+    ) -> (Self, RecorderWorker) {
+        let (backend, ports) =
+            Self::assemble(inner, finished_recordings, sample_rate, OverflowPolicy::DropAndCount);
+        (backend, RecorderWorker::new(ports))
     }
 
     /// Construit l'enregistreur et les ports du thread sans le lancer.
@@ -697,6 +715,18 @@ mod tests {
             .ok_or_else(|| "un enregistrement WAV".to_string())
     }
 
+    /// `frames` stereo frames of reproducible noise in `-1.0..1.0`.
+    fn noise(seed: &mut u32, frames: usize) -> Vec<f32> {
+        (0..frames * 2)
+            .map(|_| {
+                *seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                (*seed >> 8) as f32 / (1u32 << 23) as f32 - 1.0
+            })
+            .collect()
+    }
+
+    const CHUNKS: [usize; 8] = [1, 3, 4096, 4095, 4097, 20_000, 2, 9000];
+
     /// Chunks of any size (1 frame, block boundary, several blocks) produce
     /// the exact bytes of a direct `hound` encoding.
     #[test]
@@ -706,21 +736,58 @@ mod tests {
         rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Wav });
         let mut all = Vec::new();
         let mut seed = 0x2545_F491u32;
-        for chunk_frames in [1usize, 3, 4096, 4095, 4097, 20_000, 2, 9000] {
-            let chunk: Vec<f32> = (0..chunk_frames * 2)
-                .map(|_| {
-                    seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                    (seed >> 8) as f32 / (1u32 << 23) as f32 - 1.0
-                })
-                .collect();
-            all.extend_from_slice(&chunk);
-            let mut buffer = chunk;
+        for chunk_frames in CHUNKS {
+            let mut buffer = noise(&mut seed, chunk_frames);
+            all.extend_from_slice(&buffer);
             rec.process_buffer(&mut buffer, 2);
         }
         rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Wav });
         // `NullRenderer` leaves the buffer untouched: what is recorded is what we fed.
         assert_eq!(finished_wav(&finished)?, expected_wav(&all)?);
         assert!(rec.stats().is_lossless());
+        Ok(())
+    }
+
+    /// Without a thread, the caller's `pump` is the only thing that encodes:
+    /// nothing is published before it, and the file is the exact bytes of the
+    /// threaded recorder (same encoder).
+    #[test]
+    fn pumped_worker_encodes_without_a_thread() -> Result<(), String> {
+        let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
+        let (mut rec, mut worker) =
+            RecorderBackend::pumped(Box::new(NullRenderer), finished.clone(), 44100);
+        rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Wav });
+        let mut all = Vec::new();
+        let mut seed = 0x2545_F491u32;
+        for chunk_frames in CHUNKS {
+            let mut buffer = noise(&mut seed, chunk_frames);
+            all.extend_from_slice(&buffer);
+            rec.process_buffer(&mut buffer, 2);
+            worker.pump();
+        }
+        rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Wav });
+        assert!(finished.lock().map_err(|e| e.to_string())?.is_empty(), "rien avant le pump");
+        worker.pump();
+        assert_eq!(finished_wav(&finished)?, expected_wav(&all)?);
+        assert!(rec.stats().is_lossless());
+        Ok(())
+    }
+
+    /// The callback disappears mid-take: the next `pump` closes and publishes
+    /// the take, as the thread does when its queue closes.
+    #[test]
+    fn pumped_worker_publishes_the_take_when_the_callback_disappears() -> Result<(), String> {
+        let finished: FinishedRecordings = Arc::new(Mutex::new(Vec::new()));
+        let (mut rec, mut worker) =
+            RecorderBackend::pumped(Box::new(NullRenderer), finished.clone(), 44100);
+        rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Wav });
+        let mut buffer = noise(&mut 7, 1000);
+        let fed = buffer.clone();
+        rec.process_buffer(&mut buffer, 2);
+        rec.flush_pcm();
+        drop(rec);
+        worker.pump();
+        assert_eq!(finished_wav(&finished)?, expected_wav(&fed)?);
         Ok(())
     }
 

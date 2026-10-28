@@ -9,7 +9,8 @@ workspace = true
 
 [features]
 default = ["standalone"]
-standalone = ["cpal", "dep:rosc"]
+# Sortie audio (cpal), hôte vivant et, hors wasm, écoute OSC (`rosc`).
+standalone = ["dep:cpal", "dep:rosc"]
 # Synthé Odin par piste (GPLv3 via `harmonium_audio/odin`) : un binaire
 # compilé avec `odin` est GPL ; 1837 compile sans, en SoundFont.
 odin = ["harmonium_audio/odin"]
@@ -22,10 +23,22 @@ cpal = { version = "0.15", optional = true }
 rtrb = "0.3"
 triple_buffer = "8"
 arrayvec = "0.7"
-rosc = { version = "0.10", optional = true }
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 rust-music-theory = "0.3.0"
+# `Instant` : celui de `std` en natif, `performance.now()` en wasm (où
+# `std::time::Instant::now()` panique).
+web-time = "1"
+
+# Le module OSC (socket UDP, fil d'écoute) n'existe pas en wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rosc = { version = "0.10", optional = true }
+
+# Navigateur : hasard du système par `crypto.getRandomValues` (`thread_rng` du
+# composer), sortie audio par WebAudio.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+cpal = { version = "0.15", optional = true, features = ["wasm-bindgen"] }
 
 [dev-dependencies]
 midly = "0.5.3"

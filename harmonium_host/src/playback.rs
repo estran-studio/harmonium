@@ -3,12 +3,9 @@
 //! Minimal audio-thread component: reads pre-generated measures from a ring buffer,
 //! ticks the playhead, renders audio events. No generation, no allocations in steady state.
 
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
-    time::Instant,
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
 };
 
 use arrayvec::{ArrayString, ArrayVec};
@@ -19,6 +16,7 @@ use harmonium_core::{
     time_plan::{BarTiming, Flicks, Tempo, ramp_tempo},
     timeline::{Measure, Playhead},
 };
+use web_time::Instant;
 
 use crate::clock::TransportClock;
 

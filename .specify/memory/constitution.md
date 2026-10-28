@@ -104,6 +104,7 @@ son style d'origine est un défaut.
   studio sont ses seuls hôtes.
 - `harmonium_cli` — REPL d'écoute et de test.
 - `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
+- `harmonium_determinism` — harnais : mêmes snapshots en natif et en wasm.
 - `harmonium_studio` — application egui : vitrine publique sur le web (WASM)
   et atelier de développement en natif.
 
@@ -115,7 +116,15 @@ jeu, sur `create_offline_engine`.
 ## Contraintes techniques
 
 - Rust 2024, `unsafe_code = "deny"`, clippy strict. `gen` est réservé.
-- `ChaCha8Rng` est le seul RNG.
+- `ChaCha8Rng` est le seul RNG, et tout tirage d'entier se fait en largeur fixe
+  (`u64`), jamais sur `usize` : rand échantillonne un `usize` avec l'entier de
+  la largeur du pointeur, ce qui consommerait le flux autrement en 32 bits.
+- Le moteur (`harmonium_core`, `harmonium_audio`, `harmonium_host`, avec et
+  sans `odin`) compile pour `wasm32-unknown-unknown` et y produit les mêmes
+  snapshots qu'en natif (profils distribués, graines 1–3, 64 mesures), octet
+  pour octet : la CI le vérifie (`make wasm/check`, `make test/determinism`).
+  Horloge murale : `web_time::Instant` (celui de `std` en natif) ; aucun
+  thread requis (l'enregistrement se pompe depuis l'hôte).
 - Synthèse : SoundFont par défaut ; chaque jeu fournit sa banque. Banque de
   test : `assets/test.sf2`. Le synthé Odin est une option de compilation
   `odin`, désactivée par défaut : chaque piste d'un profil choisit en données
@@ -136,8 +145,10 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 4.2.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-27
+**Version** : 4.3.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-28
 (moteur tous styles et multi-jeux, fusion en données — principe VIII ;
 sources sous droits analysables, seuls les dérivés entrent au dépôt —
 principe VII ; un seul frontend, `harmonium_studio`, vitrine web et atelier
-natif ; synthé Odin en option GPL par piste, licence MIT OR Apache-2.0)
+natif ; synthé Odin en option GPL par piste, licence MIT OR Apache-2.0 ;
+le moteur compile pour `wasm32-unknown-unknown` et y produit les mêmes
+snapshots, vérifié en CI ; tirages d'entiers en largeur fixe)

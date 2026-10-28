@@ -1,0 +1,29 @@
+[package]
+name = "harmonium_determinism"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license.workspace = true
+description = "Harnais de déterminisme : mêmes snapshots en natif et en wasm32-unknown-unknown"
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "determinism_dump"
+path = "src/main.rs"
+
+[dependencies]
+harmonium_core = { path = "../harmonium_core" }
+harmonium = { path = "../harmonium_host" }
+serde_json = "1.0"
+hound = "3.5.1"
+rtrb = "0.3"
+web-time = "1"
+
+# Chargé par Node (`wasm-bindgen --target nodejs`) : les exports sont de ce module.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"

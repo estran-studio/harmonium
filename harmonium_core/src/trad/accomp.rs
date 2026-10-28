@@ -157,7 +157,7 @@ fn draw_bass_motif(
     if total == 0 {
         return None;
     }
-    let mut pick = rng.next_range_usize(0..total as usize) as u32;
+    let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
     for (index, motif) in motifs.iter().enumerate() {
         if !eligible(motif, use_specific) {
             continue;

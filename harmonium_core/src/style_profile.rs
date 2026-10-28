@@ -237,7 +237,7 @@ fn draw_weight(
     rng: &mut dyn crate::algo::RngCore,
 ) -> usize {
     let total: u32 = weights.clone().sum();
-    let mut pick = rng.next_range_usize(0..total as usize) as u32;
+    let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
     for (index, weight) in weights.enumerate() {
         if pick < weight {
             return index;

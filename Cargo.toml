@@ -5,6 +5,7 @@ members = [
     "harmonium_host",
     "harmonium_cli",
     "harmonium_lab",
+    "harmonium_determinism",
 ]
 resolver = "2"
 
