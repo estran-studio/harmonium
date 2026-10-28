@@ -130,10 +130,10 @@ impl ProfileMix {
             if value.is_finite() && (min..=max).contains(&value) {
                 Ok(())
             } else {
-                Err(ProfileError {
-                    field: field.into(),
-                    message: format!("valeur finie attendue dans {min}..={max}, reçu {value}"),
-                })
+                Err(ProfileError::new(
+                    field,
+                    format!("valeur finie attendue dans {min}..={max}, reçu {value}"),
+                ))
             }
         }
         range("mix.master_db", self.master_db, -60.0, 48.0)?;
@@ -148,10 +148,10 @@ impl ProfileMix {
         for (id, track) in crate::timeline::TrackId::ALL.into_iter().zip(self.tracks.all()) {
             let name = id.name();
             if !track.level_db.is_finite() || track.level_db > 0.0 {
-                return Err(ProfileError {
-                    field: format!("mix.tracks.{name}.level_db"),
-                    message: format!("valeur finie attendue ≤ 0 dB, reçu {}", track.level_db),
-                });
+                return Err(ProfileError::new(
+                    format!("mix.tracks.{name}.level_db"),
+                    format!("valeur finie attendue ≤ 0 dB, reçu {}", track.level_db),
+                ));
             }
             range(&format!("mix.tracks.{name}.pan"), track.pan, -1.0, 1.0)?;
             range(&format!("mix.tracks.{name}.reverb_send"), track.reverb_send, 0.0, 1.0)?;

@@ -1,9 +1,20 @@
 # Écrire un profil de style
 
-Un dossier contient `profile.toml` et ses banques TOML. Le moteur embarque
-`reel_quebecois` : aucun fichier installé n'est nécessaire. Pour un profil externe,
-utiliser `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`).
-`from_toml` lit un profil autonome avec toutes les banques inline.
+Un dossier contient `profile.toml` et ses banques TOML. Le moteur embarque les profils
+distribués : aucun fichier installé n'est nécessaire. `build.rs` en inclut les fichiers
+d'origine tels quels (`profile.toml` puis chaque fichier de son `[files]`, commentaires
+compris) ; ils se relisent avec `StyleProfile::distributed_files()`. Un seul décodeur lit
+un profil multi-fichiers, quelle que soit la source :
+
+- `StyleProfile::load(dossier)` (ou le chemin du `profile.toml`) : les fichiers viennent du disque ;
+- `StyleProfile::from_files(fichiers)` : les fichiers viennent d'une liste `(nom, contenu)`
+  en mémoire, avec les noms que `[files]` emploie (profils embarqués, atelier web) ;
+- `StyleProfile::from_toml(texte)` : profil autonome, toutes les banques inline.
+
+Une erreur s'affiche `fichier:ligne: champ: message` (par exemple
+`cells.toml:9: melody.cells.cells[3]: jeton de note invalide…`) : le fichier est celui qui
+porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError` sont `field`,
+`message`, `file`, `line` et `column` (cette dernière pour les erreurs de syntaxe).
 
 | Section | Champs / sens |
 ## Profils distribués
