@@ -6,7 +6,7 @@ use harmonium_audio::backend::{
     recorder::{OverflowPolicy, RecorderBackend, RecorderWorker},
     synth_backend::SynthBackend,
 };
-use harmonium_core::log;
+use harmonium_core::{host_resources::HostResources, log};
 use web_time::Instant;
 
 use crate::{
@@ -69,13 +69,14 @@ pub(crate) fn build_engine(
 
     // Create renderer: every logical channel on SoundFont bank 0
     let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
-    let inner_backend: Box<dyn AudioRenderer> = Box::new(SynthBackend::new(
-        sample_rate,
-        sf2_bytes,
-        feet_sf2_bytes,
-        &default_routing,
-        odin_presets,
-    ));
+    let synth = SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing);
+    // Ce que l'hôte a réellement chargé : le compositeur en tire les presets
+    // Odin morphés et prévient quand un profil désigne autre chose.
+    let resources = HostResources {
+        percussion_banks: synth.percussion_banks().to_vec(),
+        odin: harmonium_audio::odin_bank::load_bank(odin_presets),
+    };
+    let inner_backend: Box<dyn AudioRenderer> = Box::new(synth);
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
     let (recorder_backend, recorder) =
@@ -85,8 +86,9 @@ pub(crate) fn build_engine(
     // NOTE: No pre-generation here. The caller sets params first, then
     // generates: pre-generating with defaults would produce bars that don't
     // match the user's settings.
-    let composer =
+    let mut composer =
         MusicComposer::new(sample_rate, measure_tx, return_rx, transport_position.clone());
+    composer.set_host_resources(resources);
 
     let playback = PlaybackEngine::new(
         sample_rate,

@@ -166,9 +166,9 @@ pub enum PlaybackCommand {
     /// Update musical params snapshot for recording/reporting. `Copy`,
     /// prepared on the main thread with `MusicalParams::playback_params`.
     UpdateMusicalParams(PlaybackParams),
-    /// Émotions `[arousal, valence, density, tension]` pour le morphing Odin
-    /// (`AudioEvent::EmotionUpdate`) ; `Copy`, sans allocation.
-    SetEmotions([f32; 4]),
+    /// Presets Odin morphés par piste, préparés sur le thread principal
+    /// (`AudioEvent::SetOdin`) ; `Copy`, sans allocation.
+    SetOdin(harmonium_core::odin::OdinPatches),
     /// Start (or ramp to) an audible tempo override (D4).
     ///
     /// `ramp_pulses == 0` jumps to `bpm` at the next pulse boundary;
@@ -1226,8 +1226,8 @@ impl PlaybackEngine {
                         self.reset_profile_mix();
                     }
                 }
-                PlaybackCommand::SetEmotions(emotions) => {
-                    self.renderer.handle_event(AudioEvent::EmotionUpdate { emotions });
+                PlaybackCommand::SetOdin(patches) => {
+                    self.renderer.handle_event(AudioEvent::SetOdin { patches });
                 }
                 PlaybackCommand::SetTempo { bpm, ramp_pulses } => {
                     // D4: the audible tempo advances at pulse boundaries only

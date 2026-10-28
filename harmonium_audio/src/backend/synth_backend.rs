@@ -11,6 +11,8 @@ pub struct SynthBackend {
     voice_manager: VoiceManager,
     mix: harmonium_core::mix::PreparedMix,
     eq_state: [[[f32; 2]; 2]; 2],
+    /// Banques de percussion chargées (voir [`Self::percussion_banks`]).
+    percussion_banks: Vec<u16>,
     #[cfg(feature = "odin")]
     odin: crate::odin_voices::OdinMixer,
 }
@@ -23,16 +25,14 @@ impl SynthBackend {
     /// (`apply_profile_programs`, un seul chemin).
     /// `initial_routing` holds signed bank ids per logical channel
     /// (negative ⇒ bank 0); entries beyond channel 15 are ignored.
-    /// `odin_presets` : presets `.odin` fournis par l'hôte (nom + octets),
-    /// analysés à la construction hors callback quand compilé avec `odin` ;
-    /// ignorés sinon (chaque piste joue son programme SoundFont).
+    /// Les presets Odin ne passent pas ici : le thread principal les analyse
+    /// (`odin_bank::load_bank`) et envoie les presets morphés (`SetOdin`).
     #[must_use]
     pub fn new(
         sample_rate: f64,
         sf2_bytes: Option<&[u8]>,
         feet_sf2_bytes: Option<&[u8]>,
         initial_routing: &[i32],
-        odin_presets: &[crate::odin_source::OdinPresetSource],
     ) -> Self {
         let mut voice_manager = VoiceManager::new(sf2_bytes, sample_rate as f32);
 
@@ -43,7 +43,8 @@ impl SynthBackend {
         // Diagnostic de conformité GM (kit banque 128, programmes demandés),
         // strictement hors du callback temps réel. Le routage, lui, suit le
         // profil (`apply_profile_programs`, un seul chemin).
-        if sf2_bytes.is_some() && !voice_manager.has_bank_128_preset() {
+        let has_gm_kit = sf2_bytes.is_some() && voice_manager.has_bank_128_preset();
+        if sf2_bytes.is_some() && !has_gm_kit {
             let missing = voice_manager.missing_gm_programs();
             let missing_list =
                 if missing.is_empty() { "aucun".to_string() } else { missing.join(", ") };
@@ -58,30 +59,48 @@ impl SynthBackend {
 
         // Préparation SF2 strictement à l'initialisation : les banques natives
         // évitent le saturating_sub des offsets oxisynth, qui masquerait GM 0.
+        let mut percussion_banks = Vec::new();
+        if has_gm_kit {
+            percussion_banks.push(128);
+        }
         if let Some(bytes) = feet_sf2_bytes {
             match relocate_font_banks(bytes, FEET_BANK_OFFSET as u16) {
-                Ok(prepared) => voice_manager.add_font(0, &prepared),
+                Ok(prepared) => {
+                    if voice_manager.add_font(0, &prepared) {
+                        percussion_banks.push(FEET_BANK_OFFSET as u16);
+                    }
+                }
                 Err(error) => harmonium_core::log::error(error),
             }
         }
 
         voice_manager.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
         #[cfg(feature = "odin")]
-        let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32, odin_presets);
-        #[cfg(not(feature = "odin"))]
-        let _ = odin_presets;
+        let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32);
 
         let mix = harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate);
-        #[cfg(feature = "odin")]
-        let mut backend = Self { voice_manager, mix, eq_state: [[[0.0; 2]; 2]; 2], odin };
-        #[cfg(not(feature = "odin"))]
-        let mut backend = Self { voice_manager, mix, eq_state: [[[0.0; 2]; 2]; 2] };
+        let mut backend = Self {
+            voice_manager,
+            mix,
+            eq_state: [[[0.0; 2]; 2]; 2],
+            percussion_banks,
+            #[cfg(feature = "odin")]
+            odin,
+        };
         backend.apply_mix(mix);
         backend
     }
 
     pub fn set_channel_route(&mut self, channel: usize, route: ChannelRoute) {
         self.voice_manager.set_channel_route(channel, route);
+    }
+
+    /// Banques SF2 portant un kit de percussion jouable (`128` : kit GM de la
+    /// banque principale ; [`FEET_BANK_OFFSET`] : banque de pieds chargée).
+    /// Les profils qui en désignent une autre sont avertis au chargement.
+    #[must_use]
+    pub fn percussion_banks(&self) -> &[u16] {
+        &self.percussion_banks
     }
 
     fn apply_mix(&mut self, mix: harmonium_core::mix::PreparedMix) {
@@ -108,16 +127,17 @@ impl SynthBackend {
         #[cfg(feature = "odin")]
         self.odin.apply_mix(mix);
     }
-    /// Bascule SoundFont ↔ Odin d'après le profil : applique puis coupe les
-    /// notes des canaux qui changent de côté (aucune note pendante).
-    /// Sans `odin`, aucun canal ne bascule.
+
+    /// Applique les presets Odin morphés par le thread principal, puis coupe
+    /// les notes des canaux qui changent de côté SoundFont ↔ Odin (aucune
+    /// note pendante).
     #[cfg(feature = "odin")]
-    fn update_routing(&mut self, params: &harmonium_core::params::PlaybackParams) {
+    fn apply_odin(&mut self, patches: &harmonium_core::odin::OdinPatches) {
         let mut was = [false; harmonium_core::timeline::TrackId::ALL.len()];
         for (index, slot) in was.iter_mut().enumerate() {
             *slot = self.odin.is_odin_channel(index);
         }
-        self.odin.apply_descs(&params.odin);
+        self.odin.apply_patches(patches);
         for (index, was_odin) in was.iter().enumerate() {
             if *was_odin != self.odin.is_odin_channel(index) {
                 let channel = index as u8;
@@ -126,9 +146,6 @@ impl SynthBackend {
             }
         }
     }
-
-    #[cfg(not(feature = "odin"))]
-    fn update_routing(&mut self, _params: &harmonium_core::params::PlaybackParams) {}
 }
 
 impl AudioRenderer for SynthBackend {
@@ -140,13 +157,12 @@ impl AudioRenderer for SynthBackend {
             }
             AudioEvent::SetMix { mix } => self.apply_mix(mix),
             AudioEvent::UpdateMusicalParams { params } => {
-                self.update_routing(&params);
                 self.voice_manager.apply_profile_programs(&params.instruments);
             }
             #[cfg(feature = "odin")]
-            AudioEvent::EmotionUpdate { emotions } => self.odin.apply_emotions(emotions),
+            AudioEvent::SetOdin { patches } => self.apply_odin(&patches),
             #[cfg(not(feature = "odin"))]
-            AudioEvent::EmotionUpdate { .. } => {}
+            AudioEvent::SetOdin { .. } => {}
             AudioEvent::NoteOn { note, velocity, channel } => {
                 #[cfg(feature = "odin")]
                 if self.odin.is_odin_channel(usize::from(channel)) {
@@ -290,7 +306,7 @@ mod tests {
         let phdr = feet.windows(4).position(|chunk| chunk == b"phdr").unwrap();
         let size = u32::from_le_bytes(feet[phdr + 4..phdr + 8].try_into().unwrap()) as usize;
         feet[phdr + 8 + size - 38..phdr + 8 + size - 18].fill(0);
-        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&feet), &[0; 5], &[]);
+        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&feet), &[0; 5]);
         backend.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         let piano = backend.voice_manager.synth.channel_preset(1).unwrap();
         assert_eq!(piano.name(), "GM piano");
@@ -302,7 +318,11 @@ mod tests {
             assert_eq!(backend.voice_manager.midi_channel_map[channel as usize], channel);
         }
 
-        let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5], &[]);
+        let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5]);
+        // Banques de percussion annoncées à l'hôte : celle des pieds chargée,
+        // aucune sans elle (le test.sf2 n'a pas de kit GM en banque 128).
+        assert_eq!(backend.percussion_banks(), [FEET_BANK_OFFSET as u16]);
+        assert!(reference.percussion_banks().is_empty());
         reference.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         for synth in [&mut backend, &mut reference] {
             synth.handle_event(AudioEvent::NoteOn { note: 60, velocity: 100, channel: 1 });

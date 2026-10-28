@@ -3,9 +3,13 @@
 //! Chaque piste garde son programme SoundFont (rendu sans `odin`) et peut
 //! déclarer un preset Odin (nom fourni par l'hôte comme les octets SF2) avec
 //! ses réglages de morphing par les 4 émotions. Sans `odin` compilé ou sans
-//! preset fourni, la piste joue son programme SoundFont ; avec `odin` et le
-//! preset présent, elle joue Odin. Aucun nom de style ni canal fixe ici :
-//! tout est clé par [`TrackId`](crate::timeline::TrackId).
+//! preset fourni, la piste joue son programme SoundFont (avertissement au
+//! chargement du profil) ; avec `odin` et le preset présent, elle joue Odin.
+//! Le thread principal connaît les socles des presets ([`OdinBank`]), calcule
+//! le preset morphé de chaque piste à chaque changement d'émotion et envoie au
+//! callback une charge `Copy` ([`OdinPatches`]) : le fil audio ne calcule
+//! rien. Aucun nom de style ni canal fixe ici : tout est clé par
+//! [`TrackId`](crate::timeline::TrackId).
 //!
 //! ```toml
 //! [odin.Bass]
@@ -16,14 +20,13 @@
 //! ]
 //! ```
 
-use arrayvec::ArrayString;
 use serde::{Deserialize, Serialize};
 
 use crate::timeline::TrackId;
 
 /// Nom de preset maximal (octets SF2 exclus, nom court fourni par l'hôte).
 pub const ODIN_PRESET_NAME_CAP: usize = 64;
-/// Règles de morphing maximales par piste (tableau fixe, `Copy` pour le callback).
+/// Règles de morphing maximales par piste (borne du schéma `[odin.<Piste>]`).
 pub const ODIN_MAX_RULES: usize = 8;
 
 /// Paramètre continu du preset pilotable par les 4 émotions.
@@ -82,30 +85,19 @@ pub struct OdinTrackSpec {
     pub morph: Vec<OdinMorphRule>,
 }
 
-/// Socle du preset : valeurs lues du `.odin` par l'hôte audio, hors callback.
+/// Paramètres continus d'une voix Odin : socle du preset (lu du `.odin` par
+/// l'hôte, hors callback) comme valeurs après morphing.
 ///
 /// Mêmes champs continus que `PresetConfig` d'`odin2-core`, en `f32` purs :
 /// aucune dépendance GPL dans ce module.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OdinBaseParams {
-    pub osc_volumes: [f32; 3],
-    pub osc_detune: f32,
-    pub filter_frequency: f32,
-    pub filter_resonance: f32,
-    pub filter_env_amount: f32,
-    pub amp_attack: f32,
-    pub amp_decay: f32,
-    pub amp_sustain: f32,
-    pub amp_release: f32,
-    pub filter_attack: f32,
-    pub filter_decay: f32,
-    pub filter_sustain: f32,
-    pub filter_release: f32,
-    pub master_volume: f32,
-}
-
-/// Paramètres d'une voix après morphing (même disposition que le socle).
-#[derive(Clone, Copy, Debug, PartialEq)]
+///
+/// **Ajouter un paramètre** (drive, effets : l'API d'`odin2-core` s'élargit) :
+/// un champ ici (+ sa borne dans [`Self::clamp`]), une variante de
+/// [`OdinMorphParam`] et son bras dans [`Self::slot_mut`] ; côté audio, sa
+/// lecture dans `odin_bank::read_preset` et son écriture dans
+/// `odin_voices::preset_config`. Rien d'autre : ni profil, ni lecteur de
+/// snapshots, ni message audio.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct OdinVoiceParams {
     pub osc_volumes: [f32; 3],
     pub osc_detune: f32,
@@ -124,53 +116,44 @@ pub struct OdinVoiceParams {
 }
 
 impl OdinVoiceParams {
-    /// Morphing déterministe, sans allocation : optique `f32` pure.
+    /// Morphing déterministe, sans allocation : optique `f32` pure. `self` est
+    /// le socle du preset ; le résultat est borné par [`Self::clamp`].
     #[must_use]
-    pub fn morphed(base: &OdinBaseParams, rules: &[OdinMorphRule], emotions: [f32; 4]) -> Self {
+    pub fn morphed(&self, rules: &[OdinMorphRule], emotions: [f32; 4]) -> Self {
         let [arousal, valence, density, tension] = emotions;
-        let mut out = Self {
-            osc_volumes: base.osc_volumes,
-            osc_detune: base.osc_detune,
-            filter_frequency: base.filter_frequency,
-            filter_resonance: base.filter_resonance,
-            filter_env_amount: base.filter_env_amount,
-            amp_attack: base.amp_attack,
-            amp_decay: base.amp_decay,
-            amp_sustain: base.amp_sustain,
-            amp_release: base.amp_release,
-            filter_attack: base.filter_attack,
-            filter_decay: base.filter_decay,
-            filter_sustain: base.filter_sustain,
-            filter_release: base.filter_release,
-            master_volume: base.master_volume,
-        };
+        let mut out = *self;
         for rule in rules {
             let delta = arousal.mul_add(
                 rule.arousal,
                 valence
                     .mul_add(rule.valence, density.mul_add(rule.density, tension * rule.tension)),
             );
-            let slot: &mut f32 = match rule.param {
-                OdinMorphParam::FilterFrequency => &mut out.filter_frequency,
-                OdinMorphParam::FilterResonance => &mut out.filter_resonance,
-                OdinMorphParam::FilterEnvAmount => &mut out.filter_env_amount,
-                OdinMorphParam::AmpAttack => &mut out.amp_attack,
-                OdinMorphParam::AmpDecay => &mut out.amp_decay,
-                OdinMorphParam::AmpSustain => &mut out.amp_sustain,
-                OdinMorphParam::AmpRelease => &mut out.amp_release,
-                OdinMorphParam::FilterAttack => &mut out.filter_attack,
-                OdinMorphParam::FilterDecay => &mut out.filter_decay,
-                OdinMorphParam::FilterSustain => &mut out.filter_sustain,
-                OdinMorphParam::FilterRelease => &mut out.filter_release,
-                OdinMorphParam::OscDetune => &mut out.osc_detune,
-                OdinMorphParam::Osc1Volume => &mut out.osc_volumes[0],
-                OdinMorphParam::Osc2Volume => &mut out.osc_volumes[1],
-                OdinMorphParam::Osc3Volume => &mut out.osc_volumes[2],
-                OdinMorphParam::MasterVolume => &mut out.master_volume,
-            };
-            *slot += delta;
+            *out.slot_mut(rule.param) += delta;
         }
         out.clamp()
+    }
+
+    /// Champ piloté par un paramètre de règle : l'unique table
+    /// paramètre → champ.
+    fn slot_mut(&mut self, param: OdinMorphParam) -> &mut f32 {
+        match param {
+            OdinMorphParam::FilterFrequency => &mut self.filter_frequency,
+            OdinMorphParam::FilterResonance => &mut self.filter_resonance,
+            OdinMorphParam::FilterEnvAmount => &mut self.filter_env_amount,
+            OdinMorphParam::AmpAttack => &mut self.amp_attack,
+            OdinMorphParam::AmpDecay => &mut self.amp_decay,
+            OdinMorphParam::AmpSustain => &mut self.amp_sustain,
+            OdinMorphParam::AmpRelease => &mut self.amp_release,
+            OdinMorphParam::FilterAttack => &mut self.filter_attack,
+            OdinMorphParam::FilterDecay => &mut self.filter_decay,
+            OdinMorphParam::FilterSustain => &mut self.filter_sustain,
+            OdinMorphParam::FilterRelease => &mut self.filter_release,
+            OdinMorphParam::OscDetune => &mut self.osc_detune,
+            OdinMorphParam::Osc1Volume => &mut self.osc_volumes[0],
+            OdinMorphParam::Osc2Volume => &mut self.osc_volumes[1],
+            OdinMorphParam::Osc3Volume => &mut self.osc_volumes[2],
+            OdinMorphParam::MasterVolume => &mut self.master_volume,
+        }
     }
 
     /// Bornes du moteur : le filtre reste audible, les enveloppes valides.
@@ -196,95 +179,79 @@ impl OdinVoiceParams {
     }
 }
 
-/// Vue `Copy` d'une piste Odin pour le callback audio (nom + règles inline).
+/// Champs discrets du preset (octaves, demi-tons) : repris tels quels du
+/// preset, jamais morphés.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OdinDiscreteParams {
+    pub octaves: [i32; 3],
+    pub semitones: [i32; 3],
+}
+
+/// Socle d'un preset fourni par l'hôte, analysé hors callback.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OdinPresetBase {
+    /// Nom court (celui que les profils désignent, `[odin.<Piste>].preset`).
+    pub name: String,
+    pub base: OdinVoiceParams,
+    pub discrete: OdinDiscreteParams,
+}
+
+/// Charge `Copy` prête à appliquer pour une piste Odin : le preset morphé
+/// par le thread principal. Le callback audio ne calcule rien, il copie.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct OdinTrackDesc {
-    pub preset: ArrayString<ODIN_PRESET_NAME_CAP>,
-    pub rules: [OdinMorphRule; ODIN_MAX_RULES],
-    pub rule_count: u8,
+pub struct OdinTrackPatch {
+    /// Rang du preset dans la [`OdinBank`] de l'hôte : un changement de rang
+    /// coupe les notes de la voix.
+    pub preset: usize,
+    pub params: OdinVoiceParams,
+    pub discrete: OdinDiscreteParams,
 }
 
-impl Default for OdinTrackDesc {
-    fn default() -> Self {
-        Self {
-            preset: ArrayString::new(),
-            rules: [OdinMorphRule {
-                param: OdinMorphParam::MasterVolume,
-                arousal: 0.0,
-                valence: 0.0,
-                density: 0.0,
-                tension: 0.0,
-            }; ODIN_MAX_RULES],
-            rule_count: 0,
-        }
-    }
+/// Charges des 6 pistes, indexées par [`TrackId`] (`None` : piste SoundFont).
+pub type OdinPatches = [Option<OdinTrackPatch>; TrackId::ALL.len()];
+
+/// Presets fournis par l'hôte, connus du thread principal : socles à partir
+/// desquels il prépare les charges du callback.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct OdinBank {
+    presets: Vec<OdinPresetBase>,
 }
 
-impl OdinTrackDesc {
-    /// Règles actives (jamais plus de [`ODIN_MAX_RULES`]).
+impl OdinBank {
     #[must_use]
-    pub fn rules(&self) -> &[OdinMorphRule] {
-        let count = (self.rule_count as usize).min(ODIN_MAX_RULES);
-        &self.rules[..count]
+    pub fn new(presets: Vec<OdinPresetBase>) -> Self {
+        Self { presets }
     }
 
-    /// Piste vide : aucun preset déclaré.
+    /// Preset chargé sous ce nom.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.preset.is_empty()
+    pub fn contains(&self, name: &str) -> bool {
+        self.presets.iter().any(|preset| preset.name == name)
     }
-}
 
-/// Erreur de validation d'une section `[odin]` (champ fautif nommé).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OdinProfileError {
-    pub field: String,
-    pub message: String,
-}
-
-impl OdinTrackSpec {
-    /// Convertit en vue `Copy` (échec si le nom déborde ou trop de règles).
-    pub fn describe(&self, track: TrackId) -> Result<OdinTrackDesc, OdinProfileError> {
-        let field = format!("odin.{}.preset", track.name());
-        if self.preset.is_empty() || self.preset.len() > ODIN_PRESET_NAME_CAP {
-            return Err(OdinProfileError {
-                field,
-                message: "nom de preset non vide de 64 caractères au plus".to_string(),
-            });
-        }
-        if self.preset.contains('/') || self.preset.contains('\\') {
-            return Err(OdinProfileError {
-                field,
-                message: "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)".to_string(),
-            });
-        }
-        if self.morph.len() > ODIN_MAX_RULES {
-            return Err(OdinProfileError {
-                field: format!("odin.{}.morph", track.name()),
-                message: format!("au plus {ODIN_MAX_RULES} règles par piste"),
-            });
-        }
-        let mut desc = OdinTrackDesc::default();
-        for ch in self.preset.chars() {
-            if desc.preset.try_push(ch).is_err() {
-                return Err(OdinProfileError {
-                    field,
-                    message: "nom de preset de 64 caractères au plus".to_string(),
+    /// Charges de toutes les pistes pour ces émotions : les pistes dont le
+    /// profil déclare un preset chargé jouent Odin, les autres `None`
+    /// (SoundFont ; l'absence d'un preset déclaré est signalée au chargement
+    /// du profil, voir `host_resources`).
+    #[must_use]
+    pub fn patches(
+        &self,
+        specs: &std::collections::BTreeMap<TrackId, OdinTrackSpec>,
+        emotions: [f32; 4],
+    ) -> OdinPatches {
+        let mut patches = [None; TrackId::ALL.len()];
+        for (track, spec) in specs {
+            let found = self.presets.iter().enumerate().find(|(_, p)| p.name == spec.preset);
+            if let (Some((index, preset)), Some(slot)) =
+                (found, patches.get_mut(usize::from(track.channel())))
+            {
+                *slot = Some(OdinTrackPatch {
+                    preset: index,
+                    params: preset.base.morphed(&spec.morph, emotions),
+                    discrete: preset.discrete,
                 });
             }
         }
-        for (slot, rule) in desc.rules.iter_mut().zip(self.morph.iter()) {
-            for gain in [rule.arousal, rule.valence, rule.density, rule.tension] {
-                if !gain.is_finite() {
-                    return Err(OdinProfileError {
-                        field: format!("odin.{}.morph", track.name()),
-                        message: "gains de morphing finis".to_string(),
-                    });
-                }
-            }
-            *slot = *rule;
-        }
-        desc.rule_count = self.morph.len() as u8;
-        Ok(desc)
+        patches
     }
 }

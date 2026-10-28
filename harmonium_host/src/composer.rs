@@ -13,7 +13,9 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
+    host_resources::{HostResources, MissingResource},
     log,
+    odin::OdinPatches,
     params::{MusicalParams, SessionConfig, TimeSignature},
     theory::chord::{Chord, ChordType},
     time_plan::score::{SESSION_KEYS, SESSION_SCALES, session_start},
@@ -83,6 +85,13 @@ pub struct MusicComposer {
     // Shared transport position, packed (bar, step) — written by
     // PlaybackEngine, read here as the bar
     transport_position: Arc<AtomicU64>,
+
+    // Ressources de l'hôte audio (banques, presets Odin) : `None` hors hôte.
+    host_resources: Option<HostResources>,
+    // Ressources désignées par le profil actif et absentes de l'hôte.
+    missing: Vec<MissingResource>,
+    // Identifiant du profil dont `missing` a été calculé.
+    checked_profile: String,
 }
 
 impl MusicComposer {
@@ -191,6 +200,9 @@ impl MusicComposer {
             pending_measure_snapshots: Vec::new(),
             score_recording: None,
             transport_position,
+            host_resources: None,
+            missing: Vec::new(),
+            checked_profile: String::new(),
         }
     }
 
@@ -725,10 +737,50 @@ impl MusicComposer {
     pub fn set_tuning(&mut self, tuning: harmonium_core::tuning::TuningParams) {
         self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
         self.musical_params.profile_instruments = tuning.profile.instruments;
-        self.musical_params.profile_odin =
-            harmonium_core::params::describe_odin_tracks(&tuning.profile.odin);
         self.generator.update_tuning(tuning);
         self.apply_profile_defaults();
+        self.check_host_resources();
+    }
+
+    /// Ressources chargées par l'hôte audio : le compositeur en tire les
+    /// presets Odin morphés ([`Self::odin_patches`]) et vérifie ce que le
+    /// profil désigne ([`Self::missing_resources`]). Sans elles (compositeur
+    /// hors hôte audio), rien n'est vérifié ni morphé.
+    pub fn set_host_resources(&mut self, resources: HostResources) {
+        self.host_resources = Some(resources);
+        self.check_host_resources();
+    }
+
+    /// Ressources que le profil actif désigne et que l'hôte n'a pas chargées.
+    #[must_use]
+    pub fn missing_resources(&self) -> &[MissingResource] {
+        &self.missing
+    }
+
+    /// Presets Odin morphés par piste pour les émotions courantes, prêts à
+    /// envoyer au callback (`PlaybackCommand::SetOdin`) : seul chemin du
+    /// morphing, sur le thread principal.
+    #[must_use]
+    pub fn odin_patches(&self) -> OdinPatches {
+        let Some(resources) = &self.host_resources else {
+            return [None; harmonium_core::timeline::TrackId::ALL.len()];
+        };
+        resources.odin.patches(&self.generator.tuning.profile.odin, self.controls.emotions())
+    }
+
+    /// Journalise un avertissement pour chaque ressource désignée par le
+    /// profil et absente de l'hôte : au chargement d'un profil, puis
+    /// seulement quand l'absence change (pas de répétition à chaque réglage).
+    fn check_host_resources(&mut self) {
+        let Some(resources) = &self.host_resources else { return };
+        let profile = &self.generator.tuning.profile;
+        let missing = profile.missing_resources(resources);
+        let same_profile = self.checked_profile == profile.meta.id;
+        for resource in missing.iter().filter(|m| !(same_profile && self.missing.contains(m))) {
+            log::warn(&format!("Profil « {} » : {resource}", profile.meta.id));
+        }
+        self.checked_profile.clone_from(&profile.meta.id);
+        self.missing = missing;
     }
 
     /// Profil actif.

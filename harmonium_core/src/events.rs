@@ -44,10 +44,11 @@ pub enum AudioEvent {
     UpdateMusicalParams {
         params: PlaybackParams,
     },
-    /// Émotions courantes `[arousal, valence, density, tension]` (`0..1`) :
-    /// le morphing Odin les applique sans allocation ; sans `odin`, ignoré.
-    EmotionUpdate {
-        emotions: [f32; 4],
+    /// Presets Odin morphés par piste, préparés sur le thread principal
+    /// (`OdinBank::patches`) : le callback les copie, sans calcul ni
+    /// allocation. Sans `odin`, ignoré.
+    SetOdin {
+        patches: crate::odin::OdinPatches,
     },
     /// Cadence de l'horloge MIDI : ticks (480 par noire, 120 par pas) par frame
     /// audio, valable jusqu'au prochain changement. Émise à chaque pulse dont

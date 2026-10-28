@@ -299,6 +299,9 @@ fn report(command: &EngineCommand, host: &LiveHost) {
                 "Style réglé à {} (BPM {:.0}, swing {:.2}, signature {}/{})",
                 params.profile_id, params.bpm, params.swing_ratio, ts.numerator, ts.denominator
             ));
+            for missing in host.missing_resources() {
+                println!("{} {missing}", "[WARN]".yellow().bold());
+            }
         }
         EngineCommand::SetSwing(ratio) => {
             if !(SWING_MIN..=SWING_MAX).contains(ratio) {

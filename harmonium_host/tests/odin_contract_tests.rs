@@ -20,6 +20,7 @@ use harmonium_audio::odin_source::OdinPresetSource;
 use harmonium_core::{
     StyleProfile,
     events::{AudioRecordFormat, RecordFormat},
+    odin::{OdinMorphParam, OdinMorphRule},
     report::MeasureSnapshot,
     timeline::TrackId,
 };
@@ -97,22 +98,52 @@ impl Take {
     }
 }
 
+/// Profil dont la piste `Chords` garde son preset avec ces règles de morphing.
+fn with_chords_morph(mut profile: StyleProfile, morph: Vec<OdinMorphRule>) -> StyleProfile {
+    profile.odin.get_mut(&TrackId::Chords).expect("la fixture déclare Chords").morph = morph;
+    profile
+}
+
 /// Rend `bars` mesures de la seule piste `Chords` d'un profil, graine 1.
-/// `audio_emotions` pilote le morphing sans toucher aux notes générées ;
+/// `emotions` est l'unique entrée du morphing (préparé par le compositeur) ;
 /// `silence_after` coupe la piste (muet) après ce nombre de mesures.
 fn render(
-    profile: &str,
+    profile: StyleProfile,
     presets: &[(&str, Vec<u8>)],
-    audio_emotions: [f32; 4],
+    emotions: [f32; 4],
     bars: usize,
     silence_after: Option<usize>,
+) -> Take {
+    render_inner(profile, presets, emotions, bars, silence_after, None)
+}
+
+/// Comme [`render`], avec un changement d'émotions à la mesure 3 : le
+/// compositeur prépare de nouveaux presets morphés, envoyés au callback.
+fn render_with_emotion_change(
+    profile: StyleProfile,
+    presets: &[(&str, Vec<u8>)],
+    bars: usize,
+    after: [f32; 4],
+) -> Take {
+    render_inner(profile, presets, BASE_EMOTIONS, bars, None, Some((3, after)))
+}
+
+fn render_inner(
+    profile: StyleProfile,
+    presets: &[(&str, Vec<u8>)],
+    emotions: [f32; 4],
+    bars: usize,
+    silence_after: Option<usize>,
+    mut change: Option<(usize, [f32; 4])>,
 ) -> Take {
     let sources: Vec<OdinPresetSource> =
         presets.iter().map(|(name, bytes)| OdinPresetSource { name, bytes }).collect();
     let (mut composer, mut playback, mut cmd_tx, _reports, _clock, finished) =
         create_offline_engine(None, None, &sources, SAMPLE_RATE).unwrap();
     composer.set_seed(1);
-    composer.set_profile(load(profile)).unwrap();
+    composer.set_profile(profile).unwrap();
+    composer.use_emotion_mode();
+    composer.set_emotions(emotions[0], emotions[1], emotions[2], emotions[3]);
     composer.invalidate_future();
     if let Some((bar, _)) = composer.take_pending_drop() {
         cmd_tx.push(PlaybackCommand::DropFrom { bar }).unwrap();
@@ -120,7 +151,7 @@ fn render(
     cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
         .unwrap();
-    cmd_tx.push(PlaybackCommand::SetEmotions(audio_emotions)).unwrap();
+    cmd_tx.push(PlaybackCommand::SetOdin(composer.odin_patches())).unwrap();
     for track in TrackId::ALL {
         cmd_tx
             .push(PlaybackCommand::SetChannelMute {
@@ -140,6 +171,12 @@ fn render(
     let mut tail_frames = 0usize;
     for _ in 0..200_000 {
         composer.generate_ahead();
+        if change.is_some_and(|(bar, _)| composer.playhead_bar() >= bar)
+            && let Some((_, after)) = change.take()
+        {
+            composer.set_emotions(after[0], after[1], after[2], after[3]);
+            cmd_tx.push(PlaybackCommand::SetOdin(composer.odin_patches())).unwrap();
+        }
         if !muted && silence_after.is_some_and(|after| composer.playhead_bar() > after) {
             let mut mask = [false; 16];
             mask[usize::from(TrackId::Chords.channel())] = true;
@@ -181,35 +218,52 @@ fn nappe() -> Vec<(&'static str, Vec<u8>)> {
 
 #[test]
 fn a_track_with_a_provided_preset_plays_odin_otherwise_its_soundfont_program() {
-    let with_preset = render("nappe_pad", &nappe(), BASE_EMOTIONS, 6, None);
+    let with_preset = render(load("nappe_pad"), &nappe(), BASE_EMOTIONS, 6, None);
     assert!(with_preset.peak() > 0.01, "la nappe Odin produit du son : {}", with_preset.peak());
 
     // Aucun preset fourni (ou nom absent) : la piste reste sur son programme
     // SoundFont ; sans banque chargée, c'est le silence, jamais de son Odin.
-    let none = render("nappe_pad", &[], BASE_EMOTIONS, 6, None);
+    let none = render(load("nappe_pad"), &[], BASE_EMOTIONS, 6, None);
     assert_eq!(none.peak(), 0.0);
-    let other = render("nappe_pad", &[("autre", test_preset(900.0))], BASE_EMOTIONS, 6, None);
+    let other = render(load("nappe_pad"), &[("autre", test_preset(900.0))], BASE_EMOTIONS, 6, None);
     assert_eq!(other.peak(), 0.0);
 }
 
 #[test]
 fn a_second_style_uses_the_same_mechanism_in_three_four() {
     // Les accords de la valse entrent à la seconde passe de la partie.
-    let take = render("valse_nappe", &nappe(), BASE_EMOTIONS, 24, None);
+    let take = render(load("valse_nappe"), &nappe(), [0.5; 4], 24, None);
     assert!(take.snapshots.iter().all(|s| s.time_sig_numerator == 3));
     assert!(take.peak() > 0.01, "la valse joue sa nappe Odin : {}", take.peak());
 }
 
 #[test]
 fn morphing_is_deterministic_and_each_emotion_changes_the_sound() {
-    let base = render("nappe_pad", &nappe(), BASE_EMOTIONS, 4, None);
-    let again = render("nappe_pad", &nappe(), BASE_EMOTIONS, 4, None);
+    // Même profil, mêmes notes ; seule la règle de morphing change. Les
+    // émotions du compositeur sont l'unique entrée du morphing, préparé sur
+    // le thread principal : le callback ne fait que copier.
+    let fixed = with_chords_morph(load("nappe_pad"), Vec::new());
+    let base = render(fixed.clone(), &nappe(), BASE_EMOTIONS, 4, None);
+    let again = render(fixed, &nappe(), BASE_EMOTIONS, 4, None);
     assert_eq!(base.audio, again.audio, "mêmes entrées, même son");
 
     for (axis, name) in ["arousal", "valence", "density", "tension"].iter().enumerate() {
-        let mut moved = BASE_EMOTIONS;
-        moved[axis] = if moved[axis] < 0.6 { 1.0 } else { 0.0 };
-        let take = render("nappe_pad", &nappe(), moved, 4, None);
+        let mut rule = OdinMorphRule {
+            param: OdinMorphParam::FilterFrequency,
+            arousal: 0.0,
+            valence: 0.0,
+            density: 0.0,
+            tension: 0.0,
+        };
+        *[&mut rule.arousal, &mut rule.valence, &mut rule.density, &mut rule.tension][axis] =
+            -600.0;
+        let take = render(
+            with_chords_morph(load("nappe_pad"), vec![rule]),
+            &nappe(),
+            BASE_EMOTIONS,
+            4,
+            None,
+        );
         assert_eq!(
             serde_json::to_string(&take.snapshots).unwrap(),
             serde_json::to_string(&base.snapshots).unwrap(),
@@ -220,8 +274,16 @@ fn morphing_is_deterministic_and_each_emotion_changes_the_sound() {
 }
 
 #[test]
+fn an_emotion_change_in_flight_remorphs_the_playing_track() {
+    let steady = render(load("nappe_pad"), &nappe(), BASE_EMOTIONS, 6, None);
+    let moved = render_with_emotion_change(load("nappe_pad"), &nappe(), 6, [0.9, 0.9, 0.9, 0.9]);
+    assert!(moved.peak() > 0.01);
+    assert_ne!(moved.audio, steady.audio, "le changement d'émotion change le son");
+}
+
+#[test]
 fn tied_chords_are_never_reattacked_and_no_pitch_is_attacked_twice() {
-    let take = render("nappe_pad", &nappe(), BASE_EMOTIONS, 8, None);
+    let take = render(load("nappe_pad"), &nappe(), BASE_EMOTIONS, 8, None);
     let events = take.chord_events();
     let mut sounding = std::collections::BTreeSet::new();
     let mut attacks = 0;
@@ -245,7 +307,7 @@ fn tied_chords_are_never_reattacked_and_no_pitch_is_attacked_twice() {
 
 #[test]
 fn muting_a_track_leaves_no_orphan_note_in_odin() {
-    let take = render("nappe_pad", &nappe(), BASE_EMOTIONS, 8, Some(3));
+    let take = render(load("nappe_pad"), &nappe(), BASE_EMOTIONS, 8, Some(3));
     assert!(take.peak() > 0.01);
     let tail = &take.audio[take.audio.len() - SAMPLE_RATE as usize / 2 * 2..];
     let tail_peak = tail.iter().fold(0.0f32, |peak, s| peak.max(s.abs()));

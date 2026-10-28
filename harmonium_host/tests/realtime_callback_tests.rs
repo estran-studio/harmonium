@@ -34,7 +34,7 @@ const TAKES: [(usize, usize); 2] = [(2, 400), (450, 890)];
 fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(), String> {
     let font = include_bytes!("../../assets/test.sf2");
     let finished = Arc::new(Mutex::new(Vec::new()));
-    let synth = SynthBackend::new(SAMPLE_RATE, Some(font), None, &[], &[]);
+    let synth = SynthBackend::new(SAMPLE_RATE, Some(font), None, &[]);
     let recorder = RecorderBackend::new(Box::new(synth), finished.clone(), SAMPLE_RATE as u32);
     let stats = recorder.stats();
 

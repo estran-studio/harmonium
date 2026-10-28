@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod odin_bank;
 pub mod odin_source;
 #[cfg(feature = "odin")]
 pub mod odin_voices;

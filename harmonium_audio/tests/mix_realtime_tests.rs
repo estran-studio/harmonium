@@ -12,8 +12,8 @@ static ALLOCATOR: rt_check::RTCheckAllocator = rt_check::RTCheckAllocator;
 #[test]
 fn prepared_mix_and_stereo_biquads_are_allocation_free_and_master_is_linear() {
     let font = include_bytes!("../../assets/test.sf2");
-    let mut a = SynthBackend::new(44100.0, Some(font), None, &[], &[]);
-    let mut b = SynthBackend::new(44100.0, Some(font), None, &[], &[]);
+    let mut a = SynthBackend::new(44100.0, Some(font), None, &[]);
+    let mut b = SynthBackend::new(44100.0, Some(font), None, &[]);
     let mut profile = ProfileMix::default();
     profile.eq.highpass_hz = 80.0;
     profile.eq.presence_hz = 2500.0;
