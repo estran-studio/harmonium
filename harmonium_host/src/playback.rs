@@ -135,6 +135,9 @@ pub struct LiveMidiEvent {
 }
 
 /// Commands sent from the main thread to the PlaybackEngine (audio thread).
+// Variantes volumineuses gardées en ligne : un `Box` serait libéré sur le thread audio
+// (allocation interdite dans le callback, principe III).
+#[allow(clippy::large_enum_variant)]
 pub enum PlaybackCommand {
     SetChannelGain {
         channel: u8,

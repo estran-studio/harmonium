@@ -3,6 +3,9 @@ use crate::params::PlaybackParams;
 /// Ticks MIDI par pas de grille (480 par noire, 4 pas par noire).
 pub const MIDI_TICKS_PER_STEP: u32 = 120;
 
+// `UpdateMusicalParams` porte un `PlaybackParams` `Copy` volontairement en ligne : un `Box`
+// serait libéré sur le thread audio (allocation interdite dans le callback, principe III).
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum AudioEvent {
     NoteOn {
