@@ -1,25 +1,23 @@
-//! Analyse des presets Odin fournis par l'hôte, sur le thread principal.
-//!
-//! L'hôte passe des octets `.odin` ; le thread principal en tire les socles
-//! ([`OdinBank`]) dont il prépare les presets morphés (`OdinBank::patches`),
-//! hors du callback. Sans l'option `odin` (GPLv3 via `odin2-core`), rien
-//! n'est analysé : la banque est vide et les profils qui déclarent un preset
-//! reçoivent l'avertissement de chargement (`StyleProfile::missing_resources`).
-//!
-//! `read_preset` est l'unique lecture d'un `PresetConfig` ; son écriture
-//! (`odin_voices::preset_config`) est l'unique côté audio. Un paramètre
-//! ajouté à `odin2-core` passe par ces deux fonctions et par
-//! `harmonium_core::odin::OdinVoiceParams`.
+//! Presets complets et socles de morphing, préparés sur le thread principal.
+//! Le callback ne charge jamais de preset : il reçoit une instance prête et
+//! retourne l'ancienne instance à son propriétaire par SPSC.
 
 use harmonium_core::odin::OdinBank;
 
 use crate::odin_source::OdinPresetSource;
 
-/// Analyse les presets fournis (hors callback). Les octets illisibles ou les
-/// noms invalides sont ignorés avec un avertissement : le profil qui les
-/// désigne le signale au chargement.
+/// Banque publique sans GPL et configurations complètes réservées à l'hôte.
+#[derive(Default)]
+pub struct LoadedOdinBank {
+    pub bank: OdinBank,
+    #[cfg(feature = "odin")]
+    pub configs: Vec<odin2_core::EngineConfig>,
+}
+
+/// Analyse le ValueTree et valide sa matrice hors callback. Un preset refusé
+/// n'entre dans aucune des deux banques ; leurs rangs restent identiques.
 #[must_use]
-pub fn load_bank(presets: &[OdinPresetSource]) -> OdinBank {
+pub fn load_bank(presets: &[OdinPresetSource]) -> LoadedOdinBank {
     #[cfg(feature = "odin")]
     {
         parse::load(presets)
@@ -27,65 +25,138 @@ pub fn load_bank(presets: &[OdinPresetSource]) -> OdinBank {
     #[cfg(not(feature = "odin"))]
     {
         let _ = presets;
-        OdinBank::default()
+        LoadedOdinBank::default()
     }
 }
 
 #[cfg(feature = "odin")]
 mod parse {
     use harmonium_core::odin::{
-        ODIN_PRESET_NAME_CAP, OdinBank, OdinDiscreteParams, OdinPresetBase, OdinVoiceParams,
+        ODIN_PRESET_NAME_CAP, OdinBank, OdinMorphParam, OdinPresetBase, OdinVoiceParams,
     };
-    use odin2_core::{engine::PresetConfig, preset::OdinPreset};
+    use odin2_core::{EngineConfig, ModMatrix, ParameterId, preset::OdinPreset};
 
+    use super::LoadedOdinBank;
     use crate::odin_source::OdinPresetSource;
 
-    pub(super) fn load(presets: &[OdinPresetSource]) -> OdinBank {
-        let mut bank = Vec::new();
+    pub(super) fn load(presets: &[OdinPresetSource]) -> LoadedOdinBank {
+        let mut bases = Vec::with_capacity(presets.len());
+        let mut configs = Vec::with_capacity(presets.len());
         for source in presets {
             if source.name.is_empty() || source.name.len() > ODIN_PRESET_NAME_CAP {
+                harmonium_core::log::warn("Preset Odin ignoré : nom vide ou trop long");
+                continue;
+            }
+            let config = match OdinPreset::from_bytes(source.bytes) {
+                Ok(preset) => EngineConfig::from_preset(&preset),
+                Err(error) => {
+                    harmonium_core::log::warn(&format!(
+                        "Preset Odin `{}` illisible : {error}",
+                        source.name
+                    ));
+                    continue;
+                }
+            };
+            if ParameterId::all().any(|id| !id.get(&config).is_finite()) {
                 harmonium_core::log::warn(&format!(
-                    "Preset Odin ignoré : nom vide ou trop long ({ODIN_PRESET_NAME_CAP} octets max)"
+                    "Preset Odin `{}` : paramètre non fini",
+                    source.name
                 ));
                 continue;
             }
-            match OdinPreset::from_bytes(source.bytes) {
-                Ok(preset) => {
-                    let (base, discrete) = read_preset(&PresetConfig::from_preset(&preset));
-                    bank.push(OdinPresetBase { name: source.name.to_string(), base, discrete });
-                    harmonium_core::log::info(&format!("Preset Odin chargé : {}", source.name));
-                }
-                Err(error) => {
-                    harmonium_core::log::warn(&format!(
-                        "Preset Odin `{}` illisible, piste en SoundFont : {error}",
-                        source.name
-                    ));
-                }
+            if let Err(error) = ModMatrix::new().configure(&config.mod_matrix) {
+                harmonium_core::log::warn(&format!(
+                    "Preset Odin `{}` : matrice invalide : {error}",
+                    source.name
+                ));
+                continue;
             }
+            let values = OdinMorphParam::ALL.map(|param| {
+                let id = ParameterId::from_name(param.name())
+                    .expect("identifiant du catalogue Odin épinglé");
+                id.get(&config)
+            });
+            bases.push(OdinPresetBase {
+                name: source.name.to_owned(),
+                base: OdinVoiceParams { values },
+            });
+            configs.push(config);
+            harmonium_core::log::info(&format!("Preset Odin complet chargé : {}", source.name));
         }
-        OdinBank::new(bank)
+        LoadedOdinBank { bank: OdinBank::new(bases), configs }
+    }
+}
+
+/// Transaction propriétaire : paramètres Copy et instances de remplacement.
+/// Après application, `engines` contient les anciennes instances, détruites
+/// uniquement lors du retour de cette boîte sur le thread principal.
+#[cfg(feature = "odin")]
+pub struct OdinUpdate {
+    pub patches: harmonium_core::odin::OdinPatches,
+    pub engines:
+        [Option<Box<odin2_core::OdinEngine>>; harmonium_core::timeline::TrackId::ALL.len()],
+}
+
+/// État d'expédition, exclusivement sur le thread principal. Le rang envoyé
+/// n'avance qu'après insertion réussie de la transaction dans la file.
+#[cfg(feature = "odin")]
+pub struct OdinDispatch {
+    configs: Vec<odin2_core::EngineConfig>,
+    sent: [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()],
+    returned: rtrb::Consumer<Box<OdinUpdate>>,
+    sample_rate: f32,
+}
+
+#[cfg(feature = "odin")]
+impl OdinDispatch {
+    #[must_use]
+    pub fn new(
+        configs: Vec<odin2_core::EngineConfig>,
+        returned: rtrb::Consumer<Box<OdinUpdate>>,
+        sample_rate: f32,
+    ) -> Self {
+        Self {
+            configs,
+            sent: [None; harmonium_core::timeline::TrackId::ALL.len()],
+            returned,
+            sample_rate,
+        }
     }
 
-    /// Unique lecture d'un `PresetConfig` : socle continu et champs discrets.
-    fn read_preset(config: &PresetConfig) -> (OdinVoiceParams, OdinDiscreteParams) {
-        (
-            OdinVoiceParams {
-                osc_volumes: config.osc_volumes,
-                osc_detune: config.osc_detune,
-                filter_frequency: config.filter_frequency,
-                filter_resonance: config.filter_resonance,
-                filter_env_amount: config.filter_env_amount,
-                amp_attack: config.amp_attack,
-                amp_decay: config.amp_decay,
-                amp_sustain: config.amp_sustain,
-                amp_release: config.amp_release,
-                filter_attack: config.filter_attack,
-                filter_decay: config.filter_decay,
-                filter_sustain: config.filter_sustain,
-                filter_release: config.filter_release,
-                master_volume: config.master_volume,
-            },
-            OdinDiscreteParams { octaves: config.osc_octaves, semitones: config.osc_semitones },
-        )
+    /// Libération des commandes et instances retirées, hors callback.
+    pub fn reclaim(&mut self) {
+        while let Ok(update) = self.returned.pop() {
+            drop(update);
+        }
+    }
+
+    /// Prépare une transaction sans modifier l'état acquitté de l'expéditeur.
+    pub fn prepare(
+        &mut self,
+        patches: harmonium_core::odin::OdinPatches,
+    ) -> Result<Box<OdinUpdate>, &'static str> {
+        if patches
+            .iter()
+            .flatten()
+            .any(|patch| patch.params.values.iter().any(|value| !value.is_finite()))
+        {
+            return Err("paramètre de morphing Odin non fini");
+        }
+        let engines = std::array::from_fn(|index| {
+            let patch = patches[index]?;
+            if self.sent[index] == Some(patch.preset) {
+                return None;
+            }
+            let mut engine = Box::new(odin2_core::OdinEngine::new(self.sample_rate));
+            engine
+                .load_config(self.configs[patch.preset])
+                .expect("matrice validée au chargement de la banque");
+            Some(engine)
+        });
+        Ok(Box::new(OdinUpdate { patches, engines }))
+    }
+
+    pub fn sent(&mut self, patches: &harmonium_core::odin::OdinPatches) {
+        self.sent = patches.map(|patch| patch.map(|patch| patch.preset));
     }
 }

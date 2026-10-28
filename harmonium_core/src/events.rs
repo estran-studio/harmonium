@@ -44,12 +44,6 @@ pub enum AudioEvent {
     UpdateMusicalParams {
         params: PlaybackParams,
     },
-    /// Presets Odin morphés par piste, préparés sur le thread principal
-    /// (`OdinBank::patches`) : le callback les copie, sans calcul ni
-    /// allocation. Sans `odin`, ignoré.
-    SetOdin {
-        patches: crate::odin::OdinPatches,
-    },
     /// Cadence de l'horloge MIDI : ticks (480 par noire, 120 par pas) par frame
     /// audio, valable jusqu'au prochain changement. Émise à chaque pulse dont
     /// la cadence change ; l'enregistreur en déduit les ticks cumulés de chaque

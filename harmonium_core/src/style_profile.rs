@@ -1330,11 +1330,11 @@ impl StyleProfile {
             check(
                 spec.morph.len() <= crate::odin::ODIN_MAX_RULES,
                 &format!("odin.{track_name}.morph"),
-                "au plus 8 règles par piste",
+                &format!("au plus {} règles par piste", crate::odin::ODIN_MAX_RULES),
             )?;
-            let mut seen = [false; 16];
+            let mut seen = [false; crate::odin::OdinMorphParam::COUNT];
             for rule in &spec.morph {
-                let slot = rule.param as usize;
+                let slot = rule.param.index();
                 check(
                     !seen[slot],
                     &format!("odin.{track_name}.morph"),

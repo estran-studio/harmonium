@@ -40,13 +40,12 @@ micro-timing ±0,02 pas en `[performance.tracks.Heel/Toe]`. Instruments :
 nappe chaude 89 (vélocité ×0,8, tessiture médium, jamais sous MIDI 48),
 scie grave 81 sur la basse seule (deux octaves plus bas, seule voix grave),
 kit 128/0 (touches 36, 38, 42).
-Mix (G7d, mesuré) : le gain master (9 dB, SoundFont seulement) ne touche
-pas les voix Odin, dont le niveau se règle au niveau de piste et au master
-du preset — basse et nappe à 0 dB, le master du preset basse se morphe par
-arousal/density (`[odin.Bass]`). Batterie à −5/−6 dB avec peu de salle
-(envois 0,06). Cible tenue : basse ≥ batterie + 3 dB RMS sur A1 dans les
-trois rendus (banque du jeu, GeneralUser, Odin usine). Seuls ces presets
-sont employés.
+Le gain master (9 dB, SoundFont seulement) ne touche pas les voix Odin.
+Basse et nappe restent à 0 dB au niveau de piste ; les presets d'usine
+`Sausage Bassener` (Bass) et `Darken Nature [RM]` (Chords) conservent leur
+master, sans boost de compensation de l'ancien moteur. Le morphing pilote
+leurs filtres et enveloppes en unités physiques. Batterie à −5/−6 dB avec
+peu de salle (envois 0,06) ; les autres réglages de mix ne changent pas.
 
 ## Pilotage par les émotions
 

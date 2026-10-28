@@ -88,6 +88,8 @@ pub struct MusicComposer {
 
     // Ressources de l'hôte audio (banques, presets Odin) : `None` hors hôte.
     host_resources: Option<HostResources>,
+    #[cfg(feature = "odin")]
+    odin_dispatch: Option<harmonium_audio::odin_bank::OdinDispatch>,
     // Ressources désignées par le profil actif et absentes de l'hôte.
     missing: Vec<MissingResource>,
     // Identifiant du profil dont `missing` a été calculé.
@@ -201,6 +203,8 @@ impl MusicComposer {
             score_recording: None,
             transport_position,
             host_resources: None,
+            #[cfg(feature = "odin")]
+            odin_dispatch: None,
             missing: Vec::new(),
             checked_profile: String::new(),
         }
@@ -324,6 +328,10 @@ impl MusicComposer {
     /// rendues sont à republier. L'acquittement de la mesure en cours reste
     /// jusqu'à l'avancée du transport, même si son dernier pas a déjà rendu sa Box.
     fn drain_returned(&mut self) {
+        #[cfg(feature = "odin")]
+        if let Some(dispatch) = &mut self.odin_dispatch {
+            dispatch.reclaim();
+        }
         let playing_bar = unpack(self.transport_position.load(Ordering::Relaxed)).0;
         self.published.retain(|&bar, _| bar >= playing_bar);
         while let Ok(returned) = self.return_rx.pop() {
@@ -766,6 +774,46 @@ impl MusicComposer {
             return [None; harmonium_core::timeline::TrackId::ALL.len()];
         };
         resources.odin.patches(&self.generator.tuning.profile.odin, self.controls.emotions())
+    }
+
+    #[cfg(feature = "odin")]
+    pub(crate) fn set_odin_dispatch(&mut self, dispatch: harmonium_audio::odin_bank::OdinDispatch) {
+        self.odin_dispatch = Some(dispatch);
+    }
+
+    /// Prépare puis envoie une transaction indivisible. Une file pleine rend
+    /// l'erreur au demandeur et ne modifie pas les rangs déjà envoyés.
+    pub fn send_odin(
+        &mut self,
+        commands: &mut rtrb::Producer<crate::playback::PlaybackCommand>,
+    ) -> Result<(), String> {
+        #[cfg(feature = "odin")]
+        if let Some(dispatch) = &mut self.odin_dispatch {
+            dispatch.reclaim();
+        }
+        if commands.is_full() {
+            return Err("file de commandes pleine pendant l'installation Odin".to_owned());
+        }
+        let patches = self.odin_patches();
+        #[cfg(not(feature = "odin"))]
+        let command = crate::playback::PlaybackCommand::SetOdin(patches);
+        #[cfg(feature = "odin")]
+        let command = {
+            let Some(dispatch) = &mut self.odin_dispatch else {
+                return Err("transport Odin non initialisé".to_owned());
+            };
+            crate::playback::PlaybackCommand::SetOdin(
+                dispatch.prepare(patches).map_err(str::to_owned)?,
+            )
+        };
+        commands
+            .push(command)
+            .map_err(|_| "file de commandes pleine pendant l'installation Odin".to_owned())?;
+        #[cfg(feature = "odin")]
+        if let Some(dispatch) = &mut self.odin_dispatch {
+            dispatch.sent(&patches);
+        }
+        Ok(())
     }
 
     /// Journalise un avertissement pour chaque ressource désignée par le

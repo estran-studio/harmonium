@@ -155,7 +155,7 @@ fn validation_error_in_the_root_file_names_profile_toml_and_line() -> TestResult
 fn odin_validation_error_names_profile_toml_and_line() -> TestResult {
     let copy = Copy::of("nt_desert", "odin_validation")?;
     let line =
-        copy.replace("profile.toml", r#"preset = "basse_saturee""#, r#"preset = "dir/basse""#)?;
+        copy.replace("profile.toml", r#"preset = "Sausage Bassener""#, r#"preset = "dir/basse""#)?;
     let error = StyleProfile::load(&copy.dir).err().ok_or("preset avec chemin accepté")?;
     assert_eq!(error.field, "odin.Bass.preset", "{error}");
     assert_eq!(error.file.as_deref(), Some("profile.toml"), "{error}");

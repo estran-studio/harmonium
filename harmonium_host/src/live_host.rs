@@ -461,7 +461,7 @@ impl LiveHost {
         self.send(PlaybackCommand::UpdateMusicalParams(
             self.composer.musical_params().playback_params(),
         ))?;
-        self.send(PlaybackCommand::SetOdin(self.composer.odin_patches()))
+        self.composer.send_odin(&mut self.playback_cmd_tx)
     }
 }
 

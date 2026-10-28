@@ -72,10 +72,9 @@ pub(crate) fn build_engine(
     let synth = SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing);
     // Ce que l'hôte a réellement chargé : le compositeur en tire les presets
     // Odin morphés et prévient quand un profil désigne autre chose.
-    let resources = HostResources {
-        percussion_banks: synth.percussion_banks().to_vec(),
-        odin: harmonium_audio::odin_bank::load_bank(odin_presets),
-    };
+    let odin = harmonium_audio::odin_bank::load_bank(odin_presets);
+    let resources =
+        HostResources { percussion_banks: synth.percussion_banks().to_vec(), odin: odin.bank };
     let inner_backend: Box<dyn AudioRenderer> = Box::new(synth);
 
     let finished_recordings = Arc::new(Mutex::new(Vec::new()));
@@ -90,7 +89,8 @@ pub(crate) fn build_engine(
         MusicComposer::new(sample_rate, measure_tx, return_rx, transport_position.clone());
     composer.set_host_resources(resources);
 
-    let playback = PlaybackEngine::new(
+    #[allow(unused_mut)]
+    let mut playback = PlaybackEngine::new(
         sample_rate,
         recorder_backend,
         measure_rx,
@@ -100,6 +100,16 @@ pub(crate) fn build_engine(
         transport_position.clone(),
         clock_tx,
     );
+    #[cfg(feature = "odin")]
+    {
+        let (returned_tx, returned_rx) = rtrb::RingBuffer::new(256);
+        composer.set_odin_dispatch(harmonium_audio::odin_bank::OdinDispatch::new(
+            odin.configs,
+            returned_rx,
+            sample_rate as f32,
+        ));
+        playback.set_odin_return(returned_tx);
+    }
 
     (
         EngineControls {
