@@ -31,14 +31,22 @@ aucune entrée d'arrangement (mécanisme G4) ; la banque de cellules reste pour
 le plan interne.
 
 Mètre 12/8, 24 pas par mesure, 210 noires/min (= 140 noires pointées/min).
-Batterie en groove (G7c) : grosse caisse aux pas 0/8/20, caisse claire aux pas
-2/10/14, charleston aux pulsations (pas 0/6/12/18) ; temps fort plein, autres
-temps ×0,8 dans les motifs, accent du temps fort et micro-timing ±0,02 pas en
-`[performance.tracks.Heel/Toe]`. Instruments : nappe chaude 89 (vélocité ×0,8,
-tessiture médium, jamais sous MIDI 48), scie grave 81 sur la basse seule
-(deux octaves plus bas, seule voix grave), kit 128/0 (touches 36, 38, 42).
-Mix : batterie à −9/−10 dB (−4 dB vs G7) avec un peu plus de salle (envois
-0,15). Seuls ces presets sont employés.
+Batterie en groove (G7c/G7d) : grosse caisse aux pas 0/8/20, caisse claire
+aux pas 2/10/14 ; le charleston (seul son de bruit du kit employé) est
+réduit aux accents de temps — pas 0 et 12 à la densité neutre, pulsations
+6/18 seulement à la densité 2 — et sonne sous la caisse claire ; temps fort
+plein, autres temps ×0,8 dans les motifs, accent du temps fort et
+micro-timing ±0,02 pas en `[performance.tracks.Heel/Toe]`. Instruments :
+nappe chaude 89 (vélocité ×0,8, tessiture médium, jamais sous MIDI 48),
+scie grave 81 sur la basse seule (deux octaves plus bas, seule voix grave),
+kit 128/0 (touches 36, 38, 42).
+Mix (G7d, mesuré) : le gain master (9 dB, SoundFont seulement) ne touche
+pas les voix Odin, dont le niveau se règle au niveau de piste et au master
+du preset — basse et nappe à 0 dB, le master du preset basse se morphe par
+arousal/density (`[odin.Bass]`). Batterie à −5/−6 dB avec peu de salle
+(envois 0,06). Cible tenue : basse ≥ batterie + 3 dB RMS sur A1 dans les
+trois rendus (banque du jeu, GeneralUser, Odin usine). Seuls ces presets
+sont employés.
 
 ## Pilotage par les émotions
 

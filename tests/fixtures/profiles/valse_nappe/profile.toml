@@ -255,12 +255,15 @@ bass_program = 32
 percussion_bank = 128
 percussion_program = 0
 
-# Même nappe Odin sur une valse 3/4 (principe VIII) : preset fourni par l'hôte.
+# Même nappe Odin sur une valse 3/4 (principe VIII) : preset fourni par l'hôte ;
+# le master du preset se morphe par les émotions (G7d, même règle que la
+# basse saturée de nt_desert).
 [odin.Chords]
 preset = "nappe"
 morph = [
   { param = "filter_frequency", arousal = 2000.0, valence = 1000.0 },
   { param = "filter_resonance", tension = 0.5 },
+  { param = "master_volume", arousal = 0.1, density = 0.1 },
 ]
 
 [mix]
