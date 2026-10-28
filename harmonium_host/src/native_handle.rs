@@ -390,9 +390,9 @@ impl NativeHandle {
             c.set_emotions(arousal, valence, density, tension);
         }
         // Morphing Odin : meilleur effort, la génération reste l'autorité.
-        let _ = self
-            .playback_cmd_tx
-            .push(crate::playback::PlaybackCommand::SetEmotions([arousal, valence, density, tension]));
+        let _ = self.playback_cmd_tx.push(crate::playback::PlaybackCommand::SetEmotions([
+            arousal, valence, density, tension,
+        ]));
     }
 
     pub fn set_time_signature(&self, numerator: usize, denominator: usize) {

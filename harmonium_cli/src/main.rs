@@ -152,11 +152,10 @@ fn main() -> Result<()> {
     #[cfg(feature = "odin")]
     let odin_owned = load_odin_presets(args.odin_presets.as_deref())?;
     #[cfg(feature = "odin")]
-    let odin_presets: Vec<harmonium_audio::odin_source::OdinPresetSource> =
-        odin_owned.iter().map(|(name, bytes)| harmonium_audio::odin_source::OdinPresetSource {
-            name,
-            bytes,
-        }).collect();
+    let odin_presets: Vec<harmonium_audio::odin_source::OdinPresetSource> = odin_owned
+        .iter()
+        .map(|(name, bytes)| harmonium_audio::odin_source::OdinPresetSource { name, bytes })
+        .collect();
     #[cfg(not(feature = "odin"))]
     let odin_presets: Vec<harmonium_audio::odin_source::OdinPresetSource> = Vec::new();
 
@@ -210,7 +209,7 @@ fn main() -> Result<()> {
             feet_sf2_bytes.as_deref(),
             &odin_presets,
         )
-            .map_err(|e| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!(e))?;
 
         // Wrap composer in Arc for sharing with the generation thread
         let composer = Arc::new(composer_mutex);

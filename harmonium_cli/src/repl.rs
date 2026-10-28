@@ -85,6 +85,7 @@ impl ReplState {
             let _ = self
                 .playback_cmd_tx
                 .push(PlaybackCommand::UpdateMusicalParams(c.musical_params().playback_params()));
+            let _ = self.playback_cmd_tx.push(PlaybackCommand::SetEmotions(c.emotions()));
         }
     }
 }

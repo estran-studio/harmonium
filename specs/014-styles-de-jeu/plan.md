@@ -97,7 +97,7 @@ les transcriptions de G0.
 | G7 | fusionnée (`40dcc0f`) : `profiles/nt_desert` en données (arche de Fläshyn, tempo et centre tonal reproduits au labo ; brillance −1,3 kHz) | `g7-nt-desert.md` |
 | G7b | fusionnée (`c26c2c3`) : `tracks_off` par partie ; pont de `nt_desert` sans batterie ni basse | `g7b-pistes-par-partie.md` |
 | G7c | fusionnée (`229dc34`) : réécriture de `nt_desert` après écoute (sans sifflement, une voix grave, nappe, groove de batterie) | — |
-| G6b | en cours (worktree `g6b-odin`) : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | — |
+| G6b | terminée dans le worktree `g6b-odin`, à fusionner : synthé Odin par piste derrière l'option `odin`, morphing par les 4 émotions, routage de percussion par profil | `g6b-odin.md` |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
 Après fusion de G1 à G5, G7 et G7b : 544 tests passent, 0 échec ; fmt propre ; clippy sur les bibliothèques

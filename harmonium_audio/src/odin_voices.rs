@@ -12,13 +12,11 @@
 //! l'ancienne voix (pas de note orpheline dans le moteur).
 
 use arrayvec::ArrayString;
-use harmonium_core::odin::{
-    OdinBaseParams, OdinTrackDesc, OdinVoiceParams, ODIN_PRESET_NAME_CAP,
+use harmonium_core::{
+    odin::{ODIN_PRESET_NAME_CAP, OdinBaseParams, OdinTrackDesc, OdinVoiceParams},
+    timeline::TrackId,
 };
-use harmonium_core::timeline::TrackId;
-use odin2_core::engine::PresetConfig;
-use odin2_core::preset::OdinPreset;
-use odin2_core::{OdinEngine, SynthEngine};
+use odin2_core::{OdinEngine, SynthEngine, engine::PresetConfig, preset::OdinPreset};
 
 use crate::odin_source::OdinPresetSource;
 
@@ -297,7 +295,7 @@ impl OdinMixer {
 
     /// Rend les voix actives et les ajoute à `output` (stéréo entrelacée),
     /// par tranches du tampon fixe.
-    pub fn render_add(&mut self, output: &mut [f32], master_gain: f32) {
+    pub fn render_add(&mut self, output: &mut [f32]) {
         if output.len() % 2 != 0 {
             return;
         }
@@ -305,7 +303,7 @@ impl OdinMixer {
             if !voice.is_active() || voice.gain < 0.001 {
                 continue;
             }
-            let gain = voice.gain * master_gain;
+            let gain = voice.gain;
             let (pan_left, pan_right) = (voice.pan_left, voice.pan_right);
             let mut offset = 0;
             while offset < output.len() {

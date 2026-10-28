@@ -147,7 +147,8 @@ impl OdinVoiceParams {
         for rule in rules {
             let delta = arousal.mul_add(
                 rule.arousal,
-                valence.mul_add(rule.valence, density.mul_add(rule.density, tension * rule.tension)),
+                valence
+                    .mul_add(rule.valence, density.mul_add(rule.density, tension * rule.tension)),
             );
             let slot: &mut f32 = match rule.param {
                 OdinMorphParam::FilterFrequency => &mut out.filter_frequency,

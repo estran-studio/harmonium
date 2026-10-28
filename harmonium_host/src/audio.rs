@@ -258,7 +258,8 @@ mod tests {
         let channels = 2;
 
         let (mut composer, mut playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate)
+                .expect("create_offline_engine failed");
 
         // Pre-generate bars
         composer.set_writehead_lookahead(16);
@@ -288,7 +289,8 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate)
+                .expect("create_offline_engine failed");
 
         // Generate 8 bars with default params
         composer.set_writehead_lookahead(16);
@@ -340,7 +342,8 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate)
+                .expect("create_offline_engine failed");
 
         // Set explicit BPM override
         composer.set_bpm(140.0);
@@ -366,7 +369,8 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate)
+                .expect("create_offline_engine failed");
 
         // Switch to emotion mode and set emotions to establish a mapped BPM
         composer.use_emotion_mode();
@@ -395,7 +399,8 @@ mod tests {
         let sample_rate = 44100.0;
 
         let (mut composer, _playback, mut _cmd_tx, mut _report_rx, _clock_reader, _recordings) =
-            create_offline_engine(None, None, &[], sample_rate).expect("create_offline_engine failed");
+            create_offline_engine(None, None, &[], sample_rate)
+                .expect("create_offline_engine failed");
         let nominal_bpm = composer.profile().meter.default_bpm;
 
         // In direct mode, set_bpm should work normally

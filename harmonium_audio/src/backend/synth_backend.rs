@@ -65,8 +65,7 @@ impl SynthBackend {
             }
         }
 
-        voice_manager
-            .apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
+        voice_manager.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
         #[cfg(feature = "odin")]
         let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32, odin_presets);
         #[cfg(not(feature = "odin"))]
@@ -194,7 +193,8 @@ impl AudioRenderer for SynthBackend {
 
     /// Allocation-free: oxisynth writes interleaved stereo straight into
     /// `output`. Non-stereo layouts are not rendered and yield silence.
-    /// Les voix Odin actives s'ajoutent après EQ et gain master.
+    /// Les voix Odin actives s'ajoutent après EQ et gain master (niveau propre
+    /// au preset et au mix de piste : le gain master est calibré pour les samples SF2).
     fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         if channels == 2 {
             self.voice_manager.render(output);
@@ -213,7 +213,7 @@ impl AudioRenderer for SynthBackend {
                 }
             }
             #[cfg(feature = "odin")]
-            self.odin.render_add(output, self.mix.master_gain);
+            self.odin.render_add(output);
         } else {
             output.fill(0.0);
         }

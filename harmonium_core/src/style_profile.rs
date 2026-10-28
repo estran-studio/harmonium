@@ -1253,7 +1253,11 @@ impl StyleProfile {
             let mut seen = [false; 16];
             for rule in &spec.morph {
                 let slot = rule.param as usize;
-                check(!seen[slot], &format!("odin.{track_name}.morph"), "paramètre unique par piste")?;
+                check(
+                    !seen[slot],
+                    &format!("odin.{track_name}.morph"),
+                    "paramètre unique par piste",
+                )?;
                 seen[slot] = true;
                 check(
                     [rule.arousal, rule.valence, rule.density, rule.tension]

@@ -127,11 +127,6 @@ impl GameControls {
     /// mode émotion : valeurs par défaut) pour le morphing Odin audio.
     #[must_use]
     pub const fn emotions(&self) -> [f32; 4] {
-        [
-            self.emotions.arousal,
-            self.emotions.valence,
-            self.emotions.density,
-            self.emotions.tension,
-        ]
+        [self.emotions.arousal, self.emotions.valence, self.emotions.density, self.emotions.tension]
     }
 }
