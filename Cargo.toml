@@ -8,6 +8,17 @@ members = [
     "harmonium_determinism",
     "harmonium_studio",
 ]
+# Le studio est toujours compilé avec `odin` (GPL) ; les options s'unifient entre les paquets
+# compilés ensemble. Un `cargo build` ou `cargo test` nu reste donc sans `odin`, comme 1837.
+# Le studio se construit et se teste par son nom (`-p harmonium_studio`, `make studio*`).
+default-members = [
+    "harmonium_core",
+    "harmonium_audio",
+    "harmonium_host",
+    "harmonium_cli",
+    "harmonium_lab",
+    "harmonium_determinism",
+]
 resolver = "2"
 
 [workspace.package]

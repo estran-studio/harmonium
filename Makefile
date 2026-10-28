@@ -71,8 +71,12 @@ studio/web/serve: studio/assets
 # TESTS
 # ════════════════════════════════════════════════════════════════════
 
+## Sans `odin` (configuration livrée par 1837), puis le studio (toujours avec `odin`, donc à part :
+## les options s'unifient entre paquets compilés ensemble), puis le contrat Odin du host.
 test:
-	cargo +stable test --workspace
+	cargo +stable test --workspace --exclude harmonium_studio
+	cargo +stable test -p harmonium_studio
+	cargo +stable test -p harmonium --features odin --test odin_contract_tests
 
 test/sheet:
 	cargo test -p harmonium_core --test music_generation_tests generate_all_music_tests -- --ignored --nocapture
@@ -103,7 +107,8 @@ fmt:
 	cargo +nightly fmt --all -- --check
 
 lint:
-	cargo +stable clippy --workspace --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
+	cargo +stable clippy --workspace --exclude harmonium_studio --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
+	cargo +stable clippy -p harmonium_studio --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
 
 audit:
 	cargo audit

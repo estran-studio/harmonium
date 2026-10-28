@@ -1,6 +1,8 @@
 //! Contrat du manifeste et de son générateur : ce que le chargeur lit est ce que le build écrit, et
 //! une source différente (autre format de banque, presets Odin) ne change que des fichiers.
 
+#![allow(clippy::unwrap_used)]
+
 use std::{collections::BTreeMap, fs};
 
 use harmonium_studio::{

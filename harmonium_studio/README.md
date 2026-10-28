@@ -4,6 +4,10 @@ Application egui du moteur Harmonium, native et web (même code). Phase 015, tâ
 
 Le studio ne lit que le contrat publié du moteur (`BeatInfo`, `MeasureSnapshot`) et ne le pilote que par `LiveHost::apply(EngineCommand)` et `LiveHost::pump()`. Il est toujours compilé avec `odin` : **un binaire ou un bundle du studio est GPL** (constitution 4.2.0).
 
+## Hors des membres par défaut
+
+Le studio est toujours compilé avec `odin`, et les options de Cargo s'unifient entre les paquets compilés ensemble : le mettre dans un `--workspace` ferait compiler le REPL, le labo et le banc avec Odin (donc GPL), et la configuration sans Odin de 1837 ne serait plus testée. Il est donc absent de `default-members` : `cargo build` et `cargo test` nus, et `--workspace --exclude harmonium_studio`, restent sans Odin ; le studio se construit et se teste par son nom (`-p harmonium_studio`, `make studio*`). `make test` et `make lint` enchaînent les deux configurations.
+
 ## Lancer
 
 ```sh

@@ -5,7 +5,7 @@ Branche `wquintal/s5-coquille-chargement` (depuis `c2c16b7` : S2, S3 et S4 fusio
 
 ## Ce qui a changé
 
-1. **Crate `harmonium_studio`** (membre du workspace ; eframe 0.34, `glow` ; toujours compilé avec `odin`, donc GPL).
+1. **Crate `harmonium_studio`** (membre du workspace, **hors `default-members`** ; eframe 0.34, `glow` ; toujours compilé avec `odin`, donc GPL).
    Une lib, deux binaires : `harmonium_studio` (l'application) et `studio_assets` (le générateur du manifeste). La feature
    `app` (par défaut) porte eframe et le moteur ; `--no-default-features` ne compile que le manifeste et le générateur, que
    `make studio/assets` lance sans compiler eframe.
@@ -40,9 +40,16 @@ Branche `wquintal/s5-coquille-chargement` (depuis `c2c16b7` : S2, S3 et S4 fusio
    (`None`). README du host mis à jour. Le studio web passe 2048 (recommandation S1) ; `?buffer=` / `--buffer` le changent
    (64 à 16 384).
 6. **Hors périmètre touché** : deux avertissements clippy de `harmonium_audio/src/odin_voices.rs` (`derive(Default)`,
-   `is_multiple_of`) corrigés : le studio active `odin` pour tout le workspace, ce qui les exposait à `cargo clippy
-   --workspace`.
-7. **Makefile** : `studio/assets`, `studio` (natif, release), `studio/web/build`, `studio/web/serve` (Trunk, port 8787).
+   `is_multiple_of`) corrigés : le code d'Odin n'était pas compilé par clippy sans `odin`, et le studio l'expose.
+7. **Odin et unification des options** (reprise de relecture). Les options de Cargo s'unifient entre les paquets compilés
+   ensemble : avec le studio dans `--workspace`, le REPL, le labo et le banc se compilaient avec Odin (GPL) et la
+   configuration sans Odin de 1837 n'était plus testée. Correctif : `default-members` de `Cargo.toml` = tous les membres
+   sauf `harmonium_studio` (un `cargo build` / `cargo test` nu reste sans `odin`) ; `make test` et `make lint` enchaînent la
+   configuration sans Odin (`--workspace --exclude harmonium_studio`), le studio (`-p harmonium_studio`) et, pour `test`, le
+   contrat Odin du host (`-p harmonium --features odin --test odin_contract_tests`). Les autres cibles ne mélangent pas le
+   studio avec d'autres paquets : `test/determinism` (`-p harmonium_determinism`), `wasm/check` (`-p` explicites),
+   `test/sheet`, `test/lab-export` (`-p harmonium_core`), `studio*` (`-p harmonium_studio`).
+8. **Makefile** : `studio/assets`, `studio` (natif, release), `studio/web/build`, `studio/web/serve` (Trunk, port 8787).
    Sources des banques : `STUDIO_BANKS` (défaut : `assets/` du checkout principal, résolu par `git rev-parse
    --git-common-dir`, donc valable depuis un worktree), `STUDIO_ODIN`. `.gitignore` : `harmonium_studio/resources/` et
    `dist/`. **CI** : seuls les jobs `quality` et `test` changent (paquets système d'eframe : `libxcb-render0-dev
@@ -83,15 +90,23 @@ Machine : macOS arm64, `rustc 1.101.0-nightly`, `+stable` 1.99.1, Chrome for Tes
 
 ### Commandes
 
-- `cargo test --workspace` : **84 suites, 617 réussis, 0 échec** ; goldens inchangés (`HARMONIUM_UPDATE_GOLDENS` jamais
-  posée, aucun fichier de golden modifié). Nouveaux : 24 tests dans `harmonium_studio/tests/` (12 `manifest_tests`,
-  12 `loading_tests`).
+- `make test`, trois étapes (goldens inchangés ; `HARMONIUM_UPDATE_GOLDENS` jamais posée, aucun fichier de golden modifié) :
+  1. `cargo +stable test --workspace --exclude harmonium_studio` : **78 suites, 588 réussis, 0 échec**, 2 ignorés (les
+     mêmes chiffres que S3 : la configuration sans Odin est rétablie) ;
+  2. `cargo +stable test -p harmonium_studio` : **6 suites, 24 réussis**, 0 échec (12 `manifest_tests`, 12 `loading_tests`) ;
+  3. `cargo +stable test -p harmonium --features odin --test odin_contract_tests` : **1 suite, 5 réussis**.
+  (Un premier total « 84 suites, 617 » venait d'un `--workspace` unifié avec Odin : 588 + 24 + 5.)
+- Preuve que le workspace hors studio reste sans Odin : `cargo tree --workspace --exclude harmonium_studio -e normal -i
+  odin2-core` → « package ID specification `odin2-core` did not match any packages » ; `cargo tree -e normal -i odin2-core`
+  (membres par défaut) idem ; `cargo tree --workspace -e normal -i odin2-core` le montre via `harmonium_studio`.
+- `make lint` : sort 0 aux deux étapes (workspace hors studio, puis `-p harmonium_studio --all-targets`) ; aucun avertissement
+  du studio (le `unwrap` des tests du manifeste est autorisé en tête de fichier).
 - `make wasm/check` : vert (avec et sans `odin`). `cargo check` / `clippy --target wasm32-unknown-unknown -p harmonium_studio` :
   vert, aucun avertissement du studio.
 - `WASM_BINDGEN=$PWD/.tools/bin/wasm-bindgen make test/determinism` : **68 / 68 fichiers identiques**.
-- `cargo clippy --workspace --lib --bins --message-format=short` : **149 lignes d'avertissement ici et sur `main`
-  (`c2c16b7`, archive git)**, mêmes lignes distinctes une fois les numéros retirés (comparaison `uniq -c` identique) ;
-  aucun avertissement dans `harmonium_studio`. Avant la correction de `odin_voices.rs` : 151 lignes (2 de plus).
+- `cargo clippy --workspace --exclude harmonium_studio --lib --bins --message-format=short` : **149 lignes d'avertissement ici
+  et sur `main` (`c2c16b7`, archive git)**, mêmes lignes distinctes une fois les numéros retirés (comparaison `uniq -c`
+  identique) ; `cargo clippy -p harmonium_studio --lib --bins` : aucun avertissement du studio ni de `odin_voices.rs`.
 - `cargo +nightly fmt --all -- --check` : propre.
 - `cargo test -p harmonium_audio --features odin` : vert.
 - `trunk build --release` (depuis `harmonium_studio/`, `PATH` avec `.tools/bin`) : vert. Wasm : **6 259 932 o** après

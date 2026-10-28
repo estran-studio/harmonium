@@ -26,7 +26,7 @@ make soundfont           # télécharge la banque GM complète GeneralUser GS (~
 make run                 # REPL, charge assets/GeneralUser-GS.sf2 par défaut (ou repli test.sf2)
 make run ARGS="--soundfont path/to/bank.sf2"
 make run ARGS="--osc"   # REPL + OSC : /harmonium/params (arousal valence density tension) sur UDP 127.0.0.1:8080
-make test                # cargo test --workspace
+make test                # tests sans Odin (hors studio), puis le studio, puis le contrat Odin du host
 make quality             # fmt + clippy + tests
 make wasm/check          # le moteur compile pour wasm32-unknown-unknown, avec et sans Odin
 make test/determinism    # snapshots natif = wasm (Node, CLI wasm-bindgen de la version de Cargo.lock)
