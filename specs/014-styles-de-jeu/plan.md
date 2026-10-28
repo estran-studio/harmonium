@@ -101,13 +101,22 @@ les transcriptions de G0.
 | G7d | fusionnée (`94ba523`) : mix de `nt_desert` (basse au premier plan, charleston réduit aux accents, Odin +17 dB) | `g7d-nt-desert-mix.md` |
 | M1 | fusionnée (labo `0a1d77f`) : distance générique profil→corpus (`styledist`, audio + symbolique), première mesure sur `nt_desert` | labo `references/nt-desert/distance-nt_desert.json` |
 | G9-G0 | fusionnée (labo `6a28971`) : références Basement d'Isaac (mineur harmonique sur pédale, 140 BPM, 4/4 ; propositions `isaac_basement` avec presets Odin candidats) | labo `references/isaac-basement/README.md` |
-| G6c | en cours (worktree `g6c-odin-finitions`) : morphing préparé hors du thread audio, avertissement au chargement | — |
+| G6c | fusionnée (`fe921d2`) : morphing préparé hors du thread audio, avertissement au chargement | `g6c-odin-finitions.md` |
+| G6d | en cours (`g6d-odin2`) : migration vers le port fidèle, seul propriétaire de la nouvelle API Odin | — |
+| G7e | suspendue jusqu'à G6d : vérifier les transitions et corriger la fluidité sans imposer un glissando partout | — |
+| G7f | en cours (`g7f-nt-desert-riche`) : motifs, réponses et contrastes d'arrangement ; pas de retour du sifflement rejeté | — |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
-Après fusion de G1 à G7d et G6b : 617 tests passent sans `odin`, 0 échec ; les 5 tests de contrat
-`odin` passent. Labo après G0, G6, M1 et G9 : 290 tests passent, 27 ignorés. Portage Odin 2 dans
-`odin-rs` fusionné en local (non poussé) : chemin de voix, matrice de modulation, effets, presets et
-API hôte, banc de fidélité contre le C++ réel (`odin-rs/PORTING.md`, `FIDELITE.md`).
+Après G6c : 627 tests passent sans `odin`, 6 tests de contrat `odin` passent. Labo après G0, G6,
+M1 et G9 : 290 tests passent, 27 ignorés. Portage Odin 2 fusionné et poussé dans
+`estran-studio/odin-rs` (`c654633`) : chemin de voix, modulation, effets, presets et API hôte.
+Harmonium reste épinglé à l'ancien moteur jusqu'à G6d : les WAV Odin antérieurs ne démontrent
+donc pas le son du port fidèle.
+
+Prérequis G6d corrigé en amont (`odin-rs` `4718189`, poussé) : les tables dessinées immuables
+utilisaient `Rc`, ce qui empêchait le transfert de l'instance prête vers le callback CPAL (`Send`).
+Elles utilisent désormais `Arc`, cloné au chargement et non par échantillon. Preuves : 108 tests
+avec `std`, 91 sans `std`, clippy strict, compilation wasm32 et rendu réel DeepBass de 4 s.
 
 Écoute du propriétaire (2026-10-27) : la pédale de *Fläshyn* rendue en GM 38 décroît (−19 dB sur la
 tenue) et laisse la batterie seule ; GM 30 (guitare saturée) « trop étrange » ; **GM 81 scie
@@ -118,6 +127,12 @@ batterie en avant et rigide (charleston à tous les pas pairs, swing 0,50, aucun
 solos sifflés sans rapport (mélodie de cellules génériques, programme 78). Constat : la structure est
 juste, le son et l'écriture non ; la banque procédurale G6 est le maillon faible. Corrections
 d'écriture : G7c.
+
+Retour d'écoute suivant : le propriétaire privilégie la fluidité des notes, puis juge le morceau
+« ultra vide et répétitif ». Le manque de fluidité est observé, sa cause n'est pas encore isolée :
+ne pas conclure sur la seule lecture des hauteurs qu'une octave est fausse, ni qu'un glissando est
+nécessaire. Comparer d'abord transitions, enveloppes et chevauchements. `nt_desert_seed1.wav`
+reste une ancienne version ; la page LAN sépare désormais les derniers témoins des archives.
 
 **Décision (2026-10-27) : synthé Odin.** Le propriétaire veut un vrai synthé pour les jeux de type NT :
 le port Rust `odin-rs` (GPLv3, dérivé d'Odin 2), déjà branché avant `77a26d4`. Constitution v4.2.0 :
