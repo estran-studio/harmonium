@@ -422,7 +422,7 @@ pub struct ModeChords {
     pub mode: Mode,
     pub chords: Vec<TradChord>,
 }
-/// Harmonie fixe d'une partie ; les racines numériques suivent le mode actif.
+/// Harmonie d'une partie ; les racines numériques suivent le mode actif.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum HarmonyPart {
@@ -435,8 +435,19 @@ pub enum HarmonyPart {
         neighbor_semitones: Option<u8>,
     },
     ChordLoop {
-        chords: Vec<LoopChord>,
+        loops: Vec<ChordLoop>,
     },
+}
+/// Alternative harmonique pondérée couvrant exactement une partie.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChordLoop {
+    #[serde(default = "default_loop_weight")]
+    pub weight: u32,
+    pub chords: Vec<LoopChord>,
+}
+fn default_loop_weight() -> u32 {
+    1
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -473,6 +484,15 @@ pub struct ProfileHarmony {
     pub parts: BTreeMap<String, HarmonyPart>,
     #[serde(default = "default_bars_per_chord", skip_serializing_if = "is_one")]
     pub default_bars_per_chord: usize,
+}
+impl ProfileHarmony {
+    /// Une alternative unique ne requiert aucune graine ni aucun tirage.
+    #[must_use]
+    pub fn has_alternatives(&self) -> bool {
+        self.parts
+            .values()
+            .any(|part| matches!(part, HarmonyPart::ChordLoop { loops } if loops.len() > 1))
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

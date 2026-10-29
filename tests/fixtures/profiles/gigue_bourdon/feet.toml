@@ -45,3 +45,16 @@ hits = [
   { step = 9, track = "Toe", delta_velocity = -20 },
   { step = 10, track = "Toe" },
 ]
+
+# Alternative synthétique de contrat : appui pointé conservé, pointe déplacée.
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 3, track = "Toe" },
+  { step = 4, track = "Toe", delta_velocity = -10 },
+  { step = 6, track = "Heel" },
+  { step = 9, track = "Toe" },
+  { step = 10, track = "Toe", delta_velocity = -10 },
+]

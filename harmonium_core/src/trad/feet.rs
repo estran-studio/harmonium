@@ -11,8 +11,11 @@
 
 use std::{collections::HashSet, fmt};
 
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use super::plan::TunePlan;
 use crate::{
     algo::RngCore,
     timeline::{Articulation, TimelineNote, TrackId},
@@ -200,6 +203,8 @@ impl Serialize for FootHit {
 pub struct FeetPattern {
     /// Niveau de densité (`0`, `1` ou `2`).
     pub density: u8,
+    /// Poids strictement positif lors du choix parmi les alternatives de même densité.
+    pub weight: u32,
     /// Liste des coups composant la mesure.
     pub hits: Vec<FootHit>,
     euclid: Option<(EuclideanPattern, TrackId)>,
@@ -209,12 +214,16 @@ impl FeetPattern {
     /// Crée un nouveau [`FeetPattern`].
     #[must_use]
     pub const fn new(density: u8, hits: Vec<FootHit>) -> Self {
-        Self { density, hits, euclid: None }
+        Self { density, weight: 1, hits, euclid: None }
     }
 
     pub(crate) fn euclidean_steps(&self) -> Option<usize> {
         self.euclid.map(|(pattern, _)| pattern.steps)
     }
+}
+
+const fn default_pattern_weight() -> u32 {
+    1
 }
 
 /// Motif euclidien en pas ; rotation positive vers la droite.
@@ -233,6 +242,8 @@ impl<'de> Deserialize<'de> for FeetPattern {
         #[serde(deny_unknown_fields)]
         struct Raw {
             density: u8,
+            #[serde(default = "default_pattern_weight")]
+            weight: u32,
             hits: Option<Vec<FootHit>>,
             euclid: Option<EuclideanPattern>,
             #[serde(default)]
@@ -266,15 +277,17 @@ impl<'de> Deserialize<'de> for FeetPattern {
             (None, None) if raw.track.is_none() => Vec::new(),
             _ => return Err(serde::de::Error::custom("choisir hits ou euclid, pas les deux")),
         };
-        Ok(Self { density: raw.density, hits, euclid })
+        Ok(Self { density: raw.density, weight: raw.weight, hits, euclid })
     }
 }
 
 impl Serialize for FeetPattern {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("FeetPattern", 3)?;
+        let mut state = serializer
+            .serialize_struct("FeetPattern", if self.euclid.is_some() { 4 } else { 3 })?;
         state.serialize_field("density", &self.density)?;
+        state.serialize_field("weight", &self.weight)?;
         if let Some((pattern, track)) = self.euclid {
             state.serialize_field("euclid", &pattern)?;
             state.serialize_field("track", if track == TrackId::Toe { "Toe" } else { "Heel" })?;
@@ -414,8 +427,10 @@ pub enum FeetTableError {
     EmptyTable,
     /// Une densité obligatoire (`0`, `1` ou `2`) est absente.
     MissingDensity(u8),
-    /// Une densité apparaît plus d'une fois dans la table.
-    DuplicateDensity(u8),
+    /// Une densité apparaît plus d'une fois parmi les patterns de cadence.
+    DuplicateCadenceDensity(u8),
+    /// Le poids d'un pattern est nul.
+    ZeroWeight { density: u8 },
     /// Piste invalide (seules `TrackId::Heel` et `TrackId::Toe` sont permises).
     InvalidTrack { density: u8, step: usize, track: TrackId },
     /// La vélocité effective (`base + delta`) dépasse la plage MIDI `0..=127`.
@@ -442,8 +457,11 @@ impl fmt::Display for FeetTableError {
             Self::MissingDensity(density) => {
                 write!(f, "densité requise manquante dans la table de podorythmie : {density}")
             }
-            Self::DuplicateDensity(density) => {
-                write!(f, "densité dupliquée dans la table de podorythmie : {density}")
+            Self::DuplicateCadenceDensity(density) => {
+                write!(f, "densité dupliquée dans les patterns de cadence : {density}")
+            }
+            Self::ZeroWeight { density } => {
+                write!(f, "poids nul pour un pattern de percussion à la densité {density}")
             }
             Self::InvalidTrack { density, step, track } => {
                 write!(
@@ -517,8 +535,8 @@ impl FeetTable {
     /// Valide les contraintes d'intégrité de la table :
     /// - vélocités de base dans `0..=127` ;
     /// - gain global dans `0..=1` ;
-    /// - densités `0`, `1` et `2` présentes sans doublon ;
-    /// - chaque coup a un pas dans `0..16` (`0..=15`) ;
+    /// - densités `0`, `1` et `2` présentes, avec un seul pattern de cadence par densité ;
+    /// - poids des patterns strictement positifs ;
     /// - chaque piste est `Heel` ou `Toe` ;
     /// - chaque vélocité calculée (`base + delta`) est dans `0..=127`.
     pub fn validate(&self) -> Result<(), FeetTableError> {
@@ -602,8 +620,9 @@ impl FeetTable {
         let mut seen_densities = HashSet::new();
 
         for pattern in &self.patterns {
-            if !seen_densities.insert(pattern.density) {
-                return Err(FeetTableError::DuplicateDensity(pattern.density));
+            seen_densities.insert(pattern.density);
+            if pattern.weight == 0 {
+                return Err(FeetTableError::ZeroWeight { density: pattern.density });
             }
 
             for hit in &pattern.hits {
@@ -614,7 +633,10 @@ impl FeetTable {
         let mut seen_cadence = HashSet::new();
         for pattern in &self.cadence_patterns {
             if !seen_cadence.insert(pattern.density) {
-                return Err(FeetTableError::DuplicateDensity(pattern.density));
+                return Err(FeetTableError::DuplicateCadenceDensity(pattern.density));
+            }
+            if pattern.weight == 0 {
+                return Err(FeetTableError::ZeroWeight { density: pattern.density });
             }
             for hit in &pattern.hits {
                 validate_hit(pattern.density, hit)?;
@@ -630,37 +652,90 @@ impl FeetTable {
         Ok(())
     }
 
-    /// Retourne le pattern pour une densité donnée, ou `None` s'il n'existe pas.
+    /// Indique si au moins une densité possède plusieurs patterns ordinaires.
     #[must_use]
-    pub fn pattern(&self, density: u8) -> Option<&FeetPattern> {
-        self.patterns.iter().find(|p| p.density == density)
+    pub fn has_alternatives(&self) -> bool {
+        let mut seen = [false; 256];
+        self.patterns.iter().any(|pattern| {
+            let density = usize::from(pattern.density);
+            let duplicate = seen[density];
+            seen[density] = true;
+            duplicate
+        })
+    }
+}
+
+/// Choix pondéré de percussion, stable pour chaque partie et densité d'un air.
+///
+/// Les reprises et les tours relisent le même choix. Les cadences, uniques par
+/// densité, remplacent ce choix au rendu sans participer au tirage.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FeetPatternPlan {
+    parts: Vec<[usize; 3]>,
+}
+
+impl FeetPatternPlan {
+    /// Construit le plan depuis une table validée, sans tirage pour un candidat unique.
+    #[must_use]
+    pub fn new(plan: &TunePlan, table: &FeetTable, seed: u64) -> Self {
+        let seed = crate::ornaments::mix(seed, 0x4645_4554);
+        let parts = (0..plan.profile.form.parts.len())
+            .map(|part| {
+                std::array::from_fn(|density| {
+                    let mut candidates = table
+                        .patterns
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, pattern)| usize::from(pattern.density) == density);
+                    let Some((first, pattern)) = candidates.next() else {
+                        unreachable!("densité requise dans une table validée");
+                    };
+                    let Some((_, alternative)) = candidates.next() else {
+                        return first;
+                    };
+                    let total = u64::from(pattern.weight)
+                        + u64::from(alternative.weight)
+                        + candidates.map(|(_, p)| u64::from(p.weight)).sum::<u64>();
+                    let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
+                        crate::ornaments::mix(seed, part as u64),
+                        density as u64,
+                    ));
+                    let mut draw = rng.next_range_u64(0..total);
+                    for (index, candidate) in table
+                        .patterns
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, p)| usize::from(p.density) == density)
+                    {
+                        let weight = u64::from(candidate.weight);
+                        if draw < weight {
+                            return index;
+                        }
+                        draw -= weight;
+                    }
+                    unreachable!("poids cumulés cohérents dans une table validée")
+                })
+            })
+            .collect();
+        Self { parts }
     }
 
-    /// Retourne la tranche des coups pour une densité donnée bornée à `0..=2`.
+    /// Retourne le pattern choisi, ou son remplacement cadentiel s'il existe.
     #[must_use]
-    pub fn hits_for_density(&self, density: u8) -> &[FootHit] {
-        let clamped = density.min(2);
-        self.pattern(clamped).map_or(&[], |p| p.hits.as_slice())
-    }
-
-    /// Retourne les coups pour une densité et un contexte de cadence éventuel.
-    #[must_use]
-    pub fn hits_for_density_and_role(&self, density: u8, is_cadence: bool) -> &[FootHit] {
-        let clamped = density.min(2);
-        if is_cadence && let Some(p) = self.cadence_patterns.iter().find(|p| p.density == clamped) {
-            return p.hits.as_slice();
-        }
-        self.hits_for_density(clamped)
-    }
-    /// Raccourci vers [`feet_notes`].
-    #[must_use]
-    pub fn feet_notes(
+    pub fn pattern<'a>(
         &self,
+        table: &'a FeetTable,
+        part: usize,
         density: u8,
-        steps: usize,
-        humanize: &[i8],
-    ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
-        feet_notes(self, density, steps, humanize)
+        is_cadence: bool,
+    ) -> &'a FeetPattern {
+        let density = density.min(2);
+        if is_cadence
+            && let Some(pattern) = table.cadence_patterns.iter().find(|p| p.density == density)
+        {
+            return pattern;
+        }
+        &table.patterns[self.parts[part][usize::from(density)]]
     }
 }
 
@@ -692,9 +767,8 @@ pub fn draw_feet_humanize(
 /// Génère les notes de podorythmie (talon, pointe) pour une mesure de reel (D9).
 ///
 /// # Paramètres
-/// - `table` : table de podorythmie ([`FeetTable`]) portant les patterns et les vélocités de base.
-/// - `density` : niveau de densité souhaité (`0..=2`). Les valeurs supérieures
-///   à 2 sont bornées à 2 via `density.min(2)`.
+/// - `table` : table de podorythmie ([`FeetTable`]) portant les vélocités de base.
+/// - `pattern` : pattern choisi par [`FeetPatternPlan::pattern`], cadence comprise.
 /// - `steps` : nombre de pas du profil ; `humanize` contient exactement ce nombre de valeurs.
 ///
 /// # Retour
@@ -707,17 +781,15 @@ pub fn draw_feet_humanize(
 /// `((base_velocity + delta_velocity) * feet_gain).round() + humanize[step]`,
 /// bornée à `1..=127`.
 #[must_use]
-pub fn feet_notes_with_cadence(
+pub fn feet_notes(
     table: &FeetTable,
-    density: u8,
+    pattern: &FeetPattern,
     steps: usize,
     humanize: &[i8],
-    is_cadence: bool,
 ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
     debug_assert_eq!(humanize.len(), steps);
 
-    let clamped = density.min(2);
-    let hits = table.hits_for_density_and_role(clamped, is_cadence);
+    let hits = &pattern.hits;
 
     let mut heel_notes = Vec::new();
     let mut toe_notes = Vec::new();
@@ -770,19 +842,18 @@ pub fn feet_notes_with_cadence(
     (heel_notes, toe_notes)
 }
 
-#[must_use]
-pub fn feet_notes(
-    table: &FeetTable,
-    density: u8,
-    steps: usize,
-    humanize: &[i8],
-) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
-    feet_notes_with_cadence(table, density, steps, humanize, false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn render_density(
+        table: &FeetTable,
+        density: u8,
+        humanize: &[i8],
+    ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
+        let plan = FeetPatternPlan::new(&TunePlan::default(), table, 0);
+        feet_notes(table, plan.pattern(table, 0, density, false), humanize.len(), humanize)
+    }
 
     #[test]
     fn test_embedded_table_validates() {
@@ -799,7 +870,7 @@ mod tests {
     #[test]
     fn test_exact_d9_positions_density_0() {
         let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
-        let (heel, toe) = feet_notes(&table, 0, 16, &[0; 16]);
+        let (heel, toe) = render_density(&table, 0, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         assert_eq!(heel_steps, vec![0, 8]);
@@ -816,7 +887,7 @@ mod tests {
     #[test]
     fn test_exact_d9_positions_density_1() {
         let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
-        let (heel, toe) = feet_notes(&table, 1, 16, &[0; 16]);
+        let (heel, toe) = render_density(&table, 1, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
@@ -842,7 +913,7 @@ mod tests {
     #[test]
     fn test_exact_d9_positions_density_2() {
         let table = FeetTable { feet_gain: 1.0, ..FeetTable::default() };
-        let (heel, toe) = feet_notes(&table, 2, 16, &[0; 16]);
+        let (heel, toe) = render_density(&table, 2, &[0; 16]);
 
         let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
         let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
@@ -874,10 +945,10 @@ mod tests {
     #[test]
     fn test_density_clamping() {
         let table = FeetTable::default();
-        let expected_2 = feet_notes(&table, 2, 16, &[0; 16]);
+        let expected_2 = render_density(&table, 2, &[0; 16]);
 
         for d in [3, 4, 10, 99, 255] {
-            let notes = feet_notes(&table, d, 16, &[0; 16]);
+            let notes = render_density(&table, d, &[0; 16]);
             assert_eq!(notes.0.len(), expected_2.0.len(), "densité {d} talon");
             assert_eq!(notes.1.len(), expected_2.1.len(), "densité {d} pointe");
             assert_eq!(
@@ -907,32 +978,6 @@ hits = [{ step = 0, track = "Heel" }]
 "#;
         let err = FeetTable::from_toml(toml_str).unwrap_err();
         assert_eq!(err, FeetTableError::MissingDensity(2));
-    }
-
-    #[test]
-    fn test_validation_duplicate_density() {
-        let toml_str = r#"
-heel_note = 35
-toe_note = 37
-
-[[patterns]]
-density = 0
-hits = [{ step = 0, track = "Heel" }]
-
-[[patterns]]
-density = 1
-hits = [{ step = 0, track = "Heel" }]
-
-[[patterns]]
-density = 1
-hits = [{ step = 4, track = "Heel" }]
-
-[[patterns]]
-density = 2
-hits = [{ step = 0, track = "Heel" }]
-"#;
-        let err = FeetTable::from_toml(toml_str).unwrap_err();
-        assert_eq!(err, FeetTableError::DuplicateDensity(1));
     }
 
     #[test]
@@ -988,7 +1033,7 @@ hits = [{ step = 0, track = "Heel" }]
             ..FeetTable::default()
         };
 
-        let (heel, toe) = table.feet_notes(2, 16, &[0; 16]);
+        let (heel, toe) = render_density(&table, 2, &[0; 16]);
         assert_eq!(heel[0].velocity, 110);
         assert_eq!(toe[0].velocity, 90); // step 2
         assert_eq!(toe[1].velocity, 70); // step 3 (90 - 20)
@@ -1004,7 +1049,7 @@ hits = [{ step = 0, track = "Heel" }]
         };
         assert!(table.validate().is_ok(), "gain 0.5 valide");
 
-        let (heel, toe) = table.feet_notes(2, 16, &[0; 16]);
+        let (heel, toe) = render_density(&table, 2, &[0; 16]);
         assert!(heel.iter().all(|n| n.velocity == 50));
         assert_eq!(toe[0].velocity, 40); // step 2 : 80 * 0.5
         assert_eq!(toe[1].velocity, 30); // step 3 : (80 - 20) * 0.5
@@ -1046,7 +1091,7 @@ hits = [{ step = 0, track = "Heel" }]
         let offsets = draw_feet_humanize(0, 16, 16, &mut rng);
         assert!(offsets.iter().flatten().all(|&o| o == 0));
 
-        let (heel, toe) = feet_notes(&table, 1, 16, &offsets[0]);
+        let (heel, toe) = render_density(&table, 1, &offsets[0]);
         assert!(heel.iter().all(|n| n.velocity == 55));
         assert!(toe.iter().all(|n| n.velocity == 45));
     }
@@ -1069,7 +1114,7 @@ hits = [{ step = 0, track = "Heel" }]
             }
         }
 
-        let (heel, toe) = feet_notes(&table, 1, 16, &offs_a[0]);
+        let (heel, toe) = render_density(&table, 1, &offs_a[0]);
         for n in heel.iter().chain(toe.iter()) {
             assert!((1..=127).contains(&n.velocity), "vélocité {} hors 1..=127", n.velocity);
         }
@@ -1079,7 +1124,8 @@ hits = [{ step = 0, track = "Heel" }]
 
     #[test]
     fn test_serde_roundtrip() {
-        let table = FeetTable::default();
+        let mut table = FeetTable::default();
+        table.patterns[0].weight = 7;
         let toml_str = toml::to_string(&table).expect("serialize TOML");
         let restored: FeetTable = toml::from_str(&toml_str).expect("deserialize TOML");
         assert_eq!(table, restored);
@@ -1111,5 +1157,115 @@ hits = [[0, "Heel"], [3, "Toe", -20]]
         assert_eq!(table.patterns[0].hits[0], FootHit::heel(0));
         assert_eq!(table.patterns[0].hits[1], FootHit::heel(8));
         assert_eq!(table.patterns[2].hits[1], FootHit::toe_with_delta(3, -20));
+    }
+
+    #[test]
+    fn weighted_alternatives_render_deterministically_by_part_and_density() {
+        let table = FeetTable::from_toml(
+            r#"
+velocity_humanize = 0
+patterns = [
+    { density = 0, hits = [{step = 0, track = "Heel"}] },
+    { density = 1, weight = 1, hits = [{step = 1, track = "Toe"}] },
+    { density = 1, weight = 9, hits = [{step = 7, track = "Toe"}] },
+    { density = 2, hits = [{step = 8, track = "Heel"}] },
+]
+"#,
+        )
+        .unwrap();
+        assert!(table.has_alternatives());
+        let tune = TunePlan::default();
+        let mut heavy = 0;
+        let mut distinct_parts = false;
+        for seed in 0..256 {
+            let plan = FeetPatternPlan::new(&tune, &table, seed);
+            let repeated = FeetPatternPlan::new(&tune, &table, seed);
+            let render = |plan: &FeetPatternPlan, part, density| {
+                feet_notes(&table, plan.pattern(&table, part, density, false), 16, &[0; 16])
+            };
+            let first = render(&plan, 0, 1);
+            let second = render(&plan, 1, 1);
+            assert_eq!(first, render(&repeated, 0, 1));
+            assert_eq!(second, render(&repeated, 1, 1));
+            assert_eq!(render(&plan, 0, 0).0[0].start_step, 0);
+            assert_eq!(render(&plan, 0, 2).0[0].start_step, 8);
+            heavy += usize::from(first.1[0].start_step == 7);
+            distinct_parts |= first != second;
+        }
+        assert!(distinct_parts);
+        assert!((192..256).contains(&heavy), "poids 1:9, choix lourds : {heavy}");
+    }
+
+    #[test]
+    fn large_weights_are_selected_without_u32_overflow() {
+        let mut table = FeetTable::default();
+        table.patterns.retain(|pattern| pattern.density != 1);
+        for step in [1, 7] {
+            let mut pattern = FeetPattern::new(1, vec![FootHit::toe(step)]);
+            pattern.weight = u32::MAX;
+            table.patterns.push(pattern);
+        }
+        table.validate().unwrap();
+        let tune = TunePlan::default();
+        let mut observed = [false; 2];
+        for seed in 0..128 {
+            let plan = FeetPatternPlan::new(&tune, &table, seed);
+            let (_, notes) = feet_notes(&table, plan.pattern(&table, 0, 1, false), 16, &[0; 16]);
+            observed[usize::from(notes[0].start_step == 7)] = true;
+        }
+        assert_eq!(observed, [true, true]);
+    }
+
+    #[test]
+    fn zero_weights_and_duplicate_cadences_are_rejected() {
+        let mut table = FeetTable::default();
+        table.patterns[0].weight = 0;
+        assert!(matches!(table.validate(), Err(FeetTableError::ZeroWeight { density: 0 })));
+        table.patterns[0].weight = 1;
+        let mut cadence = FeetPattern::new(1, vec![FootHit::toe(15)]);
+        cadence.weight = 0;
+        table.cadence_patterns.push(cadence);
+        assert!(matches!(table.validate(), Err(FeetTableError::ZeroWeight { density: 1 })));
+        table.cadence_patterns[0].weight = 1;
+        table.cadence_patterns.push(table.cadence_patterns[0].clone());
+        assert!(matches!(table.validate(), Err(FeetTableError::DuplicateCadenceDensity(1))));
+    }
+
+    #[test]
+    fn cadences_override_selected_euclidean_alternatives_without_entering_variety() {
+        let table = FeetTable::from_toml(
+            r#"
+patterns = [
+    { density = 0, hits = [] },
+    { density = 1, weight = 2, euclid = {pulses = 3, steps = 16, rotation = 1}, track = "Toe" },
+    { density = 1, weight = 3, euclid = {pulses = 5, steps = 16, rotation = 2}, track = "Toe" },
+    { density = 2, hits = [] },
+]
+cadence_patterns = [{density = 1, hits = [{step = 15, track = "Toe"}]}]
+"#,
+        )
+        .unwrap();
+        let restored = FeetTable::from_toml(&toml::to_string(&table).unwrap()).unwrap();
+        let tune = TunePlan::default();
+        for seed in 0..32 {
+            let plan = FeetPatternPlan::new(&tune, &table, seed);
+            let restored_plan = FeetPatternPlan::new(&tune, &restored, seed);
+            let ordinary = feet_notes(&table, plan.pattern(&table, 0, 1, false), 16, &[0; 16]);
+            assert!([3, 5].contains(&ordinary.1.len()));
+            assert_eq!(
+                ordinary,
+                feet_notes(&restored, restored_plan.pattern(&restored, 0, 1, false), 16, &[0; 16],)
+            );
+            let cadence = feet_notes(&table, plan.pattern(&table, 0, 1, true), 16, &[0; 16]);
+            assert_eq!(cadence.1.len(), 1);
+            assert_eq!(cadence.1[0].start_step, 15);
+            assert_eq!(
+                feet_notes(&table, plan.pattern(&table, 0, 2, true), 16, &[0; 16]),
+                feet_notes(&table, plan.pattern(&table, 0, 2, false), 16, &[0; 16]),
+            );
+        }
+        let mut unique = FeetTable::default();
+        unique.cadence_patterns = table.cadence_patterns;
+        assert!(!unique.has_alternatives());
     }
 }

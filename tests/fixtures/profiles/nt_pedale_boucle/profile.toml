@@ -1,5 +1,6 @@
 # Fixture technique synthétique, sans validation d’écoute ; aucun extrait de partition NT.
 # Pédale G♯ seule sur scie grave, puis boucles chromatique et modale.
+# Boucles migrées à un seul candidat de poids 1, sans variante musicale.
 [files]
 cells = "cells.toml"
 dynamics = "dynamics.toml"
@@ -67,10 +68,10 @@ kind = "pedal"
 degree = 1
 [harmony.parts.Chromatique]
 kind = "chord_loop"
-chords = [{semitones=11,quality="Major",bars=2}, {semitones=0,quality="Major",bars=2}]
+loops = [{ weight = 1, chords = [{semitones=11,quality="Major",bars=2}, {semitones=0,quality="Major",bars=2}] }]
 [harmony.parts.Modale]
 kind = "chord_loop"
-chords = [{degree=1,quality="Minor",bars=2}, {degree=2,quality="Major",bars=2}]
+loops = [{ weight = 1, chords = [{degree=1,quality="Minor",bars=2}, {degree=2,quality="Major",bars=2}] }]
 
 [accompaniment]
 strong_steps = [0, 8]

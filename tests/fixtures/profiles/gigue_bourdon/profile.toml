@@ -1,3 +1,5 @@
+# Variantes synthétiques par graine : deux boucles de huit mesures en B
+# (IV/V intervertis), deux grilles pondérées de pieds à densité 1 ; bourdon A conservé.
 # Fixture technique, non validée à l’écoute ; banques de la gigue québécoise.
 [files]
 cells = "cells.toml"
@@ -150,7 +152,10 @@ kind = "pedal"
 degree = 1
 [harmony.parts.B]
 kind = "chord_loop"
-chords = [{degree=1,quality="Major"}, {degree=4,quality="Major"}, {degree=5,quality="Major"}, {degree=1,quality="Major"}]
+loops = [
+  { weight = 1, chords = [{degree=1,quality="Major"}, {degree=4,quality="Major"}, {degree=5,quality="Major"}, {degree=1,quality="Major"}] },
+  { weight = 1, chords = [{degree=1,quality="Major"}, {degree=5,quality="Major"}, {degree=4,quality="Major"}, {degree=1,quality="Major"}] },
+]
 
 [accompaniment]
 strong_steps = [0, 6]

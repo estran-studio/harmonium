@@ -18,6 +18,7 @@ hits = [
 
 [[patterns]]
 density = 1
+weight = 1
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
   { step = 2, track = "Heel", delta_velocity = -22 },
@@ -29,6 +30,7 @@ hits = [
 
 [[patterns]]
 density = 2
+weight = 1
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
   { step = 2, track = "Heel", delta_velocity = -22 },
@@ -40,6 +42,34 @@ hits = [
   { step = 10, track = "Heel", delta_velocity = -20 },
   { step = 10, track = "Toe", note = 42, delta_velocity = -40 },
   { step = 12, track = "Toe", delta_velocity = -8 },
+  { step = 14, track = "Toe", note = 42, delta_velocity = -40 },
+]
+
+# Réponse de stomp : mêmes temps lourds, contretemps de grosse caisse déplacé.
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 4, track = "Toe", delta_velocity = -8 },
+  { step = 6, track = "Heel", delta_velocity = -16 },
+  { step = 8, track = "Toe" },
+  { step = 10, track = "Heel", delta_velocity = -22 },
+  { step = 12, track = "Toe", delta_velocity = -8 },
+]
+
+[[patterns]]
+density = 2
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Heel", delta_velocity = -22 },
+  { step = 4, track = "Toe", delta_velocity = -8 },
+  { step = 6, track = "Toe", note = 42, delta_velocity = -40 },
+  { step = 8, track = "Toe" },
+  { step = 10, track = "Heel", delta_velocity = -20 },
+  { step = 12, track = "Toe", delta_velocity = -8 },
+  { step = 14, track = "Heel", delta_velocity = -24 },
   { step = 14, track = "Toe", note = 42, delta_velocity = -40 },
 ]
 

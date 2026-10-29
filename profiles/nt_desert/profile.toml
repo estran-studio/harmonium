@@ -14,6 +14,8 @@
 # G6d : presets Odin fidèles usine (Sausage Bassener sur Bass, Darken Nature
 # [RM] sur Chords) ; le gain master ne s'applique qu'aux pistes SoundFont, les
 # presets gardent leur master d'usine.
+# Schéma à alternatives : un seul candidat de poids 1 par partie, sans
+# nouveau tirage ; B développe deux fois ses quatre mesures, notes inchangées.
 [files]
 cells = "cells.toml"
 feet = "feet.toml"
@@ -106,10 +108,10 @@ kind = "pedal"
 degree = 1
 [harmony.parts.A2]
 kind = "chord_loop"
-chords = [{ semitones = 6, quality = "Minor", bars = 8 }]
+loops = [{ weight = 1, chords = [{ semitones = 6, quality = "Minor", bars = 8 }] }]
 [harmony.parts.Pont]
 kind = "chord_loop"
-chords = [
+loops = [{ weight = 1, chords = [
   { semitones = 4, quality = "Major", bars = 1 },
   { semitones = 4, quality = "Major", bars = 1 },
   { semitones = 8, quality = "Major", bars = 1 },
@@ -126,13 +128,15 @@ chords = [
   { semitones = 3, quality = "Major", bars = 1 },
   { semitones = 5, quality = "Major", bars = 1 },
   { semitones = 5, quality = "Major", bars = 1 },
-]
+] }]
 [harmony.parts.B]
 kind = "chord_loop"
-chords = [
+loops = [{ weight = 1, chords = [
   { semitones = 11, quality = "Major", bars = 2 },
   { semitones = 0, quality = "Major", bars = 2 },
-]
+  { semitones = 11, quality = "Major", bars = 2 },
+  { semitones = 0, quality = "Major", bars = 2 },
+] }]
 
 [accompaniment]
 strong_steps = [0, 6, 12, 18]
