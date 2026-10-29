@@ -42,18 +42,34 @@ struct OdinInstance {
     engine: Box<OdinEngine>,
     patch: OdinTrackPatch,
     velocity: [u8; 128],
+    mono_note: Option<u8>,
     diagnostic: OdinInstanceDiagnostic,
 }
 
 impl OdinInstance {
-    fn key(&self) -> (usize, usize) {
-        (self.patch.zone, self.patch.preset)
+    fn key(&self) -> (usize, usize, bool) {
+        (self.patch.zone, self.patch.preset, self.patch.legato)
     }
 
-    fn note_on(&mut self, note: u8, velocity: u8) {
+    fn note_on(&mut self, note: u8, velocity: u8, legato: bool, glide_id: ParameterId) {
         if velocity == 0 {
             self.note_off(note);
             return;
+        }
+        let previous = self.mono_note;
+        if self.patch.legato {
+            let connected = legato && previous.is_some_and(|old| old != note);
+            if !connected {
+                // Normal, répétition ou départ après silence : réattaque, même
+                // si le preset est préparé en mode Legato.
+                self.release();
+            }
+            let glide = if connected { self.patch.glide } else { 0.0 };
+            if self.engine.parameter(glide_id) != glide {
+                self.engine
+                    .set_parameter(glide_id, glide)
+                    .expect("commande de glide finie préparée hors callback");
+            }
         }
         // La politique historique de réattaque ferme d'abord l'ancienne note.
         if self.velocity[usize::from(note)] != 0 {
@@ -63,6 +79,15 @@ impl OdinInstance {
         self.velocity[usize::from(note)] = velocity;
         self.diagnostic.note_on += 1;
         self.diagnostic.active_notes += 1;
+        if self.patch.legato {
+            // Odin reste réellement mono : ferme la touche précédente APRÈS
+            // le note_on legato. Sa fin G7e différée sera ignorée. La pile
+            // native ne pourra pas revenir sur une ancienne hauteur.
+            self.mono_note = Some(note);
+            if let Some(old) = previous.filter(|&old| old != note) {
+                self.note_off(old);
+            }
+        }
     }
 
     fn note_off(&mut self, note: u8) {
@@ -73,9 +98,20 @@ impl OdinInstance {
         self.velocity[usize::from(note)] = 0;
         self.diagnostic.note_off += 1;
         self.diagnostic.active_notes -= 1;
+        if self.mono_note == Some(note) {
+            self.mono_note = None;
+        }
     }
 
     fn release(&mut self) {
+        if self.patch.legato {
+            self.engine.all_notes_off();
+            self.diagnostic.note_off += self.diagnostic.active_notes as u64;
+            self.diagnostic.active_notes = 0;
+            self.velocity.fill(0);
+            self.mono_note = None;
+            return;
+        }
         for note in 0..128 {
             self.note_off(note);
         }
@@ -128,6 +164,7 @@ impl OdinTrackVoice {
 pub struct OdinMixer {
     voices: [OdinTrackVoice; TrackId::ALL.len()],
     ids: [ParameterId; OdinMorphParam::COUNT],
+    glide_id: ParameterId,
     scratch: Box<[f32; SCRATCH_FRAMES * 2]>,
     tempo: f32,
     fade_frames: usize,
@@ -142,6 +179,7 @@ impl OdinMixer {
     pub fn new(sample_rate: f32) -> Self {
         Self {
             voices: TrackId::ALL.map(|_| OdinTrackVoice::new()),
+            glide_id: ParameterId::from_name("glide").expect("glide du catalogue Odin épinglé"),
             ids: OdinMorphParam::ALL.map(|param| {
                 ParameterId::from_name(param.name()).expect("identifiant du catalogue Odin épinglé")
             }),
@@ -190,7 +228,7 @@ impl OdinMixer {
         for (index, voice) in self.voices.iter_mut().enumerate() {
             assert!(voice.retiring.is_none(), "instance Odin non retournée");
             let target = update.patches[index];
-            let key = target.map(|patch| (patch.zone, patch.preset));
+            let key = target.map(|patch| (patch.zone, patch.preset, patch.legato));
             if key != voice.current.as_ref().map(OdinInstance::key) {
                 let held = voice.current.as_ref().map_or([0; 128], |instance| instance.velocity);
                 if let Some(mut old) = voice.current.take() {
@@ -209,6 +247,7 @@ impl OdinMixer {
                         engine: update.engines[index].take().expect("instance Odin préparée"),
                         patch,
                         velocity: [0; 128],
+                        mono_note: None,
                         diagnostic: OdinInstanceDiagnostic {
                             id: update.instance_ids[index],
                             channel: index,
@@ -262,7 +301,7 @@ impl OdinMixer {
                     .iter()
                     .rev()
                     .filter_map(|patches| patches[index])
-                    .find(|patch| (patch.zone, patch.preset) == instance.key())
+                    .find(|patch| (patch.zone, patch.preset, patch.legato) == instance.key())
             {
                 instance.morph(patch, &self.ids);
             }
@@ -291,12 +330,28 @@ impl OdinMixer {
         }
     }
 
-    pub fn note_on(&mut self, channel: usize, note: u8, velocity: u8) {
+    pub fn note_on(&mut self, channel: usize, note: u8, velocity: u8, legato: bool) {
         if let Some(voice) = self.voices.get_mut(channel)
             && let Some(instance) = &mut voice.current
         {
             voice.held[usize::from(note)] = 0;
-            instance.note_on(note, velocity);
+            if instance.patch.legato {
+                if legato {
+                    // À la frontière T1 : une seule attaque sur la nouvelle
+                    // instance pour la tenue, puis le glide musical. Le fondu
+                    // ne peut pas transférer une enveloppe entre deux moteurs.
+                    for (held_note, held_velocity) in voice.held.iter_mut().enumerate() {
+                        if *held_velocity != 0 {
+                            instance.note_on(held_note as u8, *held_velocity, false, self.glide_id);
+                            *held_velocity = 0;
+                        }
+                    }
+                } else {
+                    // L'attaque Normal remplace le transfert monophonique.
+                    voice.held.fill(0);
+                }
+            }
+            instance.note_on(note, velocity, legato, self.glide_id);
         }
     }
 
@@ -332,7 +387,7 @@ impl OdinMixer {
             if let Some(instance) = &mut voice.current {
                 for (note, velocity) in voice.held.iter_mut().enumerate() {
                     if *velocity != 0 {
-                        instance.note_on(note as u8, *velocity);
+                        instance.note_on(note as u8, *velocity, false, self.glide_id);
                         *velocity = 0;
                     }
                 }

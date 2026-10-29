@@ -55,7 +55,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`feet.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
-| `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
+| `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
@@ -202,6 +202,7 @@ déclarer de une à quatre zones Odin, en données (aucun `preset` direct sur la
 when = { tension = [0.6, 1.0] }
 preset = "basse_psychedelique"
 level_db = -5.0
+glide_ms = 80.0
 morph = [
   { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
 ]
@@ -235,6 +236,36 @@ morph = [
   partager un preset et différer par leur niveau ou leur morphing.
   `isaac_burning` réunit A par défaut (Bass Crusher [RM] + Haunt [RM]) et B
   sous tension (Bass Low [RM] −5 dB + Moonshade −7 dB).
+- **Legato mono et glissando (G2).** Une note `Legato` enchaînant une autre
+  hauteur tenue réutilise les enveloppes Odin, sans nouvelle attaque. La
+  première note, une note après silence, une répétition de même hauteur et
+  toute note `Normal` réattaquent, sans glissando depuis la note précédente.
+  `Tied` reste une prolongation sans `NoteOn`. Sur SoundFont, rien ne change :
+  le lecteur conserve son chevauchement de 0,2 pas, sans portamento.
+  `glide_ms`, **par zone**, vaut **80 ms par défaut** ; `0` désactive seulement
+  le glissement de hauteur, pas la liaison d'enveloppe. Sinon : **40 à 500 ms**,
+  valeur finie. C'est le temps **nominal pour parcourir 90 % de l'écart en Hz
+  à 44 800 Hz**, pas une rampe linéaire terminée à cette échéance : Odin
+  utilise un lissage exponentiel borné, dont la durée réelle dépend aussi de
+  son adaptation au taux d'échantillonnage. Le réglage s'applique au prochain
+  enchaînement, indépendamment du tempo ; il ne se morphe pas par émotion.
+  La commande native est calculée hors callback, jamais dans le rendu.
+  Les pistes ayant du `Legato` dans leurs données musicales sont préparées
+  hors callback en mode mono/legato (actuellement, les motifs de `Bass` sont
+  l'unique source de cette articulation). Les autres gardent leur mode de
+  preset et leur rendu antérieur, sans activation implicite du glide.
+  Aucun second interrupteur dans les profils.
+- **Legato à une bascule de zone.** Les enveloppes de deux instances ne se
+  transfèrent pas : T1 garde son fondu audio de **300 ms**, avec une seule
+  réattaque de la tenue sur la nouvelle instance. Si une nouvelle hauteur
+  `Legato` arrive exactement à la frontière, cette tenue est d'abord ouverte,
+  puis glisse vers la nouvelle hauteur, sans seconde attaque d'enveloppe.
+  Une attaque `Normal` remplace le transfert mono ; une fin exactement à la
+  frontière l'annule. Si un glide est déjà en cours à la frontière, la nouvelle
+  instance repart de la **hauteur cible** tenue, pas de la fréquence
+  intermédiaire de l'ancienne. Le fondu mélange leurs sorties, jamais leurs
+  états DSP. Les anciennes fins différées ne coupent pas la nouvelle hauteur.
+  Preuves et limites : [`g2-glissando-odin.md`](../specs/016-variete-et-timbres/g2-glissando-odin.md).
 - **Choix à l'exécution.** Sans `odin` compilé, ou si l'hôte ne fournit pas le
   preset de la zone active, la piste joue son programme SoundFont. Avec `odin`
   et le preset présent, elle joue Odin. Aucun nom de style ni canal fixe : la clé est la
@@ -381,9 +412,9 @@ sur une note demande aussi une liaison avec la fin coïncidente précédente,
 y compris à l'intérieur d'une mesure. Un timbre à sustain et aucune
 interprétation raccourcissant le gate sont nécessaires pour une vraie pédale ;
 la fixture NT utilise **Saw Lead, `bass_program = 81` (0-based)**.
-`legato = true` (G7e) lie la note à la suivante par chevauchement au lecteur :
-une seule attaque par hauteur, la fin de la note tenue recouvre l'attaque
-nouvelle ; la première note d'un motif attaque normalement.
+`legato = true` (G7e) enchaîne cette note à la hauteur précédemment tenue :
+chevauchement au lecteur SoundFont ; glissando mono sans réattaque sur Odin
+(G2, réglage `glide_ms` décrit plus haut). La première note attaque normalement.
 `doubling = ["octave", "tenth"]` suit les mêmes règles que les coups.
 
 Banque : au plus 256 motifs, poids `u32` (défaut 1), somme positive sans

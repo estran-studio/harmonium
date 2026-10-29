@@ -23,6 +23,12 @@
   sur la nouvelle, après les événements de début de pas : une fin exactement
   à la frontière supprime le transfert ; une attaque musicale du même pitch
   remplace le transfert. Les notes `Tied` dans une zone ne réattaquent pas.
+- Suivi G2 : sur une piste mono/legato, une nouvelle hauteur `Legato`
+  exactement à la frontière ouvre la tenue transférée puis glisse sans seconde
+  attaque d'enveloppe ; une attaque `Normal` remplace ce transfert. Un glide
+  déjà commencé repart à sa hauteur cible dans la nouvelle instance, avec la
+  réattaque unique imposée par les deux états DSP indépendants. Voir
+  [`g2-glissando-odin.md`](g2-glissando-odin.md).
 - `level_db` (−60..12 dB, défaut 0) multiplie le mix de piste ; le master du
   preset n’est pas modifié pour compenser un changement de zone. Le chemin
   à gain unitaire conserve l’ordre des opérations du rendu antérieur.

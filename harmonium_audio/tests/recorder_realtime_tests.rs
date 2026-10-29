@@ -46,8 +46,18 @@ fn full_recording_callback_is_allocation_free() -> Result<(), String> {
     for i in 0..BUFFERS {
         if i % 20 == 0 {
             let note = 48 + (i / 20) as u8;
-            recorder.handle_event(AudioEvent::NoteOn { note, velocity: 100, channel: 0 });
-            recorder.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3 });
+            recorder.handle_event(AudioEvent::NoteOn {
+                note,
+                velocity: 100,
+                channel: 0,
+                legato: false,
+            });
+            recorder.handle_event(AudioEvent::NoteOn {
+                note: 40,
+                velocity: 90,
+                channel: 3,
+                legato: false,
+            });
         }
         if i % 20 == 10 {
             let note = 48 + (i / 20) as u8;

@@ -145,7 +145,7 @@ fn expected_step_notes(composer: &MusicComposer, bar: usize, step: usize) -> Vec
 fn played_step_notes(log: &EventLog) -> Vec<(u8, u8, u8)> {
     let mut notes = Vec::new();
     for event in log.drain() {
-        if let AudioEvent::NoteOn { note, velocity, channel } = event {
+        if let AudioEvent::NoteOn { note, velocity, channel, .. } = event {
             notes.push((note, velocity, channel));
         }
     }

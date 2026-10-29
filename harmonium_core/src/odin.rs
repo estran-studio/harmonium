@@ -14,6 +14,7 @@
 //! ```toml
 //! [[odin.Bass.zones]]
 //! preset = "basse_saturee"
+//! glide_ms = 80.0 # temps nominal pour parcourir 90 % de l'écart à 44 800 Hz
 //! morph = [
 //!   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
 //!   { param = "fil1_res", tension = 0.35 },
@@ -138,7 +139,7 @@ pub struct OdinTrackSpec {
     pub zones: Vec<OdinZone>,
 }
 
-/// Preset, niveau et morphing propres à une zone d'émotion.
+/// Preset, niveau, glissando et morphing propres à une zone d'émotion.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OdinZone {
@@ -149,8 +150,17 @@ pub struct OdinZone {
     /// Niveau relatif au mix de piste, en dB (`-60..12`, défaut : 0).
     #[serde(default)]
     pub level_db: f32,
+    /// Temps nominal en ms pour parcourir 90 % de l'écart fréquentiel à
+    /// 44 800 Hz (défaut : 80 ; 0 désactive, sinon 40..500).
+    /// Le coefficient natif est borné : ce n'est pas une durée linéaire.
+    #[serde(default = "default_glide_ms")]
+    pub glide_ms: f32,
     #[serde(default)]
     pub morph: Vec<OdinMorphRule>,
+}
+
+fn default_glide_ms() -> f32 {
+    80.0
 }
 
 /// Intersection de bornes inclusives ; au moins un axe doit être renseigné.
@@ -265,6 +275,11 @@ pub struct OdinTrackPatch {
     pub preset: usize,
     /// Gain linéaire propre à la zone, préparé hors callback.
     pub gain: f32,
+    /// Commande native de glide précalculée hors callback depuis `glide_ms`.
+    pub glide: f32,
+    /// Éligibilité au legato, calculée par le compositeur depuis les données
+    /// musicales ; la banque initialise cette valeur à `false`.
+    pub legato: bool,
     pub params: OdinVoiceParams,
 }
 
@@ -327,6 +342,15 @@ impl OdinBank {
                     } else {
                         10.0_f32.powf(zone.level_db / 20.0)
                     },
+                    glide: if zone.glide_ms == 0.0 {
+                        0.0
+                    } else {
+                        // Voice::process : f = cible*(1-c) + f*c,
+                        // c = 0,9985 + glide*0,0014. Temps nominal à 44 800 Hz.
+                        ((0.1_f32.powf(1.0 / (zone.glide_ms * 44.8)) - 0.9985) / 0.0014)
+                            .clamp(0.01, 1.0)
+                    },
+                    legato: false,
                     params: preset.base.morphed(&zone.morph, emotions),
                 });
             }

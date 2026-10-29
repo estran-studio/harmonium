@@ -65,7 +65,7 @@ impl AudioRenderer for MidiBackend {
             | AudioEvent::MeasureTiming { .. } => {
                 // Ignore - only RecorderBackend needs this
             }
-            AudioEvent::NoteOn { note, velocity, channel } => {
+            AudioEvent::NoteOn { note, velocity, channel, .. } => {
                 let delta = self.samples_to_ticks(self.samples_since_last_event);
                 self.samples_since_last_event = 0;
 

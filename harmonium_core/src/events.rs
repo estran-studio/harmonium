@@ -12,6 +12,9 @@ pub enum AudioEvent {
         note: u8,
         velocity: u8,
         channel: u8,
+        /// Enchaînement d'une autre hauteur tenue, préparé par le playhead.
+        #[serde(default)]
+        legato: bool,
     },
     NoteOff {
         note: u8,

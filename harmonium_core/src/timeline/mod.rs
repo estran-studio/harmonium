@@ -125,10 +125,10 @@ pub enum Articulation {
     /// (même canal, même hauteur, même instant que sa fin) ; sinon attaque
     /// normale. Posé par le générateur, jamais par les règles d'interprétation.
     Tied,
-    /// Legato monophonique : la hauteur attaque pendant que la note tenue du
-    /// canal se prolonge encore un peu (léger chevauchement), au lieu de se
-    /// détacher. Posé par le générateur (données du profil), jamais par les
-    /// règles d'interprétation ; le playhead le réalise en une seule attaque.
+    /// Enchaîne une autre hauteur tenue du canal : chevauchement SoundFont,
+    /// glissando mono sans réattaque d'enveloppe sur Odin. Posé par les
+    /// données du générateur, jamais par les règles d'interprétation ;
+    /// le playhead transmet une seule attaque musicale par hauteur.
     Legato,
     /// Trigger only, no NoteOff needed (percussion)
     Trigger,

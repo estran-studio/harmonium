@@ -441,7 +441,7 @@ impl AudioRenderer for RecorderBackend {
                     program: *program,
                 });
             }
-            AudioEvent::NoteOn { note, velocity, channel } => {
+            AudioEvent::NoteOn { note, velocity, channel, .. } => {
                 self.midi(MidiEvent::NoteOn {
                     channel: map_midi_channel(*channel),
                     key: *note,
@@ -572,15 +572,15 @@ mod tests {
 
         rec.handle_event(AudioEvent::UpdateMusicalParams { params: params_at(230.0, 2, 2) });
         rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
-        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0, legato: false });
         advance(&mut rec, 2.0);
         rec.handle_event(AudioEvent::NoteOff { note: 60, channel: 0 });
-        rec.handle_event(AudioEvent::NoteOn { note: 62, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 62, velocity: 90, channel: 0, legato: false });
         advance(&mut rec, 1.0);
         // Legato cut: the synth drops 62 here, so the file must too.
         rec.handle_event(AudioEvent::AllNotesOff { channel: 0 });
         // Truncated ring: no NoteOff before stop.
-        rec.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3 });
+        rec.handle_event(AudioEvent::NoteOn { note: 40, velocity: 90, channel: 3, legato: false });
         rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Midi });
 
         let queue = finished.lock().map_err(|e| e.to_string())?;
@@ -669,7 +669,12 @@ mod tests {
         rec.handle_event(AudioEvent::MidiClock { ticks_per_frame: 0.1 });
         rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
         for _ in 0..3000 {
-            rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
+            rec.handle_event(AudioEvent::NoteOn {
+                note: 60,
+                velocity: 90,
+                channel: 0,
+                legato: false,
+            });
             rec.handle_event(AudioEvent::NoteOff { note: 60, channel: 0 });
             rec.process_buffer(&mut [0.0; 14], 2); // 7 frames = 0.7 tick
         }
@@ -695,12 +700,12 @@ mod tests {
         let mut rec = lossless(&finished);
         rec.handle_event(AudioEvent::MidiClock { ticks_per_frame: 0.2 });
         rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
-        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0, legato: false });
         rec.process_buffer(&mut [0.0; 1000], 2); // 500 frames × 0.2 = 100 ticks
         rec.handle_event(AudioEvent::MidiClock { ticks_per_frame: 0.05 });
-        rec.handle_event(AudioEvent::NoteOn { note: 62, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 62, velocity: 90, channel: 0, legato: false });
         rec.process_buffer(&mut [0.0; 2002], 2); // 1001 frames × 0.05 = 50.05 ticks
-        rec.handle_event(AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0, legato: false });
         rec.handle_event(AudioEvent::StopRecording { format: AudioRecordFormat::Midi });
 
         let ticks = note_on_ticks(&finished_midi(&finished)?)?;
@@ -860,7 +865,7 @@ mod tests {
             OverflowPolicy::DropAndCount,
         );
         rec.handle_event(AudioEvent::StartRecording { format: AudioRecordFormat::Midi });
-        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0 });
+        rec.handle_event(AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0, legato: false });
         let attempts = QUEUE_CAPACITY * 2;
         for _ in 0..attempts {
             rec.handle_event(AudioEvent::NoteOff { note: 61, channel: 0 });

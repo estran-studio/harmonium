@@ -297,6 +297,7 @@ impl Playhead {
                             note: candidate.pitch,
                             velocity: candidate.velocity,
                             channel: candidate.channel,
+                            legato: false,
                         },
                     },
                 );
@@ -383,6 +384,7 @@ impl Playhead {
                     note: candidate.pitch,
                     velocity: candidate.velocity,
                     channel: candidate.channel,
+                    legato: true,
                 },
             },
         );
