@@ -15,6 +15,8 @@ make studio                 # natif : prépare les ressources, puis ouvre la fen
 make studio ARGS="--buffer 1024"
 make studio/web/serve       # web : Trunk, http://127.0.0.1:8787
 make studio/web/build       # web : build dans harmonium_studio/dist
+make studio/site            # site public dans target/site : page d'accueil, studio sous /studio/
+make studio/site/deploy     # et déploiement sur Cloudflare Pages
 ```
 
 Le web demande `trunk` et `rustup target add wasm32-unknown-unknown`, et un CLI `wasm-bindgen` de la version de `Cargo.lock` (Trunk télécharge le sien s'il ne trouve pas la bonne version dans le `PATH`) :
@@ -46,10 +48,32 @@ Rôles (`id`) : `main-bank` (obligatoire), `feet-bank`, `odin:<nom court>` (un p
 Sources, par variables du Makefile :
 
 - `STUDIO_BANKS` : dossier de `GeneralUser-GS.sf2` et `harmonium_trad.sf2`. Défaut : `assets/` du checkout principal (aussi depuis un worktree).
-- `STUDIO_ODIN` : dossier de presets `*.odin` ; vide par défaut (aucun preset n'existe encore dans le dépôt).
+- `STUDIO_ODIN` : dossier de presets `*.odin` ; vide par défaut (aucun preset n'est versionné).
 
-Autres sources (banque SF3, fichiers d'une release) : appeler directement
+Autres sources : appeler directement
 `cargo run -p harmonium_studio --no-default-features --bin studio_assets -- --main-bank <fichier> [--feet-bank <fichier>] [--odin-dir <dossier>] --out <dossier>` ; le manifeste et le chargeur ne changent pas.
+
+## Ressources de la vitrine : une release fixée
+
+Le site public ne prend pas les banques locales : `make studio/web/resources` (appelé par `make studio/site`) lit `web-resources.json`, qui fixe une release GitHub du dépôt (`studio-resources-1`) et, pour chaque fichier, son rôle, son nom, son nom d'asset, sa taille et son SHA-256 :
+
+| Rôle | Fichier | Source, licence |
+|---|---|---|
+| `main-bank` | `GeneralUser-GS.sf3` (7,6 Mo) | GeneralUser GS v2.0.3 (S. Christian Collins, licence fournie dans la release), convertie de SF2 par `scripts/sf2_to_sf3.py` (oggenc qualité 4 ; même entrée, même fichier) |
+| `feet-bank` | `harmonium_trad.sf2` | banque de pieds du labo, échantillons CC0 (Freesound) |
+| `odin` | les presets nommés par `[odin.<piste>] preset` dans `profiles/` | presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`, GPL-3.0) |
+| `license` | `GeneralUser-GS-LICENSE.txt` | licence de la banque (non servie par le site) |
+
+`scripts/web_resources.py fetch` télécharge chaque asset, contrôle taille et SHA-256 (un écart fait échouer la commande, donc la CI), et range les fichiers sous leur nom d'origine (le nom d'un preset Odin est son nom de fichier) ; `check-profiles` échoue si un profil nomme un preset absent du verrou. Changer une ressource : `scripts/web_resources.py stage --tag studio-resources-<n> …` copie les fichiers sous leur nom d'asset et réécrit le verrou, puis `gh release create studio-resources-<n> <dossier>/*`.
+
+## Site public
+
+`make studio/site` assemble `target/site` : `site/index.html` (page d'accueil, statique) à la racine et le studio web sous `/studio/` (`trunk build --public-url /studio/`). Il est servi par **Cloudflare Pages**, projet `harmonium-website` (<https://harmonium-website.pages.dev/>, studio : <https://harmonium-website.pages.dev/studio/>) :
+
+- à la main : `make studio/site/deploy` (`wrangler login`, ou `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID`) ;
+- par la CI (`.github/workflows/site.yml`) : chaque PR construit le site avec les ressources vérifiées ; chaque push sur `main` le déploie, si le dépôt a le secret `CLOUDFLARE_API_TOKEN` (jeton « Cloudflare Pages : Edit ») et la variable `CLOUDFLARE_ACCOUNT_ID` ; sans eux, le job le signale par un avertissement et ne déploie pas.
+
+Cloudflare Pages limite un fichier à 25 Mio : le wasm (≈ 19 Mo) et la banque SF3 passent, pas la banque SF2 (32 Mo).
 
 ## Chargement
 
@@ -102,6 +126,7 @@ Un **brouillon** : les fichiers d'un profil tels qu'ils sont sur disque (`profil
 - `src/platform/` : `native.rs` et `web.rs`, les seules différences entre bureau et navigateur (dont `SessionHandle`, `RecordingSink` ; en natif `start_osc`, `read_profile_folder`, `write_profile_folder` ; en web `offer_download`, `pick_profile_files`, `load_draft`, `store_draft`).
 - `src/app.rs` : chargement, Start, puis l'écran Live.
 - La feature `app` (par défaut) porte eframe et le moteur ; `--no-default-features` ne compile que le manifeste et `studio_assets`.
+- `site/` : la page d'accueil du site public ; `web-resources.json` : le verrou des ressources de la vitrine ; `scripts/` : `web_resources.py` (télécharger et vérifier, préparer une release) et `sf2_to_sf3.py` (conversion de la banque).
 
 ## Tests
 
