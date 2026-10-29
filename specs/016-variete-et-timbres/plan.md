@@ -63,7 +63,9 @@ gardant les deux.
    de partie suivante, sans coupure audible (fondu), sans réattaque fantôme ni note orpheline ;
    rendu hors ligne déterministe avec automation d'émotion.
 4. T1 : profils à zone unique (tous les autres) rendus identiques à `main` avec `odin`.
-5. Écoute du propriétaire sur la page LAN.
+5. Écoute du propriétaire sur la page LAN. **Atteint (2026-10-29)** : variété des graines
+   comparée dans le studio (« ça sonne bien ») ; bascule A → B de `isaac_burning` « très bien, le
+   changement instrumental ».
 6. `cargo test --workspace` (avec et sans `--features odin`), clippy, fmt.
 
 ## État
