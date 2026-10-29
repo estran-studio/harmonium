@@ -7,13 +7,15 @@
 //! | génération | un fil appelle `Session::pump` | un minuteur de Worker appelle `Session::pump` |
 //! | sortie audio | cpal (carte son) | cpal WebAudio, créé en pause, repris au clic sur Start |
 //! | enregistrements | fichiers dans un dossier (`--recordings`) | téléchargements du navigateur |
+//! | atelier | ouvrir et enregistrer un dossier de profil | téléverser, télécharger en `.zip`, brouillon dans `localStorage` |
 //! | OSC | écouteur UDP du host (`start_osc`) | absent |
 //! | réglages | arguments de la ligne de commande | paramètres d'URL |
 //!
 //! Le reste (écran, décisions de chargement, construction de la session) est commun et vit hors de
 //! ce module. Les deux côtés exposent les mêmes noms : `Settings`, `settings`, `start_loading`,
 //! `SessionHandle`, `Pump`, `start_pump`, `RecordingSink`, `recording_sink`, `run` ; le natif
-//! ajoute `Osc` et `start_osc`.
+//! ajoute `Osc`, `start_osc`, `read_profile_folder` et `write_profile_folder`, le web
+//! `offer_download`, `Upload`, `pick_profile_files`, `load_draft` et `store_draft`.
 
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 

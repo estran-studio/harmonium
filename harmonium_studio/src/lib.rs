@@ -5,6 +5,9 @@
 //! - [`live`] : l'écran Live sans fenêtre (session, intentions → `EngineCommand`, vues tirées de
 //!   la sortie publiée).
 //! - [`live_screen`] : l'écran Live dessiné par egui.
+//! - [`workbench`] : l'atelier de profils sans fenêtre (brouillon, copie d'un profil distribué,
+//!   décodage par le moteur, archive, coloration TOML).
+//! - [`workbench_screen`] : l'atelier dessiné par egui (onglet « Workbench »).
 //! - [`platform`] : tout ce qui diffère entre le bureau et le navigateur (sortie audio, fichiers et
 //!   cache, minuteurs, enregistrements, OSC).
 //! - `app` : l'application, du chargement à l'écran Live.
@@ -25,6 +28,10 @@ pub mod live;
 pub mod live_screen;
 #[cfg(feature = "app")]
 pub mod platform;
+#[cfg(feature = "app")]
+pub mod workbench;
+#[cfg(feature = "app")]
+pub mod workbench_screen;
 
 #[cfg(feature = "app")]
 pub use platform::run;

@@ -14,7 +14,7 @@ workspace = true
 default = ["app"]
 # L'application egui. Sans elle, la crate se réduit au manifeste des ressources et à son
 # générateur (`studio_assets`), que le build web lance sans compiler eframe.
-app = ["dep:eframe", "dep:harmonium", "dep:harmonium_audio", "dep:harmonium_core", "dep:web-time", "dep:dirs"]
+app = ["dep:eframe", "dep:harmonium", "dep:harmonium_audio", "dep:harmonium_core", "dep:web-time", "dep:dirs", "dep:toml_edit", "dep:zip"]
 
 [lib]
 name = "harmonium_studio"
@@ -41,6 +41,11 @@ harmonium_audio = { path = "../harmonium_audio", features = ["odin"], optional =
 harmonium = { path = "../harmonium_host", features = ["odin"], optional = true }
 eframe = { version = "0.34", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"], optional = true }
 web-time = { version = "1", optional = true }
+# Atelier : renommer un profil copié sans perdre ses commentaires (même version que le moteur).
+toml_edit = { version = "0.22.27", optional = true }
+# Atelier : dossier du profil en archive (téléchargement et téléversement web). Lecture des
+# archives compressées (Deflate, zlib-rs en Rust pur) ; l'écriture se fait sans compression.
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2-zlib-rs"], optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Dossier de musique de l'utilisateur, pour les enregistrements.
@@ -58,9 +63,12 @@ web-sys = { version = "0.3", features = [
     "CacheStorage",
     "Document",
     "Element",
+    "File",
+    "FileList",
     "HtmlAnchorElement",
     "HtmlCanvasElement",
     "HtmlElement",
+    "HtmlInputElement",
     "Location",
     "MessageEvent",
     "ReadableStream",
@@ -69,6 +77,7 @@ web-sys = { version = "0.3", features = [
     "RequestCache",
     "RequestInit",
     "Response",
+    "Storage",
     "Url",
     "UrlSearchParams",
     "Window",

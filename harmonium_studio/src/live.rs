@@ -21,7 +21,7 @@ use harmonium::{
     playback::{MEASURE_WINDOW_CAP, TICKS_PER_BEAT, TransportPosition},
 };
 use harmonium_core::{
-    EngineCommand, EngineReport, MeasureSnapshot, StyleProfile,
+    EngineCommand, EngineReport, MeasureSnapshot,
     events::RecordFormat,
     timeline::{Articulation, TrackId},
     trad::{Section, TunePosition, pitch_class_name},
@@ -393,10 +393,8 @@ impl Session {
             score_view(&self.score, position, &part_names, self.desk.loop_range, self.score.last());
         let params = self.host.musical_params();
         let profile_id = params.profile_id.to_string();
-        let profile_name = StyleProfile::distributed()
-            .iter()
-            .find(|profile| profile.meta.id == profile_id)
-            .map_or_else(|| profile_id.clone(), |profile| profile.meta.name.clone());
+        // Le nom du profil installé : un profil de l'atelier n'est pas parmi les distribués.
+        let profile_name = self.host.profile().meta.name.clone();
         let dynamics = &self.host.profile().dynamics;
         let mixer = TRACKS
             .into_iter()

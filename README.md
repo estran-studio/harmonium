@@ -56,8 +56,12 @@ make studio/web/serve STUDIO_ODIN=assets/odin   # web sur http://127.0.0.1:8787 
   - à droite : horloge, état (équivalent de `state` du REPL), mixeur (gain, mute, solo).
   - Un clic sur une mesure y saute ; glisser fait une boucle (16 mesures au plus).
   - Une piste écartée par la densité du profil (`density_tracks`) est grisée : « off: density < x ».
-- **Valider un réglage de profil** : modifier `profiles/<id>/`, relancer `make studio`, choisir le style.
-  En natif, le repli « Engine » charge aussi un dossier de profil hors du dépôt (« Profile folder »).
+- **Valider un réglage de profil** : onglet **Workbench**, sans recompiler. « Fork » copie un profil distribué
+  dans un brouillon ; chaque fichier TOML s'édite dans son onglet, une erreur s'affiche sur sa ligne ; « Apply »
+  installe le profil, qui s'entend à la mesure suivante. Natif : « Profile folder » ouvre et enregistre un dossier
+  (relu tel quel par `harmonium-cli --profile`). Web : téléverser un dossier ou un `.zip`, télécharger le dossier en
+  `.zip` ; le brouillon reste dans le navigateur. Pour un profil distribué : modifier `profiles/<id>/`, relancer
+  `make studio`. En natif, le repli « Engine » de l'écran Live charge aussi un dossier de profil hors du dépôt.
 - **Garder une trace** : REC (WAV, MIDI, MusicXML) écrit dans `~/Music/Harmonium Studio/`, nommé par profil et
   graine ; la graine affichée rejoue la même musique.
 - **Session d'agent** : le studio et le REPL sortent du son. Un agent ne les lance pas lui-même ; il donne la
