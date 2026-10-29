@@ -76,6 +76,19 @@ fn an_entry_the_manifest_does_not_name_is_stale() {
 }
 
 #[test]
+fn a_cached_address_with_encoded_characters_still_names_its_file() {
+    // Le navigateur garde l'adresse encodée ; le manifeste, le nom tel quel (presets Odin).
+    let preset = resource("odin:Bass Crusher [RM]", "Bass Crusher [RM].odin", b"odin", 4);
+    let manifest = Manifest { resources: vec![preset.clone()] };
+    let encoded = preset.file.replace(' ', "%20").replace('[', "%5B").replace(']', "%5D");
+    let cached = vec![
+        format!("https://example.org/studio/resources/{encoded}"),
+        format!("https://example.org/studio/resources/{}", preset.file.replace(' ', "%20")),
+    ];
+    assert!(stale_entries(&cached, &manifest).is_empty(), "the cached preset is kept");
+}
+
+#[test]
 fn buffer_sizes_are_validated() {
     assert_eq!(parse_buffer_frames("2048"), Ok(2048));
     assert_eq!(parse_buffer_frames(" 4096 "), Ok(4096));

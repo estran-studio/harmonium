@@ -58,13 +58,40 @@ pub fn stale_entries<'a>(cached_urls: &'a [String], manifest: &Manifest) -> Vec<
     cached_urls
         .iter()
         .map(String::as_str)
-        .filter(|url| !files.contains(file_name_of(url)))
+        .filter(|url| !files.contains(file_name_of(url).as_str()))
         .collect()
 }
 
-fn file_name_of(url: &str) -> &str {
+/// Le nom de fichier d'une adresse, décodé : le navigateur garde l'adresse encodée
+/// (`Bass%20Crusher%20[RM].….odin`), le manifeste le nom tel quel (`Bass Crusher [RM].….odin`).
+fn file_name_of(url: &str) -> String {
     let path = url.split(['?', '#']).next().unwrap_or(url);
-    path.rsplit('/').next().unwrap_or(path)
+    percent_decode(path.rsplit('/').next().unwrap_or(path))
+}
+
+/// Remplace chaque `%XX` par son octet ; une séquence invalide reste telle quelle.
+fn percent_decode(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let escaped = (bytes[i] == b'%')
+            .then(|| bytes.get(i + 1..i + 3))
+            .flatten()
+            .and_then(|pair| std::str::from_utf8(pair).ok())
+            .and_then(|pair| u8::from_str_radix(pair, 16).ok());
+        match escaped {
+            Some(byte) => {
+                decoded.push(byte);
+                i += 3;
+            }
+            None => {
+                decoded.push(bytes[i]);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&decoded).into_owned()
 }
 
 /// Taille de tampon (en images) acceptée : de quoi refuser une faute de frappe
