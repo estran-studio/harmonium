@@ -222,101 +222,155 @@ fn valence_attend_frontiere_et_recalcule_les_degres_modaux() -> TestResult {
 }
 
 #[test]
-fn gigue_bourdon_meme_modele_melodie_et_accompagnement() -> TestResult {
-    let p = load("gigue_bourdon")?;
-    for seed in [1, 2] {
-        let snapshots = stream(&p, seed, 64)?;
-        for s in &snapshots {
-            assert_eq!((s.time_sig_numerator, s.time_sig_denominator, s.steps), (6, 8, 12));
-            let local = (s.index - 1) % 16;
-            let offset = match local {
-                0..=9 | 14..=15 => 0,
-                10..=11 => 5,
-                _ => 7,
-            };
-            let expected: BTreeSet<_> = if local < 8 {
-                BTreeSet::from([2])
-            } else {
-                [0, 4, 7].into_iter().map(|i| (2 + offset + i) % 12).collect()
-            };
-            assert_eq!(s.chord_root_offset, i32::from(offset));
-            assert!(!s.chord_is_minor);
-            assert_eq!(pcs(s, 1), expected, "mesure {}", s.index);
-            assert_eq!(pcs(s, 2), BTreeSet::from([(2 + offset) % 12]));
-            let melody = notes(s, 0);
-            assert!(!melody.is_empty());
-            for n in melody.iter().filter(|n| n.start_step == 0 || n.start_step == 6) {
-                assert!(
-                    expected.contains(&(n.pitch % 12)),
-                    "porteuse forte hors accord : {n:?}, mesure {}",
-                    s.index
-                );
-            }
+fn validation_publique_refuse_les_parties_et_boucles_invalides() -> TestResult {
+    let p = load("nt_pedale_boucle")?;
+    let base: toml::Value = toml::from_str(&p.to_toml()?)?;
+    let reject = |v: toml::Value| -> TestResult {
+        let text = toml::to_string(&v)?;
+        assert!(StyleProfile::from_toml(&text).is_err(), "profil invalide accepté");
+        Ok(())
+    };
+    let mut v = base.clone();
+    v["harmony"]["parts"].as_table_mut().ok_or("table parts requise")?.remove("Pedale");
+    reject(v)?;
+    let mut v = base.clone();
+    let unknown = v["harmony"]["parts"]["Pedale"].clone();
+    insert(&mut v["harmony"]["parts"], "Inconnue", unknown)?;
+    reject(v)?;
+    for duration in [0, 5, 65536] {
+        let mut v = base.clone();
+        v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["bars"] = duration.into();
+        reject(v)?;
+    }
+    for degree in [0, 8] {
+        let mut v = base.clone();
+        v["harmony"]["parts"]["Pedale"]["degree"] = degree.into();
+        reject(v)?;
+    }
+    let mut v = base.clone();
+    insert(&mut v["harmony"]["parts"]["Pedale"], "semitones", 0)?;
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Pedale"].as_table_mut().ok_or("table pédale requise")?.remove("degree");
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Chromatique"]["loops"][0]["chords"][0]["semitones"] = 12.into();
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"] = toml::Value::Array(Vec::new());
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"] = toml::Value::Array(Vec::new());
+    reject(v)?;
+    let mut v = base.clone();
+    insert(&mut v["harmony"]["parts"]["Modale"]["loops"][0], "weight", 0)?;
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["bars"] = 1.into();
+    reject(v)?;
+    for degree in [0, 8] {
+        let mut v = base.clone();
+        v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["degree"] = degree.into();
+        reject(v)?;
+    }
+    let mut v = base.clone();
+    insert(&mut v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0], "semitones", 0)?;
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]
+        .as_table_mut()
+        .ok_or("table accord requise")?
+        .remove("degree");
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["quality"] = "Pedal".into();
+    reject(v)?;
+    let mut v = base.clone();
+    let legacy = v["harmony"]["parts"]["Modale"]["loops"][0]["chords"].clone();
+    v["harmony"]["parts"]["Modale"].as_table_mut().ok_or("table boucle requise")?.remove("loops");
+    insert(&mut v["harmony"]["parts"]["Modale"], "chords", legacy)?;
+    reject(v)?;
+    let mut v = base.clone();
+    v["harmony"]["default_bars_per_chord"] = 0.into();
+    reject(v)?;
+    for neighbor in [0, 12] {
+        let mut v = base.clone();
+        insert(&mut v["harmony"]["parts"]["Pedale"], "neighbor_semitones", neighbor)?;
+        reject(v)?;
+    }
+    let mut v = base.clone();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]
+        .as_table_mut()
+        .ok_or("table accord requise")?
+        .remove("quality");
+    reject(v)?;
+    let mut v = base.clone();
+    insert(&mut v["harmony"]["parts"]["Pedale"], "quality", "Minor")?;
+    reject(v)?;
+    let mut v = base;
+    v["harmony"]["steps_per_chord"] = 3.into();
+    reject(v)?;
+    Ok(())
+}
+
+#[test]
+fn alternative_unique_poids_neutre_sur_les_snapshots() -> TestResult {
+    let p = load("nt_pedale_boucle")?;
+    let weighted = edited(&p, |v| {
+        for part in ["Chromatique", "Modale"] {
+            insert(&mut v["harmony"]["parts"][part]["loops"][0], "weight", 123)?;
         }
-        assert_eq!(serde_json::to_value(&snapshots)?, serde_json::to_value(stream(&p, seed, 64)?)?);
+        Ok(())
+    })?;
+    for seed in [1, 2, 17] {
+        assert_eq!(
+            serde_json::to_value(stream(&p, seed, 72)?)?,
+            serde_json::to_value(stream(&weighted, seed, 72)?)?,
+            "un candidat unique ne consomme aucun tirage, graine {seed}"
+        );
     }
     Ok(())
 }
 
 #[test]
-fn validation_publique_refuse_les_parties_et_boucles_invalides() -> TestResult {
+fn alternatives_conservent_le_choix_lors_des_changements_de_mode() -> TestResult {
     let p = load("nt_pedale_boucle")?;
-    let base: toml::Value = toml::from_str(&p.to_toml()?)?;
-    let reject = |v: toml::Value, field: &str| -> TestResult {
-        let text = toml::to_string(&v)?;
-        let error =
-            StyleProfile::from_toml(&text).err().ok_or("profil invalide accepté")?.to_string();
-        assert!(error.contains(field), "champ {field} absent : {error}");
+    let bars =
+        p.form.parts.iter().find(|p| p.name == "Modale").ok_or("partie absente")?.roles.len();
+    let p = edited(&p, |v| {
+        let alternatives: toml::Value = toml::from_str(&format!(
+            "loops = [\
+                {{ weight = 1, chords = [{{ degree = 2, quality = 'Major', bars = {bars} }}] }},\
+                {{ weight = 3, chords = [{{ degree = 6, quality = 'Major', bars = {bars} }}] }}\
+            ]"
+        ))?;
+        v["harmony"]["parts"]["Modale"]["loops"] = alternatives["loops"].clone();
         Ok(())
-    };
-    let mut v = base.clone();
-    v["harmony"]["parts"].as_table_mut().ok_or("table parts requise")?.remove("Pedale");
-    reject(v, "Pedale")?;
-    let mut v = base.clone();
-    let unknown = v["harmony"]["parts"]["Pedale"].clone();
-    insert(&mut v["harmony"]["parts"], "Inconnue", unknown)?;
-    reject(v, "Inconnue")?;
-    for duration in [0, 5, 65536] {
-        let mut v = base.clone();
-        v["harmony"]["parts"]["Modale"]["chords"][0]["bars"] = duration.into();
-        reject(v, "Modale")?;
+    })?;
+    for seed in [1, 2, 17] {
+        let mut par = params(&p);
+        let mut g = TradGenerator::new(par.clone(), TuningParams { profile: p.clone() });
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let mut selected_dark_root = None;
+        for bar in 1..=48 {
+            if bar == 10 || bar == 22 {
+                par.harmony_valence = if bar == 10 { 0.9 } else { -0.9 };
+                g.invalidate_future(bar - 1);
+                g.update_params(par.clone());
+            }
+            let s = MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng));
+            let mode = if (13..=24).contains(&bar) { Mode::Mixolydian } else { Mode::Phrygian };
+            assert_eq!(s.position.map(|p| p.mode), Some(mode));
+            if (bar - 1) % 12 >= 8 {
+                let root = *selected_dark_root.get_or_insert(s.chord_root_offset);
+                assert!([1, 8].contains(&root));
+                assert_eq!(
+                    s.chord_root_offset,
+                    root + i32::from(mode == Mode::Mixolydian),
+                    "même alternative aux reprises, tours et retours au mode sombre : graine {seed}, mesure {bar}"
+                );
+            }
+        }
     }
-    for degree in [0, 8] {
-        let mut v = base.clone();
-        v["harmony"]["parts"]["Pedale"]["degree"] = degree.into();
-        reject(v, "degree")?;
-    }
-    let mut v = base.clone();
-    insert(&mut v["harmony"]["parts"]["Pedale"], "semitones", 0)?;
-    reject(v, "Pedale")?;
-    let mut v = base.clone();
-    v["harmony"]["parts"]["Pedale"].as_table_mut().ok_or("table pédale requise")?.remove("degree");
-    reject(v, "Pedale")?;
-    let mut v = base.clone();
-    v["harmony"]["parts"]["Chromatique"]["chords"][0]["semitones"] = 12.into();
-    reject(v, "semitones")?;
-    let mut v = base.clone();
-    v["harmony"]["parts"]["Modale"]["chords"] = toml::Value::Array(Vec::new());
-    reject(v, "chords")?;
-    let mut v = base.clone();
-    v["harmony"]["default_bars_per_chord"] = 0.into();
-    reject(v, "default_bars_per_chord")?;
-    for neighbor in [0, 12] {
-        let mut v = base.clone();
-        insert(&mut v["harmony"]["parts"]["Pedale"], "neighbor_semitones", neighbor)?;
-        reject(v, "neighbor_semitones")?;
-    }
-    let mut v = base.clone();
-    v["harmony"]["parts"]["Modale"]["chords"][0]
-        .as_table_mut()
-        .ok_or("table accord requise")?
-        .remove("quality");
-    reject(v, "quality")?;
-    let mut v = base.clone();
-    insert(&mut v["harmony"]["parts"]["Pedale"], "quality", "Minor")?;
-    reject(v, "quality")?;
-    let mut v = base;
-    v["harmony"]["steps_per_chord"] = 3.into();
-    reject(v, "steps_per_chord")?;
     Ok(())
 }

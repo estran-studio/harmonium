@@ -54,7 +54,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"`, `"jazz_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
-| `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
+| `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`feet.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[odin.<Piste>]` | Optionnel. Instrument Odin d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `preset` (nom fourni par l'hôte) et `morph` (règles émotionnelles). Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
@@ -66,6 +66,41 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Batterie par graine
+
+Dans `feet.toml`, `[[patterns]]` correspond à `percussion.patterns` du profil
+chargé. Chaque densité 0, 1, 2 doit être couverte ; plusieurs entrées d'une
+même densité constituent une banque, non une superposition :
+
+```toml
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 8, track = "Toe" },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 6, track = "Heel", delta_velocity = -18 },
+  { step = 8, track = "Toe" },
+]
+```
+
+`weight` vaut 1 s'il est omis et doit être strictement positif. Les
+`[[cadence_patterns]]` restent uniques par densité : ils remplacent la grille
+ordinaire aux fins de phrase et ne participent pas au tirage pondéré.
+Les choix pondérés sont stables pour chaque partie et densité d'un air ;
+un changement de densité puis un retour retrouve donc la même grille.
+Les flux dérivés de la graine sont séparés pour batterie et harmonie :
+ajouter une variante de batterie ne choisit pas un autre accord. Un
+candidat unique n'entraîne aucun tirage. La fixture `gigue_bourdon`
+emploie ces alternatives hors des styles de jeu.
 
 ## Harmonie en boucle et pédale
 
@@ -87,9 +122,15 @@ degree = 1
 
 [harmony.parts.B]
 kind = "chord_loop"
-chords = [
-  { degree = 1, quality = "Minor", bars = 2 },
-  { semitones = 1, quality = "Major", bars = 2 },
+loops = [
+  { weight = 2, chords = [
+    { degree = 1, quality = "Minor", bars = 2 },
+    { semitones = 1, quality = "Major", bars = 2 },
+  ] },
+  { weight = 1, chords = [
+    { degree = 1, quality = "Minor", bars = 2 },
+    { degree = 5, quality = "Major", bars = 2 },
+  ] },
 ]
 ```
 
@@ -101,11 +142,20 @@ fixes. Lors d'une bascule de couleur par `dynamics.color` ou `parallel_modes`,
 les degrés sont recalculés dans le nouveau mode. Chaque accord exige une
 qualité explicite `"Major"` ou `"Minor"`, qui ne change pas avec le mode.
 
+`loops` est une liste non vide d'alternatives. Chaque `weight` est un entier
+strictement positif (défaut 1) ; chaque `chords` est non vide. L'ancien
+`chords` directement dans `harmony.parts.<nom>` est refusé, sans alias.
+Une boucle est tirée par partie et par air, selon la graine et les poids ;
+les reprises de la partie gardent ce choix. Une seule alternative ne
+consomme aucun tirage.
+
 `bars` est une durée positive en **mesures entières** ; omission :
-`default_bars_per_chord` (défaut 1). La longueur totale de la boucle doit
-diviser celle de la partie. `steps_per_chord` reste requis et divise la
-mesure : tous les créneaux d'une mesure portent le même accord. Les reprises,
-secondes fins et variations de forme utilisent la même position dans la boucle.
+`default_bars_per_chord` (défaut 1). La longueur totale de **chaque alternative**
+doit être exactement celle de la partie ; développer explicitement les
+répétitions d'une ancienne boucle courte. `steps_per_chord` reste requis et
+divise la mesure : tous les créneaux d'une mesure portent le même accord.
+Les reprises, secondes fins et variations de forme utilisent la même
+position dans la boucle.
 Pas de changement intra-mesure, d'accord slash ni de turnaround implicite :
 une section distincte porte un éventuel raccord explicite.
 

@@ -1,5 +1,9 @@
 //! Boucles et pédales explicites par partie, résolues dans le mode actif.
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
 use crate::{
+    algo::RngCore,
     style_profile::{HarmonyPart, ProfileError, StyleProfile},
     trad::{ChordDegree, ChordQuality, Mode, TradChord, TunePlan},
 };
@@ -11,8 +15,42 @@ pub struct LoopHarmony {
 }
 impl LoopHarmony {
     /// Le profil du plan doit avoir été validé avant la construction.
-    pub fn new(plan: TunePlan) -> Self {
+    pub fn new(plan: TunePlan, seed: u64) -> Self {
         let slots = plan.profile.meter.steps_per_bar / plan.profile.harmony.steps_per_chord;
+        let selected: Vec<_> = plan
+            .profile
+            .form
+            .parts
+            .iter()
+            .enumerate()
+            .map(|(part, configured)| match &plan.profile.harmony.parts[&configured.name] {
+                HarmonyPart::Pedal { .. } => 0,
+                HarmonyPart::ChordLoop { loops } => {
+                    if loops.len() == 1 {
+                        return 0;
+                    }
+                    let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
+                        crate::ornaments::mix(seed, 0x4841_524D),
+                        part as u64,
+                    ));
+                    let total: u64 =
+                        loops.iter().map(|alternative| u64::from(alternative.weight)).sum();
+                    let mut pick = rng.next_range_u64(0..total);
+                    loops
+                        .iter()
+                        .position(|alternative| {
+                            let weight = u64::from(alternative.weight);
+                            if pick < weight {
+                                true
+                            } else {
+                                pick -= weight;
+                                false
+                            }
+                        })
+                        .unwrap_or_else(|| unreachable!("validated positive loop weights"))
+                }
+            })
+            .collect();
         let chords = (0..plan.material_bars())
             .map(|material| {
                 let (part, _, offset, _) = plan.position(plan.representative_bar(material));
@@ -22,11 +60,10 @@ impl LoopHarmony {
                         root(*degree, *semitones, plan.mode),
                         neighbor_semitones.map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
                     ),
-                    HarmonyPart::ChordLoop { chords } => {
+                    HarmonyPart::ChordLoop { loops } => {
+                        let chords = &loops[selected[part]].chords;
                         let default = plan.profile.harmony.default_bars_per_chord;
-                        let length: usize =
-                            chords.iter().map(|chord| chord.bars.unwrap_or(default)).sum();
-                        let mut remaining = offset % length;
+                        let mut remaining = offset;
                         let chord = chords
                             .iter()
                             .find(|chord| {
@@ -131,39 +168,54 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                     ));
                 }
             }
-            HarmonyPart::ChordLoop { chords } => {
-                if chords.is_empty() {
+            HarmonyPart::ChordLoop { loops } => {
+                if loops.is_empty() {
                     return Err(ProfileError::new(
-                        format!("{path}.chords"),
-                        "boucle non vide requise",
+                        format!("{path}.loops"),
+                        "au moins une alternative harmonique requise",
                     ));
                 }
-                let mut length = 0usize;
-                for (index, chord) in chords.iter().enumerate() {
-                    let path = format!("{path}.chords[{index}]");
-                    validate_root(chord.degree, chord.semitones, &path)?;
-                    if !matches!(chord.quality, ChordQuality::Major | ChordQuality::Minor) {
+                for (loop_index, alternative) in loops.iter().enumerate() {
+                    let path = format!("{path}.loops[{loop_index}]");
+                    if alternative.weight == 0 {
                         return Err(ProfileError::new(
-                            format!("{path}.quality"),
-                            "Major ou Minor requis",
+                            format!("{path}.weight"),
+                            "poids strictement positif requis",
                         ));
                     }
-                    let bars = chord.bars.unwrap_or(harmony.default_bars_per_chord);
-                    if bars == 0 {
+                    if alternative.chords.is_empty() {
                         return Err(ProfileError::new(
-                            format!("{path}.bars"),
-                            "durée positive en mesures entières requise",
+                            format!("{path}.chords"),
+                            "boucle non vide requise",
                         ));
                     }
-                    length = length.checked_add(bars).ok_or_else(|| {
-                        ProfileError::new(format!("{path}.bars"), "durée totale en débordement")
-                    })?;
-                }
-                if !part.roles.len().is_multiple_of(length) {
-                    return Err(ProfileError::new(
-                        format!("{path}.chords"),
-                        "la longueur de boucle doit diviser la longueur de la partie",
-                    ));
+                    let mut length = 0usize;
+                    for (index, chord) in alternative.chords.iter().enumerate() {
+                        let path = format!("{path}.chords[{index}]");
+                        validate_root(chord.degree, chord.semitones, &path)?;
+                        if !matches!(chord.quality, ChordQuality::Major | ChordQuality::Minor) {
+                            return Err(ProfileError::new(
+                                format!("{path}.quality"),
+                                "Major ou Minor requis",
+                            ));
+                        }
+                        let bars = chord.bars.unwrap_or(harmony.default_bars_per_chord);
+                        if bars == 0 {
+                            return Err(ProfileError::new(
+                                format!("{path}.bars"),
+                                "durée positive en mesures entières requise",
+                            ));
+                        }
+                        length = length.checked_add(bars).ok_or_else(|| {
+                            ProfileError::new(format!("{path}.bars"), "durée totale en débordement")
+                        })?;
+                    }
+                    if length != part.roles.len() {
+                        return Err(ProfileError::new(
+                            format!("{path}.chords"),
+                            "la longueur de chaque alternative doit égaler la longueur de la partie",
+                        ));
+                    }
                 }
             }
         }

@@ -23,8 +23,8 @@ pub use cells::{
     FIFTH_SEMITONES, REEL_CELLS_TOML,
 };
 pub use feet::{
-    FeetPattern, FeetTable, FeetTableError, FootHit, PercussionVoice, REEL_FEET_TOML,
-    draw_feet_humanize, feet_notes, feet_notes_with_cadence,
+    FeetPattern, FeetPatternPlan, FeetTable, FeetTableError, FootHit, PercussionVoice,
+    REEL_FEET_TOML, draw_feet_humanize, feet_notes,
 };
 pub use fiddle::{
     FiddleLine, fold_midi_to_tessitura, same_cell_up_to_octave, tonic_midi_for_key,

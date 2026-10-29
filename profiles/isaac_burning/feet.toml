@@ -18,6 +18,7 @@ hits = [
 
 [[patterns]]
 density = 1
+weight = 1
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
   { step = 2, track = "Heel", delta_velocity = -18 },
@@ -29,6 +30,7 @@ hits = [
 
 [[patterns]]
 density = 2
+weight = 1
 hits = [
   { step = 0, track = "Heel", delta_velocity = 0 },
   { step = 0, track = "Toe", note = 42, delta_velocity = -36 },
@@ -42,6 +44,34 @@ hits = [
   { step = 12, track = "Toe", note = 42, delta_velocity = -28 },
   { step = 14, track = "Heel", delta_velocity = -20 },
   { step = 14, track = "Toe", note = 42, delta_velocity = -42 },
+]
+
+# Réponse en demi-temps : caisse claire toujours sur 8, relance retardée.
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 6, track = "Heel", delta_velocity = -18 },
+  { step = 8, track = "Toe" },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 14, track = "Heel", delta_velocity = -20 },
+]
+
+[[patterns]]
+density = 2
+weight = 2
+hits = [
+  { step = 0, track = "Heel" },
+  { step = 2, track = "Toe", note = 42, delta_velocity = -42 },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -28 },
+  { step = 6, track = "Heel", delta_velocity = -18 },
+  { step = 8, track = "Toe" },
+  { step = 10, track = "Toe", note = 42, delta_velocity = -42 },
+  { step = 12, track = "Heel", delta_velocity = -16 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -28 },
+  { step = 14, track = "Heel", delta_velocity = -20 },
 ]
 
 [[cadence_patterns]]

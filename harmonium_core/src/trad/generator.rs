@@ -12,7 +12,7 @@ use super::{
     accomp::{BassMotifPlan, Guitarist, bass_bar, bass_motif_bar, first_bass_target},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     cells::Cell,
-    feet::{draw_feet_humanize, feet_notes, feet_notes_with_cadence},
+    feet::{FeetPatternPlan, draw_feet_humanize, feet_notes},
     fiddle::{FiddleLine, same_cell_up_to_octave, tonic_midi_for_key},
     harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
     mode::Mode,
@@ -53,9 +53,14 @@ pub struct ActiveTune {
     pub harmony: HarmonyPlan,
     /// Plan motivique de la basse pour cet air (vide si la basse utilise `hits`).
     bass_plan: BassMotifPlan,
+    /// Alternatives de percussion fixées par partie et densité pour cet air.
+    feet_plan: FeetPatternPlan,
     /// Décalages d'humanisation des vélocités des pieds, par mesure unique de
     /// chaque partie ; les reprises et les tours relisent les mêmes décalages.
     pub feet_humanize: Vec<Vec<i8>>,
+    /// Graine des alternatives harmoniques et rythmiques, retirée à chaque air ;
+    /// zéro et aucun tirage si toutes les couches sont uniques.
+    pub variant_seed: u64,
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
     pub performance_seed: u64,
@@ -687,7 +692,8 @@ impl TradGenerator {
                 }
             }
             if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
-                tune.harmony = HarmonyPlan::Loop(LoopHarmony::new(tune.plan.clone()));
+                tune.harmony =
+                    HarmonyPlan::Loop(LoopHarmony::new(tune.plan.clone(), tune.variant_seed));
             }
         }
         position.mode = mode;
@@ -738,12 +744,14 @@ impl TradGenerator {
                     && self.track_active_in_intro(TrackId::Toe, intro);
                 if heel_wanted || toe_wanted {
                     let zero_humanize = vec![0i8; steps];
-                    let (heel_notes, toe_notes) = feet_notes(
+                    let pattern = tune.feet_plan.pattern(
                         &tuning.profile.percussion,
+                        plan.profile.form.sequence[0],
                         self.feet_density(self.effective_intensity(position.tune_index)),
-                        steps,
-                        &zero_humanize,
+                        false,
                     );
+                    let (heel_notes, toe_notes) =
+                        feet_notes(&tuning.profile.percussion, pattern, steps, &zero_humanize);
                     if heel_wanted {
                         for mut note in heel_notes {
                             note.id = self.alloc_note_id();
@@ -1118,13 +1126,14 @@ impl TradGenerator {
                 position.bar_in_strain - 1,
                 tune.plan.bar_role(self.performed_bar(position)).role,
             );
-            let (heel_notes, toe_notes) = feet_notes_with_cadence(
+            let pattern = tune.feet_plan.pattern(
                 &self.tuning.profile.percussion,
+                position.part.0,
                 self.feet_density(self.effective_intensity(position.tune_index)),
-                measure.steps,
-                humanize,
                 is_cadence,
             );
+            let (heel_notes, toe_notes) =
+                feet_notes(&self.tuning.profile.percussion, pattern, measure.steps, humanize);
             if heel_active {
                 for mut note in heel_notes {
                     note.id = self.alloc_note_id();
@@ -1518,15 +1527,28 @@ impl TradGenerator {
         let valence = self.musical_params.harmony_valence;
         let source = self.signature_source(tune_index, valence);
         let material_origin = source.map_or(tune_index, |tune| tune.material_origin);
-        let (plan, fiddle) = if let Some(source) = source {
+        let variant_seed = if self.profile.harmony.has_alternatives()
+            || self.profile.percussion.has_alternatives()
+        {
+            let high = rng.next_range_u64(0..1 << 32);
+            (high << 32) | rng.next_range_u64(0..1 << 32)
+        } else {
+            0
+        };
+        let (plan, fiddle, loop_harmony) = if let Some(source) = source {
             let plan = source.fiddle.plan();
+            let harmony = (self.profile.harmony.model == "loop")
+                .then(|| LoopHarmony::new(plan.clone(), variant_seed));
             let mut fiddle = source.fiddle.clone();
             fiddle.set_mode(plan.mode);
-            (plan, fiddle)
+            (plan, fiddle, harmony)
         } else {
             let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
             let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
             plan.resolve_roles(rng);
+            // Fixer les alternatives avant toute génération et tout guidage mélodique.
+            let harmony = (self.profile.harmony.model == "loop")
+                .then(|| LoopHarmony::new(plan.clone(), variant_seed));
             let mut fiddle_params = self.tuning.profile.melody.params.clone();
             let intensity = self.effective_intensity(tune_index);
             // Courbe d'intensité sur un rôle employé (au moins 1) ; un poids nul reste nul.
@@ -1567,7 +1589,7 @@ impl TradGenerator {
                     );
                 }
             }
-            (plan, fiddle)
+            (plan, fiddle, harmony)
         };
 
         let harmony = if self.profile.harmony.model == "jazz_functional" {
@@ -1588,8 +1610,8 @@ impl TradGenerator {
                 })
                 .collect();
             HarmonyPlan::JazzFunctional(bars)
-        } else if self.profile.harmony.model == "loop" {
-            HarmonyPlan::Loop(LoopHarmony::new(plan.clone()))
+        } else if let Some(harmony) = loop_harmony {
+            HarmonyPlan::Loop(harmony)
         } else if self.profile.harmony.model == "none" {
             HarmonyPlan::None
         } else if let Some(accompaniment) = &self.tuning.profile.accompaniment {
@@ -1603,6 +1625,7 @@ impl TradGenerator {
         } else {
             HarmonyPlan::None
         };
+        let feet_plan = FeetPatternPlan::new(&plan, &self.profile.percussion, variant_seed);
         let feet_humanize = draw_feet_humanize(
             self.tuning.profile.percussion.velocity_humanize,
             self.profile.form.unique_bars(),
@@ -1670,7 +1693,9 @@ impl TradGenerator {
             fiddle,
             harmony,
             bass_plan,
+            feet_plan,
             feet_humanize,
+            variant_seed,
             performance_seed,
             material_seed,
             intro_info,

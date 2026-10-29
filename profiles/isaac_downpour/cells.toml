@@ -6,4 +6,7 @@ cells = [
   { role = "run", notes = "3 - - - - - 2 -", weight = 3 },
   { role = "run", notes = "6 - - - 5 - - -", weight = 2 },
   { role = "run", notes = "7 - - - - - 8 -", weight = 1 },
+  { role = "open", notes = "3 - - - - - - -", weight = 1 },
+  { role = "run", notes = "8 - - - - - 6 -", weight = 2 },
+  { role = "run", notes = "2 - - - 1 - - -", weight = 1 },
 ]

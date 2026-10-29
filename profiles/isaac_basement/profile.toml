@@ -7,6 +7,9 @@
 # Arche : A1 pédale D1 + relance C#, A2 montée F-G-A-Bb, D descente
 # Bb-A-G-F-E (V majeur avec sensible C#), A2 et D repris, pont chromatique G#m-Gm-Fm-C#m à la
 # Periculum, reprise A1'. Le chœur n'entre qu'en descente et au pont.
+# Variantes par graine : A2 et D déplacent les appuis mineurs/V, pont à
+# retombée Dm ; chaque basse a une réponse rythmique, stomp alternatif aux
+# densités 1/2 et cellules de chœur tenues supplémentaires. Pédale conservée.
 [files]
 cells = "cells.toml"
 feet = "feet.toml"
@@ -98,27 +101,41 @@ kind = "pedal"
 degree = 1
 [harmony.parts.A2]
 kind = "chord_loop"
-chords = [
+loops = [{ weight = 1, chords = [
   { semitones = 0, quality = "Minor", bars = 1 },
   { semitones = 5, quality = "Minor", bars = 1 },
   { semitones = 0, quality = "Minor", bars = 2 },
-]
+] }, { weight = 1, chords = [
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 5, quality = "Minor", bars = 1 },
+  { semitones = 7, quality = "Major", bars = 1 },
+] }]
 [harmony.parts.D]
 kind = "chord_loop"
-chords = [
+loops = [{ weight = 1, chords = [
   { semitones = 8, quality = "Major", bars = 1 },
   { semitones = 7, quality = "Major", bars = 1 },
   { semitones = 5, quality = "Minor", bars = 1 },
   { semitones = 7, quality = "Major", bars = 1 },
-]
+] }, { weight = 1, chords = [
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 5, quality = "Minor", bars = 1 },
+  { semitones = 0, quality = "Minor", bars = 1 },
+  { semitones = 7, quality = "Major", bars = 1 },
+] }]
 [harmony.parts.Pont]
 kind = "chord_loop"
-chords = [
+loops = [{ weight = 1, chords = [
   { semitones = 6, quality = "Minor", bars = 2 },
   { semitones = 5, quality = "Minor", bars = 2 },
   { semitones = 3, quality = "Minor", bars = 2 },
   { semitones = 11, quality = "Minor", bars = 2 },
-]
+] }, { weight = 1, chords = [
+  { semitones = 6, quality = "Minor", bars = 2 },
+  { semitones = 5, quality = "Minor", bars = 2 },
+  { semitones = 11, quality = "Minor", bars = 2 },
+  { semitones = 0, quality = "Minor", bars = 2 },
+] }]
 
 [accompaniment]
 strong_steps = [0, 8]
@@ -174,6 +191,52 @@ reference = "chord_root"
 notes = [
   { step = 0, duration = 24, semitones = 0, octave = 1, velocity = 84, legato = true },
   { step = 24, duration = 8, semitones = 1, octave = 1, velocity = 78, legato = true },
+]
+
+# Réponses originales : mêmes registres et contours, respirations différentes.
+[[accompaniment.bass.motifs]]
+part = "A1"
+bars = 2
+weight = 2
+reference = "tonic"
+notes = [
+  { step = 0, duration = 24, semitones = 0, velocity = 94 },
+  { step = 24, duration = 4, semitones = 0, velocity = 86 },
+  { step = 28, duration = 2, semitones = -1, octave = 1, velocity = 84, legato = true },
+  { step = 30, duration = 2, semitones = 0, octave = 1, velocity = 96, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "A2"
+bars = 4
+weight = 2
+reference = "tonic"
+notes = [
+  { step = 0, duration = 12, semitones = 3, octave = 1, velocity = 94, legato = true },
+  { step = 12, duration = 4, semitones = 3, octave = 1, velocity = 84 },
+  { step = 16, duration = 16, semitones = 5, octave = 1, velocity = 94, legato = true },
+  { step = 32, duration = 16, semitones = 7, octave = 1, velocity = 96, legato = true },
+  { step = 48, duration = 16, semitones = 8, octave = 1, velocity = 98, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "D"
+bars = 4
+weight = 2
+reference = "tonic"
+notes = [
+  { step = 0, duration = 16, semitones = 8, octave = 1, velocity = 94, legato = true },
+  { step = 16, duration = 16, semitones = 7, octave = 1, velocity = 92, legato = true },
+  { step = 32, duration = 16, semitones = 5, octave = 1, velocity = 90, legato = true },
+  { step = 48, duration = 12, semitones = 3, octave = 1, velocity = 90, legato = true },
+  { step = 60, duration = 4, semitones = 2, octave = 1, velocity = 92, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "Pont"
+bars = 2
+weight = 2
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 28, semitones = 0, octave = 1, velocity = 82, legato = true },
+  { step = 28, duration = 4, semitones = -1, octave = 1, velocity = 76, legato = true },
 ]
 
 # Nappe sombre liée : un plaqué tenu par mesure, médium (center 60).
