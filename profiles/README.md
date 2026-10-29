@@ -35,6 +35,7 @@ porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError`
 | `isaac_basement` (essai) | The Binding of Isaac, Basement (Ridiculon) ; Diptera Sonata / Periculum | 4/4, 140 | chœur 52 (descente et pont), nappe chœur 91, basse 33, kit rock sec | oui (36, 38, 42 et fills 48/45/43/41) | non |
 | `isaac_cellar` (essai) | The Binding of Isaac, Cellar (Ridiculon) ; Periculum | 4/4, 140 | voix 53 (A' et pont), nappe chœur 91, synth bass 38 en croches, kit rock sec | oui (stomp de `isaac_basement`) | non |
 | `isaac_burning` (essai) | The Binding of Isaac, Burning Basement (Ridiculon) ; Fundamentum | 4/4, 140 | chœur 52 (sections d'accords), orgue rock 18, basse médiator 34 | oui (backbeat en demi-temps, 42 aux temps 2 et 4) | non |
+| `isaac_burning_psyche` (essai) | variante d'`isaac_burning`, mêmes notes | 4/4, 140 | Odin Bass Low + Moonshade (« plus psychédélique ») ; SoundFont identique | oui | non |
 | `isaac_downpour` (essai) | The Binding of Isaac, Downpour (Ridiculon) ; River of Despair | 4/4, 144 | chœur 52 (dès B), nappe chaude 89, basse doigts 33 tenue | oui (clairsemé, caisse au temps 3) | non |
 
 Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois

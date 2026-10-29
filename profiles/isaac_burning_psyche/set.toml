@@ -1,0 +1,32 @@
+# Forme longue : chaque set contient un air, deux tours de 40 mesures.
+# Intro vide et entrées rejouées au prochain air ; raccord direct sans pause,
+# pas d'outro. Les variations restent internes aux tours, sans modulation.
+length = [{ tunes = 1, weight = 1 }]
+
+[key]
+same = 1.0
+parallel = 1.0
+relative = 1.0
+fifth_up = 1.0
+fourth_up = 1.0
+step_up = 1.0
+step_down = 1.0
+other = 1.0
+last_dark = 1.0
+
+[[transitions]]
+kind = "direct"
+weight = 100
+
+[end]
+outro = false
+gap_bars = [{ bars = 0, weight = 1 }]
+
+[ramp]
+tempo_bpm = [[0.0, 0.0], [1.0, 0.0]]
+intensity_lift = [[0.0, 0.0], [1.0, 0.0]]
+gate = [[0.0, 0.0], [0.2, 1.0], [0.8, 1.0], [1.0, 0.0]]
+
+[signature]
+return_rate = 0.0
+memory = 1

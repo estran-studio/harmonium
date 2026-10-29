@@ -1,0 +1,81 @@
+# Backbeat rock en demi-temps de Fundamentum (grille §6.2 des références) :
+# grosse caisse 0 et 2, caisse claire au temps 3 (pas 8), charleston aux
+# temps 2 et 4. Densité 0 : ossature ; densité 2 : charleston en croches et
+# grosse caisse de relance. Fills de toms aux fins de phrase.
+heel_note = 36
+toe_note = 38
+heel_velocity = 96
+toe_velocity = 86
+feet_gain = 1.0
+velocity_humanize = 4
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+]
+
+[[patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 2, track = "Heel", delta_velocity = -18 },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+  { step = 10, track = "Heel", delta_velocity = -16 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -30 },
+]
+
+[[patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 0, track = "Toe", note = 42, delta_velocity = -36 },
+  { step = 2, track = "Heel", delta_velocity = -18 },
+  { step = 2, track = "Toe", note = 42, delta_velocity = -42 },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -28 },
+  { step = 6, track = "Toe", note = 42, delta_velocity = -42 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+  { step = 10, track = "Heel", delta_velocity = -16 },
+  { step = 10, track = "Toe", note = 42, delta_velocity = -42 },
+  { step = 12, track = "Toe", note = 42, delta_velocity = -28 },
+  { step = 14, track = "Heel", delta_velocity = -20 },
+  { step = 14, track = "Toe", note = 42, delta_velocity = -42 },
+]
+
+[[cadence_patterns]]
+density = 0
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+  { step = 14, track = "Toe", note = 41, delta_velocity = -16 },
+]
+
+[[cadence_patterns]]
+density = 1
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 2, track = "Heel", delta_velocity = -18 },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -30 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+  { step = 12, track = "Toe", note = 48, delta_velocity = -14 },
+  { step = 13, track = "Toe", note = 45, delta_velocity = -12 },
+  { step = 14, track = "Toe", note = 43, delta_velocity = -10 },
+  { step = 15, track = "Toe", note = 41, delta_velocity = -8 },
+]
+
+[[cadence_patterns]]
+density = 2
+hits = [
+  { step = 0, track = "Heel", delta_velocity = 0 },
+  { step = 2, track = "Heel", delta_velocity = -18 },
+  { step = 4, track = "Toe", note = 42, delta_velocity = -28 },
+  { step = 8, track = "Toe", delta_velocity = 0 },
+  { step = 10, track = "Toe", delta_velocity = -18 },
+  { step = 11, track = "Toe", delta_velocity = -22 },
+  { step = 12, track = "Toe", note = 48, delta_velocity = -14 },
+  { step = 13, track = "Toe", note = 45, delta_velocity = -12 },
+  { step = 14, track = "Toe", note = 43, delta_velocity = -10 },
+  { step = 15, track = "Toe", note = 41, delta_velocity = -8 },
+]

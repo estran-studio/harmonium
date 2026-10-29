@@ -1,0 +1,246 @@
+# Essai : Burning Basement de The Binding of Isaac (Ridiculon, Afterbirth),
+# d'après Fundamentum (références labo isaac-basement). Données seulement.
+# F# phrygien : riff de deux mesures sur F#2 (E en passage, G = b2 en fin de
+# cycle), backbeat rock en demi-temps, sections d'accords D-Bm-F#m et F#m-Bm
+# ; orgue rock et chœur seulement dans les sections d'accords.
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "isaac_burning_psyche"
+name = "Burning Basement de The Binding of Isaac, variante psychédélique (essai)"
+tradition = "The Binding of Isaac, Burning Basement — Ridiculon, 2015-2021"
+tags = ["isaac", "burning-basement", "boucle", "sombre", "psychedelique"]
+corpus = "harmonium_lab corpus/isaac/manifest.jsonl : 36 Fundamentum, Ridiculon (Matthias Bossi, Jon Evans), droits réservés (analyse et inspiration seulement ; audio, stems et transcriptions hors dépôt)"
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 140.0
+min_bpm = 120.0
+max_bpm = 160.0
+
+# Arche de 40 mesures (R C R C2 R), deux tours.
+[form]
+sequence = [0, 1, 0, 2, 0]
+resolve = "per_tune"
+repeat_variation = 0.15
+tour_variation = 0.20
+variation_operations = ["varied_end", "repeated_notes"]
+varied_end_keep = 0.5
+avoid_adjacent = false
+[[form.parts]]
+name = "R"
+melody_center_offset = 0
+phrase_ends = [8]
+tracks_off = ["Melody"]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+[[form.parts]]
+name = "C"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+[[form.parts]]
+name = "C2"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 6, mode = "phrygian", weight = 1 }]
+[melody.params]
+weight_role_run = 2
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 66
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 56
+tessitura_max = 76
+base_velocity = 58
+strong_eighth_velocity_offset = 4
+even_eighth_velocity_offset = -4
+
+# Pédale F# sous le riff ; sections d'accords de Fundamentum en F# phrygien
+# (D = VI, B = iv, A = III ; demi-tons relatifs à F#).
+[harmony]
+model = "loop"
+steps_per_chord = 16
+default_bars_per_chord = 1
+[harmony.parts.R]
+kind = "pedal"
+degree = 1
+[harmony.parts.C]
+kind = "chord_loop"
+chords = [
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 5, quality = "Minor", bars = 1 },
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 3, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "Major", bars = 1 },
+  { semitones = 0, quality = "Minor", bars = 1 },
+]
+[harmony.parts.C2]
+kind = "chord_loop"
+chords = [
+  { semitones = 0, quality = "Minor", bars = 1 },
+  { semitones = 5, quality = "Minor", bars = 1 },
+  { semitones = 0, quality = "Minor", bars = 1 },
+  { semitones = 3, quality = "Major", bars = 1 },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Riff de Fundamentum à l'octave F#2 : F# tenu, E en passage au milieu de la
+# mesure, G (b2) en appui à la fin du cycle. Sections d'accords : croches
+# rock sur la fondamentale.
+[accompaniment.bass]
+low = 26
+high = 37
+[[accompaniment.bass.motifs]]
+part = "R"
+bars = 2
+weight = 1
+reference = "tonic"
+notes = [
+  { step = 0, duration = 6, semitones = 0, octave = 1, velocity = 100 },
+  { step = 6, duration = 2, semitones = -2, octave = 1, velocity = 84, legato = true },
+  { step = 8, duration = 8, semitones = 0, octave = 1, velocity = 94, legato = true },
+  { step = 16, duration = 8, semitones = 0, octave = 1, velocity = 96 },
+  { step = 24, duration = 2, semitones = 0, octave = 1, velocity = 84 },
+  { step = 26, duration = 2, semitones = 0, octave = 1, velocity = 86 },
+  { step = 28, duration = 2, semitones = 1, octave = 1, velocity = 94, legato = true },
+  { step = 30, duration = 2, semitones = 0, octave = 1, velocity = 90, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "C"
+bars = 1
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 2, semitones = 0, octave = 1, velocity = 96 },
+  { step = 2, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 4, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 6, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 8, duration = 2, semitones = 0, octave = 1, velocity = 96 },
+  { step = 10, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 12, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+]
+[[accompaniment.bass.motifs]]
+part = "C2"
+bars = 1
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 2, semitones = 0, octave = 1, velocity = 96 },
+  { step = 2, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 4, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 6, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 8, duration = 2, semitones = 0, octave = 1, velocity = 96 },
+  { step = 10, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 12, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+  { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 80 },
+]
+
+# Nappe liée : un plaqué tenu par mesure, médium (center 60).
+[accompaniment.chords]
+center = 60
+max_drift = 6
+strings = 4
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, stroke = "block", duration = 16, velocity = 58, tie = true }] }]
+
+[instruments]
+# GeneralUser GS : basse médiator 34, orgue rock 18, chœur Aahs 52.
+melody_program = 52
+chords_program = 18
+bass_program = 34
+percussion_bank = 128
+percussion_program = 0
+
+# Variante « plus psychédélique » d'isaac_burning, aimée à l'écoute : mêmes
+# notes, Odin Bass Low [RM] + Moonshade (les sons d'isaac_downpour), plus
+# forts que Bass Crusher + Haunt, d'où Bass −5 dB et Chords −7 dB au mix.
+[odin.Bass]
+preset = "Bass Low [RM]"
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[odin.Chords]
+preset = "Moonshade"
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[mix]
+master_db = 9.0
+[mix.room]
+room_size = 0.3
+damping = 0.5
+width = 0.6
+level = 0.25
+[mix.tracks.Melody]
+level_db = -8.0
+pan = 0.05
+reverb_send = 0.2
+[mix.tracks.Chords]
+# Preset Odin plus fort que ceux d'isaac_basement (crête > 0 dBFS au rendu).
+level_db = -7.0
+pan = -0.3
+reverb_send = 0.25
+[mix.tracks.Bass]
+# Preset Odin plus fort que ceux d'isaac_basement (crête > 0 dBFS au rendu).
+level_db = -5.0
+pan = 0.0
+reverb_send = 0.1
+[mix.tracks.Heel]
+level_db = -5.0
+pan = -0.06
+reverb_send = 0.06
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.06
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8
+
+# Groove : micro-timing léger et accent du temps fort sur les deux pieds.
+[performance.tracks.Heel]
+jitter = 0.02
+[[performance.tracks.Heel.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0
+[performance.tracks.Toe]
+jitter = 0.02
+[[performance.tracks.Toe.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0

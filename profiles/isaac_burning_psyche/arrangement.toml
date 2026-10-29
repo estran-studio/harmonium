@@ -1,0 +1,13 @@
+# Deux tours : riff, nappe et backbeat dès l'ouverture ; le chœur (Melody)
+# se tait sur le riff et chante dans les sections d'accords.
+tours_per_tune = 2
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Melody = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0
