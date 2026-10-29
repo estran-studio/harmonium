@@ -241,7 +241,7 @@ percussion_program = 0
 
 # Odin : A « plus trad » par défaut ; B « psychédélique » si tension >= 0.6,
 # avec hystérésis de 0.03 et bascule à la prochaine frontière de partie.
-# Niveaux relatifs de B repris du mix d'isaac_burning_psyche.
+# B (Bass Low + Moonshade) est plus fort que A : −5 et −7 dB de zone.
 [[odin.Bass.zones]]
 when = { tension = [0.6, 1.0] }
 preset = "Bass Low [RM]"

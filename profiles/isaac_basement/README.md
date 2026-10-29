@@ -56,11 +56,10 @@ batterie. Trois cellules de chœur originales ajoutent tierce tenue,
 retombée vers Bb et soupir 2→1, toujours sans solo.
 
 Les mêmes principes enrichissent `isaac_cellar` (ostinato chromatique,
-A2 et pont), `isaac_burning` et `isaac_burning_psyche` (C/C2 de huit
-mesures, riff F# phrygien, demi-temps), `isaac_downpour` (A/B/C de seize
-mesures, paliers chromatiques et basse tenue/réarticulée). Burning et sa
-variante psychédélique partagent strictement les données musicales ;
-leurs identités et réglages de timbre/mix existants restent distincts.
+A2 et pont), `isaac_burning` (C/C2 de huit mesures, riff F# phrygien,
+demi-temps ; sa variante psychédélique est une zone de timbre Odin),
+`isaac_downpour` (A/B/C de seize mesures, paliers chromatiques et basse
+tenue/réarticulée).
 Les instruments, tempos, formes et durées ne changent pas.
 
 Le choix est pondéré et déterministe par graine, stable aux reprises de

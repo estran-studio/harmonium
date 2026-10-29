@@ -8,8 +8,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-const ISAAC: [&str; 5] =
-    ["isaac_basement", "isaac_cellar", "isaac_burning", "isaac_burning_psyche", "isaac_downpour"];
+const ISAAC: [&str; 4] = ["isaac_basement", "isaac_cellar", "isaac_burning", "isaac_downpour"];
 type Grid = Vec<(u8, u8, usize, usize)>;
 
 fn params(profile: &StyleProfile, density: u8) -> MusicalParams {
