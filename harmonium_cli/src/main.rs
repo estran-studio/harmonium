@@ -210,7 +210,6 @@ fn main() -> Result<()> {
         let config = host.session_config();
         println!("Engine initialized");
         println!("  Sample rate: 44100 Hz");
-        println!("  Key: {} {}", config.key, config.scale);
         println!("  BPM: {:.1}", config.bpm);
         println!();
 

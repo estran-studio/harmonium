@@ -9,17 +9,13 @@
 //! rend un tampon (`process_buffer`) et lit l'horloge (`beat_info`) : sur wasm cela exerce
 //! `web_time::Instant`, qui y remplace `std::time::Instant` (celui-ci y panique).
 
-use std::{
-    fmt::Write as _,
-    sync::{Arc, atomic::AtomicU64},
-};
+use std::fmt::Write as _;
 
-use harmonium::{
-    LiveHost,
-    composer::MusicComposer,
-    playback::{TaggedMeasure, pack},
+use harmonium::LiveHost;
+use harmonium_core::{
+    EngineCommand, MeasureSnapshot, StyleProfile, events::RecordFormat,
+    time_plan::score::session_start,
 };
-use harmonium_core::{EngineCommand, MeasureSnapshot, StyleProfile, events::RecordFormat};
 use web_time::Instant;
 
 #[cfg(target_arch = "wasm32")]
@@ -112,21 +108,17 @@ fn check_bars(snapshots: &[MeasureSnapshot]) -> Result<(), String> {
     }
 }
 
-/// Tonalité et gamme tirées à l'ouverture d'une session par le composer, pour 32 graines : le
-/// tirage d'affichage du composer est un tirage d'entier comme les autres (sur `u64`, pas `usize`).
+/// Indices de tonalité et de gamme tirés à l'ouverture d'une session (`session_start`), pour 32
+/// graines : ce sont des tirages d'entier comme les autres (sur `u64`, pas `usize`), et ils fixent
+/// la suite du RNG de la session.
 ///
 /// # Errors
 /// Jamais en pratique ; la signature est celle des sondes.
 pub fn session_probe() -> Result<String, String> {
     let mut text = String::new();
     for seed in 1..=32u64 {
-        let (measure_tx, _measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(1);
-        let (_return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(1);
-        let position = Arc::new(AtomicU64::new(pack(1, 0)));
-        let composer =
-            MusicComposer::new_with_seed(SAMPLE_RATE, measure_tx, return_rx, position, seed);
-        writeln!(text, "seed={seed} key={} scale={}", composer.config.key, composer.config.scale)
-            .map_err(|error| error.to_string())?;
+        let (_rng, key, scale) = session_start(seed);
+        writeln!(text, "seed={seed} key={key} scale={scale}").map_err(|error| error.to_string())?;
     }
     Ok(text)
 }

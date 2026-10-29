@@ -570,12 +570,10 @@ fn print_state(host: &mut LiveHost) {
         host.musical_params().profile_id.clone(),
         host.musical_params().feet_density,
         host.profile_bar_info(bar),
-        host.session_config().key.clone(),
-        host.session_config().scale.clone(),
     );
 
     if let Some(report) = host.poll_state() {
-        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot;
+        let (style, feet_density, reel_info) = composer_snapshot;
 
         println!();
         println!("{}", "╔══════════════════════════════════════════════════╗".cyan());
@@ -621,16 +619,9 @@ fn print_state(host: &mut LiveHost) {
         // Harmony
         println!("{}", "HARMONY:".yellow().bold());
         println!("  Current Chord: {}", format!("{}", report.current_chord).magenta().bold());
-        println!(
-            "  Progression: {}",
-            format!("{} ({} chords)", report.progression_name, report.progression_length).green()
-        );
-        let key_str = if let Some((plan, _)) = reel_info {
-            format_profile_tune_key_mode(&plan)
-        } else if !report.session_key.is_empty() {
-            format!("{} {}", report.session_key, report.session_scale)
-        } else {
-            format!("{comp_key} {comp_scale}")
+        let key_str = match reel_info {
+            Some((plan, _)) => format_profile_tune_key_mode(&plan),
+            None => "—".to_string(),
         };
         println!("  Key: {}", key_str.green());
         println!();
@@ -651,7 +642,7 @@ fn print_state(host: &mut LiveHost) {
         );
         println!();
     } else {
-        let (style, feet_density, reel_info, comp_key, comp_scale) = composer_snapshot;
+        let (style, feet_density, reel_info) = composer_snapshot;
         println!();
         println!("{}", "STYLE:".yellow().bold());
         println!("  Style: {}", format!("{style:?}").green());
@@ -663,7 +654,7 @@ fn print_state(host: &mut LiveHost) {
                 format_profile_form_position(role, &plan).magenta().bold()
             );
         } else {
-            println!("  Key: {}", format!("{comp_key} {comp_scale}").green());
+            println!("  Key: {}", "—".green());
         }
         println!();
     }

@@ -21,7 +21,6 @@ harmonium_core = { path = "../harmonium_core" }
 harmonium = { path = "../harmonium_host" }
 serde_json = "1.0"
 hound = "3.5.1"
-rtrb = "0.3"
 web-time = "1"
 
 # Chargé par Node (`wasm-bindgen --target nodejs`) : les exports sont de ce module.
