@@ -109,7 +109,7 @@ les transcriptions de G0.
 | G7e | fusionnée (`1f89f36`) : `Articulation::Legato` (relance et riff de basse liés, chevauchement de 0,2 pas au lecteur) ; oxisynth n'interprète ni mono ni portamento, glide Odin en suivi | `g7e-legato.md` |
 | G7h | fusionnée (`d90ef38`) : lisibilité de `nt_desert` — relance et riff montés d'une octave (médiane basse MIDI 27 → 39, plus aucun demi-ton sous 70 Hz hors pédale G#1), figures ≥ 2 pas, dessus en lead 81 au lieu du pad 88 ; legato G7e conservé | `profiles/nt_desert/README.md` |
 | M1 bis | fusionnée (labo `621f862`) : re-mesure de `nt_desert` au moteur `aadc812` (audio 59,6–60,9 vs *Fläshyn*, symbolique 70,7 → 72,6) | labo `references/nt-desert/README.md` §8 |
-| G9 essai | `profiles/isaac_basement` en données seules (D mineur harmonique, pédale, montée/descente de *Diptera Sonata*, pont de *Periculum*), aucun ajout moteur ; distance symbolique 65,9–69,0, audio 38,7–40,9. Aimé à l'écoute (2026-10-29) ; suivis du même schéma : `isaac_cellar` (*Periculum*), `isaac_burning` (*Fundamentum*, F# phrygien), `isaac_downpour` (*River of Despair*), non mesurés | `profiles/isaac_basement/README.md`, labo `references/isaac-basement/README.md` §8 |
+| G9 essai | `profiles/isaac_basement` en données seules (D mineur harmonique, pédale, montée/descente de *Diptera Sonata*, pont de *Periculum*), aucun ajout moteur ; distance symbolique 65,9–69,0, audio 38,7–40,9. Suivis du même schéma : `isaac_cellar` (*Periculum*), `isaac_burning` (*Fundamentum*, F# phrygien), `isaac_downpour` (*River of Despair*), non mesurés. Écoute Odin du propriétaire (2026-10-29) : Basement aimé, Cellar et Downpour « vraiment un bon son » ; Burning rejeté avec Sausage Bassener + Phazzy Organ (« micro vibration »), puis aimé avec Bass Crusher + Haunt (A, « plus trad », retenu) comme avec Bass Low + Moonshade (B, « plus psychédélique ») | `profiles/isaac_basement/README.md`, labo `references/isaac-basement/README.md` §8 |
 | G8 | reportée hors phase (décision du propriétaire, 2026-10-27 : on se concentre sur harmonium) | — |
 
 Après G7h : 637 tests passent sans `odin`, 93 avec `odin` (`-p harmonium`). Labo après G0, G6,
@@ -161,7 +161,7 @@ Harmonium et alacod passent sous `MIT OR Apache-2.0` ; seuls les jeux publics GP
 | Critère | État |
 |---|---|
 | 1. `nt_desert` « ça sonne comme du NT » | accepté : G7h validé à l'écoute, phase close sur NT |
-| 2. `isaac_<étage>` | non atteint : `isaac_basement` livré comme essai d'écoute, sans validation |
+| 2. `isaac_<étage>` | atteint à l'écoute pour les essais `isaac_basement`, `isaac_cellar`, `isaac_downpour` et `isaac_burning` (2026-10-29) ; distance publiée pour Basement seulement |
 | 3. Distance au corpus | publiée pour `nt_desert` (re-mesure) et `isaac_basement` |
 | 4. Algorithmes employés par un autre style | tenu (fixtures G1–G7e, principe VIII) |
 | 5. Notes des 10 profils trad | identiques |
@@ -174,8 +174,8 @@ Harmonium et alacod passent sous `MIT OR Apache-2.0` ; seuls les jeux publics GP
 - Test à l'aveugle réel/généré BT2 (annoncé en 013) ; J1b, J2 et J3 de la phase 013.
 - Brancher la musique dans les clones (`alacod/games/throne`, `games/isaac`), ex-G8 et partie jeu de
   G9 : plus tard, la phase reste dans harmonium.
-- Isaac au-delà de l'essai : valider `isaac_basement` à l'écoute, puis son (basse saturée, batterie
-  plus présente, voisine chromatique D# de *Periculum*) et autres étages.
+- Isaac au-delà de l'essai : distance au corpus de Cellar, Burning et Downpour ; autres étages (Caves,
+  Depths, Womb…) après leur analyse au labo.
 - Glide Odin pour l'articulation `Legato` (G7e ne couvre que le lecteur SoundFont).
 
 ## G0 — Corpus NT (2026-10-27)

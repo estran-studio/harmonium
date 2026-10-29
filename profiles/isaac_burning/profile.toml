@@ -177,6 +177,10 @@ bass_program = 34
 percussion_bank = 128
 percussion_program = 0
 
+# Odin, écoute du propriétaire : Bass Crusher + Haunt (« plus trad », retenu),
+# comme isaac_basement. Variante aimée aussi, « plus psychédélique » :
+# Bass Low [RM] + Moonshade avec Bass à −5 dB et Chords à −7 dB au mix.
+# Sausage Bassener + Phazzy Organ rejetés (« micro vibration »).
 [odin.Bass]
 preset = "Bass Crusher [RM]"
 morph = [
