@@ -22,6 +22,7 @@ use crate::{
     live::{Intent, Recording, Session},
     loading::{ResourceStatus, Source, check_size, parse_buffer_frames},
     manifest::{LoadedResources, MANIFEST_FILE, Manifest},
+    workbench::{Draft, Origin, PROFILE_FILE, bank_names, is_safe_name},
 };
 
 /// Période de la génération : celle du REPL. Une mesure dure de 0,94 s à 3 s dans les profils
@@ -202,6 +203,41 @@ impl RecordingSink {
 #[must_use]
 pub fn recording_sink(settings: &Settings) -> RecordingSink {
     RecordingSink::new(settings.recordings_dir.clone())
+}
+
+// === Atelier : dossiers de profils ===
+
+/// Lit un profil pour l'atelier : `path` est son dossier ou son `profile.toml`. Les banques de son
+/// `[files]` qui se lisent entrent dans le brouillon ; une banque absente est laissée au décodage,
+/// qui la signale sur sa ligne de `[files]`.
+pub fn read_profile_folder(path: &Path) -> Result<Draft, String> {
+    let root = if path.is_dir() { path.join(PROFILE_FILE) } else { path.to_path_buf() };
+    let dir = root.parent().unwrap_or(Path::new("")).to_path_buf();
+    let text = fs::read_to_string(&root).map_err(|e| format!("{}: {e}", root.display()))?;
+    let banks = bank_names(&text);
+    let mut files = vec![(PROFILE_FILE.to_string(), text)];
+    for name in banks.into_iter().filter(|name| is_safe_name(name)) {
+        if let Ok(text) = fs::read_to_string(dir.join(&name)) {
+            files.push((name, text));
+        }
+    }
+    Draft::new(Origin::Folder(dir.display().to_string()), files)
+}
+
+/// Écrit chaque fichier du brouillon dans `dir` (créé au besoin) ; les autres fichiers du dossier
+/// restent. Rend le nombre de fichiers écrits.
+pub fn write_profile_folder(dir: &Path, draft: &Draft) -> Result<usize, String> {
+    if let Some(file) = draft.files.iter().find(|file| !is_safe_name(&file.name)) {
+        return Err(format!("unsafe file name: {}", file.name));
+    }
+    for file in &draft.files {
+        let path = dir.join(&file.name);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        fs::write(&path, &file.text).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(draft.files.len())
 }
 
 /// L'écoute OSC du host (`/harmonium/params`) ; s'arrête quand on la lâche.

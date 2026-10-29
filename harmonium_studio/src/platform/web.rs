@@ -1,4 +1,5 @@
-//! Navigateur : `fetch` en flux, Cache Storage, minuteur de Worker, téléchargements, canvas eframe.
+//! Navigateur : `fetch` en flux, Cache Storage, minuteur de Worker, téléchargements, téléversements,
+//! brouillon de l'atelier dans `localStorage`, canvas eframe.
 
 use std::{
     cell::RefCell,
@@ -13,8 +14,9 @@ use js_sys::{Array, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 use web_sys::{
-    Blob, BlobPropertyBag, Cache, CacheStorage, HtmlAnchorElement, MessageEvent,
-    ReadableStreamDefaultReader, RequestCache, RequestInit, Response, Url, UrlSearchParams, Worker,
+    Blob, BlobPropertyBag, Cache, CacheStorage, HtmlAnchorElement, HtmlInputElement, MessageEvent,
+    ReadableStreamDefaultReader, RequestCache, RequestInit, Response, Storage, Url,
+    UrlSearchParams, Worker,
 };
 
 use super::{LoadHandle, update_state};
@@ -26,6 +28,7 @@ use crate::{
         check_size, decide, parse_buffer_frames, stale_entries,
     },
     manifest::{LoadedResources, MANIFEST_FILE, Manifest, Resource},
+    workbench::Draft,
 };
 
 /// Tampon audio par défaut : 2048 images (≈ 46 ms à 44,1 kHz). S1 a mesuré zéro tampon en retard
@@ -316,47 +319,145 @@ const DOWNLOAD_URL_LIFETIME_MS: i32 = 60_000;
 pub struct RecordingSink;
 
 impl RecordingSink {
-    /// Déclenche le téléchargement de `recording` (lien `download` cliqué par le programme) ; rend
-    /// le texte à afficher.
+    /// Déclenche le téléchargement de `recording` ; rend le texte à afficher.
     pub fn save(&self, recording: &Recording) -> Result<String, String> {
-        let bytes = Uint8Array::from(recording.bytes.as_slice());
-        let options = BlobPropertyBag::new();
-        options.set_type(match recording.format {
+        let mime = match recording.format {
             RecordFormat::Wav => "audio/wav",
             RecordFormat::Midi => "audio/midi",
             RecordFormat::MusicXml => "application/vnd.recordare.musicxml+xml",
-        });
-        let blob = Blob::new_with_u8_array_sequence_and_options(&Array::of1(&bytes), &options)
-            .map_err(js_error)?;
-        let url = Url::create_object_url_with_blob(&blob).map_err(js_error)?;
-        let window = web_sys::window().ok_or("no window")?;
-        let anchor = window
-            .document()
-            .ok_or("no document")?
-            .create_element("a")
-            .map_err(js_error)?
-            .dyn_into::<HtmlAnchorElement>()
-            .map_err(|_| "cannot create a link")?;
-        anchor.set_href(&url);
-        anchor.set_download(&recording.file_name);
-        anchor.click();
-        let revoke = Closure::once_into_js(move || {
-            let _ = Url::revoke_object_url(&url);
-        });
-        window
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                revoke.unchecked_ref(),
-                DOWNLOAD_URL_LIFETIME_MS,
-            )
-            .map_err(js_error)?;
+        };
+        offer_download(&recording.file_name, mime, &recording.bytes)?;
         Ok(format!("Downloaded {}", recording.file_name))
     }
+}
+
+/// Remet `bytes` au navigateur en téléchargement nommé `file_name` (lien `download` cliqué par le
+/// programme).
+pub fn offer_download(file_name: &str, mime: &str, bytes: &[u8]) -> Result<(), String> {
+    let bytes = Uint8Array::from(bytes);
+    let options = BlobPropertyBag::new();
+    options.set_type(mime);
+    let blob = Blob::new_with_u8_array_sequence_and_options(&Array::of1(&bytes), &options)
+        .map_err(js_error)?;
+    let url = Url::create_object_url_with_blob(&blob).map_err(js_error)?;
+    let window = web_sys::window().ok_or("no window")?;
+    let anchor = window
+        .document()
+        .ok_or("no document")?
+        .create_element("a")
+        .map_err(js_error)?
+        .dyn_into::<HtmlAnchorElement>()
+        .map_err(|_| "cannot create a link")?;
+    anchor.set_href(&url);
+    anchor.set_download(file_name);
+    anchor.click();
+    let revoke = Closure::once_into_js(move || {
+        let _ = Url::revoke_object_url(&url);
+    });
+    window
+        .set_timeout_with_callback_and_timeout_and_arguments_0(
+            revoke.unchecked_ref(),
+            DOWNLOAD_URL_LIFETIME_MS,
+        )
+        .map_err(js_error)?;
+    Ok(())
 }
 
 /// Les enregistrements deviennent des téléchargements.
 #[must_use]
 pub fn recording_sink(_settings: &Settings) -> RecordingSink {
     RecordingSink
+}
+
+// === Atelier : téléversement et brouillon gardé ===
+
+/// Clé du brouillon de l'atelier dans `localStorage` (JSON de [`Draft`]).
+const DRAFT_KEY: &str = "harmonium-studio.workbench.draft";
+
+fn local_storage() -> Result<Storage, String> {
+    web_sys::window()
+        .ok_or("no window")?
+        .local_storage()
+        .map_err(js_error)?
+        .ok_or_else(|| "no localStorage".to_string())
+}
+
+/// Le brouillon gardé par le navigateur à la dernière visite, s'il y en a un.
+pub fn load_draft() -> Result<Option<Draft>, String> {
+    let Some(json) = local_storage()?.get_item(DRAFT_KEY).map_err(js_error)? else {
+        return Ok(None);
+    };
+    serde_json::from_str(&json).map(Some).map_err(|e| format!("saved draft: {e}"))
+}
+
+/// Garde le brouillon dans le navigateur (`None` : l'efface).
+pub fn store_draft(draft: Option<&Draft>) -> Result<(), String> {
+    let storage = local_storage()?;
+    match draft {
+        Some(draft) => {
+            let json = serde_json::to_string(draft).map_err(|e| e.to_string())?;
+            storage.set_item(DRAFT_KEY, &json).map_err(js_error)
+        }
+        None => storage.remove_item(DRAFT_KEY).map_err(js_error),
+    }
+}
+
+/// Fichiers choisis par l'utilisateur : `(nom, octets)`, ou l'erreur de lecture.
+type Picked = Result<Vec<(String, Vec<u8>)>, String>;
+
+/// Un choix de fichiers en cours ; le résultat arrive après le choix, lu à une image suivante.
+/// Un choix annulé n'arrive jamais.
+pub struct Upload(Rc<RefCell<Option<Picked>>>);
+
+impl Upload {
+    /// Les fichiers choisis, une fois lus.
+    pub fn take(&self) -> Option<Picked> {
+        self.0.borrow_mut().take()
+    }
+}
+
+/// Ouvre le choix de fichiers du navigateur : une archive `.zip`, ou les `.toml` (et `.md`) d'un
+/// dossier de profil choisis ensemble.
+pub fn pick_profile_files() -> Result<Upload, String> {
+    let document = web_sys::window().ok_or("no window")?.document().ok_or("no document")?;
+    let input = document
+        .create_element("input")
+        .map_err(js_error)?
+        .dyn_into::<HtmlInputElement>()
+        .map_err(|_| "cannot create a file input")?;
+    input.set_type("file");
+    input.set_multiple(true);
+    input.set_accept(".zip,.toml,.md");
+    input.set_hidden(true);
+    // Attaché à la page le temps du choix : certains navigateurs ignorent le clic sur un champ
+    // détaché.
+    document.body().ok_or("no body")?.append_child(&input).map_err(js_error)?;
+    let slot = Rc::new(RefCell::new(None));
+    let on_change = Closure::once_into_js({
+        let input = input.clone();
+        let slot = slot.clone();
+        move || {
+            spawn_local(async move {
+                let picked = read_picked(&input).await;
+                input.remove();
+                *slot.borrow_mut() = Some(picked);
+            });
+        }
+    });
+    input.set_onchange(Some(on_change.unchecked_ref()));
+    input.click();
+    Ok(Upload(slot))
+}
+
+async fn read_picked(input: &HtmlInputElement) -> Picked {
+    let files = input.files().ok_or("no files")?;
+    let mut picked = Vec::new();
+    for index in 0..files.length() {
+        let Some(file) = files.get(index) else { continue };
+        let buffer = JsFuture::from(file.array_buffer()).await.map_err(js_error)?;
+        picked.push((file.name(), Uint8Array::new(&buffer).to_vec()));
+    }
+    Ok(picked)
 }
 
 // === Page ===

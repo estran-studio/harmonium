@@ -311,3 +311,104 @@ fn the_about_panel_lists_the_licences_and_credits() -> Result<(), String> {
     }
     Ok(())
 }
+
+// === Atelier ===
+
+/// Clique le bouton `label`, puis dessine deux images : l'atelier dessine sa colonne de gauche
+/// avant le centre, donc un geste du centre (Fork) n'y paraît qu'à l'image suivante.
+fn click(rig: &mut Rig, label: &str) {
+    rig.harness.get_by_label(label).click();
+    rig.harness.step();
+    rig.harness.step();
+}
+
+/// Le texte `text` tapé dans le champ « Profile folder » de l'atelier, à la place du sien.
+fn type_folder(rig: &mut Rig, text: &str) {
+    rig.harness.get_by_label("Profile folder").click();
+    rig.harness.step();
+    rig.harness.key_press_modifiers(Modifiers::COMMAND, egui::Key::A);
+    rig.harness.get_by_label("Profile folder").type_text(text);
+    rig.harness.step();
+}
+
+/// Un texte de l'écran (une étiquette porte son texte en valeur) qui commence par `prefix`.
+fn shown_text(rig: &Rig, prefix: &str) -> Option<String> {
+    rig.harness
+        .query_all_by(|node| node.value().is_some_and(|value| value.starts_with(prefix)))
+        .next()
+        .and_then(|node| node.accesskit_node().value())
+}
+
+fn bar_tempo(rig: &Rig, bar: usize) -> Option<f32> {
+    rig.session.with(|session| session.score().bar(bar).map(|measure| measure.tempo))
+}
+
+#[test]
+fn a_forked_profile_saved_edited_and_applied_plays_from_the_next_bar() -> Result<(), String> {
+    let mut rig = Rig::new()?;
+    rig.play(200);
+    click(&mut rig, "Workbench");
+
+    // Le premier profil distribué est montré, en lecture seule : Fork en fait le brouillon.
+    click(&mut rig, "Fork");
+    assert!(shown_text(&rig, "Valid profile").is_some());
+
+    // Enregistré dans un dossier, modifié sur disque, rouvert.
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let folder = dir.path().join("reel_fork");
+    type_folder(&mut rig, folder.to_str().ok_or("chemin")?);
+    click(&mut rig, "Save");
+    let root = folder.join("profile.toml");
+    let text = std::fs::read_to_string(&root).map_err(|e| e.to_string())?;
+    assert!(text.contains("id = \"reel_quebecois_fork\""));
+    let edited = text.replace("default_bpm = 230.0", "default_bpm = 225.0");
+    assert_ne!(edited, text);
+    std::fs::write(&root, edited).map_err(|e| e.to_string())?;
+    click(&mut rig, "Open");
+
+    // Apply : la mesure qui sonne finit à 230, la suivante est recomposée à 225.
+    let sounding = rig.transport_bar();
+    click(&mut rig, "Apply");
+    rig.session.with(Session::pump);
+    assert_eq!(profile_id(&rig), "reel_quebecois_fork");
+    assert_eq!(bar_tempo(&rig, sounding), Some(230.0));
+    assert_eq!(bar_tempo(&rig, sounding + 1), Some(225.0));
+    // L'écran nomme le profil installé, même hors des profils distribués.
+    click(&mut rig, "Live");
+    assert!(shown_text(&rig, "Reel québécois (fork)").is_some());
+
+    // Le dossier enregistré se lit comme `harmonium-cli --profile <dossier>`.
+    let loaded = StyleProfile::load(&folder).map_err(|e| e.to_string())?;
+    assert_eq!(loaded, rig.session.with(|session| session.host().profile().clone()));
+    Ok(())
+}
+
+#[test]
+fn an_error_in_a_bank_is_placed_on_its_line_and_blocks_apply() -> Result<(), String> {
+    let mut rig = Rig::new()?;
+    rig.play(10);
+    click(&mut rig, "Workbench");
+    click(&mut rig, "Fork");
+    click(&mut rig, "cells.toml");
+
+    // Une ligne invalide, où que soit le curseur.
+    rig.harness.get_by_role(Role::MultilineTextInput).focus();
+    rig.harness.step();
+    rig.harness.get_by_role(Role::MultilineTextInput).type_text("=oops");
+    rig.harness.step();
+    rig.harness.step();
+
+    let text = rig.harness.get_by_role(Role::MultilineTextInput).value().ok_or("texte")?;
+    let line = text.lines().position(|l| l.contains("=oops")).ok_or("ligne tapée")? + 1;
+    let message = shown_text(&rig, "cells.toml:").ok_or("message d'erreur")?;
+    assert!(message.starts_with(&format!("cells.toml:{line}: ")), "{message}");
+    assert!(
+        rig.harness.query_by_label("cells.toml (error)").is_some(),
+        "l'onglet fautif est marqué"
+    );
+    assert!(shown_text(&rig, "Valid profile").is_none());
+    assert!(rig.harness.get_by_label("Apply").accesskit_node().is_disabled());
+    click(&mut rig, "Apply");
+    assert_eq!(profile_id(&rig), "reel_quebecois", "rien d'installé");
+    Ok(())
+}

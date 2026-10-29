@@ -1,6 +1,6 @@
 # harmonium_studio
 
-Application egui du moteur Harmonium, native et web (même code). Phase 015 : la coquille (S5 — chargement des ressources, cache, bouton Start) et l'écran Live (S6 — lecture, visualisation, parité avec le REPL). L'atelier de profils est la tâche S7.
+Application egui du moteur Harmonium, native et web (même code). Phase 015 : la coquille (S5 — chargement des ressources, cache, bouton Start), l'écran Live (S6 — lecture, visualisation, parité avec le REPL) et l'atelier de profils (S7 — onglet Workbench).
 
 Le studio ne lit que la sortie publiée du moteur (`MeasureSnapshot`, `BeatInfo`, `EngineReport`) et l'API publique de l'hôte, et ne le pilote que par `LiveHost::apply(EngineCommand)` et `LiveHost::pump()`. Il est toujours compilé avec `odin` : **un binaire ou un bundle du studio est GPL** (constitution 4.2.0).
 
@@ -70,23 +70,39 @@ Natif : mêmes ressources lues sur disque par un fil, même écran, pas de cache
 
 | Zone | Contenu |
 |---|---|
-| Barre du haut | onglets Live / Workbench (désactivé : S7), style (`StyleProfile::distributed()`), lecture / pause, tempo entendu (à la noire, tiré de la pulsation de `BeatInfo`) et signature de la mesure qui sonne, graine (affichée, saisie, « New seed »), enregistrement WAV / MIDI / MusicXML, « About » |
+| Barre du haut | onglets Live / Workbench, style (`StyleProfile::distributed()` ; le nom affiché est celui du profil installé, un brouillon de l'atelier compris), lecture / pause, tempo entendu (à la noire, tiré de la pulsation de `BeatInfo`) et signature de la mesure qui sonne, graine (affichée, saisie, « New seed »), enregistrement WAV / MIDI / MusicXML, « About » |
 | Gauche | contrôle émotion / direct ; pavé valence × arousal ; curseurs arousal, valence, densité, tension, intensité (valeurs affichées) ; pieds 0/1/2 ; tempo nominal et « Reset BPM » ; tempo audible et rampe (« Apply tempo », « Clear tempo ») ; swing 0,5–0,75 ; signature ; « Reset engine » ; repli « Engine » : modules rythme / harmonie / mélodie, anticipation, saut dur ou doux à une mesure, et en natif dossier de profil et écoute OSC |
 | Centre | 20 mesures : 4 jouées, la mesure en cours, celles composées d'avance (fond plus clair ; pas encore composées : fond sombre). Rangées : numéros, air (rang dans le set, tonalité et mode, de `TunePosition`), forme (partie et passe, « A·1 » : partie A, passe 1 ; couleur par partie), accords (`chord_changes` ; un nom à chaque changement, une pédale ne se répète pas), piano-roll par piste (Melody, Counter, Chords, Bass, Heel, Toe ; hauteurs relatives 3·2·3·2·1·1 ; piste sans note dans la fenêtre : nom grisé), tête de lecture. Une note se dessine selon son `Articulation` publiée : `Normal` barre pleine, `Accent` cerclée de blanc, `Detached` barre raccourcie, `Linked` bouts carrés, `Tied` bouts carrés raccrochée à la précédente par un trait (pas d'attaque), `Legato` attaque, arc depuis la note précédente et prolongement clair (le chevauchement), `Trigger` losange. Clic sur une mesure : saut (`Seek`) ; clic droit : saut, déplacement doux de la tête (`SeekPlayhead`), fin de boucle ; glisser : boucle (16 mesures au plus ; au-delà, refus affiché) |
 | Droite | horloge (mesure, pulsation, phase, temps fort, prochaine pulsation) ; état (l'équivalent de `state` du REPL : style, pieds, mode, graine, tonalité et forme de la mesure qui sonne, tempo entendu, swing, pulsation, signature, mesure / temps / pas, accord, modules) ; mixeur : gain, Mute, Solo par piste (solo = couper les autres ; une sourdine à la main survit à la fin du solo ; une piste écartée par la densité du profil, `density_tracks`, est grisée, avec « off: density < x » au survol et au bout de sa rangée du piano-roll), volume général, sourdine de la sortie, routage par piste |
-| Bas | avis : enregistrement écrit (chemin) ou téléchargé, commande refusée par l'hôte |
+| Bas | avis : enregistrement écrit (chemin) ou téléchargé, commande refusée par l'hôte, actions de l'atelier |
 
 Les gains choisis valent pour le profil en cours : un changement de profil rend à chaque piste le niveau du profil (c'est ce que fait le moteur), et l'écran le montre.
+
+## Atelier (Workbench)
+
+Un **brouillon** : les fichiers d'un profil tels qu'ils sont sur disque (`profile.toml`, puis les banques de son `[files]` dans leur ordre ; commentaires et découpe gardés). Il se décode à chaque frappe par le décodeur du moteur (`StyleProfile::from_files`, celui de `load` et de `harmonium-cli --profile` : 0,5 à 2,2 ms par décodage en natif release pour les profils distribués).
+
+| Zone | Contenu |
+|---|---|
+| Gauche | le brouillon (nom, origine, « Valid profile » ou erreur, « Apply », appliqué ou non) ; natif : « Profile folder », « Open », « Save » ; web : « Upload… », « Download .zip » ; les profils distribués, lisibles |
+| Centre | en-tête (profil distribué : nom, « read-only », « Fork » ; brouillon : nom, ou l'erreur et « Go to line ») ; un onglet par fichier (le fichier fautif est marqué « (error) ») ; l'éditeur TOML : coloration (en-têtes, clés, chaînes, nombres, commentaires), numéros de ligne, ligne de l'erreur sur fond rouge |
+
+- **Fork** : copie d'un profil distribué sous l'identifiant `<id>_fork` et le nom « <nom> (fork) » (seules ces deux lignes de `[meta]` changent), pour ne pas se confondre avec l'original. Il remplace le brouillon en cours.
+- **Apply** : `EngineCommand::SetStyleProfile`, comme le sélecteur de style ; la mesure qui sonne finit, la suivante est composée avec le profil. Refusé tant que le brouillon ne se décode pas.
+- **Erreur** : `fichier:ligne: champ: message` du décodeur ; « Go to line » (et un Apply refusé) ouvre l'onglet du fichier et amène la ligne au milieu de la vue.
+- **Natif** : « Open » lit un dossier (ou son `profile.toml`) et les banques de son `[files]` ; « Save » écrit les fichiers du brouillon dans le dossier du champ (créé au besoin ; les autres fichiers du dossier restent ; un nom qui sortirait du dossier est refusé).
+- **Web** : « Upload… » accepte une archive `.zip` (le `profile.toml` le moins profond fixe le dossier ; `__MACOSX/` ignoré ; Deflate lu) ou les fichiers d'un dossier choisis ensemble ; seuls les `.toml` et `.md` sont gardés. « Download .zip » donne `<id>.zip`, qui se décompresse en `<id>/`. Le brouillon est gardé dans `localStorage` (clé `harmonium-studio.workbench.draft`) à chaque modification et revient à la visite suivante ; un refus du navigateur est signalé une fois.
 
 ## Organisation
 
 - `src/manifest.rs`, `src/packager.rs`, `src/loading.rs` : logique pure du chargement (testée dans `tests/`), sans eframe.
 - `src/live.rs` : l'écran Live sans fenêtre. `Session` (l'hôte, la partition reçue de `pump`, ce que le studio a commandé sans que le moteur le publie : mixeur, boucle, enregistrements…), `Intent` (geste de l'écran → `EngineCommand`, exécuté par `LiveHost::apply`), `LiveView` (ce que l'écran dessine, tiré de la sortie publiée).
-- `src/live_screen.rs` : l'écran Live dessiné par egui ; il lit une `LiveView` par image et rend des `Intent`.
-- `src/platform/` : `native.rs` et `web.rs`, les seules différences entre bureau et navigateur (dont `SessionHandle`, `RecordingSink`, et en natif `start_osc`).
+- `src/live_screen.rs` : l'écran après Start (barre du haut, avis, onglet Live dessiné par egui) ; il lit une `LiveView` par image et rend des `Intent`.
+- `src/workbench.rs` : l'atelier sans fenêtre (`Draft`, `Draft::fork`, `Draft::decode`, archive, `toml_spans` pour la coloration). `src/workbench_screen.rs` : l'onglet Workbench dessiné par egui.
+- `src/platform/` : `native.rs` et `web.rs`, les seules différences entre bureau et navigateur (dont `SessionHandle`, `RecordingSink` ; en natif `start_osc`, `read_profile_folder`, `write_profile_folder` ; en web `offer_download`, `pick_profile_files`, `load_draft`, `store_draft`).
 - `src/app.rs` : chargement, Start, puis l'écran Live.
 - La feature `app` (par défaut) porte eframe et le moteur ; `--no-default-features` ne compile que le manifeste et `studio_assets`.
 
 ## Tests
 
-Sans carte son ni fenêtre : `tests/live_tests.rs` pilote une `Session` sur un hôte détaché (`LiveHost::detached`) et regarde la sortie publiée, le signal rendu et les fichiers (dont : tempo, tonalité et mode viennent de ce qui sonne, jamais des restes de session ; chaque `Articulation`, le legato de la basse et les accords liés d'`isaac_basement` arrivent au piano-roll) ; `tests/live_screen_tests.rs` agit sur les vrais widgets avec `egui_kittest` (sélecteur de style, graine, curseur, clic et glisser sur les mesures, Solo, enregistrement, panneau About). Le rendu en pixels n'est pas testé : voir `specs/015-studio/s6-studio-live.md` pour la façon dont il a été relu.
+Sans carte son ni fenêtre : `tests/live_tests.rs` pilote une `Session` sur un hôte détaché (`LiveHost::detached`) et regarde la sortie publiée, le signal rendu et les fichiers (dont : tempo, tonalité et mode viennent de ce qui sonne, jamais des restes de session ; chaque `Articulation`, le legato de la basse et les accords liés d'`isaac_basement` arrivent au piano-roll) ; `tests/live_screen_tests.rs` agit sur les vrais widgets avec `egui_kittest` (sélecteur de style, graine, curseur, clic et glisser sur les mesures, Solo, enregistrement, panneau About ; atelier : Fork, Save, Open, Apply entendu à la mesure suivante, erreur placée sur sa ligne qui bloque Apply) ; `tests/workbench_tests.rs` couvre le brouillon (copie, dossier relu par `StyleProfile::load`, archive décompressée puis téléversée, téléversement filtré, coloration). Le rendu en pixels n'est pas testé : voir `specs/015-studio/s6-studio-live.md` et `s7-atelier.md` pour la façon dont il a été relu.

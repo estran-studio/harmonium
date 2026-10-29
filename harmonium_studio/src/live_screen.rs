@@ -1,6 +1,7 @@
-//! L'écran Live dessiné par egui : barre du haut, commandes à gauche, partition au centre
-//! (forme, accords, piano-roll, tête de lecture), horloge, état et mixeur à droite, panneau
-//! « About ».
+//! L'écran du studio après Start : barre du haut (onglets Live et Workbench), avis en bas, et
+//! l'onglet choisi. Live : commandes à gauche, partition au centre (forme, accords, piano-roll,
+//! tête de lecture), horloge, état et mixeur à droite, panneau « About ». Workbench :
+//! [`WorkbenchScreen`].
 //!
 //! Chaque image lit une [`LiveView`] (sortie publiée du moteur) et rend des [`Intent`] que la
 //! session exécute après le dessin : l'écran ne touche jamais le moteur autrement.
@@ -22,6 +23,7 @@ use crate::{
         Session, TRACKS, WINDOW_BARS, format_label, track_label,
     },
     platform::{RecordingSink, SessionHandle},
+    workbench_screen::WorkbenchScreen,
 };
 
 /// Adresse des sources publiques (licences : panneau « About »).
@@ -54,11 +56,20 @@ struct LoopDrag {
     to: usize,
 }
 
+/// L'onglet montré sous la barre du haut.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Tab {
+    Live,
+    Workbench,
+}
+
 /// L'écran Live.
 pub struct LiveScreen {
     session: SessionHandle,
     sink: RecordingSink,
     credits: Credits,
+    tab: Tab,
+    workbench: WorkbenchScreen,
     about_open: bool,
     notices: Vec<Notice>,
     seed_text: String,
@@ -83,6 +94,8 @@ impl LiveScreen {
             session,
             sink,
             credits,
+            tab: Tab::Live,
+            workbench: WorkbenchScreen::new(),
             about_open: false,
             notices: Vec::new(),
             seed_text: String::new(),
@@ -117,25 +130,14 @@ impl LiveScreen {
 
         egui::Panel::top("live_top").show_inside(ui, |ui| self.top_bar(ui, &view, &mut intents));
         egui::Panel::bottom("live_notices").show_inside(ui, |ui| self.notices_bar(ui));
-        egui::Panel::left("live_controls").resizable(false).exact_size(300.0).show_inside(
-            ui,
-            |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| self.controls(ui, &view, &mut intents));
-            },
-        );
-        egui::Panel::right("live_monitor").resizable(false).exact_size(320.0).show_inside(
-            ui,
-            |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    beat_clock(ui, &view);
-                    ui.separator();
-                    state_panel(ui, &view);
-                    ui.separator();
-                    mixer(ui, &view, &mut intents);
-                });
-            },
-        );
-        egui::CentralPanel::default().show_inside(ui, |ui| self.score(ui, &view, &mut intents));
+        match self.tab {
+            Tab::Live => self.live(ui, &view, &mut intents),
+            Tab::Workbench => {
+                for (text, error) in self.workbench.show(ui, &mut intents) {
+                    self.notify(text, error);
+                }
+            }
+        }
         self.about(ui.ctx());
 
         for intent in intents {
@@ -147,15 +149,40 @@ impl LiveScreen {
         ui.ctx().request_repaint();
     }
 
+    /// L'onglet Live : commandes, partition, horloge, état, mixeur.
+    fn live(&mut self, ui: &mut egui::Ui, view: &LiveView, intents: &mut Vec<Intent>) {
+        egui::Panel::left("live_controls").resizable(false).exact_size(300.0).show_inside(
+            ui,
+            |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| self.controls(ui, view, intents));
+            },
+        );
+        egui::Panel::right("live_monitor").resizable(false).exact_size(320.0).show_inside(
+            ui,
+            |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    beat_clock(ui, view);
+                    ui.separator();
+                    state_panel(ui, view);
+                    ui.separator();
+                    mixer(ui, view, intents);
+                });
+            },
+        );
+        egui::CentralPanel::default().show_inside(ui, |ui| self.score(ui, view, intents));
+    }
+
     // === Barre du haut ===
 
     fn top_bar(&mut self, ui: &mut egui::Ui, view: &LiveView, intents: &mut Vec<Intent>) {
         ui.horizontal_wrapped(|ui| {
             ui.heading("Harmonium Studio");
             ui.separator();
-            ui.add(egui::Button::selectable(true, "Live"));
-            ui.add_enabled(false, egui::Button::selectable(false, "Workbench"))
-                .on_disabled_hover_text("The profile workbench is not available yet.");
+            for (tab, label) in [(Tab::Live, "Live"), (Tab::Workbench, "Workbench")] {
+                if ui.add(egui::Button::selectable(self.tab == tab, label)).clicked() {
+                    self.tab = tab;
+                }
+            }
             ui.separator();
 
             ui.label("Style");
@@ -232,7 +259,14 @@ impl LiveScreen {
     fn notices_bar(&self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             if self.notices.is_empty() {
-                ui.weak("Click a bar to seek · drag across bars to loop (up to 16) · right-click a bar for more.");
+                ui.weak(match self.tab {
+                    Tab::Live => {
+                        "Click a bar to seek · drag across bars to loop (up to 16) · right-click a bar for more."
+                    }
+                    Tab::Workbench => {
+                        "Fork a distributed profile, edit its files, then Apply: it plays from the next bar."
+                    }
+                });
             }
             for notice in self.notices.iter().rev() {
                 let color = if notice.error {
