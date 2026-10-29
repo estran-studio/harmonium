@@ -211,6 +211,10 @@ impl Desk {
                 self.audible_tempo = Some((*bpm, *ramp_pulses));
             }
             EngineCommand::ClearAudibleTempo => self.audible_tempo = None,
+            EngineCommand::Reset => {
+                self.loop_range = None;
+                self.audible_tempo = None;
+            }
             EngineCommand::StartRecording(format) => self.recording[format_index(*format)] = true,
             EngineCommand::StopRecording(format) => self.recording[format_index(*format)] = false,
             _ => {}

@@ -496,25 +496,30 @@ fn legato_bass_and_tied_chords_of_isaac_are_in_the_view() -> Result<(), String> 
 }
 
 #[test]
-fn reset_returns_the_engine_to_the_profile_defaults_and_the_screen_keeps_drawing()
--> Result<(), String> {
-    let (mut session, mut playback) = session(None)?;
-    play(&mut session, &mut playback, 20);
+fn reset_returns_to_the_active_profile_defaults_at_bar_one() -> Result<(), String> {
+    let (mut session, mut playback) = session_of("isaac_basement")?;
+    play(&mut session, &mut playback, 600);
     let initial = view(&mut session);
+    assert!(initial.beat.as_ref().is_some_and(|beat| beat.bar > 2), "la lecture a avancé");
     for step in [
         EngineCommand::SetSwing(0.7),
         EngineCommand::SetFeetDensity(2),
         EngineCommand::SetBpm(150.0),
         EngineCommand::SetIntensity(0.9),
+        EngineCommand::SetLoop { start_bar: 2, end_bar: 4 },
+        EngineCommand::SetAudibleTempo { bpm: 90.0, ramp_pulses: 0 },
     ] {
         command(&mut session, step)?;
     }
     let changed = view(&mut session);
     assert!((changed.swing - initial.swing).abs() > 0.05, "swing commandé");
     command(&mut session, EngineCommand::Reset)?;
-    play(&mut session, &mut playback, 100);
+    play(&mut session, &mut playback, 5);
     let view = view(&mut session);
-    assert_eq!(view.profile_id, initial.profile_id);
+    assert_eq!(view.profile_id, "isaac_basement", "le profil choisi reste");
+    assert_eq!(view.beat.as_ref().map(|beat| beat.bar), Some(1), "retour à la mesure 1");
+    assert_eq!(view.desk.loop_range, None);
+    assert_eq!(view.desk.audible_tempo, None);
     assert!((view.swing - initial.swing).abs() < 1e-6, "swing {}", view.swing);
     assert!((view.nominal_bpm - initial.nominal_bpm).abs() < 1e-3, "tempo {}", view.nominal_bpm);
     assert!((view.intensity - initial.intensity).abs() < 1e-6, "intensité {}", view.intensity);

@@ -348,8 +348,12 @@ impl LiveHost {
                 self.invalidate_future()
             }
             EngineCommand::Reset => {
+                // Defaults of the active profile, no loop, no imposed audible
+                // tempo, back to bar 1 with the same seed.
                 self.composer.reset();
-                self.publish()
+                self.send(PlaybackCommand::ClearLoop)?;
+                self.send(PlaybackCommand::ClearTempo)?;
+                self.restart_session()
             }
 
             // === Session ===
@@ -445,7 +449,7 @@ impl LiveHost {
         self.publish()
     }
 
-    /// Back to bar 1 with the new seed: evict, then move the playhead.
+    /// Back to bar 1 (new seed, or reset): evict, then move the playhead.
     fn restart_session(&mut self) -> Result<(), String> {
         self.publish()?;
         self.send(PlaybackCommand::Seek(1))

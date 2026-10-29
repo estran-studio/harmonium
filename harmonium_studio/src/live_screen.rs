@@ -374,7 +374,11 @@ impl LiveScreen {
         ));
 
         ui.separator();
-        if ui.button("Reset engine").on_hover_text("Engine back to its defaults.").clicked() {
+        if ui
+            .button("Reset engine")
+            .on_hover_text("Back to the style's defaults, no loop, restart at bar 1 (same seed).")
+            .clicked()
+        {
             command(intents, EngineCommand::Reset);
         }
 

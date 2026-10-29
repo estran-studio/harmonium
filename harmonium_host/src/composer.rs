@@ -436,15 +436,17 @@ impl MusicComposer {
         self.generator.update_params(self.musical_params.clone());
     }
 
-    /// Reset to defaults and clear the timeline. Staged boxes are stale
-    /// (see `take_pending_drop`).
+    /// Back to the active profile's defaults (emotions, direct tempo, swing,
+    /// meter), same seed, replayed from bar 1. Staged boxes are stale (see
+    /// `take_pending_drop`); the caller moves the playhead to bar 1.
     pub fn reset(&mut self) {
+        let tuning = self.generator.tuning.clone();
         self.musical_params = MusicalParams::default();
-        self.controls.reset_tempo(self.musical_params.bpm);
+        self.controls = GameControls::new(tuning.profile.meter.default_bpm);
+        self.set_tuning(tuning);
         self.writehead.reset();
-        self.set_tuning(TuningParams::default());
-        self.generator.update_params(self.musical_params.clone());
         self.clear_staged();
+        self.deterministic_seek(1);
     }
 
     /// Clear timeline and writehead WITHOUT resetting musical_params.

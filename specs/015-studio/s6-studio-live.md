@@ -64,7 +64,7 @@ Même commande, même exécuteur. Colonne « Vérifié » : ce qui a été fait 
 |---|---|---|
 | `style <id>` | sélecteur de style | `ls` `the_style_selector_…` (kittest : ouvrir la liste, choisir « Valse québécoise » ; l'hôte joue `valse_quebecoise`) |
 | `style <dossier>` | natif : « Profile folder » + Load (repli « Engine ») | `ls` même test (kittest : `profiles/gigue_acadienne`) ; web : n'existe pas (atelier S7) |
-| `reset` | « Reset engine » | `lt` `reset_returns_the_engine_to_the_profile_defaults_…` (commande) ; le bouton lui-même : à vérifier |
+| `reset` | « Reset engine » | `lt` `reset_returns_to_the_active_profile_defaults_at_bar_one` (profil actif gardé, mesure 1, boucle et tempo audible retirés) ; host `reset_restarts_the_active_profile_from_bar_one` (mêmes notes qu’au premier passage) |
 | `feet 0\|1\|2` | pieds 0 / 1 / 2 | `lt` `the_view_follows_the_commands_of_the_parity_table` (commande, vue) |
 | `intensity`, `direct` | curseur Intensity ; boutons Emotion / Direct | idem (commande, vue) |
 | `emotion …` | pavé, quatre curseurs, bouton Emotion | `ls` `moving_the_arousal_slider_…` (kittest : curseur Arousal ; l'hôte publie la valeur et recompose la mesure d'avance après `pump`) ; `lt` `an_emotion_change_recomposes_the_bars_ahead` |

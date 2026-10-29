@@ -3,10 +3,10 @@
 //!
 //! Hôte sans carte son (`LiveHost::detached`) : le test fait tourner le
 //! `PlaybackEngine` lui-même, tampon par tampon.
-use std::time::Instant;
+use std::{collections::BTreeMap, time::Instant};
 
 use harmonium::{LiveHost, playback::PlaybackEngine};
-use harmonium_core::{EngineCommand, events::RecordFormat};
+use harmonium_core::{EngineCommand, StyleProfile, events::RecordFormat, report::MeasureSnapshot};
 
 const SAMPLE_RATE: f64 = 44100.0;
 
@@ -102,6 +102,68 @@ fn loop_beyond_the_playback_window_is_refused() -> Result<(), String> {
     assert!(host.apply(EngineCommand::SetLoop { start_bar: 1, end_bar: 40 }).is_err());
     host.apply(EngineCommand::SetLoop { start_bar: 2, end_bar: 4 })?;
     host.apply(EngineCommand::ClearLoop)
+}
+
+/// Joue `buffers` tampons et garde, par mesure, le dernier snapshot publié.
+fn play_bars(
+    host: &mut LiveHost,
+    playback: &mut PlaybackEngine,
+    buffers: usize,
+) -> BTreeMap<usize, MeasureSnapshot> {
+    let mut bars = BTreeMap::new();
+    let mut buffer = [0.0f32; 1024];
+    for _ in 0..buffers {
+        for snapshot in host.pump() {
+            bars.insert(snapshot.index, snapshot);
+        }
+        playback.process_buffer(&mut buffer, 2, Instant::now());
+    }
+    bars
+}
+
+/// `reset` rend les défauts du profil actif et recommence à la mesure 1 avec la même graine :
+/// la musique repart telle qu'au premier passage.
+#[test]
+fn reset_restarts_the_active_profile_from_bar_one() -> Result<(), String> {
+    let (mut host, mut playback) = host()?;
+    let profile = StyleProfile::named("nt_desert").map_err(|e| e.to_string())?;
+    host.apply(EngineCommand::SetStyleProfile(Box::new(profile)))?;
+    host.apply(EngineCommand::SetSeed(5))?;
+    let first = play_bars(&mut host, &mut playback, 600);
+    assert!(host.transport_position().bar > 3, "la lecture a avancé");
+    let defaults = host.musical_params().clone();
+
+    host.apply(EngineCommand::SetEmotionParams {
+        arousal: 0.95,
+        valence: -0.8,
+        density: 0.9,
+        tension: 0.9,
+    })?;
+    host.apply(EngineCommand::SetSwing(0.7))?;
+    host.apply(EngineCommand::SetBpm(90.0))?;
+    host.apply(EngineCommand::Reset)?;
+
+    let params = host.musical_params();
+    assert_eq!(&*params.profile_id, "nt_desert", "le profil actif reste");
+    assert_eq!(params.bpm, defaults.bpm);
+    assert_eq!(params.swing_ratio, defaults.swing_ratio);
+    assert_eq!(params.harmony_valence, defaults.harmony_valence);
+    assert_eq!(host.session_seed(), 5, "la graine reste");
+
+    let again = play_bars(&mut host, &mut playback, 1);
+    assert_eq!(host.transport_position().bar, 1, "la tête de lecture revient à la mesure 1");
+    let again = again
+        .into_iter()
+        .chain(play_bars(&mut host, &mut playback, 100))
+        .collect::<BTreeMap<_, _>>();
+    let notes = |bars: &BTreeMap<usize, MeasureSnapshot>, bar: usize| {
+        bars.get(&bar).map(|measure| format!("{:?}", measure.notes))
+    };
+    for bar in 1..=3 {
+        assert!(notes(&again, bar).is_some(), "mesure {bar} recomposée");
+        assert_eq!(notes(&again, bar), notes(&first, bar), "mesure {bar}");
+    }
+    Ok(())
 }
 
 #[test]

@@ -113,7 +113,9 @@ pub enum EngineCommand {
     SetIntensity(f32),
 
     // === UTILITY ===
-    /// Reset engine to defaults
+    /// Back to the active profile's defaults (emotions, direct tempo, swing,
+    /// meter), no loop, no imposed audible tempo; replays from bar 1 with
+    /// the same seed
     Reset,
 }
 

@@ -50,7 +50,9 @@ direct
 Les émotions sont arousal, valence, densité et tension. Elles agissent via
 `[dynamics]` du profil actif, pas via des plages musicales codées dans le REPL.
 La grille, la forme, les cellules, le modèle harmonique et les instruments se
-règlent dans le profil. `reset` rétablit le profil embarqué par défaut.
+règlent dans le profil. `reset` rend les défauts du profil actif (émotions, mode
+direct, tempo, swing, signature), retire la boucle et le tempo audible imposé, et
+recommence à la mesure 1 avec la même graine.
 
 ### Transport, tempo et mixage
 
