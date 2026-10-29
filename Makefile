@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
+.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve studio/web/resources studio/site studio/site/deploy test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -66,6 +66,31 @@ studio/web/build: studio/assets
 ## Studio web servi en local (http://127.0.0.1:8787)
 studio/web/serve: studio/assets
 	cd harmonium_studio && trunk serve --release
+
+## Ressources de la vitrine : la release fixée par harmonium_studio/web-resources.json (banque SF3, pieds,
+## presets Odin des profils), taille et SHA-256 contrôlés, puis copiées à empreinte dans harmonium_studio/resources.
+STUDIO_WEB_STAGE := target/studio-web-resources
+studio/web/resources:
+	python3 harmonium_studio/scripts/web_resources.py check-profiles
+	python3 harmonium_studio/scripts/web_resources.py fetch --out $(STUDIO_WEB_STAGE)
+	cargo run -q -p harmonium_studio --no-default-features --bin studio_assets -- \
+		--main-bank "$$(ls $(STUDIO_WEB_STAGE)/main/*)" \
+		--feet-bank "$$(ls $(STUDIO_WEB_STAGE)/feet/*)" \
+		--odin-dir $(STUDIO_WEB_STAGE)/odin \
+		--out $(STUDIO_RESOURCES)
+
+## Site public dans target/site : page d'accueil (harmonium_studio/site) et studio web sous /studio/.
+SITE_DIR := target/site
+studio/site: studio/web/resources
+	rm -rf $(SITE_DIR)
+	cd harmonium_studio && trunk build --release --public-url /studio/ --dist $(CURDIR)/$(SITE_DIR)/studio
+	rm -f $(SITE_DIR)/studio/.trunk-lock
+	cp -R harmonium_studio/site/. $(SITE_DIR)/
+
+## Déploie target/site sur Cloudflare Pages (`wrangler login`, ou CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID).
+CLOUDFLARE_PROJECT ?= harmonium-website
+studio/site/deploy: studio/site
+	npx --yes wrangler@4 pages deploy $(SITE_DIR) --project-name $(CLOUDFLARE_PROJECT) --branch main
 
 # ════════════════════════════════════════════════════════════════════
 # TESTS

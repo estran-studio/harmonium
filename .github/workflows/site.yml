@@ -1,0 +1,52 @@
+name: Site (page d'accueil et studio web)
+
+# À chaque PR : le studio se construit pour le web avec les ressources de la release fixée par
+# harmonium_studio/web-resources.json (taille et SHA-256 contrôlés : une ressource qui ne correspond
+# pas fait échouer le job). Sur main : déploiement sur Cloudflare Pages (projet harmonium-website).
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  TRUNK_VERSION: v0.22.1
+  CLOUDFLARE_PROJECT: harmonium-website
+
+jobs:
+  site:
+    name: Build du site, déploiement sur main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config
+      - name: Install Rust (stable + wasm32)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+      # Trunk télécharge lui-même le CLI wasm-bindgen de la version de Cargo.lock.
+      - name: Install trunk
+        run: |
+          curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$HOME/.cargo/bin"
+          trunk --version
+
+      - name: Ressources vérifiées et build du site
+        run: make studio/site
+
+      - name: Déploiement Cloudflare Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Pas de déploiement : secret CLOUDFLARE_API_TOKEN ou variable CLOUDFLARE_ACCOUNT_ID absent (voir harmonium_studio/README.md)."
+            exit 0
+          fi
+          npx --yes wrangler@4 pages deploy target/site --project-name "$CLOUDFLARE_PROJECT" --branch main

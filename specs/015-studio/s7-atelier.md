@@ -1,6 +1,6 @@
 # S7 — Atelier de profils (onglet Workbench)
 
-Branche `wquintal/s7-atelier` (depuis `daf090b`). Plan : `specs/015-studio/plan.md`, tâche S7 et acceptation 5.
+Branche `wquintal/s7-atelier` (depuis `daf090b`), fusionnée dans `main` (`9a90654`). Plan : `specs/015-studio/plan.md`, tâche S7 et acceptation 5.
 Crate : `harmonium_studio/` (README : section « Atelier (Workbench) »).
 
 Rien n'a été écouté. Le web a été conduit dans un Chromium sans tête lancé avec `--mute-audio` (aucun son ne
@@ -65,8 +65,9 @@ distribué, brouillon copié, erreur au bout de `cells.toml`, « Go to line ». 
 
 | Commande | Résultat |
 |---|---|
-| `make test` | voir plus bas |
-| `make lint` | voir plus bas |
+| `make test` | sortie 0 sur la branche ; puis sur `main` fusionnée (avec le nettoyage du rapport) : 91 suites, 670 tests verts, 0 échec, 2 ignorés ; goldens inchangés |
+| `make lint` | sortie 0 ; aucun avertissement dans `harmonium_studio` (les restants sont dans `harmonium_core`, non touché) |
+| `make test/determinism` (sur `main` fusionnée) | natif = wasm : 98 / 98 fichiers identiques |
 | `cargo +nightly fmt --all -- --check` | sortie 0 |
 | `cargo check --target wasm32-unknown-unknown -p harmonium_studio` | sortie 0 |
 | `trunk serve --release --port 8788` (le 8787 était pris par un serveur du checkout principal) | build et service ; essais web ci-dessus |

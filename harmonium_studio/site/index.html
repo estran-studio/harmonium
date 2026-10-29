@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harmonium — procedural music for games</title>
+  <meta name="description" content="Harmonium is an open-source Rust engine that composes music bar by bar, driven by four emotions. Try it in your browser with Harmonium Studio." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1b1b1b;
+      --panel: #242424;
+      --fg: #dcdcdc;
+      --muted: #9a9a9a;
+      --accent: #5aa9e6;
+      --warm: #e8b04a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 56px 24px 72px; }
+    h1 { font-size: 2.6rem; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+    h2 { font-size: 1.25rem; font-weight: 600; margin: 44px 0 12px; color: var(--warm); }
+    p { margin: 0 0 14px; }
+    .lead { font-size: 1.2rem; color: var(--fg); }
+    .muted { color: var(--muted); font-size: 0.95rem; }
+    a { color: var(--accent); }
+    .cta {
+      display: inline-block;
+      margin: 18px 0 6px;
+      padding: 12px 26px;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #10202c;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .cta:hover { filter: brightness(1.1); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .card { background: var(--panel); border-radius: 8px; padding: 16px 18px; }
+    .card h3 { margin: 0 0 6px; font-size: 1.02rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    ul { margin: 0 0 14px; padding-left: 20px; }
+    li { margin: 3px 0; }
+    footer { margin-top: 56px; color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Harmonium</h1>
+    <p class="lead">
+      An open-source Rust engine that composes music bar by bar, live, for games. Four emotions —
+      arousal, valence, density, tension — steer the tune, the harmony, the texture and the tempo;
+      a change is heard at the next bar.
+    </p>
+    <a class="cta" href="studio/">Open Harmonium Studio</a>
+    <p class="muted">
+      Runs in your browser. The first visit downloads the application and about 8&nbsp;MB of
+      instruments; later visits load them from your device. Click <em>Start</em> to turn the sound on.
+    </p>
+
+    <h2>Styles</h2>
+    <p>
+      Each style is a profile written in TOML: form, meter, melodic cells, harmony, accompaniment,
+      dynamics and instruments.
+    </p>
+    <ul>
+      <li>Traditional fiddle music from Québec, Acadia and the British colonial repertoire: reels, jigs,
+        hornpipe, march and waltzes, with foot percussion (<em>podorythmie</em>).</li>
+      <li>Game soundtracks in the manner of <em>Nuclear Throne</em> (the desert) and <em>The Binding of
+        Isaac</em> (Basement, Cellar, Burning Basement, Downpour), played on the Odin synthesizer.</li>
+    </ul>
+
+    <h2>Harmonium Studio</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Live</h3>
+        <p>Pick a style and a seed, move the emotions, and watch the form, the chords and a piano roll
+          of every track follow the music. Mixer, loops, tempo ramps.</p>
+      </div>
+      <div class="card">
+        <h3>Workbench</h3>
+        <p>Fork a style, edit its TOML files with errors shown on their line, and apply it: the next bar
+          plays your version. Download it as a folder for the command-line tools.</p>
+      </div>
+      <div class="card">
+        <h3>Record</h3>
+        <p>Save what plays as WAV, MIDI or MusicXML. The same seed plays the same music.</p>
+      </div>
+    </div>
+
+    <h2>Source and licences</h2>
+    <ul>
+      <li>Engine and studio: <a href="https://github.com/estran-studio/harmonium">github.com/estran-studio/harmonium</a>,
+        MIT OR Apache-2.0.</li>
+      <li>The web studio includes the Odin synthesizer (<a href="https://github.com/estran-studio/odin-rs">odin-rs</a>,
+        derived from <a href="https://github.com/TheWaveWarden/odin2">Odin 2</a>), so the published application
+        is licensed under the GPL-3.0; its Odin presets are factory presets of Odin 2.</li>
+      <li>Instrument bank: <a href="https://github.com/mrbumpy409/GeneralUser-GS">GeneralUser GS</a> by
+        S. Christian Collins. Foot percussion: CC0 samples from Freesound.</li>
+    </ul>
+
+    <footer>Harmonium — Estran Studio</footer>
+  </main>
+</body>
+</html>

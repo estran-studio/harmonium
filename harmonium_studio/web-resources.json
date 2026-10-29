@@ -1,0 +1,83 @@
+{
+  "repository": "estran-studio/harmonium",
+  "release": "studio-resources-1",
+  "resources": [
+    {
+      "role": "main-bank",
+      "file": "GeneralUser-GS.sf3",
+      "asset": "GeneralUser-GS.sf3",
+      "bytes": 7620750,
+      "sha256": "290b008195cd832f544e773e141457dbbe79e20af3f547532b97da8fb9e2647d"
+    },
+    {
+      "role": "feet-bank",
+      "file": "harmonium_trad.sf2",
+      "asset": "harmonium_trad.sf2",
+      "bytes": 154186,
+      "sha256": "4dc8159837b44c754d3bac9eb645e6fb85e53983d9e52a551f8256b67ef28443"
+    },
+    {
+      "role": "license",
+      "file": "GeneralUser-GS-LICENSE.txt",
+      "asset": "GeneralUser-GS-LICENSE.txt",
+      "bytes": 2317,
+      "sha256": "7b32efefdf95ce38a043799f0659853ddc00fbaa14d8c50f0aca16b9b8b405be"
+    },
+    {
+      "role": "odin",
+      "file": "Bass Crusher [RM].odin",
+      "asset": "odin-Bass-Crusher-RM.odin",
+      "bytes": 15177,
+      "sha256": "b323e5f9ce0c544c7d6dd53fbc12b4ce8977d125d15876cad15b17bd26c13b8b"
+    },
+    {
+      "role": "odin",
+      "file": "Bass Low [RM].odin",
+      "asset": "odin-Bass-Low-RM.odin",
+      "bytes": 15181,
+      "sha256": "f74a204c1f035f50ef3744aa2e33b89300c29e338cdf0050dd6b0f3f10e801be"
+    },
+    {
+      "role": "odin",
+      "file": "Darken Nature [RM].odin",
+      "asset": "odin-Darken-Nature-RM.odin",
+      "bytes": 15178,
+      "sha256": "937430bbcba15f9bc6bea7467b601e66d5cfaaf04f5bdbe7c63bff1b0e37a7c4"
+    },
+    {
+      "role": "odin",
+      "file": "Eerie Pad.odin",
+      "asset": "odin-Eerie-Pad.odin",
+      "bytes": 15201,
+      "sha256": "8c5cd97f5095f4a09dc0cc0a307629de3b894d706bd3f14950fd6943b2662c17"
+    },
+    {
+      "role": "odin",
+      "file": "Growly FM Bass [XR].odin",
+      "asset": "odin-Growly-FM-Bass-XR.odin",
+      "bytes": 40985,
+      "sha256": "8235b9aaaaa70d6caae967521b0d005fc86d06686a08385ff14ef5d3a8df97f7"
+    },
+    {
+      "role": "odin",
+      "file": "Haunt [RM].odin",
+      "asset": "odin-Haunt-RM.odin",
+      "bytes": 15206,
+      "sha256": "a412335c8f69cbdb4fe114ecd10643fa351ab61cb8e78f2fe5673eaaa43fb1e4"
+    },
+    {
+      "role": "odin",
+      "file": "Moonshade.odin",
+      "asset": "odin-Moonshade.odin",
+      "bytes": 15203,
+      "sha256": "01ecbb2a8d7754f7286b5a673913f320a9c57553b0d7c35fe9e962635f519f83"
+    },
+    {
+      "role": "odin",
+      "file": "Sausage Bassener.odin",
+      "asset": "odin-Sausage-Bassener.odin",
+      "bytes": 15240,
+      "sha256": "16842462f17e9cfda86d13ee4f9764874ba1872c92a0f1299bfbab42d5e49ed2"
+    }
+  ]
+}

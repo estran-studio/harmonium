@@ -647,7 +647,7 @@ impl LiveScreen {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Instrument bank:");
                     ui.hyperlink_to("GeneralUser GS", GENERALUSER_URL);
-                    ui.label("by S. Christian Collins.");
+                    ui.label("by S. Christian Collins (compressed to SF3 for the web).");
                 });
                 if credits.feet_bank {
                     ui.label("Foot percussion: CC0 samples from Freesound.");
@@ -657,6 +657,13 @@ impl LiveScreen {
                 } else {
                     ui.label(format!("Odin presets: {}.", credits.odin_presets.join(", ")));
                 }
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(
+                        "The Odin presets published with the web studio are factory presets of",
+                    );
+                    ui.hyperlink_to("Odin 2", ODIN2_URL);
+                    ui.label("(GPL-3.0).");
+                });
                 ui.add_space(6.0);
                 ui.weak("Interface: egui and eframe (MIT OR Apache-2.0).");
             });

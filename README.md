@@ -43,6 +43,9 @@ make studio STUDIO_ODIN=assets/odin   # natif ; recompile, donc embarque les pro
 make studio/web/serve STUDIO_ODIN=assets/odin   # web sur http://127.0.0.1:8787 (trunk requis)
 ```
 
+Version publique : <https://harmonium-website.pages.dev/> (page d'accueil) et
+<https://harmonium-website.pages.dev/studio/> (le studio web) ; `make studio/site/deploy` la met à jour.
+
 - **Banques** : `assets/GeneralUser-GS.sf2` (`make soundfont`) et `assets/harmonium_trad.sf2` (pieds) ;
   `STUDIO_BANKS` change le dossier. **Presets Odin** : `STUDIO_ODIN` désigne un dossier de `*.odin` à plat
   (nom du preset = nom du fichier). Sans lui, les pistes Odin des profils (Isaac, `nt_desert`) jouent leur
