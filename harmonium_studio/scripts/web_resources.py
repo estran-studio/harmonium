@@ -62,24 +62,29 @@ def load_lock():
 
 
 def referenced_presets(profiles):
-    """Presets Odin nommés par les profils (`[odin.<piste>] preset`), avec les profils qui les citent."""
+    """Presets Odin nommés par les profils (`[[odin.<piste>.zones]] preset`), avec les profils qui les citent."""
     presets = {}
     for profile in sorted(profiles.glob('*/profile.toml')):
         data = tomllib.loads(profile.read_text())
         for track in data.get('odin', {}).values():
-            if isinstance(track, dict) and 'preset' in track:
-                presets.setdefault(track['preset'], []).append(profile.parent.name)
+            for zone in track.get('zones', []) if isinstance(track, dict) else []:
+                users = presets.setdefault(zone['preset'], [])
+                if profile.parent.name not in users:
+                    users.append(profile.parent.name)
+    if not presets:
+        sys.exit(f'aucun preset Odin trouvé dans {profiles} : le format de `[odin]` a-t-il changé ?')
     return presets
 
 
 def cmd_check_profiles(args):
     locked = {Path(r['file']).stem for r in load_lock()['resources'] if r['role'] == 'odin'}
-    missing = {name: users for name, users in referenced_presets(args.profiles).items() if name not in locked}
+    presets = referenced_presets(args.profiles)
+    missing = {name: users for name, users in presets.items() if name not in locked}
     for name, users in sorted(missing.items()):
         print(f'preset Odin « {name} » ({", ".join(users)}) absent de {LOCK.name}', file=sys.stderr)
     if missing:
         sys.exit(1)
-    print(f'{len(locked)} presets Odin dans {LOCK.name} ; chaque preset nommé par un profil y est')
+    print(f'{len(locked)} presets Odin dans {LOCK.name} ; les {len(presets)} presets nommés par les profils y sont')
 
 
 def cmd_fetch(args):

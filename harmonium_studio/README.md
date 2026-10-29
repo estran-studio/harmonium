@@ -61,7 +61,7 @@ Le site public ne prend pas les banques locales : `make studio/web/resources` (a
 |---|---|---|
 | `main-bank` | `GeneralUser-GS.sf3` (7,6 Mo) | GeneralUser GS v2.0.3 (S. Christian Collins, licence fournie dans la release), convertie de SF2 par `scripts/sf2_to_sf3.py` (oggenc qualité 4 ; même entrée, même fichier) |
 | `feet-bank` | `harmonium_trad.sf2` | banque de pieds du labo, échantillons CC0 (Freesound) |
-| `odin` | les presets nommés par `[odin.<piste>] preset` dans `profiles/` | presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`, GPL-3.0) |
+| `odin` | les presets nommés par `[[odin.<piste>.zones]] preset` dans `profiles/` | presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`, GPL-3.0) |
 | `license` | `GeneralUser-GS-LICENSE.txt` | licence de la banque (non servie par le site) |
 
 `scripts/web_resources.py fetch` télécharge chaque asset, contrôle taille et SHA-256 (un écart fait échouer la commande, donc la CI), et range les fichiers sous leur nom d'origine (le nom d'un preset Odin est son nom de fichier) ; `check-profiles` échoue si un profil nomme un preset absent du verrou. Changer une ressource : `scripts/web_resources.py stage --tag studio-resources-<n> …` copie les fichiers sous leur nom d'asset et réécrit le verrou, puis `gh release create studio-resources-<n> <dossier>/*`.
