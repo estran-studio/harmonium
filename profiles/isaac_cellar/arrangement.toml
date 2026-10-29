@@ -1,0 +1,13 @@
+# Deux tours : ostinato, nappe et stomp dès l'ouverture ; le chœur
+# (Melody) se tait en A et chante en A' et au pont.
+tours_per_tune = 2
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Melody = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0

@@ -234,16 +234,18 @@ fn liaison_opt_in_et_refusee_dans_les_regles_d_interpretation() {
 #[test]
 fn seuls_les_profils_a_nappes_lient() {
     // Garde-fou : les 10 profils trad distribués n'emploient pas `tie`, donc
-    // leurs notes publiées sont inchangées. Les profils de jeu (`nt_desert`,
-    // `isaac_basement`) lient leurs nappes en données, sans toucher au moteur.
+    // leurs notes publiées sont inchangées. Les profils de jeu (harmonie en
+    // boucle : `nt_desert`, `isaac_*`) lient leurs nappes en données, sans
+    // toucher au moteur.
     let distributed = StyleProfile::distributed();
-    assert_eq!(distributed.len(), 12, "douze profils distribués");
+    let trad = distributed.iter().filter(|p| p.harmony.model != "loop").count();
+    assert_eq!(trad, 10, "dix profils trad distribués");
     for p in distributed {
         let tied = p
             .accompaniment
             .as_ref()
             .is_some_and(|a| a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie));
-        if matches!(p.meta.id.as_str(), "nt_desert" | "isaac_basement") {
+        if p.harmony.model == "loop" {
             assert!(tied, "{} : nappe liée attendue", p.meta.id);
             continue;
         }

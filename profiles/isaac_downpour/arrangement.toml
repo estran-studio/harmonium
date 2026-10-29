@@ -1,0 +1,13 @@
+# Un tour : nappe, basse et batterie clairsemée dès l'ouverture ; le chœur
+# (Melody) entre en B.
+tours_per_tune = 1
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Melody = { tour = 1, part = 1, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0

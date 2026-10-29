@@ -9,8 +9,8 @@ use std::{
 };
 
 /// Largement au-dessus du temps de rendu (quelques dizaines de secondes en debug, tous profils en
-/// parallèle) : un dépassement est un blocage.
-const MAX_EXPORT: Duration = Duration::from_secs(120);
+/// parallèle, deux tests à la fois, pendant le reste de la suite) : un dépassement est un blocage.
+const MAX_EXPORT: Duration = Duration::from_secs(300);
 const BARS: usize = 200;
 
 fn scratch_dir(name: &str) -> std::io::Result<PathBuf> {

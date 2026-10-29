@@ -1,0 +1,236 @@
+# Essai : Downpour de The Binding of Isaac (Ridiculon, Repentance), d'après
+# River of Despair (références labo isaac-basement). Données seulement.
+# Tapis lent en D mineur harmonique à 144 : blocs de 16 mesures où chaque
+# accord (et sa basse) tient deux mesures — A descente chromatique G→Bb en
+# triades mineures parallèles, B élan C-C#-D-Bb-F#-F-E-D#, C montée
+# D-G-Bb-C-C#-D-D#-F ; batterie clairsemée, chœur dès B.
+[files]
+cells = "cells.toml"
+feet = "feet.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "isaac_downpour"
+name = "Downpour de The Binding of Isaac (essai)"
+tradition = "The Binding of Isaac, Downpour — Ridiculon, 2021"
+tags = ["isaac", "downpour", "boucle", "sombre"]
+corpus = "harmonium_lab corpus/isaac/manifest.jsonl : 47 River of Despair, Ridiculon (Matthias Bossi, Jon Evans), droits réservés (analyse et inspiration seulement ; audio, stems et transcriptions hors dépôt)"
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 144.0
+min_bpm = 124.0
+max_bpm = 164.0
+
+# Arche de 48 mesures (A B C), un tour ; l'air suivant reprend en A.
+[form]
+sequence = [0, 1, 2]
+resolve = "per_tune"
+repeat_variation = 0.15
+tour_variation = 0.20
+variation_operations = ["varied_end", "repeated_notes"]
+varied_end_keep = 0.5
+avoid_adjacent = false
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [8, 16]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+[[form.parts]]
+name = "B"
+melody_center_offset = 0
+phrase_ends = [8, 16]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+[[form.parts]]
+name = "C"
+melody_center_offset = 0
+phrase_ends = [8, 16]
+roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 2, mode = "harmonic_minor", weight = 1 }]
+[melody.params]
+weight_role_run = 2
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 67
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 57
+tessitura_max = 77
+base_velocity = 58
+strong_eighth_velocity_offset = 4
+even_eighth_velocity_offset = -4
+
+# Deux mesures par accord, demi-tons relatifs à D. Triades mineures
+# parallèles qui glissent par demi-tons (lecture du labo), Eb majeur
+# napolitain et V majeur dans la montée.
+[harmony]
+model = "loop"
+steps_per_chord = 16
+default_bars_per_chord = 2
+[harmony.parts.A]
+kind = "chord_loop"
+chords = [
+  { semitones = 5, quality = "Minor", bars = 2 },
+  { semitones = 4, quality = "Minor", bars = 2 },
+  { semitones = 3, quality = "Major", bars = 2 },
+  { semitones = 2, quality = "Minor", bars = 2 },
+  { semitones = 1, quality = "Minor", bars = 2 },
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 10, quality = "Minor", bars = 2 },
+  { semitones = 8, quality = "Major", bars = 2 },
+]
+[harmony.parts.B]
+kind = "chord_loop"
+chords = [
+  { semitones = 10, quality = "Minor", bars = 2 },
+  { semitones = 11, quality = "Minor", bars = 2 },
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 8, quality = "Major", bars = 2 },
+  { semitones = 4, quality = "Minor", bars = 2 },
+  { semitones = 3, quality = "Major", bars = 2 },
+  { semitones = 2, quality = "Minor", bars = 2 },
+  { semitones = 1, quality = "Major", bars = 2 },
+]
+[harmony.parts.C]
+kind = "chord_loop"
+chords = [
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 5, quality = "Minor", bars = 2 },
+  { semitones = 8, quality = "Major", bars = 2 },
+  { semitones = 10, quality = "Major", bars = 2 },
+  { semitones = 7, quality = "Major", bars = 2 },
+  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 1, quality = "Major", bars = 2 },
+  { semitones = 3, quality = "Major", bars = 2 },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Basse : fondamentale tenue deux mesures, liée d'un accord à l'autre (la
+# ligne chromatique naît des accords).
+[accompaniment.bass]
+low = 26
+high = 37
+[[accompaniment.bass.motifs]]
+part = "A"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 32, semitones = 0, octave = 1, velocity = 82, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "B"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 32, semitones = 0, octave = 1, velocity = 82, legato = true },
+]
+[[accompaniment.bass.motifs]]
+part = "C"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 32, semitones = 0, octave = 1, velocity = 82, legato = true },
+]
+
+# Nappe liée : un plaqué tenu par mesure, médium (center 60).
+[accompaniment.chords]
+center = 60
+max_drift = 6
+strings = 4
+default_pattern = 0
+patterns = [{ hits = [{ step = 0, stroke = "block", duration = 16, velocity = 58, tie = true }] }]
+
+[instruments]
+# GeneralUser GS : basse doigts 33, nappe chaude 89, chœur Aahs 52.
+melody_program = 52
+chords_program = 89
+bass_program = 33
+percussion_bank = 128
+percussion_program = 0
+
+[odin.Bass]
+preset = "Bass Low [RM]"
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[odin.Chords]
+preset = "Moonshade"
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[mix]
+master_db = 9.0
+[mix.room]
+room_size = 0.3
+damping = 0.5
+width = 0.6
+level = 0.25
+[mix.tracks.Melody]
+level_db = -8.0
+pan = 0.05
+reverb_send = 0.2
+[mix.tracks.Chords]
+# Preset Odin plus fort que ceux d'isaac_basement (crête > 0 dBFS au rendu).
+level_db = -7.0
+pan = -0.3
+reverb_send = 0.25
+[mix.tracks.Bass]
+# Preset Odin plus fort que ceux d'isaac_basement (crête > 0 dBFS au rendu).
+level_db = -5.0
+pan = 0.0
+reverb_send = 0.1
+[mix.tracks.Heel]
+level_db = -5.0
+pan = -0.06
+reverb_send = 0.06
+[mix.tracks.Toe]
+level_db = -6.0
+pan = 0.06
+reverb_send = 0.06
+[mix.eq]
+highpass_hz = 40.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8
+
+# Groove : micro-timing léger et accent du temps fort sur les deux pieds.
+[performance.tracks.Heel]
+jitter = 0.02
+[[performance.tracks.Heel.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0
+[performance.tracks.Toe]
+jitter = 0.02
+[[performance.tracks.Toe.rules]]
+articulation = "Accent"
+weight = 4.0
+steps = [0]
+accent = 4.0

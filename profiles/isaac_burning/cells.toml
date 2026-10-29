@@ -1,0 +1,9 @@
+# Proposition originale, non transcrite : chœur en F# phrygien (2 = G, b2),
+# soupirs G→F# et C#→D, notes longues.
+cells = [
+  { role = "open", notes = "5 - - - 6 - - -", weight = 1 },
+  { role = "open", notes = "8 - - - - - 7 -", weight = 1 },
+  { role = "run", notes = "2 - - - 1 - - -", weight = 3 },
+  { role = "run", notes = "3 - - - 2 - 1 -", weight = 2 },
+  { role = "run", notes = "6 - - - 5 - - -", weight = 1 },
+]
