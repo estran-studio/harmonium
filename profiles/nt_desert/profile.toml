@@ -242,7 +242,7 @@ operations = [
   { operation = "rest", weight = 3, beats = ["weak"] },
 ]
 
-[odin.Bass]
+[[odin.Bass.zones]]
 preset = "Sausage Bassener"
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
@@ -251,7 +251,7 @@ morph = [
   { param = "env1_release", density = 0.3 },
 ]
 
-[odin.Chords]
+[[odin.Chords.zones]]
 preset = "Darken Nature [RM]"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },

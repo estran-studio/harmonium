@@ -1,7 +1,7 @@
 //! Ressources chargées par l'hôte, et ce qu'un profil en exige.
 //!
 //! L'hôte fournit des octets (banques SF2, presets Odin) ; un profil les
-//! désigne en données (`instruments.percussion_bank`, `[odin.<Piste>].preset`).
+//! désigne en données (`instruments.percussion_bank`, `[[odin.<Piste>.zones]]`).
 //! Quand le profil désigne une ressource que l'hôte n'a pas chargée, le rendu
 //! n'a aucun repli implicite : pieds silencieux, ou piste jouée par le
 //! programme SoundFont que le profil déclare pour elle. Le chargement du
@@ -60,11 +60,16 @@ impl StyleProfile {
             missing.push(MissingResource::PercussionBank { bank });
         }
         for (track, spec) in &self.odin {
-            if !resources.odin.contains(&spec.preset) {
-                missing.push(MissingResource::OdinPreset {
-                    track: *track,
-                    preset: spec.preset.clone(),
-                });
+            for zone in &spec.zones {
+                if !resources.odin.contains(&zone.preset) && !missing.iter().any(|resource| {
+                    matches!(resource, MissingResource::OdinPreset { track: missing_track, preset }
+                            if missing_track == track && preset == &zone.preset)
+                }) {
+                    missing.push(MissingResource::OdinPreset {
+                        track: *track,
+                        preset: zone.preset.clone(),
+                    });
+                }
             }
         }
         missing

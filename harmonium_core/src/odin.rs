@@ -1,10 +1,10 @@
 //! Instrument Odin par piste, en données.
 //!
 //! Chaque piste garde son programme SoundFont (rendu sans `odin`) et peut
-//! déclarer un preset Odin (nom fourni par l'hôte comme les octets SF2) avec
-//! ses réglages de morphing par les 4 émotions. Sans `odin` compilé ou sans
-//! preset fourni, la piste joue son programme SoundFont (avertissement au
-//! chargement du profil) ; avec `odin` et le preset présent, elle joue Odin.
+//! déclarer des zones d'émotion, chacune avec un preset Odin fourni par l'hôte
+//! et ses réglages de morphing. Sans `odin` compilé ou sans le preset de la
+//! zone active, la piste joue son programme SoundFont (avertissement au
+//! chargement du profil) ; avec le preset présent, elle joue Odin.
 //! Le thread principal connaît les socles des presets ([`OdinBank`]), calcule
 //! le preset morphé de chaque piste à chaque changement d'émotion et envoie au
 //! callback une charge `Copy` ([`OdinPatches`]) : le fil audio ne calcule
@@ -12,7 +12,7 @@
 //! [`TrackId`](crate::timeline::TrackId).
 //!
 //! ```toml
-//! [odin.Bass]
+//! [[odin.Bass.zones]]
 //! preset = "basse_saturee"
 //! morph = [
 //!   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
@@ -26,8 +26,12 @@ use crate::timeline::TrackId;
 
 /// Nom de preset maximal (octets SF2 exclus, nom court fourni par l'hôte).
 pub const ODIN_PRESET_NAME_CAP: usize = 64;
-/// Règles de morphing maximales par piste (borne du schéma `[odin.<Piste>]`).
+/// Règles de morphing maximales par zone.
 pub const ODIN_MAX_RULES: usize = 16;
+/// Zones maximales par piste, dont le défaut final.
+pub const ODIN_MAX_ZONES: usize = 4;
+/// Marge d'hystérésis, en unités d'émotion, autour des bornes de zone.
+pub const ODIN_ZONE_HYSTERESIS: f32 = 0.03;
 
 // Noms et bornes du catalogue odin-rs 4718189. La table reste indépendante
 // de la dépendance GPL et définit aussi l'ordre du tableau transmis au rendu.
@@ -108,7 +112,7 @@ morph_params! {
     RevDrywet => ("rev_drywet", 0.0, 1.0),
 }
 
-/// Une règle de morphing : gains additifs par émotion (émotions `0..1`).
+/// Une règle de morphing : gains additifs par émotion (valence `-1..1`, autres `0..1`).
 ///
 /// `valeur = base + arousal × gain + valence × gain + density × gain +
 /// tension × gain`, bornée par paramètre (voir [`OdinVoiceParams::morphed`]).
@@ -130,11 +134,78 @@ pub struct OdinMorphRule {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OdinTrackSpec {
+    /// Zones prioritaires dans l'ordre ; la dernière est le défaut sans `when`.
+    pub zones: Vec<OdinZone>,
+}
+
+/// Preset, niveau et morphing propres à une zone d'émotion.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OdinZone {
+    #[serde(default)]
+    pub when: Option<OdinZoneWhen>,
     /// Nom du preset, fourni par l'hôte (`<nom>.odin`) ; sans `/` ni `\`.
     pub preset: String,
-    /// Règles de morphing (défaut : preset fixe, insensible aux émotions).
+    /// Niveau relatif au mix de piste, en dB (`-60..12`, défaut : 0).
+    #[serde(default)]
+    pub level_db: f32,
     #[serde(default)]
     pub morph: Vec<OdinMorphRule>,
+}
+
+/// Intersection de bornes inclusives ; au moins un axe doit être renseigné.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OdinZoneWhen {
+    pub arousal: Option<[f32; 2]>,
+    pub valence: Option<[f32; 2]>,
+    pub density: Option<[f32; 2]>,
+    pub tension: Option<[f32; 2]>,
+}
+
+impl OdinZoneWhen {
+    fn contains(self, emotions: [f32; 4], margin: f32) -> bool {
+        [self.arousal, self.valence, self.density, self.tension]
+            .into_iter()
+            .zip(emotions)
+            .enumerate()
+            .all(|(axis, (bounds, value))| {
+                bounds.is_none_or(|[min, max]| {
+                    let floor = if axis == 1 { -1.0 } else { 0.0 };
+                    let midpoint = min + (max - min) * 0.5;
+                    // Les extrêmes du domaine restent atteignables à l'entrée.
+                    let lower = if min == floor { floor } else { (min - margin).min(midpoint) };
+                    let upper = if max == 1.0 { 1.0 } else { (max + margin).max(midpoint) };
+                    (lower..=upper).contains(&value)
+                })
+            })
+    }
+}
+
+impl OdinTrackSpec {
+    /// Première zone admissible, sinon défaut final. Le profil doit être validé.
+    ///
+    /// Sans historique, les bornes sont inclusives. Avec historique, l'entrée
+    /// exige des bornes resserrées de 0,03 (au plus la demi-largeur de l'axe).
+    /// Une zone bornée active reste dans ses bornes élargies de 0,03, sauf si
+    /// une zone plus prioritaire satisfait ses bornes resserrées.
+    #[must_use]
+    pub fn select_zone(&self, emotions: [f32; 4], previous: Option<usize>) -> usize {
+        let previous = previous.filter(|&index| index < self.zones.len());
+        let margin = if previous.is_some() { -ODIN_ZONE_HYSTERESIS } else { 0.0 };
+        let candidate = self
+            .zones
+            .iter()
+            .position(|zone| zone.when.is_some_and(|when| when.contains(emotions, margin)));
+        if let Some(index) = previous
+            && candidate.is_none_or(|candidate| candidate >= index)
+            && let Some(when) = self.zones[index].when
+            && when.contains(emotions, ODIN_ZONE_HYSTERESIS)
+        {
+            return index;
+        }
+        candidate.unwrap_or_else(|| self.zones.len().saturating_sub(1))
+    }
 }
 
 /// Paramètres continus d'une voix Odin : socle du preset (lu du `.odin` par
@@ -179,7 +250,7 @@ impl OdinVoiceParams {
 /// Socle d'un preset fourni par l'hôte, analysé hors callback.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OdinPresetBase {
-    /// Nom court (celui que les profils désignent, `[odin.<Piste>].preset`).
+    /// Nom court désigné dans `[[odin.<Piste>.zones]]`.
     pub name: String,
     pub base: OdinVoiceParams,
 }
@@ -188,9 +259,12 @@ pub struct OdinPresetBase {
 /// par le thread principal. Le callback audio ne calcule rien, il copie.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OdinTrackPatch {
-    /// Rang du preset dans la [`OdinBank`] de l'hôte : un changement de rang
-    /// coupe les notes de la voix.
+    /// Rang de la zone dans le profil : deux zones peuvent partager un preset.
+    pub zone: usize,
+    /// Rang du preset dans la [`OdinBank`] de l'hôte.
     pub preset: usize,
+    /// Gain linéaire propre à la zone, préparé hors callback.
+    pub gain: f32,
     pub params: OdinVoiceParams,
 }
 
@@ -216,25 +290,44 @@ impl OdinBank {
         self.presets.iter().any(|preset| preset.name == name)
     }
 
-    /// Charges de toutes les pistes pour ces émotions : les pistes dont le
-    /// profil déclare un preset chargé jouent Odin, les autres `None`
-    /// (SoundFont ; l'absence d'un preset déclaré est signalée au chargement
-    /// du profil, voir `host_resources`).
+    /// Charges initiales sans historique de zone. Les pistes dont le preset
+    /// de la zone sélectionnée n'est pas chargé restent SoundFont (`None`).
     #[must_use]
     pub fn patches(
         &self,
         specs: &std::collections::BTreeMap<TrackId, OdinTrackSpec>,
         emotions: [f32; 4],
     ) -> OdinPatches {
+        self.patches_for_zones(specs, emotions, [None; TrackId::ALL.len()])
+    }
+
+    /// Charges avec les zones explicitement choisies par le compositeur ;
+    /// `None` sélectionne la zone initiale, sans historique.
+    #[must_use]
+    pub fn patches_for_zones(
+        &self,
+        specs: &std::collections::BTreeMap<TrackId, OdinTrackSpec>,
+        emotions: [f32; 4],
+        zones: [Option<usize>; TrackId::ALL.len()],
+    ) -> OdinPatches {
         let mut patches = [None; TrackId::ALL.len()];
         for (track, spec) in specs {
-            let found = self.presets.iter().enumerate().find(|(_, p)| p.name == spec.preset);
-            if let (Some((index, preset)), Some(slot)) =
-                (found, patches.get_mut(usize::from(track.channel())))
-            {
-                *slot = Some(OdinTrackPatch {
+            let channel = usize::from(track.channel());
+            let zone_index = zones[channel].unwrap_or_else(|| spec.select_zone(emotions, None));
+            let Some(zone) = spec.zones.get(zone_index) else {
+                continue;
+            };
+            let found = self.presets.iter().enumerate().find(|(_, p)| p.name == zone.preset);
+            if let Some((index, preset)) = found {
+                patches[channel] = Some(OdinTrackPatch {
+                    zone: zone_index,
                     preset: index,
-                    params: preset.base.morphed(&spec.morph, emotions),
+                    gain: if zone.level_db == 0.0 {
+                        1.0
+                    } else {
+                        10.0_f32.powf(zone.level_db / 20.0)
+                    },
+                    params: preset.base.morphed(&zone.morph, emotions),
                 });
             }
         }

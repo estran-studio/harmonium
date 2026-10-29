@@ -172,6 +172,9 @@ pub enum PlaybackCommand {
     SetOdin(harmonium_core::odin::OdinPatches),
     #[cfg(feature = "odin")]
     SetOdin(Box<harmonium_audio::odin_bank::OdinUpdate>),
+    /// Morphing des zones courante et demandée, sans déplacer de moteur.
+    #[cfg(feature = "odin")]
+    MorphOdin([harmonium_core::odin::OdinPatches; 2]),
     /// Start (or ramp to) an audible tempo override (D4).
     ///
     /// `ramp_pulses == 0` jumps to `bpm` at the next pulse boundary;
@@ -295,6 +298,14 @@ pub struct PlaybackEngine {
     odin_return: Option<rtrb::Producer<Box<harmonium_audio::odin_bank::OdinUpdate>>>,
     #[cfg(feature = "odin")]
     pending_odin_return: Option<Box<harmonium_audio::odin_bank::OdinUpdate>>,
+    #[cfg(feature = "odin")]
+    odin_update: Option<Box<harmonium_audio::odin_bank::OdinUpdate>>,
+    #[cfg(feature = "odin")]
+    odin_started: bool,
+    #[cfg(feature = "odin")]
+    odin_status: Option<Arc<harmonium_audio::odin_bank::OdinStatus>>,
+    #[cfg(feature = "odin")]
+    odin_part_boundary: bool,
 
     // Report ring buffer (audio thread → main thread)
     report_tx: rtrb::Producer<harmonium_core::EngineReport>,
@@ -435,6 +446,14 @@ impl PlaybackEngine {
             odin_return: None,
             #[cfg(feature = "odin")]
             pending_odin_return: None,
+            #[cfg(feature = "odin")]
+            odin_update: None,
+            #[cfg(feature = "odin")]
+            odin_started: false,
+            #[cfg(feature = "odin")]
+            odin_status: None,
+            #[cfg(feature = "odin")]
+            odin_part_boundary: false,
             report_tx,
             transport_position,
             output_muted: false,
@@ -460,8 +479,10 @@ impl PlaybackEngine {
     pub(crate) fn set_odin_return(
         &mut self,
         returned: rtrb::Producer<Box<harmonium_audio::odin_bank::OdinUpdate>>,
+        status: Arc<harmonium_audio::odin_bank::OdinStatus>,
     ) {
         self.odin_return = Some(returned);
+        self.odin_status = Some(status);
     }
 
     #[cfg(feature = "odin")]
@@ -477,6 +498,74 @@ impl PlaybackEngine {
                 self.pending_odin_return = Some(update);
                 false
             }
+        }
+    }
+
+    /// Diagnostic fixe du rendu hors ligne, sans inspecter les internes du
+    /// compositeur. `history_overflow != 0` invalide une preuve par instance.
+    #[cfg(feature = "odin")]
+    #[must_use]
+    pub fn odin_diagnostics(&self) -> Option<harmonium_audio::odin_voices::OdinDiagnostics> {
+        self.renderer.odin_diagnostics()
+    }
+
+    #[cfg(feature = "odin")]
+    fn finish_odin_update(&mut self) {
+        if !self.odin_started {
+            return;
+        }
+        let update = self.odin_update.as_mut().expect("transaction Odin commencée");
+        if !self.renderer.finish_odin(update) {
+            return;
+        }
+        self.odin_status.as_ref().expect("statut Odin installé").publish(&update.patches, false);
+        if self.pending_odin_return.is_none() {
+            self.pending_odin_return = self.odin_update.take();
+            self.odin_started = false;
+            self.flush_odin_return();
+        }
+    }
+
+    #[cfg(feature = "odin")]
+    fn start_odin_update(&mut self, bar: usize) {
+        if self.odin_started {
+            return;
+        }
+        let Some(update) = &mut self.odin_update else { return };
+        update.at_bar = bar;
+        update.at_frame = self.frame_counter;
+        self.renderer.apply_odin(update);
+        self.odin_status.as_ref().expect("statut Odin installé").publish(&update.patches, true);
+        self.odin_started = true;
+        self.finish_odin_update();
+    }
+
+    #[cfg(feature = "odin")]
+    fn stage_odin_update(&mut self, mut update: Box<harmonium_audio::odin_bank::OdinUpdate>) {
+        use harmonium_audio::odin_bank::patch_keys;
+        if self.odin_started {
+            // Course avec le début d'un fondu : pas de troisième emplacement.
+            // L'hôte réessaie son dernier choix après l'acquittement du rejet.
+            update.accepted = false;
+            update.accepted_keys =
+                patch_keys(&self.odin_update.as_ref().expect("transaction Odin commencée").patches);
+            self.pending_odin_return = Some(update);
+            return;
+        }
+        if let Some(mut previous) = self.odin_update.take() {
+            let previous_keys = patch_keys(&previous.patches);
+            let keys = patch_keys(&update.patches);
+            for index in 0..keys.len() {
+                if keys[index] == previous_keys[index] && update.engines[index].is_none() {
+                    std::mem::swap(&mut update.engines[index], &mut previous.engines[index]);
+                    update.instance_ids[index] = previous.instance_ids[index];
+                }
+            }
+            self.pending_odin_return = Some(previous);
+        }
+        self.odin_update = Some(update);
+        if !self.first_measure_loaded {
+            self.start_odin_update(0);
         }
     }
 
@@ -561,6 +650,8 @@ impl PlaybackEngine {
             let chunk = &mut output[start_idx..end_idx];
 
             self.renderer.process_buffer(chunk, channels);
+            #[cfg(feature = "odin")]
+            self.finish_odin_update();
             self.sample_counter += chunk_size;
             self.frame_counter += chunk_size as u64;
             processed += chunk_size;
@@ -682,6 +773,10 @@ impl PlaybackEngine {
             self.freeze_pulse(step, steps_per_pulse);
         }
         self.relay_measure_params();
+        #[cfg(feature = "odin")]
+        if step == 0 && self.odin_part_boundary {
+            self.start_odin_update(self.entered_bar);
+        }
 
         // The clock position is the RENDERED step (what sounds now); the
         // packed atomic reports the upcoming step (see `complete_step` and the
@@ -1000,6 +1095,11 @@ impl PlaybackEngine {
             // function runs under `RtGuard`, where allocating (Box, clone)
             // would panic in debug builds.
             self.bar_timing = BarTiming::of(&slot.measure);
+            #[cfg(feature = "odin")]
+            {
+                self.odin_part_boundary =
+                    slot.measure.position.is_some_and(|position| position.bar_in_strain == 1);
+            }
             self.measure_tempo = self.bar_timing.tempo;
             if let Some(position) = slot.measure.position
                 && self.mix_tune != Some(position.tune_index)
@@ -1125,6 +1225,8 @@ impl PlaybackEngine {
         if !self.flush_odin_return() {
             return;
         }
+        #[cfg(feature = "odin")]
+        self.finish_odin_update();
         while let Ok(cmd) = self.cmd_rx.pop() {
             match cmd {
                 PlaybackCommand::SetChannelGain { channel, gain } => {
@@ -1270,11 +1372,32 @@ impl PlaybackEngine {
                 #[cfg(not(feature = "odin"))]
                 PlaybackCommand::SetOdin(_) => {}
                 #[cfg(feature = "odin")]
-                PlaybackCommand::SetOdin(mut update) => {
-                    self.renderer.apply_odin(&mut update);
-                    self.pending_odin_return = Some(update);
+                PlaybackCommand::SetOdin(update) => {
+                    self.stage_odin_update(update);
                     if !self.flush_odin_return() {
                         break;
+                    }
+                }
+                #[cfg(feature = "odin")]
+                PlaybackCommand::MorphOdin(patches) => {
+                    self.renderer.morph_odin(&patches);
+                    if !self.odin_started
+                        && let Some(update) = &mut self.odin_update
+                    {
+                        for (index, target) in update.patches.iter_mut().enumerate() {
+                            if let Some(patch) = patches
+                                .iter()
+                                .rev()
+                                .filter_map(|patches| patches[index])
+                                .find(|patch| {
+                                    target.is_some_and(|target| {
+                                        (target.zone, target.preset) == (patch.zone, patch.preset)
+                                    })
+                                })
+                            {
+                                *target = Some(patch);
+                            }
+                        }
                     }
                 }
                 PlaybackCommand::SetTempo { bpm, ramp_pulses } => {

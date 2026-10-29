@@ -185,14 +185,14 @@ bass_program = 38
 percussion_bank = 128
 percussion_program = 0
 
-[odin.Bass]
+[[odin.Bass.zones]]
 preset = "Growly FM Bass [XR]"
 morph = [
   { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
 ]
 
-[odin.Chords]
+[[odin.Chords.zones]]
 preset = "Eerie Pad"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },

@@ -76,7 +76,7 @@ impl SynthBackend {
 
         voice_manager.apply_profile_programs(&harmonium_core::StyleProfile::builtin().instruments);
         #[cfg(feature = "odin")]
-        let odin = crate::odin_voices::OdinMixer::new();
+        let odin = crate::odin_voices::OdinMixer::new(sample_rate as f32);
 
         let mix = harmonium_core::StyleProfile::builtin().mix.prepare(sample_rate);
         let mut backend = Self {
@@ -144,6 +144,21 @@ impl AudioRenderer for SynthBackend {
             }
         }
     }
+    #[cfg(feature = "odin")]
+    fn morph_odin(&mut self, patches: &[harmonium_core::odin::OdinPatches; 2]) {
+        self.odin.morph(patches);
+    }
+
+    #[cfg(feature = "odin")]
+    fn finish_odin(&mut self, update: &mut crate::odin_bank::OdinUpdate) -> bool {
+        self.odin.finish_update(update)
+    }
+
+    #[cfg(feature = "odin")]
+    fn odin_diagnostics(&self) -> Option<crate::odin_voices::OdinDiagnostics> {
+        Some(self.odin.diagnostics())
+    }
+
     fn handle_event(&mut self, event: AudioEvent) {
         match event {
             AudioEvent::SetChannelRoute { channel, bank } => {

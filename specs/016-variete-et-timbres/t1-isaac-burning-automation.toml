@@ -1,0 +1,29 @@
+# T1 : A jusqu’à 19, entrée B à 20 ; retour A à 44.
+# Seule la tension change ; tempo fixe pour comparer les frontières.
+[[keys]]
+bar = 1
+arousal = 0.5
+valence = 0.3
+density = 0.5
+tension = 0.4
+bpm = 140.0
+
+[[keys]]
+bar = 19
+tension = 0.4
+
+[[keys]]
+bar = 20
+tension = 0.85
+
+[[keys]]
+bar = 43
+tension = 0.85
+
+[[keys]]
+bar = 44
+tension = 0.4
+
+[[keys]]
+bar = 64
+tension = 0.4

@@ -110,7 +110,7 @@ bass_program = 32
 percussion_bank = 128
 percussion_program = 0
 
-[odin.Chords]
+[[odin.Chords.zones]]
 preset = "nappe"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },

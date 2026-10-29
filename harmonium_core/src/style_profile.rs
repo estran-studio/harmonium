@@ -511,9 +511,9 @@ pub struct StyleProfile {
     pub accompaniment: Option<TradHarmonyParams>,
     pub percussion: FeetTable,
     pub instruments: ProfileInstruments,
-    /// Instruments Odin par piste (`[odin.<Piste>]`) : preset fourni par
-    /// l'hôte et morphing par les 4 émotions. Vide par défaut : tout joue
-    /// SoundFont. Le programme SoundFont reste toujours requis (repli).
+    /// Zones Odin par piste (`[[odin.<Piste>.zones]]`) : presets fournis par
+    /// l'hôte, niveaux et morphing par les 4 émotions. Vide par défaut : tout
+    /// joue SoundFont. Le programme SoundFont reste toujours requis (repli).
     #[serde(default)]
     pub odin: std::collections::BTreeMap<TrackId, crate::odin::OdinTrackSpec>,
     pub arrangement: ReelArrangement,
@@ -1313,41 +1313,82 @@ impl StyleProfile {
         for (track, spec) in &self.odin {
             let track_name = track.name();
             check(
-                !spec.preset.is_empty() && spec.preset.len() <= crate::odin::ODIN_PRESET_NAME_CAP,
-                &format!("odin.{track_name}.preset"),
-                "nom de preset non vide de 64 caractères au plus",
-            )?;
-            check(
-                !spec.preset.contains('/') && !spec.preset.contains('\\'),
-                &format!("odin.{track_name}.preset"),
-                "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)",
-            )?;
-            check(
                 self.instruments.program(*track).is_some(),
                 &format!("odin.{track_name}"),
                 "programme SoundFont requis (rendu sans `odin`)",
             )?;
             check(
-                spec.morph.len() <= crate::odin::ODIN_MAX_RULES,
-                &format!("odin.{track_name}.morph"),
-                &format!("au plus {} règles par piste", crate::odin::ODIN_MAX_RULES),
+                (1..=crate::odin::ODIN_MAX_ZONES).contains(&spec.zones.len()),
+                &format!("odin.{track_name}.zones"),
+                "1 à 4 zones requises, dont le défaut final",
             )?;
-            let mut seen = [false; crate::odin::OdinMorphParam::COUNT];
-            for rule in &spec.morph {
-                let slot = rule.param.index();
+            for (index, zone) in spec.zones.iter().enumerate() {
+                let field = format!("odin.{track_name}.zones[{index}]");
                 check(
-                    !seen[slot],
-                    &format!("odin.{track_name}.morph"),
-                    "paramètre unique par piste",
+                    zone.when.is_none() == (index + 1 == spec.zones.len()),
+                    &format!("{field}.when"),
+                    "seule la dernière zone doit être sans when (défaut obligatoire)",
                 )?;
-                seen[slot] = true;
+                if let Some(when) = zone.when {
+                    let axes = [
+                        ("arousal", when.arousal, 0.0),
+                        ("valence", when.valence, -1.0),
+                        ("density", when.density, 0.0),
+                        ("tension", when.tension, 0.0),
+                    ];
+                    check(
+                        axes.iter().any(|(_, bounds, _)| bounds.is_some()),
+                        &format!("{field}.when"),
+                        "when doit borner au moins un axe émotionnel",
+                    )?;
+                    for (axis, bounds, floor) in axes {
+                        if let Some([min, max]) = bounds {
+                            check(
+                                min.is_finite()
+                                    && max.is_finite()
+                                    && floor <= min
+                                    && min <= max
+                                    && max <= 1.0,
+                                &format!("{field}.when.{axis}"),
+                                &format!("bornes finies inclusives ordonnées dans {floor}..1"),
+                            )?;
+                        }
+                    }
+                }
                 check(
-                    [rule.arousal, rule.valence, rule.density, rule.tension]
-                        .iter()
-                        .all(|gain| gain.is_finite()),
-                    &format!("odin.{track_name}.morph"),
-                    "gains de morphing finis",
+                    !zone.preset.is_empty()
+                        && zone.preset.len() <= crate::odin::ODIN_PRESET_NAME_CAP,
+                    &format!("{field}.preset"),
+                    "nom de preset non vide de 64 octets au plus",
                 )?;
+                check(
+                    !zone.preset.contains('/') && !zone.preset.contains('\\'),
+                    &format!("{field}.preset"),
+                    "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)",
+                )?;
+                check(
+                    zone.level_db.is_finite() && (-60.0..=12.0).contains(&zone.level_db),
+                    &format!("{field}.level_db"),
+                    "niveau de zone fini dans -60..12 dB",
+                )?;
+                check(
+                    zone.morph.len() <= crate::odin::ODIN_MAX_RULES,
+                    &format!("{field}.morph"),
+                    &format!("au plus {} règles par zone", crate::odin::ODIN_MAX_RULES),
+                )?;
+                let mut seen = [false; crate::odin::OdinMorphParam::COUNT];
+                for rule in &zone.morph {
+                    let slot = rule.param.index();
+                    check(!seen[slot], &format!("{field}.morph"), "paramètre unique par zone")?;
+                    seen[slot] = true;
+                    check(
+                        [rule.arousal, rule.valence, rule.density, rule.tension]
+                            .iter()
+                            .all(|gain| gain.is_finite()),
+                        &format!("{field}.morph"),
+                        "gains de morphing finis",
+                    )?;
+                }
             }
         }
         self.arrangement.validate().map_err(|error| {

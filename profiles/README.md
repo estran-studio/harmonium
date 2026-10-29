@@ -56,7 +56,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 : `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
-| `[odin.<Piste>]` | Optionnel. Instrument Odin d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `preset` (nom fourni par l'hôte) et `morph` (règles émotionnelles). Voir « Instrument Odin par piste ». |
+| `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
@@ -146,10 +146,18 @@ la boucle décrit les mesures du corps de l'air.
 
 Chaque piste garde son **programme SoundFont**, toujours requis : c'est le rendu
 de tout binaire compilé sans `odin` (1837, par défaut). Une piste peut en plus
-déclarer un preset Odin, en données :
+déclarer de une à quatre zones Odin, en données (aucun `preset` direct sur la piste) :
 
 ```toml
-[odin.Bass]
+[[odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "basse_psychedelique"
+level_db = -5.0
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+]
+
+[[odin.Bass.zones]]
 preset = "basse_saturee"
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
@@ -157,9 +165,30 @@ morph = [
 ]
 ```
 
+- **Zones et priorité.** La dernière zone est obligatoirement le défaut sans
+  `when` ; toutes les précédentes ont un `when` non vide. Chaque axe renseigné
+  est une paire de bornes inclusives, finies et ordonnées : `valence` dans
+  `-1..1`, `arousal`, `density` et `tension` dans `0..1`. Les axes sont
+  conjoints (ET), les axes omis ne contraignent rien. Au chargement, la
+  première zone admissible gagne, sinon le défaut final.
+- **Hystérésis de 0,03.** Avec une zone déjà active, entrer dans une nouvelle
+  zone exige d'en franchir les bornes resserrées de 0,03, y compris pour
+  quitter le défaut. Une zone bornée active reste dans ses bornes élargies
+  de 0,03 ; une zone plus prioritaire peut toutefois la remplacer dès que
+  ses bornes resserrées sont satisfaites. Le resserrement ne dépasse jamais
+  le point médian de chaque intervalle (même une zone ponctuelle reste
+  accessible) et ne resserre pas les extrêmes du domaine.
+  Ainsi `tension = [0.6, 1.0]` entre initialement à 0,6, entre depuis le
+  défaut à 0,63, et reste active jusqu'à 0,57 inclus.
+- **Niveau propre à la zone.** `level_db` vaut 0 par défaut ; valeur finie dans
+  `-60..12` dB, appliquée en gain linéaire `10^(level_db/20)` en plus du mix
+  de piste, sans modifier les paramètres du preset. Deux zones peuvent
+  partager un preset et différer par leur niveau ou leur morphing.
+  `isaac_burning` réunit A par défaut (Bass Crusher [RM] + Haunt [RM]) et B
+  sous tension (Bass Low [RM] −5 dB + Moonshade −7 dB).
 - **Choix à l'exécution.** Sans `odin` compilé, ou si l'hôte ne fournit pas le
-  preset nommé, la piste joue son programme SoundFont. Avec `odin` et le preset
-  présent, elle joue Odin. Aucun nom de style ni canal fixe : la clé est la
+  preset de la zone active, la piste joue son programme SoundFont. Avec `odin`
+  et le preset présent, elle joue Odin. Aucun nom de style ni canal fixe : la clé est la
   piste (`Melody`, `Chords`, `Bass`, `Countermelody`) ; `Heel` et `Toe` restent
   SoundFont.
 - **Presets fournis par l'hôte**, comme les octets SF2 : `create_offline_engine`
@@ -169,7 +198,7 @@ morph = [
   (licence MIT OR Apache-2.0) ; `odin2-core` (GPLv3) est une dépendance git
   optionnelle : un binaire compilé avec `odin` est GPL.
 - **Morphing par les 4 émotions.** `valeur = socle du preset + arousal×a +
-  valence×v + density×d + tension×t` (émotions dans `0..1`), puis bornée.
+  valence×v + density×d + tension×t` (`valence` dans `-1..1`, autres axes `0..1`), puis bornée.
   Noms exacts du catalogue odin-rs, sans alias :
   `osc1_vol`/`osc2_vol`/`osc3_vol` (−60 à +12 dB),
   `osc1_detune`/`osc2_detune`/`osc3_detune` (0 à 1) ;
@@ -181,7 +210,7 @@ morph = [
   `master` (−50 à +12 dB), `dist_boost`, `dist_drywet`, `delay_wet`,
   `phaser_drywet`, `flanger_drywet`, `chorus_drywet`, `rev_drywet`
   (tous 0 à 1). Le catalogue n'expose pas de seuil de distorsion.
-  Au plus 16 règles par piste, un paramètre une seule fois. Les états
+  Au plus 16 règles par zone, un paramètre une seule fois dans cette zone. Les états
   marche/arrêt, types, routages et octaves restent ceux du preset d'usine.
   `OdinMorphParam::{ALL, COUNT, index, name, bounds}` décrit cette table ;
   `OdinVoiceParams.values` est son tableau fixe, indépendant du code GPL.
@@ -190,19 +219,30 @@ morph = [
   connaît les socles des presets fournis par l'hôte, calcule le preset morphé de
   chaque piste à chaque changement d'émotion et envoie au callback une charge
   `Copy` préparée hors callback. L'application audio ne change ni type ni
-  routage du preset et n'alloue pas. Les notes `Tied` (nappes, pédales)
-  n'émettent pas de nouvelle attaque : Odin ne réattaque pas non plus.
-  Les changements de preset voyagent avec leurs instances déjà chargées dans une
-  transaction unique (`MusicComposer::send_odin`). Les anciennes instances reviennent
-  par SPSC au thread principal ; une file de retour pleine suspend le dépilage des
-  commandes, sans libération dans le callback ni perte d'installation.
+  routage du preset et n'alloue pas. Dans une zone, les notes `Tied`
+  (nappes, pédales) n'émettent pas de nouvelle attaque.
+  La sélection initiale est immédiate. Ensuite, les bascules de zone sont
+  installées à la prochaine frontière de partie (`bar_in_strain == 1`,
+  reprises incluses), en fondu linéaire de **300 ms** entre deux instances,
+  même si elles partagent le même preset ; le morphing continue dans la
+  zone active entre ces frontières.
+  À la bascule, chaque note ancienne reçoit sa fin ; seules les notes
+  encore tenues après les fins de note à la frontière sont réattaquées une
+  fois sur la nouvelle instance. Une nouvelle attaque musicale du même
+  pitch remplace ce transfert, sans doublon. Le fondu porte sur l'audio
+  des deux instances, jamais sur une interpolation de presets.
+  Les instances voyagent déjà chargées dans une transaction unique
+  (`MusicComposer::send_odin`). Les anciennes
+  instances reviennent par SPSC au thread principal ; une file de retour
+  pleine suspend le dépilage des commandes, sans libération dans le callback
+  ni perte d'installation.
 - **Preset non chargé.** Un preset déclaré que l'hôte n'a pas fourni (ou illisible,
   ou build sans `odin`) n'a pas de repli implicite autre que le programme SoundFont
   déclaré ; le chargement du profil journalise un avertissement clair.
-- **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`) ;
-  le gain master du profil, calibré pour les samples SF2, ne s'y applique pas :
-  le niveau propre se règle dans le `master` du preset, fixe ou morphé par
-  les émotions (`master`, en dB). La compensation de l'ancien moteur a été retirée.
+- **Niveau.** Un preset Odin est mixé au niveau de piste du profil (`[mix]`),
+  multiplié par le gain `level_db` de sa zone. Le gain master du profil,
+  calibré pour les samples SF2, ne s'y applique pas ; le `master` du preset
+  reste un paramètre artistique fixe ou morphé, pas une compensation de zone.
 
 ## Percussion : routage par le profil
 

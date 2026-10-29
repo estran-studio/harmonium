@@ -90,6 +90,9 @@ pub struct MusicComposer {
     host_resources: Option<HostResources>,
     #[cfg(feature = "odin")]
     odin_dispatch: Option<harmonium_audio::odin_bank::OdinDispatch>,
+    odin_selected: [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()],
+    #[cfg(feature = "odin")]
+    odin_last_morph: Option<[OdinPatches; 2]>,
     // Ressources désignées par le profil actif et absentes de l'hôte.
     missing: Vec<MissingResource>,
     // Identifiant du profil dont `missing` a été calculé.
@@ -205,6 +208,9 @@ impl MusicComposer {
             host_resources: None,
             #[cfg(feature = "odin")]
             odin_dispatch: None,
+            odin_selected: [None; harmonium_core::timeline::TrackId::ALL.len()],
+            #[cfg(feature = "odin")]
+            odin_last_morph: None,
             missing: Vec::new(),
             checked_profile: String::new(),
         }
@@ -750,6 +756,11 @@ impl MusicComposer {
 
     /// Apply a TuningParams to the generator (for style profile loading).
     pub fn set_tuning(&mut self, tuning: harmonium_core::tuning::TuningParams) {
+        self.odin_selected.fill(None);
+        #[cfg(feature = "odin")]
+        {
+            self.odin_last_morph = None;
+        }
         self.musical_params.profile_id = Arc::from(tuning.profile.meta.id.as_str());
         self.musical_params.profile_instruments = tuning.profile.instruments;
         self.generator.update_tuning(tuning);
@@ -777,10 +788,32 @@ impl MusicComposer {
     /// morphing, sur le thread principal.
     #[must_use]
     pub fn odin_patches(&self) -> OdinPatches {
+        self.odin_patches_for_zones(self.selected_odin_zones())
+    }
+
+    fn odin_patches_for_zones(
+        &self,
+        zones: [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()],
+    ) -> OdinPatches {
         let Some(resources) = &self.host_resources else {
             return [None; harmonium_core::timeline::TrackId::ALL.len()];
         };
-        resources.odin.patches(&self.generator.tuning.profile.odin, self.controls.emotions())
+        resources.odin.patches_for_zones(
+            &self.generator.tuning.profile.odin,
+            self.controls.emotions(),
+            zones,
+        )
+    }
+
+    fn selected_odin_zones(&self) -> [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()] {
+        harmonium_core::timeline::TrackId::ALL.map(|track| {
+            self.generator.tuning.profile.odin.get(&track).map(|spec| {
+                spec.select_zone(
+                    self.controls.emotions(),
+                    self.odin_selected[usize::from(track.channel())],
+                )
+            })
+        })
     }
 
     #[cfg(feature = "odin")]
@@ -788,38 +821,55 @@ impl MusicComposer {
         self.odin_dispatch = Some(dispatch);
     }
 
-    /// Prépare puis envoie une transaction indivisible. Une file pleine rend
-    /// l'erreur au demandeur et ne modifie pas les rangs déjà envoyés.
+    /// Met à jour le morphing puis le dernier choix de zone, sans déplacer sa
+    /// frontière. L'identité expédiée n'avance qu'après insertion réussie ; un
+    /// fondu en cours diffère sa préparation jusqu'au prochain appel.
     pub fn send_odin(
         &mut self,
         commands: &mut rtrb::Producer<crate::playback::PlaybackCommand>,
     ) -> Result<(), String> {
-        #[cfg(feature = "odin")]
-        if let Some(dispatch) = &mut self.odin_dispatch {
-            dispatch.reclaim();
-        }
-        if commands.is_full() {
-            return Err("file de commandes pleine pendant l'installation Odin".to_owned());
-        }
-        let patches = self.odin_patches();
+        let zones = self.selected_odin_zones();
+        let patches = self.odin_patches_for_zones(zones);
         #[cfg(not(feature = "odin"))]
-        let command = crate::playback::PlaybackCommand::SetOdin(patches);
+        {
+            commands
+                .push(crate::playback::PlaybackCommand::SetOdin(patches))
+                .map_err(|_| "file de commandes pleine pendant l'installation Odin".to_owned())?;
+        }
         #[cfg(feature = "odin")]
-        let command = {
+        {
             let Some(dispatch) = &mut self.odin_dispatch else {
                 return Err("transport Odin non initialisé".to_owned());
             };
-            crate::playback::PlaybackCommand::SetOdin(
-                dispatch.prepare(patches).map_err(str::to_owned)?,
-            )
-        };
-        commands
-            .push(command)
-            .map_err(|_| "file de commandes pleine pendant l'installation Odin".to_owned())?;
-        #[cfg(feature = "odin")]
-        if let Some(dispatch) = &mut self.odin_dispatch {
-            dispatch.sent(&patches);
+            dispatch.reclaim();
+            let active = self.host_resources.as_ref().map_or(
+                [None; harmonium_core::timeline::TrackId::ALL.len()],
+                |resources| {
+                    resources.odin.patches_for_zones(
+                        &self.generator.tuning.profile.odin,
+                        self.controls.emotions(),
+                        dispatch.active_zones(),
+                    )
+                },
+            );
+            let morph = [active, patches];
+            if self.odin_last_morph != Some(morph) {
+                commands
+                    .push(crate::playback::PlaybackCommand::MorphOdin(morph))
+                    .map_err(|_| "file de commandes pleine pendant le morphing Odin".to_owned())?;
+                self.odin_last_morph = Some(morph);
+            }
+            if commands.is_full() {
+                return Err("file de commandes pleine pendant l'installation Odin".to_owned());
+            }
+            if let Some(update) = dispatch.prepare(patches).map_err(str::to_owned)? {
+                commands.push(crate::playback::PlaybackCommand::SetOdin(update)).map_err(|_| {
+                    "file de commandes pleine pendant l'installation Odin".to_owned()
+                })?;
+                dispatch.sent(&patches);
+            }
         }
+        self.odin_selected = zones;
         Ok(())
     }
 
