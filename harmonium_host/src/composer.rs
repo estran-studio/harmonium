@@ -639,13 +639,17 @@ impl MusicComposer {
     // === Emotion mode ===
 
     pub fn use_emotion_mode(&mut self) {
-        self.controls.set_emotion_mode(true);
-        log::info("MusicComposer: switched to Emotion mode");
+        if !self.controls.is_emotion_mode() {
+            log::info("MusicComposer: switched to Emotion mode");
+        }
+        self.controls.set_emotion_mode(true, &self.musical_params);
     }
 
     pub fn use_direct_mode(&mut self) {
-        self.controls.set_emotion_mode(false);
-        log::info("MusicComposer: switched to Direct mode");
+        if self.controls.is_emotion_mode() {
+            log::info("MusicComposer: switched to Direct mode");
+        }
+        self.controls.set_emotion_mode(false, &self.musical_params);
     }
 
     pub fn is_emotion_mode(&self) -> bool {
@@ -662,10 +666,11 @@ impl MusicComposer {
         );
     }
 
-    /// Émotions courantes du contrôleur pour le morphing Odin audio.
+    /// Les quatre axes qui jouent `[arousal, valence, density, tension]` : ceux commandés en mode
+    /// émotion, sinon ceux des paramètres directs (ce que montre un pavé ou `state`).
     #[must_use]
     pub fn emotions(&self) -> [f32; 4] {
-        self.controls.emotions()
+        self.controls.axes(&self.musical_params)
     }
 
     // === Writehead controls ===

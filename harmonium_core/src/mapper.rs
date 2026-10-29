@@ -62,7 +62,18 @@ impl GameControls {
         self.emotion_mapped_bpm = nominal_bpm;
     }
 
-    pub fn set_emotion_mode(&mut self, on: bool) {
+    /// Passe en mode émotion (`true`) ou direct. En venant du mode direct, les quatre axes partent
+    /// de ceux qui jouent ([`Self::axes`]) : changer ensuite un seul axe ne fait pas sauter les
+    /// trois autres à des valeurs par défaut.
+    pub fn set_emotion_mode(&mut self, on: bool, params: &MusicalParams) {
+        if on && !self.emotion_mode {
+            [
+                self.emotions.arousal,
+                self.emotions.valence,
+                self.emotions.density,
+                self.emotions.tension,
+            ] = self.axes(params);
+        }
         self.emotion_mode = on;
     }
 
@@ -128,5 +139,16 @@ impl GameControls {
     #[must_use]
     pub const fn emotions(&self) -> [f32; 4] {
         [self.emotions.arousal, self.emotions.valence, self.emotions.density, self.emotions.tension]
+    }
+
+    /// Les quatre axes `[arousal, valence, density, tension]` qui jouent : ceux commandés en mode
+    /// émotion, sinon ceux des paramètres directs.
+    #[must_use]
+    pub const fn axes(&self, params: &MusicalParams) -> [f32; 4] {
+        if self.emotion_mode {
+            self.emotions()
+        } else {
+            [params.arousal, params.harmony_valence, params.rhythm_density, params.rhythm_tension]
+        }
     }
 }

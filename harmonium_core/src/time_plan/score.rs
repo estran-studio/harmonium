@@ -75,7 +75,7 @@ impl ScoreCommand {
     ) {
         match self {
             Self::Emotions { arousal, valence, density, tension } => {
-                controls.set_emotion_mode(true);
+                controls.set_emotion_mode(true, params);
                 controls.set_emotions(
                     [
                         unit(i32::from(arousal)),

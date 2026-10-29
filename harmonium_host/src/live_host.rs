@@ -253,9 +253,17 @@ impl LiveHost {
         self.composer.missing_resources()
     }
 
-    /// Current emotions `[arousal, valence, density, tension]`.
+    /// The four axes playing `[arousal, valence, density, tension]`: the
+    /// commanded emotions in emotion mode, the direct parameters otherwise.
+    /// Entering emotion mode starts from them, so changing one axis leaves
+    /// the other three where they were.
     pub fn emotions(&self) -> [f32; 4] {
         self.composer.emotions()
+    }
+
+    /// Active style profile (the one the next measures are composed with).
+    pub fn profile(&self) -> &harmonium_core::StyleProfile {
+        self.composer.profile()
     }
 
     /// Seed of the session (to save with a recording).

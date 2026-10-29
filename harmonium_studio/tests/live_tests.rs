@@ -495,6 +495,45 @@ fn legato_bass_and_tied_chords_of_isaac_are_in_the_view() -> Result<(), String> 
     Ok(())
 }
 
+/// Le mixeur dit quelles pistes la densité courante écarte (`density_tracks` du profil) : ce sont
+/// exactement celles qui n'ont plus de note dans les mesures recomposées.
+#[test]
+fn the_mixer_names_the_tracks_the_density_leaves_out() -> Result<(), String> {
+    let (mut session, mut playback) = session_of("isaac_basement")?;
+    let gate = |view: &LiveView, track: TrackId| {
+        view.mixer.iter().find(|strip| strip.track == track).and_then(|strip| strip.density_gate)
+    };
+    let [arousal, valence, _, tension] = view(&mut session).emotions;
+    command(
+        &mut session,
+        EngineCommand::SetEmotionParams { arousal, valence, density: 0.2, tension },
+    )?;
+    play(&mut session, &mut playback, 300);
+    let thin = view(&mut session);
+    let heard_ahead = |view: &LiveView, track: TrackId| {
+        view.score
+            .bars
+            .iter()
+            .filter(|bar| bar.index > view.score.current_bar)
+            .filter_map(|bar| bar.content.as_ref())
+            .any(|content| content.notes.iter().any(|note| note.track == track))
+    };
+    for track in [TrackId::Melody, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
+        assert!(gate(&thin, track).is_some_and(|minimum| minimum > 0.2), "{track:?} écartée");
+        assert!(!heard_ahead(&thin, track), "{track:?} sans note à venir");
+    }
+    assert_eq!(gate(&thin, TrackId::Chords), None, "la nappe reste");
+
+    command(
+        &mut session,
+        EngineCommand::SetEmotionParams { arousal, valence, density: 0.45, tension },
+    )?;
+    play(&mut session, &mut playback, 300);
+    let full = view(&mut session);
+    assert!(full.mixer.iter().all(|strip| strip.density_gate.is_none()), "{:?}", full.mixer);
+    Ok(())
+}
+
 #[test]
 fn reset_returns_to_the_active_profile_defaults_at_bar_one() -> Result<(), String> {
     let (mut session, mut playback) = session_of("isaac_basement")?;

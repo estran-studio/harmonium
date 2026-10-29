@@ -572,7 +572,8 @@ impl LiveScreen {
             drag.to = bar;
         }
 
-        paint_score(ui, &layout, score, self.loop_drag);
+        let gates: Vec<Option<f32>> = view.mixer.iter().map(|strip| strip.density_gate).collect();
+        paint_score(ui, &layout, score, &gates, self.loop_drag);
     }
 
     // === About ===
@@ -793,7 +794,11 @@ fn mixer(ui: &mut egui::Ui, view: &LiveView, intents: &mut Vec<Intent>) {
 
 fn mixer_strip(ui: &mut egui::Ui, strip: &MixerStrip, intents: &mut Vec<Intent>) {
     let name = RichText::new(track_label(strip.track)).color(track_color(strip.track));
-    ui.label(if strip.audible { name } else { name.weak() });
+    let label =
+        ui.label(if strip.audible && strip.density_gate.is_none() { name } else { name.weak() });
+    if let Some(minimum) = strip.density_gate {
+        label.on_hover_text(density_gate_text(minimum));
+    }
     let mut gain = strip.gain;
     if ui.add(egui::Slider::new(&mut gain, 0.0..=1.0).show_value(false)).changed() {
         intents.push(Intent::Command(EngineCommand::SetChannelGain {
@@ -919,7 +924,19 @@ fn pitch_range(bars: &[BarView], track: TrackId) -> Option<(u8, u8)> {
     Some((low.saturating_sub(missing / 2), high.saturating_add(missing - missing / 2)))
 }
 
-fn paint_score(ui: &egui::Ui, layout: &ScoreLayout, score: &ScoreView, drag: Option<LoopDrag>) {
+/// Pourquoi une piste ne joue pas : la densité est sous le seuil du profil.
+fn density_gate_text(minimum: f32) -> String {
+    format!("off: density < {minimum:.2}")
+}
+
+/// `gates` : seuil de densité par piste, dans l'ordre de [`TRACKS`] (voir `MixerStrip`).
+fn paint_score(
+    ui: &egui::Ui,
+    layout: &ScoreLayout,
+    score: &ScoreView,
+    gates: &[Option<f32>],
+    drag: Option<LoopDrag>,
+) {
     let painter = ui.painter_at(layout.rect);
     painter.rect_filled(layout.rect, 0.0, Color32::from_gray(20));
     let small = FontId::proportional(11.0);
@@ -929,7 +946,8 @@ fn paint_score(ui: &egui::Ui, layout: &ScoreLayout, score: &ScoreView, drag: Opt
     let ranges: Vec<Option<(u8, u8)>> =
         TRACKS.iter().map(|track| pitch_range(&score.bars, *track)).collect();
 
-    // Étiquettes des pistes ; une piste sans note dans la fenêtre est grisée.
+    // Étiquettes des pistes ; une piste sans note dans la fenêtre est grisée, une piste coupée par
+    // la densité le dit au bout de sa rangée (là où sont les mesures à venir).
     for (index, track) in TRACKS.into_iter().enumerate() {
         let lane = layout.lane(index);
         let color = if ranges[index].is_some() { track_color(track) } else { dim };
@@ -940,6 +958,15 @@ fn paint_score(ui: &egui::Ui, layout: &ScoreLayout, score: &ScoreView, drag: Opt
             small.clone(),
             color,
         );
+        if let Some(minimum) = gates.get(index).copied().flatten() {
+            painter.text(
+                Pos2::new(layout.rect.right() - 6.0, lane.center().y),
+                Align2::RIGHT_CENTER,
+                density_gate_text(minimum),
+                small.clone(),
+                Color32::from_rgb(220, 140, 120),
+            );
+        }
     }
     for (label, row) in [("Tune", layout.tune), ("Form", layout.form), ("Chords", layout.chords)] {
         painter.text(

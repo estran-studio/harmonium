@@ -168,6 +168,18 @@ Rien de ce qui suit n'a été fait : il faut des oreilles ou une vraie fenêtre.
    pompée toutes les 100 ms par le Worker, mais le téléchargement part dans une image de l'interface).
 3. Pas de « Profile folder » ni d'« OSC listener » : normal (natifs).
 
+## Corrections après l'essai du propriétaire
+
+- **`reset`** gardait mal le style : il rechargeait le profil par défaut, laissait la tête de lecture où elle
+  était et ne rejouait pas la graine. Il rend maintenant les défauts du profil actif, retire boucle et tempo
+  audible imposé, et recommence à la mesure 1 avec la même graine (`90bf109`).
+- **Pistes d'Isaac qui disparaissaient** au premier geste sur le pavé : le passage en mode émotion envoyait la
+  densité par défaut du moteur (0,2), sous les seuils `density_tracks` d'Isaac (Bass 0,25 … Melody 0,4), d'où
+  la nappe seule. Le mode émotion part désormais des axes qui jouent (`GameControls::set_emotion_mode`,
+  `LiveHost::emotions`, aussi pour `emotion a+0.1` du REPL) ; le mixeur et le piano-roll disent quelle piste
+  la densité écarte (« off: density < x ») ; « switched to Emotion mode » ne s'imprime plus qu'au vrai
+  changement de mode.
+
 ## À nettoyer (hors périmètre S6)
 
 - `EngineReport.session_key` / `session_scale` (`harmonium_core/src/report.rs:201-204`) ne décrivent pas ce qui

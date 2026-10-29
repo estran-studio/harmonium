@@ -44,6 +44,35 @@ fn emotion_command_enters_emotion_mode_and_maps_the_four_axes() -> Result<(), St
     Ok(())
 }
 
+/// Venant du mode direct, le mode émotion part des axes qui jouent : bouger un seul axe (le
+/// pavé, `emotion a+0.1`) ne ramène pas la densité à une valeur par défaut, et les pistes
+/// qu'un profil à couches (`density_tracks`) fait jouer à cette densité restent.
+#[test]
+fn entering_emotion_mode_starts_from_the_axes_playing() -> Result<(), String> {
+    let (mut host, mut playback) = host()?;
+    host.apply(EngineCommand::SetWriteheadLookahead(16))?;
+    let profile = StyleProfile::named("isaac_basement").map_err(|e| e.to_string())?;
+    host.apply(EngineCommand::SetStyleProfile(Box::new(profile)))?;
+    let params = host.musical_params();
+    let direct =
+        [params.arousal, params.harmony_valence, params.rhythm_density, params.rhythm_tension];
+    assert_eq!(host.emotions(), direct, "en mode direct, les axes des paramètres");
+
+    host.apply(EngineCommand::UseEmotionMode)?;
+    assert_eq!(host.emotions(), direct, "pas de saut à l'entrée en mode émotion");
+
+    let [_, valence, density, tension] = host.emotions();
+    host.apply(EngineCommand::SetEmotionParams { arousal: 0.9, valence, density, tension })?;
+    let bars = play_bars(&mut host, &mut playback, 300);
+    for track in [0u8, 2, 3, 4] {
+        assert!(
+            bars.values().flat_map(|bar| &bar.notes).any(|note| note.track == track),
+            "piste {track} présente à la densité {density}"
+        );
+    }
+    Ok(())
+}
+
 #[test]
 fn generation_commands_change_the_parameters_and_the_published_report() -> Result<(), String> {
     let (mut host, mut playback) = host()?;

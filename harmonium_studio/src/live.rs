@@ -397,6 +397,7 @@ impl Session {
             .iter()
             .find(|profile| profile.meta.id == profile_id)
             .map_or_else(|| profile_id.clone(), |profile| profile.meta.name.clone());
+        let dynamics = &self.host.profile().dynamics;
         let mixer = TRACKS
             .into_iter()
             .map(|track| {
@@ -409,6 +410,11 @@ impl Session {
                     soloed: self.desk.solo == Some(track),
                     audible: self.desk.audible(track),
                     route: self.desk.routes[index],
+                    density_gate: dynamics
+                        .density_tracks
+                        .iter()
+                        .find(|gate| gate.track == track && params.rhythm_density < gate.minimum)
+                        .map(|gate| gate.minimum),
                 }
             })
             .collect();
@@ -789,4 +795,7 @@ pub struct MixerStrip {
     /// Ni coupée, ni écartée par un solo.
     pub audible: bool,
     pub route: i32,
+    /// Seuil de densité du profil (`density_tracks`) quand la densité courante est en dessous :
+    /// la piste ne joue pas dans les prochaines mesures.
+    pub density_gate: Option<f32>,
 }

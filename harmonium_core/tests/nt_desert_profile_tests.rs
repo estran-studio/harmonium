@@ -51,7 +51,7 @@ fn stream(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<MeasureSna
 fn emotional_stream(p: &StyleProfile, emotions: [f32; 4]) -> TestResult<Vec<MeasureSnapshot>> {
     let mut par = params(p);
     let mut controls = GameControls::new(p.meter.default_bpm);
-    controls.set_emotion_mode(true);
+    controls.set_emotion_mode(true, &par);
     controls.set_emotions(emotions, p, &mut par);
     stream_with_params(p, par, 1, 96)
 }
