@@ -70,5 +70,5 @@ gardant les deux.
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| V1 | lancée (2026-10-29) | `v1-variete-graine.md` |
+| V1 | fusionnée (`1571654`) : `loops = [{ weight, chords }]` par partie (sel `0x4841_524D`), patterns de pieds pondérés par (partie, densité) (sel `0x4645_4554`), aucun tirage à candidat unique ; 66/66 dumps trad et `nt_desert` identiques ; `isaac_*` : 2 à 3 parties à boucles alternatives, seconds motifs de basse, 2 patterns par densité, 3 cellules de plus ; 679 tests verts | `v1-variete-graine.md` |
 | T1 | lancée (2026-10-29) | `t1-timbre-emotion.md` |
