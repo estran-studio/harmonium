@@ -407,7 +407,7 @@ fn the_screen_shows_what_plays_not_the_session_leftovers() -> Result<(), String>
     );
     assert!((audible - 120.0).abs() > 10.0, "{audible}");
 
-    // Tonalité et mode : ceux de `TunePosition`, pas `session_key` / `session_scale`.
+    // Tonalité et mode : ceux de `TunePosition`, ce qui joue.
     let position = measure.position.ok_or("position publiée")?;
     let expected = format!("{} {:?}", pitch_class_name(position.key), position.mode);
     let style = view.state.iter().find(|group| group.title == "Style").ok_or("groupe Style")?;

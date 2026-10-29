@@ -17,15 +17,13 @@ use harmonium_core::{
     log,
     odin::OdinPatches,
     params::{MusicalParams, SessionConfig, TimeSignature},
-    theory::chord::{Chord, ChordType},
-    time_plan::score::{SESSION_KEYS, SESSION_SCALES, session_start},
+    time_plan::score::session_rng,
     timeline::Writehead,
-    trad::{BarRole, TradGenerator, TunePlan, pitch_class_name},
+    trad::{BarRole, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rust_music_theory::{note::PitchSymbol, scale::ScaleType};
 
 use crate::{
     mapper::GameControls,
@@ -117,49 +115,8 @@ impl MusicComposer {
         transport_position: Arc<AtomicU64>,
         session_seed: u64,
     ) -> Self {
-        let (rng, key_index, scale_index) = session_start(session_seed);
+        let rng = session_rng(session_seed);
 
-        let bpm = 120.0;
-        let steps = 16;
-        let initial_pulses = 4;
-
-        let keys: [PitchSymbol; SESSION_KEYS as usize] = [
-            PitchSymbol::C,
-            PitchSymbol::D,
-            PitchSymbol::E,
-            PitchSymbol::F,
-            PitchSymbol::G,
-            PitchSymbol::A,
-            PitchSymbol::B,
-        ];
-        let scales: [ScaleType; SESSION_SCALES as usize] =
-            [ScaleType::PentatonicMinor, ScaleType::PentatonicMajor];
-        let random_key = keys[key_index as usize];
-        let random_scale = scales[scale_index as usize];
-
-        let config = SessionConfig {
-            bpm,
-            key: format!("{}", random_key),
-            scale: format!("{:?}", random_scale),
-            pulses: initial_pulses,
-            steps,
-        };
-
-        log::info(&format!(
-            "MusicComposer - Session: {} {} | BPM: {:.1}",
-            config.key, config.scale, bpm
-        ));
-
-        let key_pc = match random_key {
-            PitchSymbol::C => 0,
-            PitchSymbol::D => 2,
-            PitchSymbol::E => 4,
-            PitchSymbol::F => 5,
-            PitchSymbol::G => 7,
-            PitchSymbol::A => 9,
-            PitchSymbol::B => 11,
-            _ => 0,
-        };
         let tuning = TuningParams::default();
 
         let mut musical_params = MusicalParams::default();
@@ -174,8 +131,11 @@ impl MusicComposer {
             bpm,
             steps: meter.steps_per_bar,
             pulses: usize::from(meter.pulse_spec().pulses_per_bar),
-            ..config
         };
+        log::info(&format!(
+            "MusicComposer - Session: profil {} | BPM: {:.1}",
+            musical_params.profile_id, bpm
+        ));
         let generator = TradGenerator::new(musical_params.clone(), tuning);
 
         let writehead = Writehead::new(sample_rate, 4);
@@ -195,8 +155,7 @@ impl MusicComposer {
             sample_rate,
             session_seed,
             controls: GameControls::new(bpm),
-            last_chord_name: ArrayString::from(&Chord::new(key_pc, ChordType::Major).name())
-                .unwrap_or_default(),
+            last_chord_name: ArrayString::new(),
             last_chord_root_offset: 0,
             last_chord_is_minor: false,
             pending_measure_snapshots: Vec::new(),
@@ -254,10 +213,6 @@ impl MusicComposer {
             }
 
             let measure = self.generator.generate_measure(bar_idx, &mut self.rng);
-            if let Some((plan, _)) = self.generator.bar_info(bar_idx) {
-                self.config.key = pitch_class_name(plan.key).to_string();
-                self.config.scale = format!("{:?}", plan.mode);
-            }
 
             // Update report cache
             self.last_chord_name =
@@ -522,11 +477,6 @@ impl MusicComposer {
         self.writehead.reset();
         self.clear_staged();
         self.deterministic_seek(1);
-    }
-
-    /// Current session key as a display string (e.g. "C", "Bb").
-    pub fn session_key_string(&self) -> String {
-        self.config.key.clone()
     }
 
     /// Get the current session seed.

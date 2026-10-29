@@ -763,8 +763,7 @@ fn state_groups(
             ("Step", (report.current_step + 1).to_string()),
         ]);
         groups.push(StateGroup { title: "Timing", rows: timing });
-        // `progression_name` / `progression_length` (comme `session_key` / `session_scale`) ne
-        // sont jamais remplis par l'hôte : vestiges, non montrés.
+        // La tonalité et le mode viennent de `TunePosition` (groupe « Style »), pas du rapport.
         groups.push(StateGroup {
             title: "Harmony",
             rows: vec![("Current chord", report.current_chord.to_string())],

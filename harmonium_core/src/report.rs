@@ -173,12 +173,6 @@ pub struct EngineReport {
     /// Whether current chord is minor
     pub chord_is_minor: bool,
 
-    /// Progression name (e.g., "Hopeful", "Dark")
-    pub progression_name: ArrayString<64>,
-
-    /// Length of current progression
-    pub progression_length: usize,
-
     // === NOTES TRIGGERED (this tick) ===
     /// Notes triggered since the last report (pre-allocated capacity)
     pub notes: Vec<NoteEvent>,
@@ -195,13 +189,6 @@ pub struct EngineReport {
     // === CURRENT PARAMS (echoed back) ===
     /// Current musical parameters (`Copy` view: no heap in the audio thread)
     pub musical_params: PlaybackParams,
-
-    // === SESSION INFO ===
-    /// Session key (e.g., "C")
-    pub session_key: ArrayString<8>,
-
-    /// Session scale (e.g., "major", "minor")
-    pub session_scale: ArrayString<32>,
 }
 
 impl EngineReport {
@@ -218,14 +205,10 @@ impl EngineReport {
             current_chord: ArrayString::new(),
             chord_root_offset: 0,
             chord_is_minor: false,
-            progression_name: ArrayString::new(),
-            progression_length: 0,
             notes: Vec::new(),
             sample_offset: 0,
             new_measures: Vec::new(),
             musical_params,
-            session_key: ArrayString::new(),
-            session_scale: ArrayString::new(),
         }
     }
 }

@@ -836,8 +836,6 @@ impl EngineParams {
 #[derive(Clone, Debug)]
 pub struct SessionConfig {
     pub bpm: f32,
-    pub key: String,
-    pub scale: String,
     pub pulses: usize,
     pub steps: usize,
 }

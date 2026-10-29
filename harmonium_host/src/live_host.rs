@@ -237,7 +237,7 @@ impl LiveHost {
             .unwrap_or_default()
     }
 
-    /// Session key, scale and tempo (updated as bars are composed).
+    /// Tempo, pas et pulsations par mesure du profil actif.
     pub fn session_config(&self) -> &SessionConfig {
         &self.composer.config
     }

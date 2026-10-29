@@ -301,8 +301,6 @@ pub fn run(
                     "chord_is_minor": report.chord_is_minor,
                     "bpm": report.musical_params.bpm,
                     "time_signature": format!("{}/{}", report.time_signature.numerator, report.time_signature.denominator),
-                    "session_key": report.session_key.as_str(),
-                    "session_scale": report.session_scale.as_str(),
                 });
                 truth_snapshots.push(snapshot);
             }

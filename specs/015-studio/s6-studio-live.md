@@ -24,8 +24,8 @@ rendu hors ligne, tests egui sans fenêtre). Ce qui demande des oreilles ou une 
      forme et tonalité (`TunePosition`), panneau d'état (équivalent de `state`), mixeur.
    - **Tempo et tonalité viennent de ce qui sonne.** Le tempo entendu est tiré de la durée de la pulsation de
      `BeatInfo` et des pas par pulsation de la mesure qui sonne (reel québécois : 230 BPM) ; la tonalité et le mode,
-     de `MeasureSnapshot.position` (`D Ionian`). `EngineReport.session_key` / `session_scale` ne sont lus nulle part
-     (voir « À nettoyer »).
+     de `MeasureSnapshot.position` (`D Ionian`). Le rapport du moteur ne porte plus de tonalité de session (voir
+     « À nettoyer »).
 2. **Écran `live_screen.rs`** : barre du haut, commandes à gauche, forme / accords / piano-roll au centre, horloge,
    état et mixeur à droite, panneau About. Chaque image lit une `LiveView` et rend des `Intent` exécutés après le
    dessin.
@@ -182,11 +182,8 @@ Rien de ce qui suit n'a été fait : il faut des oreilles ou une vraie fenêtre.
 
 ## À nettoyer (hors périmètre S6)
 
-- `EngineReport.session_key` / `session_scale` (`harmonium_core/src/report.rs:201-204`) ne décrivent pas ce qui
-  joue : `MusicComposer - Session: A PentatonicMinor | BPM: 120.0` (`harmonium_host/src/composer.rs:149`) est
-  imprimé au démarrage alors que `reel_quebecois` joue à 230 en ré. Le studio ne les lit pas. Les retirer demande
-  de toucher l'export JSON du CLI (`harmonium_cli/src/export.rs:304`) et `state` du REPL
-  (`harmonium_cli/src/repl.rs:630`) : pas trivial, donc laissé. `progression_name` / `progression_length` du
-  rapport ne sont jamais remplis non plus.
+- Fait sur la branche `wquintal/rapport-session` : `session_key` / `session_scale` / `progression_name` /
+  `progression_length` retirés de `EngineReport` (et `key` / `scale` de `SessionConfig`, de l'export JSON du CLI
+  et de `state`) ; le journal de démarrage du composer ne dit plus que le profil et le tempo qui jouent.
 - Les captures du rendu (ci-dessus) ne sont pas dans la CI : un test d'instantané demanderait une dépendance GPU
   et des images de référence versionnées ; à décider avec S9.
