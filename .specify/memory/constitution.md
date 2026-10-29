@@ -100,18 +100,21 @@ son style d'origine est un défaut.
 - `harmonium_host` — `MusicComposer` (thread principal), `PlaybackEngine`
   (callback cpal), `LiveHost` (l'hôte vivant : exécute les `EngineCommand`,
   génération pilotée par l'appelant via `pump`), module OSC,
-  `create_offline_engine`. Aucun binaire : le REPL de `harmonium_cli` et le
-  studio sont ses seuls hôtes.
+  `create_offline_engine`. Aucun binaire : le REPL de `harmonium_cli`, le
+  studio et le plugin Bevy sont ses seuls hôtes.
 - `harmonium_cli` — REPL d'écoute et de test.
 - `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
 - `harmonium_determinism` — harnais : mêmes snapshots en natif et en wasm.
 - `harmonium_studio` — application egui : vitrine publique sur le web (WASM)
   et atelier de développement en natif.
+- `harmonium_bevy` — plugin Bevy mince sur `LiveHost`, ajouté par chaque jeu,
+  avec son application de test locale ; aucune logique musicale propre.
 
 Un seul frontend, `harmonium_studio`. Il ne lit que le contrat (principe I)
 et l'API publique du host, et exécute les commandes par le même chemin que
-le REPL, qui garde les mêmes capacités. L'intégration Bevy vit dans chaque
-jeu, sur `create_offline_engine`.
+le REPL, qui garde les mêmes capacités. L'intégration Bevy est
+`harmonium_bevy` : chaque jeu ajoute le plugin, fournit ses ressources
+(banques, presets) et traduit ses propres signaux en émotions.
 
 ## Contraintes techniques
 
@@ -145,10 +148,11 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 4.3.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-28
+**Version** : 4.4.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-29
 (moteur tous styles et multi-jeux, fusion en données — principe VIII ;
 sources sous droits analysables, seuls les dérivés entrent au dépôt —
 principe VII ; un seul frontend, `harmonium_studio`, vitrine web et atelier
 natif ; synthé Odin en option GPL par piste, licence MIT OR Apache-2.0 ;
 le moteur compile pour `wasm32-unknown-unknown` et y produit les mêmes
-snapshots, vérifié en CI ; tirages d'entiers en largeur fixe)
+snapshots, vérifié en CI ; tirages d'entiers en largeur fixe ; intégration
+Bevy dans `harmonium_bevy`, plugin mince sur `LiveHost`)
