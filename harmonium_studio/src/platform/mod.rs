@@ -3,14 +3,17 @@
 //! | | natif (`native`) | web (`web`) |
 //! |---|---|---|
 //! | ressources | dossier sur disque, lu par un fil | `fetch` en flux, Cache Storage |
-//! | hôte partagé | `Arc<Mutex<LiveHost>>` | `Rc<RefCell<LiveHost>>` (le moteur reste sur le fil de la page) |
-//! | génération | un fil appelle `LiveHost::pump` | un minuteur de Worker appelle `LiveHost::pump` |
+//! | session partagée | `Arc<Mutex<Session>>` | `Rc<RefCell<Session>>` (le moteur reste sur le fil de la page) |
+//! | génération | un fil appelle `Session::pump` | un minuteur de Worker appelle `Session::pump` |
 //! | sortie audio | cpal (carte son) | cpal WebAudio, créé en pause, repris au clic sur Start |
+//! | enregistrements | fichiers dans un dossier (`--recordings`) | téléchargements du navigateur |
+//! | OSC | écouteur UDP du host (`start_osc`) | absent |
 //! | réglages | arguments de la ligne de commande | paramètres d'URL |
 //!
-//! Le reste (écran, décisions de chargement, construction de l'hôte) est commun et vit hors de ce
-//! module. Les deux côtés exposent les mêmes noms : `Settings`, `settings`, `start_loading`,
-//! `HostHandle`, `Pump`, `start_pump`, `run`.
+//! Le reste (écran, décisions de chargement, construction de la session) est commun et vit hors de
+//! ce module. Les deux côtés exposent les mêmes noms : `Settings`, `settings`, `start_loading`,
+//! `SessionHandle`, `Pump`, `start_pump`, `RecordingSink`, `recording_sink`, `run` ; le natif
+//! ajoute `Osc` et `start_osc`.
 
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
@@ -19,6 +22,7 @@ use harmonium_audio::odin_source::OdinPresetSource;
 use harmonium_core::{EngineCommand, StyleProfile};
 
 use crate::{
+    live::{Intent, Session},
     loading::{LoadState, LoadView, Phase},
     manifest::LoadedResources,
 };
@@ -100,29 +104,29 @@ pub const LOOKAHEAD_BARS: usize = MEASURE_WINDOW_CAP;
 /// Profil joué au démarrage.
 pub const DEFAULT_PROFILE: &str = "reel_quebecois";
 
-/// Construit l'hôte du moteur avec les ressources chargées, en pause : la sortie audio est ouverte
-/// (et la banque analysée, ce qui bloque le fil appelant) mais ne joue qu'au `resume`. Le profil
-/// par défaut est installé et les premières mesures sont composées.
-pub fn open_host(
+/// Construit le moteur avec les ressources chargées, en pause : la sortie audio est ouverte (et la
+/// banque analysée, ce qui bloque le fil appelant) mais ne joue qu'au `resume`. Le profil par
+/// défaut est installé et les premières mesures sont composées (elles entrent dans la partition de
+/// la session).
+pub fn open_session(
     resources: &LoadedResources,
     buffer_frames: Option<u32>,
-) -> Result<HostHandle, String> {
+) -> Result<SessionHandle, String> {
     let presets: Vec<OdinPresetSource> = resources
         .odin_presets
         .iter()
         .map(|(name, bytes)| OdinPresetSource { name, bytes })
         .collect();
-    let mut host = LiveHost::start_paused(
+    let host = LiveHost::start_paused(
         Some(&resources.main_bank),
         resources.feet_bank.as_deref(),
         &presets,
         buffer_frames,
     )?;
-    host.apply(EngineCommand::SetWriteheadLookahead(LOOKAHEAD_BARS))?;
+    let mut session = Session::new(host);
+    session.perform(Intent::Command(EngineCommand::SetWriteheadLookahead(LOOKAHEAD_BARS)))?;
     let profile = StyleProfile::named(DEFAULT_PROFILE).map_err(|e| e.to_string())?;
-    host.apply(EngineCommand::SetStyleProfile(Box::new(profile)))?;
-    // Les mesures sont prêtes quand Start reprend la sortie ; le studio n'a pas encore d'écran de
-    // partition (S6) : les snapshots composés ne sont pas lus.
-    host.pump();
-    Ok(HostHandle::new(host))
+    session.perform(Intent::Command(EngineCommand::SetStyleProfile(Box::new(profile))))?;
+    session.pump();
+    Ok(SessionHandle::new(session))
 }

@@ -1,4 +1,5 @@
-//! Bureau : ressources sur disque, fil de génération, fenêtre eframe.
+//! Bureau : ressources sur disque, fil de génération, enregistrements en fichiers, OSC, fenêtre
+//! eframe.
 
 use std::{
     collections::BTreeMap,
@@ -13,11 +14,12 @@ use std::{
 };
 
 use eframe::egui;
-use harmonium::LiveHost;
+use harmonium::osc::OscListener;
 
 use super::{LoadHandle, update_state};
 use crate::{
     app::StudioApp,
+    live::{Intent, Recording, Session},
     loading::{ResourceStatus, Source, check_size, parse_buffer_frames},
     manifest::{LoadedResources, MANIFEST_FILE, Manifest},
 };
@@ -35,13 +37,27 @@ pub struct Settings {
     /// Dossier des ressources (`--resources`) : `assets.json` et les fichiers qu'il cite, tels que
     /// les écrit `studio_assets`.
     pub resources_dir: PathBuf,
+    /// Dossier des enregistrements (`--recordings`).
+    pub recordings_dir: PathBuf,
 }
 
-/// Lit la ligne de commande : `--buffer <images>`, `--resources <dossier>`.
+/// Dossier des enregistrements par défaut : `Harmonium Studio` dans le dossier de musique de
+/// l'utilisateur (`~/Music` sur macOS), sinon dans son dossier personnel, sinon dans le dossier
+/// courant.
+fn default_recordings_dir() -> PathBuf {
+    dirs::audio_dir()
+        .or_else(dirs::home_dir)
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("Harmonium Studio")
+}
+
+/// Lit la ligne de commande : `--buffer <images>`, `--resources <dossier>`,
+/// `--recordings <dossier>`.
 pub fn settings() -> Result<Settings, String> {
     let mut settings = Settings {
         buffer_frames: None,
         resources_dir: Path::new(env!("CARGO_MANIFEST_DIR")).join("resources"),
+        recordings_dir: default_recordings_dir(),
     };
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
@@ -49,9 +65,10 @@ pub fn settings() -> Result<Settings, String> {
         match flag.as_str() {
             "--buffer" => settings.buffer_frames = Some(parse_buffer_frames(&value()?)?),
             "--resources" => settings.resources_dir = PathBuf::from(value()?),
+            "--recordings" => settings.recordings_dir = PathBuf::from(value()?),
             _ => {
                 return Err(format!(
-                    "unknown argument `{flag}`\nusage: harmonium_studio [--buffer <frames>] [--resources <dir>]"
+                    "unknown argument `{flag}`\nusage: harmonium_studio [--buffer <frames>] [--resources <dir>] [--recordings <dir>]"
                 ));
             }
         }
@@ -103,18 +120,19 @@ fn load(
     Ok(())
 }
 
-/// Le moteur, partagé entre l'écran et le fil de génération.
+/// La session du moteur, partagée entre l'écran, le fil de génération et l'écoute OSC.
 #[derive(Clone)]
-pub struct HostHandle(Arc<Mutex<LiveHost>>);
+pub struct SessionHandle(Arc<Mutex<Session>>);
 
-impl HostHandle {
-    pub(super) fn new(host: LiveHost) -> Self {
-        Self(Arc::new(Mutex::new(host)))
+impl SessionHandle {
+    #[must_use]
+    pub fn new(session: Session) -> Self {
+        Self(Arc::new(Mutex::new(session)))
     }
 
-    /// Accès exclusif à l'hôte le temps de `f`.
-    pub fn with<R>(&self, f: impl FnOnce(&mut LiveHost) -> R) -> R {
-        // Un fil de génération mort par panique n'invalide pas l'hôte.
+    /// Accès exclusif à la session le temps de `f`.
+    pub fn with<R>(&self, f: impl FnOnce(&mut Session) -> R) -> R {
+        // Un fil de génération mort par panique n'invalide pas la session.
         f(&mut self.0.lock().unwrap_or_else(PoisonError::into_inner))
     }
 }
@@ -125,16 +143,16 @@ pub struct Pump {
     thread: Option<JoinHandle<()>>,
 }
 
-/// Lance le fil qui appelle `LiveHost::pump` toutes les [`PUMP_PERIOD`].
-pub fn start_pump(host: &HostHandle) -> Result<Pump, String> {
+/// Lance le fil qui appelle `Session::pump` (donc `LiveHost::pump`) toutes les [`PUMP_PERIOD`].
+pub fn start_pump(session: &SessionHandle) -> Result<Pump, String> {
     let stop = Arc::new(AtomicBool::new(false));
-    let host = host.clone();
+    let session = session.clone();
     let flag = stop.clone();
     let thread = thread::Builder::new()
         .name("studio-pump".into())
         .spawn(move || {
             while !flag.load(Ordering::Relaxed) {
-                host.with(|host| host.pump());
+                session.with(Session::pump);
                 thread::sleep(PUMP_PERIOD);
             }
         })
@@ -151,6 +169,63 @@ impl Drop for Pump {
     }
 }
 
+/// Écrit les enregistrements terminés dans un dossier.
+pub struct RecordingSink {
+    dir: PathBuf,
+}
+
+impl RecordingSink {
+    #[must_use]
+    pub fn new(dir: PathBuf) -> Self {
+        Self { dir }
+    }
+
+    /// Écrit `recording` sous son nom (suffixé `-2`, `-3`… si le fichier existe déjà) ; rend le
+    /// texte à afficher.
+    pub fn save(&self, recording: &Recording) -> Result<String, String> {
+        fs::create_dir_all(&self.dir).map_err(|e| format!("{}: {e}", self.dir.display()))?;
+        let name = Path::new(&recording.file_name);
+        let stem = name.file_stem().and_then(|s| s.to_str()).unwrap_or("harmonium");
+        let extension = name.extension().and_then(|s| s.to_str()).unwrap_or("bin");
+        let mut path = self.dir.join(&recording.file_name);
+        let mut copy = 1;
+        while path.exists() {
+            copy += 1;
+            path = self.dir.join(format!("{stem}-{copy}.{extension}"));
+        }
+        fs::write(&path, &recording.bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(format!("Saved {}", path.display()))
+    }
+}
+
+/// Les enregistrements vont dans `--recordings`.
+#[must_use]
+pub fn recording_sink(settings: &Settings) -> RecordingSink {
+    RecordingSink::new(settings.recordings_dir.clone())
+}
+
+/// L'écoute OSC du host (`/harmonium/params`) ; s'arrête quand on la lâche.
+pub struct Osc(OscListener);
+
+impl Osc {
+    /// L'adresse UDP écoutée.
+    #[must_use]
+    pub fn address(&self) -> String {
+        self.0.local_addr().to_string()
+    }
+}
+
+/// Ouvre l'écoute OSC sur `addr` (`harmonium::osc::DEFAULT_ADDR`, celle du REPL) : chaque message
+/// devient une commande exécutée par la session, comme un geste de l'écran.
+pub fn start_osc(session: &SessionHandle, addr: &str) -> Result<Osc, String> {
+    let session = session.clone();
+    OscListener::spawn(addr, move |command| {
+        // Un message refusé par l'hôte est ignoré, comme dans le REPL.
+        let _ = session.with(|session| session.perform(Intent::Command(command)));
+    })
+    .map(Osc)
+}
+
 /// Ouvre la fenêtre et rend la main à la sortie de l'application.
 pub fn run() {
     let settings = match settings() {
@@ -163,7 +238,8 @@ pub fn run() {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Harmonium Studio")
-            .with_inner_size([720.0, 480.0]),
+            .with_inner_size([1440.0, 900.0])
+            .with_min_inner_size([1100.0, 700.0]),
         ..Default::default()
     };
     let result = eframe::run_native(

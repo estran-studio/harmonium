@@ -1,17 +1,16 @@
-//! L'application, du chargement au premier son : ressources, préparation, Start, puis un écran
-//! provisoire qui prouve que le moteur joue (profil, mesure et pulsation, sélecteur de style).
-//! L'écran Live est l'affaire de S6.
+//! L'application, du chargement à l'écran Live : ressources, préparation, Start, puis
+//! [`LiveScreen`].
 
 use eframe::egui::{self, Color32, RichText};
-use harmonium_core::{EngineCommand, StyleProfile};
-use web_time::Instant;
 
 use crate::{
+    live::Intent,
+    live_screen::{Credits, LiveScreen},
     loading::{Phase, ResourceStatus},
     manifest::LoadedResources,
     platform::{
-        DEFAULT_PROFILE, HostHandle, LoadHandle, LoadOutcome, Pump, Settings, load_view, open_host,
-        poll_loading, start_loading, start_pump,
+        LoadHandle, LoadOutcome, Pump, SessionHandle, Settings, load_view, open_session,
+        poll_loading, recording_sink, start_loading, start_pump,
     },
 };
 
@@ -25,19 +24,24 @@ enum Stage {
         resources: Box<LoadedResources>,
         drawn: bool,
     },
-    /// L'hôte existe, en pause : le bouton Start le démarre (geste de l'utilisateur).
-    Ready(Session),
+    /// La session existe, en pause : le bouton Start la démarre (geste de l'utilisateur).
+    Ready(Ready),
+    /// La musique joue : l'écran Live.
+    Live(Live),
     Failed(String),
 }
 
-struct Session {
-    host: HostHandle,
-    /// Le minuteur de génération vit avec la session.
-    _pump: Pump,
-    playing: bool,
-    /// Index dans `StyleProfile::distributed()`.
-    profile: usize,
+struct Ready {
+    session: SessionHandle,
+    pump: Pump,
+    credits: Credits,
     error: Option<String>,
+}
+
+struct Live {
+    screen: Box<LiveScreen>,
+    /// Le minuteur de génération vit avec l'écran.
+    _pump: Pump,
 }
 
 pub struct StudioApp {
@@ -67,27 +71,27 @@ impl StudioApp {
                 LoadOutcome::Failed(error) => self.stage = Stage::Failed(error),
             },
             Stage::Preparing { resources, drawn: true } => {
-                self.stage = match open_session(resources, self.settings.buffer_frames) {
-                    Ok(session) => Stage::Ready(session),
+                self.stage = match prepare(resources, self.settings.buffer_frames) {
+                    Ok(ready) => Stage::Ready(ready),
                     Err(error) => Stage::Failed(error),
                 };
             }
-            Stage::Preparing { drawn: false, .. } | Stage::Ready(_) | Stage::Failed(_) => {}
+            Stage::Preparing { drawn: false, .. }
+            | Stage::Ready(_)
+            | Stage::Live(_)
+            | Stage::Failed(_) => {}
         }
     }
 }
 
-fn open_session(
-    resources: &LoadedResources,
-    buffer_frames: Option<u32>,
-) -> Result<Session, String> {
-    let host = open_host(resources, buffer_frames)?;
-    let pump = start_pump(&host)?;
-    let profile = StyleProfile::distributed()
-        .iter()
-        .position(|profile| profile.meta.id == DEFAULT_PROFILE)
-        .unwrap_or(0);
-    Ok(Session { host, _pump: pump, playing: false, profile, error: None })
+fn prepare(resources: &LoadedResources, buffer_frames: Option<u32>) -> Result<Ready, String> {
+    let session = open_session(resources, buffer_frames)?;
+    let pump = start_pump(&session)?;
+    let credits = Credits {
+        feet_bank: resources.feet_bank.is_some(),
+        odin_presets: resources.odin_presets.iter().map(|(name, _)| name.to_string()).collect(),
+    };
+    Ok(Ready { session, pump, credits, error: None })
 }
 
 impl eframe::App for StudioApp {
@@ -96,6 +100,11 @@ impl eframe::App for StudioApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if let Stage::Live(live) = &mut self.stage {
+            live.screen.show(ui);
+            return;
+        }
+        let mut started = false;
         egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.add_space(12.0);
             ui.heading("Harmonium Studio");
@@ -111,16 +120,25 @@ impl eframe::App for StudioApp {
                     *drawn = true;
                     ui.ctx().request_repaint();
                 }
-                Stage::Ready(session) => session_screen(ui, session),
+                Stage::Ready(ready) => started = start_screen(ui, ready),
                 Stage::Failed(error) => {
                     ui.colored_label(Color32::LIGHT_RED, "Something went wrong.");
                     ui.label(error.as_str());
                 }
+                Stage::Live(_) => {}
             }
             if !matches!(self.stage, Stage::Loading(_)) {
                 notices(ui, &self.notices);
             }
         });
+        if started
+            && let Stage::Ready(ready) =
+                std::mem::replace(&mut self.stage, Stage::Failed(String::new()))
+        {
+            let sink = recording_sink(&self.settings);
+            let screen = LiveScreen::new(ready.session, sink, ready.credits);
+            self.stage = Stage::Live(Live { screen: Box::new(screen), _pump: ready.pump });
+        }
     }
 }
 
@@ -163,81 +181,23 @@ fn loading_screen(ui: &mut egui::Ui, handle: &LoadHandle) {
     notices(ui, &view.notices);
 }
 
-fn session_screen(ui: &mut egui::Ui, session: &mut Session) {
-    if !session.playing {
-        ui.label("Instruments are ready.");
-        ui.add_space(8.0);
-        let start =
-            egui::Button::new(RichText::new("Start").size(28.0)).min_size(egui::vec2(180.0, 56.0));
-        if ui.add(start).clicked() {
-            // Dans le geste de clic : le navigateur n'autorise le son qu'à cette condition.
-            match session.host.with(|host| host.resume()) {
-                Ok(()) => session.playing = true,
-                Err(error) => session.error = Some(error),
-            }
+/// Le bouton Start ; `true` quand la musique a démarré.
+fn start_screen(ui: &mut egui::Ui, ready: &mut Ready) -> bool {
+    ui.label("Instruments are ready.");
+    ui.add_space(8.0);
+    let start =
+        egui::Button::new(RichText::new("Start").size(28.0)).min_size(egui::vec2(180.0, 56.0));
+    let mut started = false;
+    if ui.add(start).clicked() {
+        // Dans le geste de clic : le navigateur n'autorise le son qu'à cette condition.
+        match ready.session.with(|session| session.perform(Intent::Play(true))) {
+            Ok(()) => started = true,
+            Err(error) => ready.error = Some(error),
         }
-    } else {
-        playing_screen(ui, session);
-        // La pulsation se redessine à chaque image.
-        ui.ctx().request_repaint();
     }
-    if let Some(error) = &session.error {
+    if let Some(error) = &ready.error {
         ui.add_space(8.0);
         ui.colored_label(Color32::LIGHT_RED, error.as_str());
     }
-}
-
-fn playing_screen(ui: &mut egui::Ui, session: &mut Session) {
-    let profiles = StyleProfile::distributed();
-    let previous = session.profile;
-    ui.horizontal(|ui| {
-        ui.label("Style");
-        egui::ComboBox::from_id_salt("profile")
-            .selected_text(profiles[session.profile].meta.name.as_str())
-            .show_ui(ui, |ui| {
-                for (index, profile) in profiles.iter().enumerate() {
-                    ui.selectable_value(&mut session.profile, index, profile.meta.name.as_str());
-                }
-            });
-    });
-    if session.profile != previous {
-        let profile = Box::new(profiles[session.profile].clone());
-        session.error =
-            session.host.with(|host| host.apply(EngineCommand::SetStyleProfile(profile))).err();
-    }
-
-    ui.add_space(12.0);
-    ui.label(RichText::new(profiles[session.profile].meta.name.as_str()).size(22.0));
-    match session.host.with(|host| host.beat_info(Instant::now())) {
-        Some(beat) => {
-            ui.label(format!("Bar {} · pulse {} / {}", beat.bar, beat.pulse, beat.pulses_per_bar));
-            pulse_dots(ui, beat.pulse, beat.pulses_per_bar, beat.phase);
-        }
-        None => {
-            ui.label("Waiting for the first beat…");
-        }
-    }
-}
-
-/// Une pastille par pulsation de la mesure ; la pulsation courante est pleine, le temps fort en
-/// couleur, et son anneau se remplit avec la phase.
-fn pulse_dots(ui: &mut egui::Ui, pulse: u8, pulses_per_bar: u8, phase: f32) {
-    let radius = 16.0;
-    let (rect, _) = ui.allocate_exact_size(
-        egui::vec2(f32::from(pulses_per_bar) * (radius * 2.0 + 10.0), radius * 2.0 + 6.0),
-        egui::Sense::hover(),
-    );
-    let painter = ui.painter_at(rect);
-    for index in 1..=pulses_per_bar {
-        let center = egui::pos2(
-            rect.left() + radius + f32::from(index - 1) * (radius * 2.0 + 10.0),
-            rect.center().y,
-        );
-        let accent =
-            if index == 1 { Color32::from_rgb(240, 170, 60) } else { Color32::from_gray(190) };
-        if index == pulse {
-            painter.circle_filled(center, radius * (0.55 + 0.45 * (1.0 - phase)), accent);
-        }
-        painter.circle_stroke(center, radius, egui::Stroke::new(1.5_f32, accent));
-    }
+    started
 }
