@@ -27,6 +27,23 @@ graph LR
     *   `apply` and `pump` take `&mut self`: a host shared between threads sits behind a `Mutex` (as in the REPL). On wasm the output stream is not `Send`, and neither is the host: it lives on the page's one thread.
 *   **`osc`** (`src/osc.rs`): native OSC listener on UDP (`rosc`). `/harmonium/params <arousal> <valence> <density> <tension>` (4 floats) becomes `EngineCommand::SetEmotionParams`, handed to a callback that applies it to the host: `OscListener::spawn(osc::DEFAULT_ADDR, |command| …)`. `harmonium-cli --osc` and the native studio (Live screen, Engine → OSC listener) open it on `127.0.0.1:8080`.
 
+### Zones Odin et hôte direct
+
+Le schéma des zones et les règles de sélection sont dans
+[`profiles/README.md`](../profiles/README.md#instrument-odin-par-piste-option-odin).
+`LiveHost::pump()` entretient aussi les transactions Odin en attente.
+Un hôte qui emploie directement `create_offline_engine` appelle périodiquement
+`composer.send_odin(&mut commands)` sur son thread principal, après la génération :
+cela récupère les instances rendues par SPSC et réessaie une installation
+suspendue par un fondu ou la contrepression. À état inchangé, aucun nouveau
+moteur n'est construit. Le callback choisit la frontière sur la position de
+la mesure effectivement entrée, jamais sur une mesure préchargée.
+
+Avec `odin`, `PlaybackEngine::odin_diagnostics()` fournit un instantané fixe
+des attaques/fins par instance et des positions d'installation/retrait.
+L'historique des retraits est borné à 128 instances ; `history_overflow`
+signale explicitement qu'un audit exhaustif n'est plus possible.
+
 ## Features
 
 *   `standalone` (default): enables `cpal`, `rosc`, and the `audio`, `live_host` and `osc` modules. `composer` and `playback` are always available.

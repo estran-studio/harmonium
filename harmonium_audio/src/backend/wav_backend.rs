@@ -37,6 +37,21 @@ impl AudioRenderer for WavBackend {
         self.inner.apply_odin(update);
     }
 
+    #[cfg(feature = "odin")]
+    fn morph_odin(&mut self, patches: &[harmonium_core::odin::OdinPatches; 2]) {
+        self.inner.morph_odin(patches);
+    }
+
+    #[cfg(feature = "odin")]
+    fn finish_odin(&mut self, update: &mut crate::odin_bank::OdinUpdate) -> bool {
+        self.inner.finish_odin(update)
+    }
+
+    #[cfg(feature = "odin")]
+    fn odin_diagnostics(&self) -> Option<crate::odin_voices::OdinDiagnostics> {
+        self.inner.odin_diagnostics()
+    }
+
     fn process_buffer(&mut self, output: &mut [f32], channels: usize) {
         self.inner.process_buffer(output, channels);
         for sample in output.iter() {

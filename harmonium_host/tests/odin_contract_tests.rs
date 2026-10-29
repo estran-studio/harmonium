@@ -19,7 +19,7 @@ use harmonium_audio::odin_source::OdinPresetSource;
 use harmonium_core::{
     StyleProfile,
     events::{AudioRecordFormat, RecordFormat},
-    odin::{OdinMorphParam, OdinMorphRule},
+    odin::{OdinMorphParam, OdinMorphRule, OdinZone, OdinZoneWhen},
     report::MeasureSnapshot,
     timeline::TrackId,
 };
@@ -122,6 +122,8 @@ struct Take {
     audio: Vec<f32>,
     snapshots: Vec<MeasureSnapshot>,
     midi: Vec<u8>,
+    bar_frames: std::collections::BTreeMap<usize, usize>,
+    diagnostics: harmonium_audio::odin_voices::OdinDiagnostics,
 }
 
 impl Take {
@@ -148,11 +150,61 @@ impl Take {
             })
             .collect()
     }
+
+    /// Attaques musicales et tenues qui traversent réellement les frontières ;
+    /// les fins exactement sur la barre sont exclues du transfert.
+    fn expected_odin_attacks(&self, boundaries: &[usize]) -> usize {
+        let smf = Smf::parse(&self.midi).unwrap();
+        let midly::Timing::Metrical(ticks) = smf.header.timing else {
+            panic!("le contrat enregistre un MIDI métrique");
+        };
+        let mut time = 0u32;
+        let mut events = Vec::new();
+        for event in &smf.tracks[0] {
+            time += event.delta.as_int();
+            if let TrackEventKind::Midi { channel, message } = event.kind
+                && channel.as_int() == TrackId::Chords.channel()
+            {
+                match message {
+                    MidiMessage::NoteOn { key, vel } => {
+                        events.push((time, key.as_int(), vel.as_int() > 0));
+                    }
+                    MidiMessage::NoteOff { key, .. } => {
+                        events.push((time, key.as_int(), false));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let musical = events.iter().filter(|(_, _, on)| *on).count();
+        let transferred: usize = boundaries
+            .iter()
+            .map(|bar| {
+                let boundary_tick = (*bar as u32 - 1) * 4 * u32::from(ticks.as_int());
+                let mut active = std::collections::BTreeSet::new();
+                for &(at, note, on) in &events {
+                    if at < boundary_tick && on {
+                        active.insert(note);
+                    } else if at <= boundary_tick && !on {
+                        active.remove(&note);
+                    }
+                }
+                active.len()
+            })
+            .sum();
+        assert!(transferred > 0, "la fixture exerce de vraies tenues traversant une frontière");
+        eprintln!("{musical} attaques musicales + {transferred} tenues transférées");
+        musical + transferred
+    }
 }
 
 /// Profil dont la piste `Chords` garde son preset avec ces règles de morphing.
 fn with_chords_morph(mut profile: StyleProfile, morph: Vec<OdinMorphRule>) -> StyleProfile {
-    profile.odin.get_mut(&TrackId::Chords).expect("la fixture déclare Chords").morph = morph;
+    for zone in
+        &mut profile.odin.get_mut(&TrackId::Chords).expect("la fixture déclare Chords").zones
+    {
+        zone.morph.clone_from(&morph);
+    }
     profile
 }
 
@@ -166,7 +218,7 @@ fn render(
     bars: usize,
     silence_after: Option<usize>,
 ) -> Take {
-    render_inner(profile, presets, emotions, bars, silence_after, None)
+    render_inner(profile, presets, emotions, bars, silence_after, Vec::new())
 }
 
 /// Comme [`render`], avec un changement d'émotions à la mesure 3 : le
@@ -177,7 +229,7 @@ fn render_with_emotion_change(
     bars: usize,
     after: [f32; 4],
 ) -> Take {
-    render_inner(profile, presets, BASE_EMOTIONS, bars, None, Some((3, after)))
+    render_inner(profile, presets, BASE_EMOTIONS, bars, None, vec![(3, after)])
 }
 
 fn render_inner(
@@ -186,11 +238,11 @@ fn render_inner(
     emotions: [f32; 4],
     bars: usize,
     silence_after: Option<usize>,
-    mut change: Option<(usize, [f32; 4])>,
+    changes: Vec<(usize, [f32; 4])>,
 ) -> Take {
     let sources: Vec<OdinPresetSource> =
         presets.iter().map(|(name, bytes)| OdinPresetSource { name, bytes }).collect();
-    let (mut composer, mut playback, mut cmd_tx, _reports, _clock, finished) =
+    let (mut composer, mut playback, mut cmd_tx, _reports, mut clock, finished) =
         create_offline_engine(None, None, &sources, SAMPLE_RATE).unwrap();
     composer.set_seed(1);
     composer.set_profile(profile).unwrap();
@@ -221,14 +273,17 @@ fn render_inner(
     let mut buffer = vec![0.0f32; BUFFER_FRAMES * 2];
     let mut muted = false;
     let mut tail_frames = 0usize;
+    let mut bar_frames = std::collections::BTreeMap::new();
+    let mut changes = changes.into_iter().peekable();
     for _ in 0..200_000 {
         composer.generate_ahead();
-        if change.is_some_and(|(bar, _)| composer.playhead_bar() >= bar)
-            && let Some((_, after)) = change.take()
+        if changes.peek().is_some_and(|(bar, _)| composer.playhead_bar() >= *bar)
+            && let Some((_, after)) = changes.next()
         {
             composer.set_emotions(after[0], after[1], after[2], after[3]);
             composer.send_odin(&mut cmd_tx).unwrap();
         }
+        composer.send_odin(&mut cmd_tx).unwrap();
         if !muted && silence_after.is_some_and(|after| composer.playhead_bar() > after) {
             let mut mask = [false; 16];
             mask[usize::from(TrackId::Chords.channel())] = true;
@@ -246,6 +301,10 @@ fn render_inner(
         }
         buffer.fill(0.0);
         playback.process_buffer(&mut buffer, 2, Instant::now());
+        let position = clock.read();
+        if position.pulse_in_bar == 0 {
+            bar_frames.entry(position.position.bar).or_insert(position.pulse_start_frame as usize);
+        }
         audio.extend_from_slice(&buffer);
     }
     cmd_tx.push(PlaybackCommand::StopRecording(AudioRecordFormat::Midi)).unwrap();
@@ -261,7 +320,13 @@ fn render_inner(
         assert!(Instant::now() < deadline, "le MIDI enregistré est publié");
         std::thread::sleep(std::time::Duration::from_millis(5));
     };
-    Take { audio, snapshots, midi }
+    Take {
+        audio,
+        snapshots,
+        midi,
+        bar_frames,
+        diagnostics: playback.odin_diagnostics().expect("le renderer hors ligne expose Odin"),
+    }
 }
 
 fn nappe() -> Vec<(&'static str, Vec<u8>)> {
@@ -373,12 +438,22 @@ fn muting_a_track_leaves_no_orphan_note_in_odin() {
     assert!(tail_peak < 1e-4, "aucune voix Odin ne reste coincée : {tail_peak}");
 }
 
-/// Rend une durée murale audio, sans génération ni allocation dans le callback.
-fn render_seconds(playback: &mut harmonium::playback::PlaybackEngine, seconds: usize) -> Vec<f32> {
+/// Pompe l'hôte direct, notamment les retours Odin et les cibles différées.
+fn render_seconds(
+    composer: &mut harmonium::composer::MusicComposer,
+    playback: &mut harmonium::playback::PlaybackEngine,
+    commands: &mut rtrb::Producer<PlaybackCommand>,
+    seconds: usize,
+) -> Vec<f32> {
     let buffers = (seconds * SAMPLE_RATE as usize).div_ceil(BUFFER_FRAMES);
     let mut audio = Vec::with_capacity(buffers * BUFFER_FRAMES * 2);
     let mut buffer = [0.0; BUFFER_FRAMES * 2];
     for _ in 0..buffers {
+        if let Some((bar, _)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar }).unwrap();
+        }
+        composer.generate_ahead();
+        composer.send_odin(commands).unwrap();
         buffer.fill(0.0);
         playback.process_buffer(&mut buffer, 2, Instant::now());
         audio.extend_from_slice(&buffer);
@@ -398,7 +473,7 @@ fn tail_peak(samples: &[f32]) -> f32 {
 fn changing_presets_changes_audio_without_changing_snapshots_or_midi() {
     let dark = with_chords_morph(load("nappe_pad"), Vec::new());
     let mut bright = dark.clone();
-    bright.odin.get_mut(&TrackId::Chords).unwrap().preset = "clair".into();
+    bright.odin.get_mut(&TrackId::Chords).unwrap().zones[0].preset = "clair".into();
     let presets = [("nappe", test_preset(300.0)), ("clair", test_preset(6000.0))];
     let dark = render(dark, &presets, BASE_EMOTIONS, 4, None);
     let bright = render(bright, &presets, BASE_EMOTIONS, 4, None);
@@ -428,9 +503,12 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         presets.iter().map(|(name, bytes)| OdinPresetSource { name, bytes }).collect();
     let mut dark = with_chords_morph(load("nappe_pad"), Vec::new());
     dark.instruments.chords_program = Some(0);
-    // La bascule coupe les voix du preset précédent (contrat G6c).
-    // Ici, des attaques réelles doivent suivre ; les tenues Tied sont
-    // vérifiées séparément, sans leur imposer de réattaque artificielle.
+    // Une partie dure 6,4 s : chaque fenêtre de 8 s traverse une frontière
+    // puis la totalité du fondu, sans supposer une bascule immédiate.
+    dark.meter.default_bpm = 300.0;
+    dark.meter.max_bpm = 300.0;
+    // Ici les accords réattaquent normalement ; le contrat de zones ci-dessous
+    // couvre séparément les tenues traversant une frontière de partie.
     if let Some(params) = &mut dark.accompaniment {
         for pattern in &mut params.chords.patterns {
             for hit in &mut pattern.hits {
@@ -439,7 +517,7 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         }
     }
     let mut bright = dark.clone();
-    bright.odin.get_mut(&TrackId::Chords).unwrap().preset = "clair".into();
+    bright.odin.get_mut(&TrackId::Chords).unwrap().zones[0].preset = "clair".into();
     let mut soundfont = dark.clone();
     soundfont.odin.clear();
 
@@ -460,11 +538,9 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         let mut muted = [true; 16];
         muted[usize::from(TrackId::Chords.channel())] = false;
         commands.push(PlaybackCommand::SetMutedChannels(muted)).unwrap();
-        // Les mesures déjà transmises restent fixes : seules les ressources
-        // changent, sans DropFrom ni nouvelle génération entre les bascules.
-        composer.set_writehead_lookahead(24);
-        composer.generate_bars(24);
-        let initial = render_seconds(&mut playback, 8);
+        composer.set_writehead_lookahead(4);
+        composer.generate_bars(6);
+        let initial = render_seconds(&mut composer, &mut playback, &mut commands, 8);
         if font.is_some() {
             assert!(peak(&initial) > 0.001, "le programme SoundFont est réellement audible");
         } else {
@@ -480,7 +556,7 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         let mut buffer = [0.0; BUFFER_FRAMES * 2];
         playback.process_buffer(&mut buffer, 2, Instant::now());
         composer.send_odin(&mut commands).unwrap();
-        let first_odin = render_seconds(&mut playback, 8);
+        let first_odin = render_seconds(&mut composer, &mut playback, &mut commands, 8);
         assert!(peak(&first_odin) > 0.01, "la reprise transmet bien le preset refusé");
 
         // Plusieurs remplacements possèdent simultanément leurs ressources
@@ -494,14 +570,14 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         }
         composer.set_profile(bright.clone()).unwrap();
         composer.send_odin(&mut commands).unwrap();
-        let after_burst = render_seconds(&mut playback, 8);
+        let after_burst = render_seconds(&mut composer, &mut playback, &mut commands, 8);
         assert!(peak(&after_burst) > 0.01, "le dernier preset en vol reste jouable");
 
         for profile in [&dark, &bright, &soundfont] {
             composer.set_profile(profile.clone()).unwrap();
             composer.send_odin(&mut commands).unwrap();
         }
-        let back_to_sf = render_seconds(&mut playback, 8);
+        let back_to_sf = render_seconds(&mut composer, &mut playback, &mut commands, 8);
         if font.is_some() {
             assert!(peak(&back_to_sf) > 0.001, "le programme SF rejoue après Odin");
         } else {
@@ -513,7 +589,7 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         }
 
         commands.push(PlaybackCommand::SetMutedChannels([true; 16])).unwrap();
-        let silence = render_seconds(&mut playback, 4);
+        let silence = render_seconds(&mut composer, &mut playback, &mut commands, 4);
         assert!(
             tail_peak(&silence) < 1e-4,
             "les bascules ne laissent aucune note coincée : {}",
@@ -522,4 +598,146 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         // Draine aussi le dernier retour sur le thread principal.
         composer.send_odin(&mut commands).unwrap();
     }
+}
+
+/// Deux vrais instruments, jamais un mélange de leurs paramètres.
+fn zoned_pad() -> StyleProfile {
+    let mut profile = with_chords_morph(load("nappe_pad"), Vec::new());
+    let spec = profile.odin.get_mut(&TrackId::Chords).unwrap();
+    let default = spec.zones.last().unwrap().clone();
+    spec.zones = vec![
+        OdinZone {
+            when: Some(OdinZoneWhen { tension: Some([0.6, 1.0]), ..Default::default() }),
+            preset: "clair".into(),
+            level_db: -3.0,
+            morph: Vec::new(),
+        },
+        default,
+    ];
+    profile
+}
+
+fn tension(value: f32) -> [f32; 4] {
+    [BASE_EMOTIONS[0], BASE_EMOTIONS[1], BASE_EMOTIONS[2], value]
+}
+
+#[test]
+fn emotion_zones_switch_at_the_next_part_and_render_deterministically_without_clicks() {
+    let presets = [("nappe", test_preset(300.0)), ("clair", test_preset(6000.0))];
+    let automation = vec![(3, tension(0.85)), (12, tension(0.4))];
+    let run =
+        || render_inner(zoned_pad(), &presets, BASE_EMOTIONS, 20, Some(20), automation.clone());
+    let moved = run();
+    let replay = run();
+    assert_eq!(moved.audio, replay.audio, "même automation, mêmes échantillons");
+
+    let steady = render(zoned_pad(), &presets, BASE_EMOTIONS, 20, Some(20));
+    let boundary = moved.bar_frames[&9];
+    assert_eq!(
+        moved.audio[..boundary * 2],
+        steady.audio[..boundary * 2],
+        "l'entrée de zone à la mesure 3 ne change rien avant la reprise de partie à 9"
+    );
+    let after_fade = boundary + SAMPLE_RATE as usize;
+    assert_ne!(
+        moved.audio[after_fade * 2..after_fade * 2 + 2048],
+        steady.audio[after_fade * 2..after_fade * 2 + 2048],
+        "le nouvel instrument devient audible après la frontière"
+    );
+    for bar in [9, 17] {
+        let frame = moved.bar_frames[&bar];
+        let radius = (SAMPLE_RATE * 0.35) as usize;
+        let window = &moved.audio[(frame - radius) * 2..(frame + radius) * 2];
+        let delta = window
+            .windows(4)
+            .step_by(2)
+            .map(|pair| (pair[2] - pair[0]).abs().max((pair[3] - pair[1]).abs()))
+            .fold(0.0f32, f32::max);
+        eprintln!("frontière mesure {bar}, frame {frame}, crête inter-échantillon {delta}");
+        assert!(delta < 0.1, "pas de saut brutal autour de la frontière {bar} : {delta}");
+    }
+    assert!(
+        tail_peak(&moved.audio) < 1e-4,
+        "les tenues et les changements ne laissent aucune note après le mute final"
+    );
+    let diagnostic = &moved.diagnostics;
+    assert_eq!(diagnostic.history_overflow, 0, "l'audit couvre toutes les instances");
+    assert_eq!(diagnostic.retired_count, 2, "un seul changement à chaque frontière demandée");
+    assert!(diagnostic.retiring.iter().all(Option::is_none), "les fondus sont terminés");
+    let instances: Vec<_> = diagnostic
+        .retired
+        .iter()
+        .chain(&diagnostic.active)
+        .flatten()
+        .filter(|instance| instance.channel == usize::from(TrackId::Chords.channel()))
+        .collect();
+    assert_eq!(instances.len(), 3, "A initial, B, puis nouvelle instance A");
+    for instance in &instances {
+        assert_eq!(
+            instance.note_on, instance.note_off,
+            "instance {} : toutes les fins",
+            instance.id
+        );
+        assert_eq!(instance.active_notes, 0, "instance {} : aucune note orpheline", instance.id);
+        eprintln!(
+            "instance {} zone {} installée mesure {} frame {} : {} NoteOn / {} NoteOff",
+            instance.id,
+            instance.zone,
+            instance.installed_bar,
+            instance.installed_frame,
+            instance.note_on,
+            instance.note_off
+        );
+    }
+    let transferred_attacks: u64 = instances.iter().map(|instance| instance.note_on).sum();
+    assert_eq!(
+        transferred_attacks as usize,
+        moved.expected_odin_attacks(&[9, 17]),
+        "une seule attaque par note musicale, plus une par vraie tenue transférée"
+    );
+    for (instance, bar) in instances.iter().skip(1).zip([9, 17]) {
+        assert_eq!(instance.installed_bar, bar);
+        assert_eq!(instance.installed_frame, moved.bar_frames[&bar] as u64);
+    }
+    for pair in instances.windows(2) {
+        assert_eq!(
+            pair[0].retired_frame,
+            Some(pair[1].installed_frame + (SAMPLE_RATE * 0.3).round() as u64),
+            "l'ancienne instance ne quitte le callback qu'après 300 ms de fondu"
+        );
+    }
+}
+
+#[test]
+fn oscillating_around_a_zone_edge_does_not_schedule_a_burst_of_switches() {
+    let presets = [("nappe", test_preset(300.0)), ("clair", test_preset(6000.0))];
+    let changes: Vec<_> =
+        (3..20).map(|bar| (bar, tension(if bar % 2 == 0 { 0.59 } else { 0.61 }))).collect();
+    let oscillating = render_inner(zoned_pad(), &presets, BASE_EMOTIONS, 20, None, changes);
+    let steady = render(zoned_pad(), &presets, BASE_EMOTIONS, 20, None);
+    assert_eq!(
+        oscillating.audio, steady.audio,
+        "le bruit ±0,01 autour du seuil 0,6 ne quitte pas le défaut"
+    );
+}
+
+#[test]
+fn a_zone_level_scales_the_track_without_changing_the_preset_master() {
+    let mut zoned = zoned_pad();
+    let spec = zoned.odin.get_mut(&TrackId::Chords).unwrap();
+    spec.zones[0].preset = "nappe".into();
+    spec.zones[0].level_db = -6.0;
+    let mut unchanged = zoned.clone();
+    unchanged.odin.get_mut(&TrackId::Chords).unwrap().zones.remove(0);
+    let reduced = render(zoned, &nappe(), tension(0.85), 4, None);
+    let original = render(unchanged, &nappe(), tension(0.85), 4, None);
+    let gain = 10.0_f32.powf(-6.0 / 20.0);
+    let error = reduced
+        .audio
+        .iter()
+        .zip(&original.audio)
+        .map(|(actual, base)| (actual - base * gain).abs())
+        .fold(0.0f32, f32::max);
+    assert!(original.peak() > 0.01);
+    assert!(error < 1e-6, "le gain de zone est extérieur au synthétiseur : {error}");
 }

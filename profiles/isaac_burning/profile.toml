@@ -239,18 +239,35 @@ bass_program = 34
 percussion_bank = 128
 percussion_program = 0
 
-# Odin, écoute du propriétaire : Bass Crusher + Haunt (« plus trad », retenu),
-# comme isaac_basement. Variante aimée aussi, « plus psychédélique » :
-# profil isaac_burning_psyche (Bass Low [RM] + Moonshade).
-# Sausage Bassener + Phazzy Organ rejetés (« micro vibration »).
-[odin.Bass]
+# Odin : A « plus trad » par défaut ; B « psychédélique » si tension >= 0.6,
+# avec hystérésis de 0.03 et bascule à la prochaine frontière de partie.
+# Niveaux relatifs de B repris du mix d'isaac_burning_psyche.
+[[odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Bass Low [RM]"
+level_db = -5.0
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[[odin.Bass.zones]]
 preset = "Bass Crusher [RM]"
 morph = [
   { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
 ]
 
-[odin.Chords]
+[[odin.Chords.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Moonshade"
+level_db = -7.0
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[[odin.Chords.zones]]
 preset = "Haunt [RM]"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },

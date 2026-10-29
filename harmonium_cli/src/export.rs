@@ -263,6 +263,11 @@ pub fn run(
             }
         }
 
+        // Réessaie les installations suspendues par un fondu ou la file de
+        // retour ; à état inchangé, le compositeur n'envoie aucune transaction.
+        #[cfg(feature = "odin")]
+        composer.send_odin(&mut playback_cmd_tx).map_err(anyhow::Error::msg)?;
+
         let chunk_samples =
             total_samples.map_or(BUFFER_SIZE, |max_s| (max_s - rendered_samples).min(BUFFER_SIZE));
         let chunk_len = chunk_samples * CHANNELS;

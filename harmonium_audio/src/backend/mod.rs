@@ -23,6 +23,22 @@ pub trait AudioRenderer: Send {
         );
     }
 
+    /// Morphing sans ressources propriétaires, y compris pendant un fondu.
+    #[cfg(feature = "odin")]
+    fn morph_odin(&mut self, _patches: &[harmonium_core::odin::OdinPatches; 2]) {}
+
+    /// Retire les instances seulement une fois le fondu terminé.
+    #[cfg(feature = "odin")]
+    fn finish_odin(&mut self, _update: &mut crate::odin_bank::OdinUpdate) -> bool {
+        true
+    }
+
+    /// Snapshot fixe pour les contrats de rendu hors ligne.
+    #[cfg(feature = "odin")]
+    fn odin_diagnostics(&self) -> Option<crate::odin_voices::OdinDiagnostics> {
+        None
+    }
+
     /// Allow downcasting to concrete types
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

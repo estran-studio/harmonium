@@ -112,3 +112,36 @@ fn a_missing_resource_changes_no_note() {
     assert!(without.contains("\"notes\""));
     assert_eq!(without, notes(Some(FEET_BANK)));
 }
+
+#[cfg(not(feature = "odin"))]
+#[test]
+fn emotion_zones_without_odin_keep_the_soundfont_audio_unchanged() {
+    use harmonium::playback::PlaybackCommand;
+
+    let render = |with_zones: bool| {
+        let (mut composer, mut playback, mut commands, _, _, _) =
+            create_offline_engine(Some(FEET_BANK), None, &[], SAMPLE_RATE).unwrap();
+        let mut profile = StyleProfile::named("isaac_burning").unwrap();
+        if !with_zones {
+            profile.odin.clear();
+        }
+        composer.set_seed(1);
+        composer.set_profile(profile).unwrap();
+        composer.use_emotion_mode();
+        composer.set_emotions(0.5, 0.3, 0.5, 0.85);
+        if let Some((bar, _)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar }).unwrap();
+        }
+        commands
+            .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
+            .unwrap();
+        composer.send_odin(&mut commands).unwrap();
+        composer.generate_bars(4);
+        let mut audio = vec![0.0; SAMPLE_RATE as usize * 2 * 3];
+        playback.process_buffer(&mut audio, 2, std::time::Instant::now());
+        audio
+    };
+    let zoned = render(true);
+    assert!(zoned.iter().any(|sample| sample.abs() > 0.001), "le programme SF2 joue réellement");
+    assert_eq!(zoned, render(false), "les zones ne changent aucun échantillon sans Odin");
+}

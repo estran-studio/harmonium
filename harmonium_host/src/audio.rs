@@ -103,12 +103,13 @@ pub(crate) fn build_engine(
     #[cfg(feature = "odin")]
     {
         let (returned_tx, returned_rx) = rtrb::RingBuffer::new(256);
-        composer.set_odin_dispatch(harmonium_audio::odin_bank::OdinDispatch::new(
+        let dispatch = harmonium_audio::odin_bank::OdinDispatch::new(
             odin.configs,
             returned_rx,
             sample_rate as f32,
-        ));
-        playback.set_odin_return(returned_tx);
+        );
+        playback.set_odin_return(returned_tx, dispatch.status());
+        composer.set_odin_dispatch(dispatch);
     }
 
     (

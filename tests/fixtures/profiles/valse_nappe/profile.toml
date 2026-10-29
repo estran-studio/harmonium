@@ -255,9 +255,18 @@ bass_program = 32
 percussion_bank = 128
 percussion_program = 0
 
-# Même nappe Odin sur une valse 3/4 (principe VIII), en unités physiques :
-# filtres en Hz, enveloppes en secondes, master en dB et effets en rapports.
-[odin.Chords]
+# Deux zones Odin sur une valse 3/4 (principe VIII), y compris deux zones
+# partageant le même preset mais ayant des niveaux et morphings distincts.
+[[odin.Chords.zones]]
+when = { valence = [-1.0, -0.4], tension = [0.6, 1.0] }
+preset = "nappe"
+level_db = -3.0
+morph = [
+  { param = "fil1_freq", arousal = 1000.0, valence = 500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[[odin.Chords.zones]]
 preset = "nappe"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },

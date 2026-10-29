@@ -87,24 +87,84 @@ mod parse {
     }
 }
 
-/// Transaction propriétaire : paramètres Copy et instances de remplacement.
-/// Après application, `engines` contient les anciennes instances, détruites
-/// uniquement lors du retour de cette boîte sur le thread principal.
+/// Identité d'une zone : deux zones utilisant le même preset restent distinctes.
+#[cfg(feature = "odin")]
+pub type OdinKeys = [Option<(usize, usize)>; harmonium_core::timeline::TrackId::ALL.len()];
+
+#[cfg(feature = "odin")]
+pub fn patch_keys(patches: &harmonium_core::odin::OdinPatches) -> OdinKeys {
+    patches.map(|patch| patch.map(|patch| (patch.zone, patch.preset)))
+}
+
+/// Acquittement minimal du lecteur, sans horloge : emplacement actif et fondu.
+#[cfg(feature = "odin")]
+pub struct OdinStatus {
+    fading: std::sync::atomic::AtomicBool,
+    zones: [std::sync::atomic::AtomicUsize; harmonium_core::timeline::TrackId::ALL.len()],
+}
+
+#[cfg(feature = "odin")]
+impl OdinStatus {
+    pub fn new() -> Self {
+        Self {
+            fading: std::sync::atomic::AtomicBool::new(false),
+            zones: std::array::from_fn(|_| std::sync::atomic::AtomicUsize::new(usize::MAX)),
+        }
+    }
+
+    pub fn zones(&self) -> [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()] {
+        self.zones.each_ref().map(|zone| {
+            let zone = zone.load(std::sync::atomic::Ordering::Acquire);
+            (zone != usize::MAX).then_some(zone)
+        })
+    }
+
+    pub fn publish(&self, patches: &harmonium_core::odin::OdinPatches, fading: bool) {
+        for (zone, patch) in self.zones.iter().zip(patches) {
+            zone.store(
+                patch.map_or(usize::MAX, |patch| patch.zone),
+                std::sync::atomic::Ordering::Release,
+            );
+        }
+        self.fading.store(fading, std::sync::atomic::Ordering::Release);
+    }
+
+    pub fn fading(&self) -> bool {
+        self.fading.load(std::sync::atomic::Ordering::Acquire)
+    }
+}
+
+#[cfg(feature = "odin")]
+impl Default for OdinStatus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// La boîte possède le second emplacement avant la frontière, puis reçoit les
+/// instances retirées après le fondu. Elle ne se détruit que sur le thread hôte.
 #[cfg(feature = "odin")]
 pub struct OdinUpdate {
     pub patches: harmonium_core::odin::OdinPatches,
     pub engines:
         [Option<Box<odin2_core::OdinEngine>>; harmonium_core::timeline::TrackId::ALL.len()],
+    pub instance_ids: [u64; harmonium_core::timeline::TrackId::ALL.len()],
+    pub accepted: bool,
+    pub accepted_keys: OdinKeys,
+    pub at_bar: usize,
+    pub at_frame: u64,
 }
 
-/// État d'expédition, exclusivement sur le thread principal. Le rang envoyé
-/// n'avance qu'après insertion réussie de la transaction dans la file.
+/// Préparation et destruction exclusivement hors callback. Une transition en
+/// cours retient le choix le plus récent chez le compositeur, pas dans une file.
 #[cfg(feature = "odin")]
 pub struct OdinDispatch {
     configs: Vec<odin2_core::EngineConfig>,
-    sent: [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()],
+    sent: OdinKeys,
     returned: rtrb::Consumer<Box<OdinUpdate>>,
     sample_rate: f32,
+    next_instance: u64,
+    status: std::sync::Arc<OdinStatus>,
 }
 
 #[cfg(feature = "odin")]
@@ -120,43 +180,70 @@ impl OdinDispatch {
             sent: [None; harmonium_core::timeline::TrackId::ALL.len()],
             returned,
             sample_rate,
+            next_instance: 1,
+            status: std::sync::Arc::new(OdinStatus::new()),
         }
+    }
+
+    #[must_use]
+    pub fn status(&self) -> std::sync::Arc<OdinStatus> {
+        self.status.clone()
+    }
+
+    pub fn active_zones(&self) -> [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()] {
+        self.status.zones()
     }
 
     /// Libération des commandes et instances retirées, hors callback.
     pub fn reclaim(&mut self) {
         while let Ok(update) = self.returned.pop() {
+            if !update.accepted {
+                self.sent = update.accepted_keys;
+            }
             drop(update);
         }
     }
 
-    /// Prépare une transaction sans modifier l'état acquitté de l'expéditeur.
+    /// `None` : morphing seul, ou second emplacement encore occupé par le fondu.
     pub fn prepare(
         &mut self,
         patches: harmonium_core::odin::OdinPatches,
-    ) -> Result<Box<OdinUpdate>, &'static str> {
-        if patches
-            .iter()
-            .flatten()
-            .any(|patch| patch.params.values.iter().any(|value| !value.is_finite()))
-        {
+    ) -> Result<Option<Box<OdinUpdate>>, &'static str> {
+        if patches.iter().flatten().any(|patch| {
+            !patch.gain.is_finite() || patch.params.values.iter().any(|value| !value.is_finite())
+        }) {
             return Err("paramètre de morphing Odin non fini");
         }
+        let keys = patch_keys(&patches);
+        if keys == self.sent || self.status.fading() {
+            return Ok(None);
+        }
+        let mut instance_ids = [0; harmonium_core::timeline::TrackId::ALL.len()];
         let engines = std::array::from_fn(|index| {
             let patch = patches[index]?;
-            if self.sent[index] == Some(patch.preset) {
+            if self.sent[index] == keys[index] {
                 return None;
             }
             let mut engine = Box::new(odin2_core::OdinEngine::new(self.sample_rate));
             engine
                 .load_config(self.configs[patch.preset])
                 .expect("matrice validée au chargement de la banque");
+            instance_ids[index] = self.next_instance;
+            self.next_instance += 1;
             Some(engine)
         });
-        Ok(Box::new(OdinUpdate { patches, engines }))
+        Ok(Some(Box::new(OdinUpdate {
+            patches,
+            engines,
+            instance_ids,
+            accepted: true,
+            accepted_keys: keys,
+            at_bar: 0,
+            at_frame: 0,
+        })))
     }
 
     pub fn sent(&mut self, patches: &harmonium_core::odin::OdinPatches) {
-        self.sent = patches.map(|patch| patch.map(|patch| patch.preset));
+        self.sent = patch_keys(patches);
     }
 }

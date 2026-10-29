@@ -210,6 +210,12 @@ impl LiveHost {
             recorder.pump();
         }
         self.composer.generate_ahead();
+        #[cfg(feature = "odin")]
+        {
+            // Une file pleine ou le second emplacement occupé ne perd pas le
+            // choix courant : le pump suivant reprend, sans rafale de presets.
+            let _ = self.composer.send_odin(&mut self.playback_cmd_tx);
+        }
         self.drain_reports();
         self.composer.take_snapshots()
     }

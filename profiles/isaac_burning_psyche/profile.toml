@@ -242,14 +242,14 @@ percussion_program = 0
 # Variante « plus psychédélique » d'isaac_burning, aimée à l'écoute : mêmes
 # notes, Odin Bass Low [RM] + Moonshade (les sons d'isaac_downpour), plus
 # forts que Bass Crusher + Haunt, d'où Bass −5 dB et Chords −7 dB au mix.
-[odin.Bass]
+[[odin.Bass.zones]]
 preset = "Bass Low [RM]"
 morph = [
   { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
 ]
 
-[odin.Chords]
+[[odin.Chords.zones]]
 preset = "Moonshade"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
