@@ -47,8 +47,8 @@ unsafe impl Sync for OutputStream {}
 /// - [`apply`](Self::apply) executes an [`EngineCommand`] — the only way to
 ///   change the engine;
 /// - [`pump`](Self::pump) composes ahead of the playhead and drains the
-///   published reports — the caller drives generation (a thread in the REPL,
-///   the UI loop in the studio).
+///   published reports — the caller drives generation (a thread in the REPL
+///   and the native studio, a Worker timer in the web studio).
 ///
 /// Both take `&mut self`: callers that share the host between threads put it
 /// behind a `Mutex`.
@@ -261,6 +261,13 @@ impl LiveHost {
     /// Seed of the session (to save with a recording).
     pub fn session_seed(&self) -> u64 {
         self.composer.session_seed()
+    }
+
+    /// Control mode: `true` when the emotions drive the generation
+    /// (`SetEmotionParams`, `UseEmotionMode`), `false` in direct mode
+    /// (`UseDirectMode`).
+    pub fn is_emotion_mode(&self) -> bool {
+        self.composer.is_emotion_mode()
     }
 
     /// Plan and role of bar `bar` (1-based) in the active profile's form.

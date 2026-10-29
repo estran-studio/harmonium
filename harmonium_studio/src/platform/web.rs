@@ -1,4 +1,4 @@
-//! Navigateur : `fetch` en flux, Cache Storage, minuteur de Worker, canvas eframe.
+//! Navigateur : `fetch` en flux, Cache Storage, minuteur de Worker, téléchargements, canvas eframe.
 
 use std::{
     cell::RefCell,
@@ -8,18 +8,19 @@ use std::{
 };
 
 use eframe::egui;
-use harmonium::LiveHost;
+use harmonium_core::events::RecordFormat;
 use js_sys::{Array, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 use web_sys::{
-    Blob, BlobPropertyBag, Cache, CacheStorage, MessageEvent, ReadableStreamDefaultReader,
-    RequestCache, RequestInit, Response, Url, UrlSearchParams, Worker,
+    Blob, BlobPropertyBag, Cache, CacheStorage, HtmlAnchorElement, MessageEvent,
+    ReadableStreamDefaultReader, RequestCache, RequestInit, Response, Url, UrlSearchParams, Worker,
 };
 
 use super::{LoadHandle, update_state};
 use crate::{
     app::StudioApp,
+    live::{Recording, Session},
     loading::{
         CACHE_NAME, CacheDecision, LoadState, RESOURCES_DIR, ResourceStatus, Source, cache_key,
         check_size, decide, parse_buffer_frames, stale_entries,
@@ -250,19 +251,21 @@ async fn prune(cache: &Cache, manifest: &Manifest) -> Result<(), String> {
     Ok(())
 }
 
-// === Hôte partagé et minuteur de génération ===
+// === Session partagée et minuteur de génération ===
 
-/// Le moteur, partagé entre l'écran et le minuteur de génération : même fil, donc `Rc<RefCell>`.
+/// La session du moteur, partagée entre l'écran et le minuteur de génération : même fil, donc
+/// `Rc<RefCell>`.
 #[derive(Clone)]
-pub struct HostHandle(Rc<RefCell<LiveHost>>);
+pub struct SessionHandle(Rc<RefCell<Session>>);
 
-impl HostHandle {
-    pub(super) fn new(host: LiveHost) -> Self {
-        Self(Rc::new(RefCell::new(host)))
+impl SessionHandle {
+    #[must_use]
+    pub fn new(session: Session) -> Self {
+        Self(Rc::new(RefCell::new(session)))
     }
 
-    /// Accès exclusif à l'hôte le temps de `f`.
-    pub fn with<R>(&self, f: impl FnOnce(&mut LiveHost) -> R) -> R {
+    /// Accès exclusif à la session le temps de `f`.
+    pub fn with<R>(&self, f: impl FnOnce(&mut Session) -> R) -> R {
         f(&mut self.0.borrow_mut())
     }
 }
@@ -275,10 +278,10 @@ pub struct Pump {
 }
 
 /// Lance un Worker qui poste un message toutes les [`TICK_MS`] ms ; chaque message appelle
-/// `LiveHost::pump` sur le fil de la page, qui avance aussi l'enregistreur. Le minuteur est dans
-/// le Worker, pas dans `requestAnimationFrame` : l'onglet masqué ne rend plus (S1 : lecture et
-/// écriture figées à la mesure 8 avec la génération dans la boucle de l'interface).
-pub fn start_pump(host: &HostHandle) -> Result<Pump, String> {
+/// `Session::pump` (donc `LiveHost::pump`) sur le fil de la page, qui avance aussi l'enregistreur.
+/// Le minuteur est dans le Worker, pas dans `requestAnimationFrame` : l'onglet masqué ne rend plus
+/// (S1 : lecture et écriture figées à la mesure 8 avec la génération dans la boucle de l'interface).
+pub fn start_pump(session: &SessionHandle) -> Result<Pump, String> {
     let script = format!("setInterval(() => postMessage(0), {TICK_MS});");
     let options = BlobPropertyBag::new();
     options.set_type("text/javascript");
@@ -288,9 +291,9 @@ pub fn start_pump(host: &HostHandle) -> Result<Pump, String> {
     let url = Url::create_object_url_with_blob(&blob).map_err(js_error)?;
     let worker = Worker::new(&url).map_err(js_error)?;
 
-    let host = host.clone();
+    let session = session.clone();
     let on_tick = Closure::<dyn FnMut(MessageEvent)>::new(move |_| {
-        host.with(|host| host.pump());
+        session.with(Session::pump);
     });
     worker.set_onmessage(Some(on_tick.as_ref().unchecked_ref()));
     Ok(Pump { worker, url, _on_tick: on_tick })
@@ -301,6 +304,59 @@ impl Drop for Pump {
         self.worker.terminate();
         let _ = Url::revoke_object_url(&self.url);
     }
+}
+
+// === Enregistrements ===
+
+/// Délai avant de libérer l'URL d'un téléchargement : le navigateur doit avoir commencé à lire le
+/// `Blob` (une libération immédiate fait échouer le téléchargement dans certains navigateurs).
+const DOWNLOAD_URL_LIFETIME_MS: i32 = 60_000;
+
+/// Remet les enregistrements terminés au navigateur, en téléchargements.
+pub struct RecordingSink;
+
+impl RecordingSink {
+    /// Déclenche le téléchargement de `recording` (lien `download` cliqué par le programme) ; rend
+    /// le texte à afficher.
+    pub fn save(&self, recording: &Recording) -> Result<String, String> {
+        let bytes = Uint8Array::from(recording.bytes.as_slice());
+        let options = BlobPropertyBag::new();
+        options.set_type(match recording.format {
+            RecordFormat::Wav => "audio/wav",
+            RecordFormat::Midi => "audio/midi",
+            RecordFormat::MusicXml => "application/vnd.recordare.musicxml+xml",
+        });
+        let blob = Blob::new_with_u8_array_sequence_and_options(&Array::of1(&bytes), &options)
+            .map_err(js_error)?;
+        let url = Url::create_object_url_with_blob(&blob).map_err(js_error)?;
+        let window = web_sys::window().ok_or("no window")?;
+        let anchor = window
+            .document()
+            .ok_or("no document")?
+            .create_element("a")
+            .map_err(js_error)?
+            .dyn_into::<HtmlAnchorElement>()
+            .map_err(|_| "cannot create a link")?;
+        anchor.set_href(&url);
+        anchor.set_download(&recording.file_name);
+        anchor.click();
+        let revoke = Closure::once_into_js(move || {
+            let _ = Url::revoke_object_url(&url);
+        });
+        window
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                revoke.unchecked_ref(),
+                DOWNLOAD_URL_LIFETIME_MS,
+            )
+            .map_err(js_error)?;
+        Ok(format!("Downloaded {}", recording.file_name))
+    }
+}
+
+/// Les enregistrements deviennent des téléchargements.
+#[must_use]
+pub fn recording_sink(_settings: &Settings) -> RecordingSink {
+    RecordingSink
 }
 
 // === Page ===

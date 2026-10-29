@@ -146,26 +146,31 @@ Les deux surfaces envoient la même commande au même exécuteur (S2).
 
 | REPL | Studio | Commande |
 |---|---|---|
-| `style <id>` / `style <dossier>` | sélecteur de style ; atelier : ouvrir un dossier (natif) ou téléverser (web) | `SetStyleProfile` |
-| `reset` | bouton Reset | `Reset` |
-| `feet 0\|1\|2` | sélecteur de pieds | à ajouter (depuis `CliCommand`) |
-| `intensity <x>`, `direct` | mode direct et intensité | `UseDirectMode`, intensité à ajouter |
-| `emotion …` (absolu, relatif, seul) | pavé et curseurs, valeurs affichées | `SetEmotionParams`, `UseEmotionMode` |
-| `seed <n>` | graine, bouton nouvelle graine | `SetSeed`, `NewMelody` |
-| `set bpm`, `reset bpm` | tempo nominal | `SetBpm`, `ResetBpm` |
-| `swing <x>` | curseur 0,5–0,75 | à ajouter (depuis `CliCommand`) |
-| `tempo <bpm> [N]`, `tempo off` | tempo audible et rampe | à ajouter (depuis `CliCommand`) |
+| `style <id>` / `style <dossier>` | sélecteur de style ; natif : champ « Profile folder » (S6) ; atelier : ouvrir un dossier (natif) ou téléverser (web) (S7) | `SetStyleProfile` |
+| `reset` | bouton Reset engine | `Reset` |
+| `feet 0\|1\|2` | sélecteur de pieds | `SetFeetDensity` (S2) |
+| `intensity <x>`, `direct` | mode direct et intensité | `UseDirectMode`, `SetIntensity` (S2) |
+| `emotion …` (absolu, relatif, seul) | pavé et curseurs, valeurs affichées ; bouton Emotion | `SetEmotionParams`, `UseEmotionMode` |
+| `seed <n>`, `set seed <n>`, `seed new` | graine, bouton nouvelle graine | `SetSeed`, `NewMelody` |
+| `set bpm`, `reset bpm` | tempo nominal, Reset BPM | `SetBpm`, `ResetBpm` |
+| `swing <x>` | curseur 0,5–0,75 | `SetSwing` (S2) |
+| `tempo <bpm> [N]`, `tempo off` | tempo audible et rampe | `SetAudibleTempo`, `ClearAudibleTempo` (S2) |
 | `set time n/d` | signature | `SetTimeSignature` |
 | `beat` | horloge de pulsation, toujours visible | `BeatInfo` |
-| `seek <n>`, `loop <a> <b>`, `loop off` | clic sur la mesure, boucle (≤ 16 mesures) | `Seek`, `SetLoop`, `ClearLoop` |
+| `seek <n>`, `seek <n> soft` | clic sur la mesure ; clic droit « Move playhead here » ; champ de saut (dur ou doux) | `Seek`, `SeekPlayhead` |
+| `loop <a> <b>`, `loop off` | glisser sur les mesures (≤ 16, refus affiché), Clear loop | `SetLoop`, `ClearLoop` |
 | `set volume`, `set gain`, `set mute/unmute` | mixeur ; solo = couper les autres | `SetMasterVolume`, `SetChannelGain`, `SetChannelMute` |
-| `record wav\|midi\|musicxml`, `stop` | boutons d'enregistrement : fichiers (natif), téléchargements (web) | `StartRecording`, `StopRecording` |
-| `state` | panneau d'état | `EngineReport`, `MeasureSnapshot` |
-| `--osc` (nouveau) | OSC en natif | module OSC du host |
+| `set route <canal> <banque>` | mixeur, repli « Routing » | `SetChannelRoute` |
+| `set output mute\|unmute` | case « Mute output » | `SetOutputMute` |
+| `set rhythm\|harmony\|melody on\|off` | repli « Engine », cases des modules | `EnableRhythm`, `EnableHarmony`, `EnableMelody` |
+| `set lookahead <mesures>` | repli « Engine », anticipation (4–16) | `SetWriteheadLookahead` |
+| `record wav\|midi\|musicxml`, `stop [format]` | boutons d'enregistrement par format : fichiers (natif), téléchargements (web) | `StartRecording`, `StopRecording` |
+| `state` | panneau d'état | `EngineReport`, `MeasureSnapshot`, `BeatInfo` |
+| `--osc` | natif : case « OSC listener » (même adresse) | module OSC du host |
 
-Variantes d'`EngineCommand` sans commande REPL (`EnableRhythm`, `EnableHarmony`, `EnableMelody`,
+Variantes d'`EngineCommand` sans commande REPL avant S2 (`EnableRhythm`, `EnableHarmony`, `EnableMelody`,
 `SetChannelRoute`, `SetVelocityBase`, `ExportTimeline`, `SeekPlayhead`, `SetOutputMute`,
-`SetWriteheadLookahead`) : chacune reçoit une commande des deux côtés ou est supprimée en S2.
+`SetWriteheadLookahead`) : chacune a reçu une commande des deux côtés ou a été supprimée en S2.
 
 ## Tâches
 
@@ -208,7 +213,7 @@ S1, S2 et S4 en parallèle ; S3 après S2 ; S8 après S1 et des presets Odin ré
 | S3 | fusionnée (`d1e8817`) : tirages `u64` partout (19 appels de `RngCore` et les deux tirages de session, partagés par le composer et le plan), `getrandom` `js` et cpal `wasm-bindgen` sur wasm seulement, OSC exclu de wasm, `web_time::Instant`, travailleur d'enregistrement pompable (`RecorderBackend::pumped`, `LiveHost::pump`), banc permanent `harmonium_determinism` (Node) : 68 / 68 fichiers identiques natif / wasm, sortie native identique à `main` ; CI `wasm` (premier passage réel au premier push) ; constitution 4.3.0 ; 78 suites vertes. Reste : en web, pomper l'enregistreur au moins toutes les ~3 s | `s3-moteur-wasm.md` |
 | S4 | fusionnée (`f01dddd`) : fichiers d'origine embarqués, un seul décodeur multi-fichiers (`load`, `from_files`, `distributed_files`), erreurs `fichier:ligne: champ: message` ; `toml` 0.8.23, une seule version de `toml_edit` ; 73 suites de tests vertes, goldens inchangés | `s4-profils-bruts.md` |
 | S5 | fusionnée (`6ea211b`) : crate `harmonium_studio` (natif et web via Trunk, `odin`), manifeste `assets.json` et générateur `studio_assets`, chargeur web (flux, Cache Storage à clé d'empreinte, élagage, repli mémoire avec avis) et natif, écran de chargement, Start, écran provisoire ; génération par fil (natif) et minuteur de Worker (web), 16 mesures d'avance (≥ 14 s de réserve), tampon web 2048 (`LiveHost::start` reçoit `buffer_frames`) ; studio hors `default-members` (Odin ne s'unifie pas au reste), `make test` : 588 + 24 + 5 tests verts, goldens inchangés, 68 / 68 natif / wasm, clippy à 149 lignes comme `main`. Vérifié dans Chromium : progression sans `Content-Length`, aucune requête de banque au rechargement, nouvelle empreinte = un téléchargement et ancienne entrée supprimée, cache absent = musique et avis. **Non vérifié** : onglet masqué (bloqué par l'outil), échec de `put`, Firefox, Safari, CI Linux ; écoute à faire par le propriétaire | `s5-coquille-chargement.md` |
-| S6 | en cours (worktree `s6-studio-live`, reprise) | — |
+| S6 | terminée (branche `wquintal/s6-studio-live`, non fusionnée) : écran Live (barre du haut, commandes, forme, accords, piano-roll par piste avec chaque `Articulation` dont `Legato`, horloge, état, mixeur, About), parité REPL complète par `EngineCommand` (tableau ci-dessus), enregistrement en fichiers (natif) et en téléchargements (web), OSC natif ; couche pure `live.rs` testée sans fenêtre, tests egui sans fenêtre (`egui_kittest`) ; `make test` : 90 suites, 658 tests verts, goldens inchangés, 74 / 74 natif / wasm, `make lint` sans avertissement dans le studio. **Rien écouté** : points à vérifier par le propriétaire dans le rapport. À nettoyer (hors S6) : `session_key` / `session_scale` du rapport du moteur | `s6-studio-live.md` |
 
 ## Risques
 
