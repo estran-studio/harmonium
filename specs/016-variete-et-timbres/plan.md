@@ -71,4 +71,4 @@ gardant les deux.
 | Tâche | État | Compte rendu |
 |---|---|---|
 | V1 | fusionnée (`1571654`) : `loops = [{ weight, chords }]` par partie (sel `0x4841_524D`), patterns de pieds pondérés par (partie, densité) (sel `0x4645_4554`), aucun tirage à candidat unique ; 66/66 dumps trad et `nt_desert` identiques ; `isaac_*` : 2 à 3 parties à boucles alternatives, seconds motifs de basse, 2 patterns par densité, 3 cellules de plus ; 679 tests verts | `v1-variete-graine.md` |
-| T1 | lancée (2026-10-29) | `t1-timbre-emotion.md` |
+| T1 | fusionnée (`aa009db`) : `[[odin.<Piste>.zones]]` (1 à 4, défaut final, axes en ET, hystérésis 0,03, `level_db` de zone) ; bascule à l'entrée réelle d'une partie, deux emplacements par piste, fondu linéaire 300 ms, tenues relâchées puis réattaquées une fois ; profils à zone unique identiques octet pour octet ; `isaac_burning` : B sous `tension = [0.6, 1.0]` ; 694 tests verts sans `odin`, 98 avec | `t1-timbre-emotion.md` |
