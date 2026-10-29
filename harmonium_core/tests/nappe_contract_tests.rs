@@ -234,17 +234,17 @@ fn liaison_opt_in_et_refusee_dans_les_regles_d_interpretation() {
 #[test]
 fn seuls_les_profils_a_nappes_lient() {
     // Garde-fou : les 10 profils trad distribués n'emploient pas `tie`, donc
-    // leurs notes publiées sont inchangées. `nt_desert` (G7) lie sa scie et
-    // sa basse de pédale en données, sans toucher au moteur.
+    // leurs notes publiées sont inchangées. Les profils de jeu (`nt_desert`,
+    // `isaac_basement`) lient leurs nappes en données, sans toucher au moteur.
     let distributed = StyleProfile::distributed();
-    assert_eq!(distributed.len(), 11, "onze profils distribués");
+    assert_eq!(distributed.len(), 12, "douze profils distribués");
     for p in distributed {
         let tied = p
             .accompaniment
             .as_ref()
             .is_some_and(|a| a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie));
-        if p.meta.id == "nt_desert" {
-            assert!(tied, "nt_desert : scie liée attendue");
+        if matches!(p.meta.id.as_str(), "nt_desert" | "isaac_basement") {
+            assert!(tied, "{} : nappe liée attendue", p.meta.id);
             continue;
         }
         assert!(!tied, "{} emploie tie", p.meta.id);

@@ -1,0 +1,13 @@
+# Deux tours : basse, nappe et stomp dès l'ouverture ; le chœur (Melody)
+# n'est entendu qu'en descente et au pont (tracks_off en A1/A2).
+tours_per_tune = 2
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+Melody = { tour = 1, part = 0, pass = 1 }
+Heel = { tour = 1, part = 0, pass = 1 }
+Toe = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0

@@ -32,13 +32,15 @@ porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError`
 | `reel_britannique_coloniale` (R1) | britannique colonial ; 493 reels | 2/2, 208 | violon, guitare, basse | non | non |
 | `valse_britannique_coloniale` (R1) | britannique colonial ; 60 valses | 3/4, 138 | violon, guitare, basse | non | non |
 | `nt_desert` | Nuclear Throne, désert (Jukio Kallio, 2015) ; Fläshyn / A Way | 12/8, 210 (= 140 pointées) | dessus lead 81, nappe 89, scie 81, kit rock sec | oui (36, 38, 42 et fills 48/45/41) | lead 81, dernier retour du second tour (G7h) |
+| `isaac_basement` (essai) | The Binding of Isaac, Basement (Ridiculon) ; Diptera Sonata / Periculum | 4/4, 140 | chœur 52 (descente et pont), nappe chœur 91, basse 33, kit rock sec | oui (36, 38, 42 et fills 48/45/43/41) | non |
 
 Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois
 derniers (phase 013, R1) sont construits par le même chemin — références du labo, `mine-cells`, formules de
 [Source des réglages distribués](#source-des-réglages-distribués-p3-t1-contrat-11) — par
 `specs/013-moteur-dans-le-jeu/r1_profils.py` (`selftest` rejoue les formules sur quatre profils existants) ;
 mesures et limites dans le plan 013, section R1.
-Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) puis `g7h-nt-desert-lisibilite.md` (registre, longueurs et timbre lisibles).
+Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) ; G7e et G7h (legato, registre, longueurs et timbre lisibles) sont résumés dans le README du profil et le tableau d'état du plan 014.
+Le douzième, `isaac_basement`, est un essai d'écoute de fin de phase 014 : mêmes mécanismes que `nt_desert`, aucun ajout moteur, voir `profiles/isaac_basement/README.md`.
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
