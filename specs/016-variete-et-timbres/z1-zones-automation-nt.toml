@@ -1,0 +1,50 @@
+# Z1 : traverse chaque zone de timbre, une à la fois, puis revient au défaut.
+# Variante nt_desert : la menace entre dès A2 (frontière 9), car le pont (17–32)
+# tait la basse et la batterie ; ensuite frontières 33, 49 et 65.
+# Défaut → menace (valence basse) → combat (arousal haut) → étrange (tension haute) → défaut.
+[[keys]]
+bar = 1
+arousal = 0.5
+valence = 0.3
+density = 0.5
+tension = 0.4
+
+[[keys]]
+bar = 5
+valence = 0.3
+
+[[keys]]
+bar = 6
+valence = -0.6
+
+[[keys]]
+bar = 29
+valence = -0.6
+arousal = 0.5
+
+[[keys]]
+bar = 30
+valence = 0.3
+arousal = 0.85
+
+[[keys]]
+bar = 45
+arousal = 0.85
+tension = 0.4
+
+[[keys]]
+bar = 46
+arousal = 0.5
+tension = 0.85
+
+[[keys]]
+bar = 61
+tension = 0.85
+
+[[keys]]
+bar = 62
+tension = 0.4
+
+[[keys]]
+bar = 80
+tension = 0.4

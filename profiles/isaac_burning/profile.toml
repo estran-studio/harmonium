@@ -239,13 +239,32 @@ bass_program = 34
 percussion_bank = 128
 percussion_program = 0
 
-# Odin : A « plus trad » par défaut ; B « psychédélique » si tension >= 0.6,
-# avec hystérésis de 0.03 et bascule à la prochaine frontière de partie.
-# B (Bass Low + Moonshade) est plus fort que A : −5 et −7 dB de zone.
+# Odin : A « plus trad » par défaut ; B « psychédélique » si tension >= 0.6
+# (validés à l'écoute). Z1 ajoute combat (arousal >= 0,7) et menace
+# (valence <= -0,3) entre les deux. Hystérésis 0,03, bascule à la prochaine
+# frontière de partie ; niveaux de zone appariés au défaut.
 [[odin.Bass.zones]]
 when = { tension = [0.6, 1.0] }
 preset = "Bass Low [RM]"
 level_db = -5.0
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[[odin.Bass.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Growly FM Bass [XR]"
+level_db = -5.0
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[[odin.Bass.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "DeepBass [Photonic]"
+level_db = -3.0
 morph = [
   { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
@@ -262,6 +281,23 @@ morph = [
 when = { tension = [0.6, 1.0] }
 preset = "Moonshade"
 level_db = -7.0
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[[odin.Chords.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Prophet"
+level_db = -3.0
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[[odin.Chords.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Clouded [RM]"
 morph = [
   { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
   { param = "env1_release", density = 0.6 },

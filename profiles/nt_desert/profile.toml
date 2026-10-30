@@ -246,6 +246,43 @@ operations = [
   { operation = "rest", weight = 3, beats = ["weak"] },
 ]
 
+# Zones de timbre Odin (Z1), priorité dans l'ordre : étrange (tension >= 0,6),
+# combat (arousal >= 0,7), menace (valence <= -0,3), puis le son par défaut,
+# validé à l'écoute et inchangé. Niveaux de zone appariés au défaut (RMS du solo
+# de piste, ±0,5 dB). Bascule à la frontière de partie suivante (T1).
+[[odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Bass Low [RM]"
+level_db = -4.5
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 },
+]
+
+[[odin.Bass.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Growly FM Bass [XR]"
+level_db = -2.5
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 },
+]
+
+[[odin.Bass.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "DeepBass [Photonic]"
+level_db = 4.5
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 },
+]
+
 [[odin.Bass.zones]]
 preset = "Sausage Bassener"
 morph = [
@@ -253,6 +290,39 @@ morph = [
   { param = "fil1_res", tension = 0.3 },
   { param = "fil1_env", arousal = 0.4 },
   { param = "env1_release", density = 0.3 },
+]
+
+[[odin.Chords.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Moonshade"
+level_db = -5.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 },
+]
+
+[[odin.Chords.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "PAD Open"
+level_db = -2.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 },
+]
+
+[[odin.Chords.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Alone in the Subway"
+level_db = -0.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 },
 ]
 
 [[odin.Chords.zones]]
