@@ -53,4 +53,4 @@ locale ; **pas de travail dans `alacod`** pendant cette phase.
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| B1 | lancée (2026-10-29) | `b1-plugin-bevy.md` |
+| B1 | fusionnée (`dcb53cf`) : `harmonium_bevy` (Bevy 0.19.1, hors `default-members`, option `odin`), `HarmoniumControl` / `MusicClock` / messages `Beat` et `Bar`, fondu de profil acquitté par le callback (`volume_revision`), saut dur qui remplace la mesure chargée ; démo `make bevy/demo` ; 11 tests sans carte son, wasm vérifié ; écoute et vérification visuelle du carré à faire par le propriétaire | `b1-plugin-bevy.md` |
