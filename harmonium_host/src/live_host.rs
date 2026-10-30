@@ -72,6 +72,7 @@ pub struct LiveHost {
     recorder: Option<RecorderWorker>,
     /// Last report received from the audio thread.
     cached_state: Option<EngineReport>,
+    volume_revision: u64,
 }
 
 impl LiveHost {
@@ -142,6 +143,7 @@ impl LiveHost {
             finished_recordings: controls.finished_recordings,
             recorder: controls.recorder,
             cached_state: None,
+            volume_revision: 0,
         };
         host.publish()?;
         Ok(host)
@@ -159,6 +161,12 @@ impl LiveHost {
     pub fn pause(&self) -> Result<(), String> {
         use cpal::traits::StreamTrait;
         self.stream.as_ref().map_or(Ok(()), |s| s.0.pause().map_err(|e| e.to_string()))
+    }
+
+    /// Révision de la dernière commande de volume acceptée. Son acquittement et
+    /// le gain atteint sont publiés dans `TransportClock` par le callback.
+    pub fn volume_revision(&self) -> u64 {
+        self.volume_revision
     }
 
     /// Read the current transport position at grid resolution.
@@ -427,7 +435,10 @@ impl LiveHost {
 
             // === Mixer and output ===
             EngineCommand::SetMasterVolume(volume) => {
-                self.send(PlaybackCommand::SetMasterVolume(volume))
+                let revision = self.volume_revision + 1;
+                self.send(PlaybackCommand::SetMasterVolume { volume, revision })?;
+                self.volume_revision = revision;
+                Ok(())
             }
             EngineCommand::SetChannelGain { channel, gain } => {
                 self.send(PlaybackCommand::SetChannelGain { channel, gain })

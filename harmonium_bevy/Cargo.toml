@@ -1,0 +1,30 @@
+[package]
+name = "harmonium_bevy"
+version = "0.1.0"
+edition = "2024"
+license.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+odin = ["harmonium/odin", "harmonium_audio/odin"]
+# Fenêtre de démonstration seulement ; le plugin n'impose aucun moteur de rendu.
+demo = ["bevy/bevy_winit", "bevy/bevy_render", "bevy/bevy_core_pipeline", "bevy/bevy_ui_render", "bevy/bevy_text", "bevy/default_font", "bevy/bevy_window", "bevy/keyboard", "bevy/x11", "bevy/wayland", "bevy/webgl2"]
+
+[dependencies]
+bevy = { version = "=0.19.1", default-features = false, features = ["std", "async_executor", "bevy_asset", "bevy_log"] }
+harmonium = { path = "../harmonium_host" }
+harmonium_core = { path = "../harmonium_core" }
+harmonium_audio = { path = "../harmonium_audio" }
+web-time = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Window", "Event", "EventTarget", "Blob", "BlobPropertyBag", "Url", "Worker", "MessageEvent"] }
+js-sys = "0.3"
+
+[[example]]
+name = "demo"
+required-features = ["demo", "odin"]
