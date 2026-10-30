@@ -25,7 +25,12 @@ fn prepared_mix_and_stereo_biquads_are_allocation_free_and_master_is_linear() {
     let second = profile.prepare(44100.0);
     for synth in [&mut a, &mut b] {
         synth.handle_event(AudioEvent::ProgramChange { channel: 0, program: 0 });
-        synth.handle_event(AudioEvent::NoteOn { channel: 0, note: 60, velocity: 100 });
+        synth.handle_event(AudioEvent::NoteOn {
+            channel: 0,
+            note: 60,
+            velocity: 100,
+            legato: false,
+        });
     }
     let mut left = [0.0; 8192];
     let mut right = [0.0; 8192];

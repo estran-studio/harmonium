@@ -37,8 +37,8 @@ suivi branchera le glide).
    le même « legato » sur sa marche de basse **sans changer ses hauteurs,
    durées ni vélocités** — seule l'articulation passe de `Normal` à `Legato`.
 6. Vers les supports : voir « Écoute ».
-7. **TODO documenté** : brancher le vrai glissando (portamento) du nouveau
-   moteur Odin après la migration G6d — pas d'implémentation Odin ici.
+7. **Suivi réalisé en G2** : le vrai glissando Odin est désormais branché,
+   voir [`g2-glissando-odin.md`](../016-variete-et-timbres/g2-glissando-odin.md).
 
 ## Fichiers touchés
 
@@ -87,8 +87,8 @@ suivi branchera le glide).
 - **SoundFont** : `oxisynth` ne fait ni mode mono (CC 126) ni portamento
   (CC 5/65). Le rendu SoundFont n'a donc **pas de glissando de hauteur** ; la
   fluidité vient du seul chevauchement (la note précédente relâche 0,2 pas après
-  l'attaque, ce qui masque la coupure). Le vrai glide est renvoyé au moteur
-  Odin (TODO ci-dessous).
+  l'attaque, ce qui masque la coupure). Le vrai glide est désormais disponible
+  sur Odin (G2 ci-dessous), sans changer ce chemin SoundFont.
 - Le chevauchement est une **fraction de pas** (constante), donc sa durée en
   millisecondes suit le tempo du profil ; 200 millièmes de pas ≈ 15 ms au
   désert (pas ≈ 71 ms), davantage à tempo lent. Cohérent, mais pas réglé par
@@ -97,13 +97,12 @@ suivi branchera le glide).
   note tenue d'une autre hauteur sur le canal. Une répétition de la même
   hauteur n'est pas un glissando.
 
-## TODO — glide Odin (après G6d)
+## Suivi réalisé — glide Odin (G2, après G6d)
 
-Une fois la migration de l'API Odin terminée (G6d, branche parallèle), brancher
-le glissando réel du moteur Odin sur les notes `Articulation::Legato` : au
-déclenchement d'une note legato sur un canal Odin, faire glisser la voix
-tenue vers la nouvelle hauteur sans réattaquer l'enveloppe (portamento), au
-lieu du chevauchement SoundFont. Aucun code Odin modifié ici ; G6d s'en charge.
+Le glissando réel est branché sur les notes `Articulation::Legato` des pistes
+Odin, sans changer les données musicales G7e. Temps en données par zone,
+mode mono/legato préparé hors callback, comportement à une bascule T1 et
+preuves de rendu : [`g2-glissando-odin.md`](../016-variete-et-timbres/g2-glissando-odin.md).
 
 ## Écoute
 

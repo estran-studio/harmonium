@@ -748,11 +748,28 @@ impl MusicComposer {
         let Some(resources) = &self.host_resources else {
             return [None; harmonium_core::timeline::TrackId::ALL.len()];
         };
-        resources.odin.patches_for_zones(
+        let mut patches = resources.odin.patches_for_zones(
             &self.generator.tuning.profile.odin,
             self.controls.emotions(),
             zones,
-        )
+        );
+        // G7e : les motifs de basse sont l'unique source de Legato musical.
+        // Décision hors callback ; sans Legato, le preset et sa polyphonie
+        // restent strictement inchangés. Aucun nom de profil ici.
+        if let Some(patch) =
+            &mut patches[usize::from(harmonium_core::timeline::TrackId::Bass.channel())]
+        {
+            patch.legato =
+                self.generator.tuning.profile.accompaniment.as_ref().is_some_and(|accomp| {
+                    accomp
+                        .bass
+                        .motifs
+                        .iter()
+                        .flat_map(|motif| &motif.notes)
+                        .any(|note| note.legato && !note.tie)
+                });
+        }
+        patches
     }
 
     fn selected_odin_zones(&self) -> [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()] {
@@ -788,20 +805,11 @@ impl MusicComposer {
         }
         #[cfg(feature = "odin")]
         {
-            let Some(dispatch) = &mut self.odin_dispatch else {
-                return Err("transport Odin non initialisé".to_owned());
-            };
+            let active_zones =
+                self.odin_dispatch.as_ref().ok_or("transport Odin non initialisé")?.active_zones();
+            let active = self.odin_patches_for_zones(active_zones);
+            let dispatch = self.odin_dispatch.as_mut().expect("transport Odin vérifié");
             dispatch.reclaim();
-            let active = self.host_resources.as_ref().map_or(
-                [None; harmonium_core::timeline::TrackId::ALL.len()],
-                |resources| {
-                    resources.odin.patches_for_zones(
-                        &self.generator.tuning.profile.odin,
-                        self.controls.emotions(),
-                        dispatch.active_zones(),
-                    )
-                },
-            );
             let morph = [active, patches];
             if self.odin_last_morph != Some(morph) {
                 commands

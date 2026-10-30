@@ -171,13 +171,18 @@ impl AudioRenderer for SynthBackend {
                 #[cfg(feature = "odin")]
                 self.odin.set_tempo(params.bpm);
             }
-            AudioEvent::NoteOn { note, velocity, channel } => {
+            AudioEvent::NoteOn { note, velocity, channel, legato } => {
                 #[cfg(feature = "odin")]
                 if self.odin.is_odin_channel(usize::from(channel)) {
-                    self.odin.note_on(usize::from(channel), note, velocity);
+                    self.odin.note_on(usize::from(channel), note, velocity, legato);
                     return;
                 }
-                self.voice_manager.process_event(AudioEvent::NoteOn { note, velocity, channel });
+                self.voice_manager.process_event(AudioEvent::NoteOn {
+                    note,
+                    velocity,
+                    channel,
+                    legato,
+                });
             }
             AudioEvent::NoteOff { note, channel } => {
                 #[cfg(feature = "odin")]
@@ -337,7 +342,12 @@ mod tests {
         assert!(reference.percussion_banks().is_empty());
         reference.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         for synth in [&mut backend, &mut reference] {
-            synth.handle_event(AudioEvent::NoteOn { note: 60, velocity: 100, channel: 1 });
+            synth.handle_event(AudioEvent::NoteOn {
+                note: 60,
+                velocity: 100,
+                channel: 1,
+                legato: false,
+            });
         }
         let mut actual = [0.0; 4096];
         let mut expected = [0.0; 4096];

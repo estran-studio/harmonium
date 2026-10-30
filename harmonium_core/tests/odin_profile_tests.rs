@@ -1,4 +1,4 @@
-//! Contrat des zones Odin : défaut final, bornes d'émotion, niveau et morphing
+//! Contrat des zones Odin : défaut final, bornes d'émotion, niveau, glissando et morphing
 //! par zone. Le programme SoundFont reste requis pour le rendu sans `odin`.
 use harmonium_core::{
     StyleProfile,
@@ -12,7 +12,7 @@ fn rule(param: OdinMorphParam) -> OdinMorphRule {
 }
 
 fn zone(preset: &str, morph: Vec<OdinMorphRule>) -> OdinZone {
-    OdinZone { when: None, preset: preset.into(), level_db: 0.0, morph }
+    OdinZone { when: None, preset: preset.into(), level_db: 0.0, glide_ms: 80.0, morph }
 }
 
 fn single(preset: &str, morph: Vec<OdinMorphRule>) -> OdinTrackSpec {
@@ -46,6 +46,35 @@ fn a_valid_odin_track_declared_in_toml_is_accepted() {
     profile.validate().unwrap();
     assert_eq!(profile.odin[&TrackId::Bass].zones[0].morph[0].tension, 1500.0);
     assert_eq!(profile.odin[&TrackId::Bass].zones[0].level_db, 0.0);
+    assert_eq!(profile.odin[&TrackId::Bass].zones[0].glide_ms, 80.0);
+}
+
+#[test]
+fn zone_glide_times_survive_toml_roundtrip() {
+    for glide_ms in [0.0, 40.0, 80.0, 500.0] {
+        let mut spec = single("b", vec![]);
+        spec.zones[0].glide_ms = glide_ms;
+        let text = toml::to_string(&spec).unwrap();
+        let restored: OdinTrackSpec = toml::from_str(&text).unwrap();
+        assert_eq!(restored, spec);
+        with(TrackId::Bass, restored).validate().unwrap();
+    }
+}
+
+#[test]
+fn invalid_glide_times_report_the_track_and_zone() {
+    for glide_ms in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1.0, 0.1, 39.99, 500.01] {
+        for index in [0, 1] {
+            let condition = OdinZoneWhen { tension: Some([0.6, 1.0]), ..OdinZoneWhen::default() };
+            let mut spec = OdinTrackSpec { zones: vec![bounded(condition), zone("b", vec![])] };
+            spec.zones[index].glide_ms = glide_ms;
+            assert_eq!(
+                error_field(&with(TrackId::Bass, spec)),
+                format!("odin.Bass.zones[{index}].glide_ms"),
+                "{glide_ms:?}",
+            );
+        }
+    }
 }
 
 #[test]

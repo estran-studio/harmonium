@@ -22,6 +22,7 @@ use harmonium_core::{
     odin::{OdinMorphParam, OdinMorphRule, OdinZone, OdinZoneWhen},
     report::MeasureSnapshot,
     timeline::TrackId,
+    trad::accomp_profile::{BassMotif, BassMotifNote, BassReference},
 };
 use midly::{MidiMessage, Smf, TrackEventKind};
 
@@ -72,6 +73,12 @@ fn push_section(bytes: &mut Vec<u8>, name: &str, properties: &[(&str, f64)]) {
 /// Dent de scie analogique, LP24 routé directement vers l'ampli, enveloppe
 /// tenue et relâchement court. Les identifiants sont ceux du schéma upstream.
 fn test_preset(filter_hz: f64) -> Vec<u8> {
+    instrument_preset(filter_hz, 1.0, 0.0)
+}
+
+/// Le plateau bas distingue dans l'audio une vraie réattaque d'un simple
+/// changement de hauteur, même si les deux passent par un appel MIDI NoteOn.
+fn instrument_preset(filter_hz: f64, sustain: f64, analog_wave: f64) -> Vec<u8> {
     let parameters = [
         ("osc1_vol", 0.0),
         ("osc1_reset", 1.0),
@@ -86,7 +93,7 @@ fn test_preset(filter_hz: f64) -> Vec<u8> {
         ("fil2_to_amp", 0.0),
         ("env1_attack", 0.01),
         ("env1_decay", 0.1),
-        ("env1_sustain", 1.0),
+        ("env1_sustain", sustain),
         ("env1_release", 0.1),
     ];
     let mut bytes = b"Odin\0".to_vec();
@@ -98,7 +105,12 @@ fn test_preset(filter_hz: f64) -> Vec<u8> {
     push_section(
         &mut bytes,
         "osc",
-        &[("osc1_type", 2.0), ("osc1_analog_wave", 0.0), ("osc2_type", 1.0), ("osc3_type", 1.0)],
+        &[
+            ("osc1_type", 2.0),
+            ("osc1_analog_wave", analog_wave),
+            ("osc2_type", 1.0),
+            ("osc3_type", 1.0),
+        ],
     );
     push_section(
         &mut bytes,
@@ -240,6 +252,18 @@ fn render_inner(
     silence_after: Option<usize>,
     changes: Vec<(usize, [f32; 4])>,
 ) -> Take {
+    render_track_inner(profile, presets, emotions, bars, silence_after, changes, TrackId::Chords)
+}
+
+fn render_track_inner(
+    profile: StyleProfile,
+    presets: &[(&str, Vec<u8>)],
+    emotions: [f32; 4],
+    bars: usize,
+    silence_after: Option<usize>,
+    changes: Vec<(usize, [f32; 4])>,
+    audible_track: TrackId,
+) -> Take {
     let sources: Vec<OdinPresetSource> =
         presets.iter().map(|(name, bytes)| OdinPresetSource { name, bytes }).collect();
     let (mut composer, mut playback, mut cmd_tx, _reports, mut clock, finished) =
@@ -260,7 +284,7 @@ fn render_inner(
         cmd_tx
             .push(PlaybackCommand::SetChannelMute {
                 channel: track.channel(),
-                muted: track != TrackId::Chords,
+                muted: track != audible_track,
             })
             .unwrap();
     }
@@ -286,7 +310,7 @@ fn render_inner(
         composer.send_odin(&mut cmd_tx).unwrap();
         if !muted && silence_after.is_some_and(|after| composer.playhead_bar() > after) {
             let mut mask = [false; 16];
-            mask[usize::from(TrackId::Chords.channel())] = true;
+            mask[usize::from(audible_track.channel())] = true;
             cmd_tx.push(PlaybackCommand::SetMutedChannels(mask)).unwrap();
             muted = true;
         }
@@ -610,6 +634,7 @@ fn zoned_pad() -> StyleProfile {
             when: Some(OdinZoneWhen { tension: Some([0.6, 1.0]), ..Default::default() }),
             preset: "clair".into(),
             level_db: -3.0,
+            glide_ms: 80.0,
             morph: Vec::new(),
         },
         default,
@@ -740,4 +765,399 @@ fn a_zone_level_scales_the_track_without_changing_the_preset_master() {
         .fold(0.0f32, f32::max);
     assert!(original.peak() > 0.01);
     assert!(error < 1e-6, "le gain de zone est extérieur au synthétiseur : {error}");
+}
+
+/// Sinus analogique JUCE (sélecteur 3), sans modulation, avec un plateau à
+/// 20 % : la fondamentale et les réattaques se mesurent sans ambiguïté.
+fn bass_presets() -> Vec<(&'static str, Vec<u8>)> {
+    vec![
+        ("basse", instrument_preset(6000.0, 0.2, 3.0)),
+        ("basse_zone", instrument_preset(6000.0, 0.2, 3.0)),
+    ]
+}
+
+fn bass_note(step: usize, duration: usize, semitones: i8, legato: bool) -> BassMotifNote {
+    BassMotifNote {
+        step,
+        duration,
+        semitones: Some(semitones),
+        degree: None,
+        octave: 0,
+        velocity: 90,
+        tie: false,
+        legato,
+        doubling: Vec::new(),
+    }
+}
+
+fn bass_profile(notes: Vec<BassMotifNote>, motif_bars: usize, glide_ms: f32) -> StyleProfile {
+    let mut profile = with_chords_morph(load("nappe_pad"), Vec::new());
+    // Une noire vaut exactement une seconde ; chaque pas vaut 250 ms.
+    profile.meter.default_bpm = 60.0;
+    profile.meter.min_bpm = 60.0;
+    profile.meter.max_bpm = 60.0;
+    let mut spec = profile.odin.remove(&TrackId::Chords).unwrap();
+    spec.zones[0].preset = "basse".into();
+    spec.zones[0].glide_ms = glide_ms;
+    profile.odin.insert(TrackId::Bass, spec);
+    let bass = &mut profile.accompaniment.as_mut().unwrap().bass;
+    bass.low = 60;
+    bass.high = 71;
+    bass.hits.clear();
+    bass.motifs = vec![BassMotif {
+        bars: motif_bars,
+        weight: 1,
+        part: None,
+        reference: BassReference::Tonic,
+        notes,
+    }];
+    profile
+}
+
+fn ascending_bass(glide_ms: f32) -> StyleProfile {
+    bass_profile(
+        vec![bass_note(0, 4, 0, false), bass_note(4, 4, 7, true), bass_note(8, 8, 12, true)],
+        1,
+        glide_ms,
+    )
+}
+
+fn render_bass(profile: StyleProfile, bars: usize, changes: Vec<(usize, [f32; 4])>) -> Take {
+    render_track_inner(
+        profile,
+        &bass_presets(),
+        BASE_EMOTIONS,
+        bars,
+        Some(bars),
+        changes,
+        TrackId::Bass,
+    )
+}
+
+/// MIDI public de la basse, converti en frames pour le tempo fixe de 60.
+fn bass_events(take: &Take) -> Vec<(usize, u8, bool)> {
+    let smf = Smf::parse(&take.midi).unwrap();
+    let midly::Timing::Metrical(ticks) = smf.header.timing else {
+        panic!("le contrat enregistre un MIDI métrique");
+    };
+    let mut tick = 0u32;
+    let mut events = Vec::new();
+    for event in &smf.tracks[0] {
+        tick += event.delta.as_int();
+        if let TrackEventKind::Midi { channel, message } = event.kind
+            && channel.as_int() == TrackId::Bass.channel()
+        {
+            let note = match message {
+                MidiMessage::NoteOn { key, vel } => Some((key.as_int(), vel.as_int() > 0)),
+                MidiMessage::NoteOff { key, .. } => Some((key.as_int(), false)),
+                _ => None,
+            };
+            if let Some((note, on)) = note {
+                let frame = (f64::from(tick) * SAMPLE_RATE / f64::from(ticks.as_int())).round();
+                events.push((frame as usize, note, on));
+            }
+        }
+    }
+    events
+}
+
+fn audio_window(take: &Take, start_frame: usize, seconds: f64) -> &[f32] {
+    let frames = (seconds * SAMPLE_RATE).round() as usize;
+    &take.audio[start_frame * 2..(start_frame + frames) * 2]
+}
+
+fn after(frame: usize, seconds: f64) -> usize {
+    frame + (seconds * SAMPLE_RATE).round() as usize
+}
+
+fn rms(samples: &[f32]) -> f64 {
+    (samples.iter().map(|&sample| f64::from(sample).powi(2)).sum::<f64>() / samples.len() as f64)
+        .sqrt()
+}
+
+/// Crête de RMS sur 20 ms dans les 150 premières ms d'une attaque. Une
+/// enveloppe relancée dépasse nettement son plateau à 0,2, contrairement à
+/// une transition de fréquence réellement liée.
+fn attack_rms(take: &Take, frame: usize) -> f64 {
+    (0..13)
+        .map(|offset| rms(audio_window(take, after(frame, f64::from(offset) * 0.01), 0.02)))
+        .fold(0.0, f64::max)
+}
+
+/// Fréquence du sinus réel, passages positifs interpolés entre échantillons.
+/// Ni le MIDI, ni les diagnostics ne servent d'estimateur de hauteur.
+fn fundamental(samples: &[f32]) -> f64 {
+    let mut previous = 0.0f64;
+    let mut first = None;
+    let mut last = 0.0;
+    let mut crossings = 0usize;
+    for (frame, stereo) in samples.chunks_exact(2).enumerate() {
+        let sample = f64::from(stereo[0] + stereo[1]) * 0.5;
+        if frame > 0 && previous <= 0.0 && sample > 0.0 {
+            let crossing = frame as f64 - sample / (sample - previous);
+            first.get_or_insert(crossing);
+            last = crossing;
+            crossings += 1;
+        }
+        previous = sample;
+    }
+    assert!(crossings >= 4, "le sinus est audible et contient plusieurs périodes");
+    SAMPLE_RATE * (crossings - 1) as f64 / (last - first.unwrap())
+}
+
+fn midi_hz(pitch: u8) -> f64 {
+    440.0 * 2.0f64.powf((f64::from(pitch) - 69.0) / 12.0)
+}
+
+fn assert_pitch(take: &Take, frame: usize, pitch: u8) {
+    let actual = fundamental(audio_window(take, frame, 0.04));
+    let expected = midi_hz(pitch);
+    assert!(
+        (actual / expected - 1.0).abs() < 0.02,
+        "fondamentale attendue {expected:.2} Hz, mesurée {actual:.2} Hz"
+    );
+}
+
+fn assert_bass_finished(take: &Take, transfers: u64) {
+    assert!(take.audio.iter().all(|sample| sample.is_finite()));
+    assert!(take.peak() > 0.001, "la basse est réellement audible");
+    assert!(tail_peak(&take.audio) < 1e-4, "le mute ne laisse aucune voix audible");
+    let events = bass_events(take);
+    let mut active = std::collections::BTreeSet::new();
+    let mut attacks = 0u64;
+    for (_, pitch, on) in events {
+        if on {
+            attacks += 1;
+            assert!(active.insert(pitch), "pas de double NoteOn musical pour {pitch}");
+        } else {
+            // Après mute, le playhead publie encore les fins des notes que
+            // le filtre de piste n'a pas attaquées ; elles sont inoffensives.
+            active.remove(&pitch);
+        }
+    }
+    assert!(active.is_empty(), "le MIDI ne laisse aucune note tenue après mute");
+    let diagnostic = &take.diagnostics;
+    assert_eq!(diagnostic.history_overflow, 0);
+    assert!(diagnostic.retiring.iter().all(Option::is_none), "tous les fondus sont terminés");
+    let instances: Vec<_> = diagnostic
+        .retired
+        .iter()
+        .chain(&diagnostic.active)
+        .flatten()
+        .filter(|instance| instance.channel == usize::from(TrackId::Bass.channel()))
+        .collect();
+    assert!(!instances.is_empty(), "le son vient bien d'une instance Odin");
+    for instance in &instances {
+        assert_eq!(
+            instance.note_on, instance.note_off,
+            "instance {} : chaque appel MIDI NoteOn a sa fin",
+            instance.id
+        );
+        assert_eq!(instance.active_notes, 0, "instance {} sans note fantôme", instance.id);
+    }
+    assert_eq!(
+        instances.iter().map(|instance| instance.note_on).sum::<u64>(),
+        attacks + transfers,
+        "appels MIDI natifs : notes musicales plus un seul appel par transfert"
+    );
+}
+
+#[test]
+fn legato_bass_glides_up_without_restarting_the_amplitude_envelope() {
+    let profile = ascending_bass(400.0);
+    let take = render_bass(profile.clone(), 1, Vec::new());
+    let replay = render_bass(profile, 1, Vec::new());
+    assert_eq!(take.audio, replay.audio, "mêmes notes et preset, mêmes échantillons");
+    let attacks: Vec<_> = bass_events(&take).into_iter().filter(|(_, _, on)| *on).collect();
+    assert_eq!(
+        attacks[..3],
+        [(0, 60, true), (SAMPLE_RATE as usize, 67, true), (2 * SAMPLE_RATE as usize, 72, true),]
+    );
+    let plateau = rms(audio_window(&take, after(0, 0.7), 0.1));
+    assert!(attack_rms(&take, 0) > plateau * 2.0, "le preset révèle sa vraie attaque");
+    for &(frame, _, _) in &attacks[1..3] {
+        assert!(
+            attack_rms(&take, frame) < plateau * 1.6,
+            "le NoteOn lié ne relance pas l'enveloppe mesurée dans l'audio"
+        );
+    }
+    for pair in attacks[..3].windows(2) {
+        let (frame, target, _) = pair[1];
+        let source = midi_hz(pair[0].1);
+        let target_hz = midi_hz(target);
+        let early = fundamental(audio_window(&take, after(frame, 0.06), 0.04));
+        let later = fundamental(audio_window(&take, after(frame, 0.22), 0.04));
+        assert!(
+            early > source * 1.03 && early < target_hz * 0.95,
+            "hauteur intermédiaire pendant le glide : {source:.1} < {early:.1} < {target_hz:.1}"
+        );
+        assert!(
+            later > early * 1.03 && later < target_hz,
+            "la montée progresse : {early} → {later}"
+        );
+        assert_pitch(&take, after(frame, 0.85), target);
+        assert!(
+            rms(audio_window(&take, after(frame, 0.25), 0.1)) > plateau * 0.6,
+            "la fin différée de l'ancienne note ne coupe pas la nouvelle"
+        );
+    }
+    assert_bass_finished(&take, 0);
+}
+
+#[test]
+fn normal_and_same_pitch_notes_reattack_after_legato_on_a_mono_bass() {
+    let profile = bass_profile(
+        vec![
+            bass_note(0, 4, 0, false),
+            bass_note(4, 4, 7, true),
+            bass_note(8, 4, 12, false),
+            bass_note(12, 4, 12, true),
+        ],
+        1,
+        80.0,
+    );
+    let take = render_bass(profile, 1, Vec::new());
+    let plateau = rms(audio_window(&take, after(0, 0.7), 0.1));
+    assert!(attack_rms(&take, SAMPLE_RATE as usize) < plateau * 1.6);
+    for frame in [2 * SAMPLE_RATE as usize, 3 * SAMPLE_RATE as usize] {
+        assert!(
+            attack_rms(&take, frame) > plateau * 2.0,
+            "Normal et Legato de même hauteur réattaquent réellement l'enveloppe"
+        );
+        assert_pitch(&take, after(frame, 0.04), 72);
+        assert!(
+            rms(audio_window(&take, after(frame, 0.3), 0.1)) > plateau * 0.6,
+            "aucune ancienne fin ne coupe la réattaque"
+        );
+    }
+    assert_bass_finished(&take, 0);
+}
+
+#[test]
+fn zero_glide_jumps_to_the_target_without_restarting_the_legato_envelope() {
+    let take = render_bass(ascending_bass(0.0), 1, Vec::new());
+    let plateau = rms(audio_window(&take, after(0, 0.7), 0.1));
+    for (frame, pitch) in [(SAMPLE_RATE as usize, 67), (2 * SAMPLE_RATE as usize, 72)] {
+        assert_pitch(&take, after(frame, 0.04), pitch);
+        assert!(attack_rms(&take, frame) < plateau * 1.6, "zéro glide conserve l'enveloppe liée");
+    }
+    assert_bass_finished(&take, 0);
+}
+
+#[test]
+fn tied_bass_keeps_its_pitch_and_envelope_across_the_barline() {
+    let take = render_bass(bass_profile(vec![bass_note(0, 32, 0, true)], 2, 80.0), 2, Vec::new());
+    let boundary = take.bar_frames[&2];
+    let before = rms(audio_window(&take, boundary - (SAMPLE_RATE * 0.2) as usize, 0.1));
+    assert!(attack_rms(&take, boundary) < before * 1.3, "Tied ne réattaque pas l'enveloppe");
+    assert_pitch(&take, after(boundary, 0.05), 60);
+    let attacks = bass_events(&take)
+        .into_iter()
+        .filter(|(frame, _, on)| *on && *frame < 8 * SAMPLE_RATE as usize)
+        .count();
+    assert_eq!(attacks, 1, "la continuation Tied n'ajoute pas de NoteOn musical");
+    assert_bass_finished(&take, 0);
+}
+
+/// Parties de deux mesures ; la demande à la mesure 2 doit attendre T1 à 3.
+/// Les deux zones emploient le même sinus pour isoler transfert et continuité.
+fn zoned_bass(notes: Vec<BassMotifNote>) -> StyleProfile {
+    let mut profile = bass_profile(notes, 2, 500.0);
+    for part in &mut profile.form.parts {
+        part.roles = vec![part.roles[0].clone(), part.roles.last().unwrap().clone()];
+    }
+    let zones = &mut profile.odin.get_mut(&TrackId::Bass).unwrap().zones;
+    zones.insert(
+        0,
+        OdinZone {
+            when: Some(OdinZoneWhen { tension: Some([0.6, 1.0]), ..Default::default() }),
+            preset: "basse_zone".into(),
+            level_db: 0.0,
+            glide_ms: 500.0,
+            morph: Vec::new(),
+        },
+    );
+    profile
+}
+
+fn assert_bass_zone_transfer(take: &Take, steady: &Take) -> usize {
+    let boundary = take.bar_frames[&3];
+    assert_eq!(
+        take.audio[..boundary * 2],
+        steady.audio[..boundary * 2],
+        "la demande de zone n'est pas audible avant T1"
+    );
+    let instances: Vec<_> = take
+        .diagnostics
+        .retired
+        .iter()
+        .chain(&take.diagnostics.active)
+        .flatten()
+        .filter(|instance| instance.channel == usize::from(TrackId::Bass.channel()))
+        .collect();
+    assert_eq!(instances.len(), 2, "exactement deux instances pour une bascule");
+    assert_eq!(instances[1].installed_bar, 3);
+    assert_eq!(instances[1].installed_frame, boundary as u64);
+    assert_eq!(
+        instances[0].retired_frame,
+        Some(boundary as u64 + (SAMPLE_RATE * 0.3).round() as u64)
+    );
+    let plateau = rms(audio_window(steady, boundary - (SAMPLE_RATE * 0.4) as usize, 0.1));
+    for offset in [-0.05, 0.0, 0.05, 0.1, 0.2, 0.3, 0.4] {
+        let frame = (boundary as f64 + offset * SAMPLE_RATE).round() as usize;
+        assert!(
+            rms(audio_window(take, frame, 0.025)) > plateau * 0.15,
+            "le fondu reste audible à {offset:+.2} s de T1"
+        );
+    }
+    let window = audio_window(take, boundary - (SAMPLE_RATE * 0.05) as usize, 0.5);
+    let delta = window
+        .windows(4)
+        .step_by(2)
+        .map(|pair| (pair[2] - pair[0]).abs().max((pair[3] - pair[1]).abs()))
+        .fold(0.0f32, f32::max);
+    assert!(delta < 0.1, "le transfert ne clique pas : {delta}");
+    assert_bass_finished(take, 1);
+    boundary
+}
+
+#[test]
+fn legato_at_a_zone_boundary_transfers_once_then_glides_without_a_ghost_note() {
+    let profile = zoned_bass(vec![bass_note(0, 16, 0, true), bass_note(16, 16, 12, true)]);
+    let moved = render_bass(profile.clone(), 4, vec![(2, tension(0.85))]);
+    let steady = render_bass(profile, 4, Vec::new());
+    let boundary = assert_bass_zone_transfer(&moved, &steady);
+    let early = fundamental(audio_window(&moved, after(boundary, 0.4), 0.04));
+    assert!(
+        early > midi_hz(60) * 1.02 && early < midi_hz(72) * 0.98,
+        "après transfert, le Legato à T1 glisse encore vers sa cible : {early}"
+    );
+    assert_pitch(&moved, after(boundary, 1.3), 60);
+    assert!(
+        rms(audio_window(&moved, after(boundary, 0.6), 0.1)) > 0.001,
+        "ni la fin différée ni le retrait de l'ancienne instance ne coupe la nouvelle"
+    );
+}
+
+#[test]
+fn a_zone_boundary_during_a_glide_transfers_the_target_pitch_once() {
+    let mut held_target = bass_note(0, 16, 12, false);
+    held_target.tie = true;
+    let profile =
+        zoned_bass(vec![held_target, bass_note(16, 15, 0, false), bass_note(31, 1, 12, true)]);
+    let moved = render_bass(profile.clone(), 4, vec![(2, tension(0.85))]);
+    let steady = render_bass(profile, 4, Vec::new());
+    let boundary = assert_bass_zone_transfer(&moved, &steady);
+    let before = fundamental(audio_window(&moved, boundary - (SAMPLE_RATE * 0.06) as usize, 0.04));
+    assert!(
+        before > midi_hz(60) * 1.05 && before < midi_hz(72) * 0.98,
+        "la frontière traverse réellement un glide inachevé : {before}"
+    );
+    assert_pitch(&moved, after(boundary, 0.35), 72);
+    assert_pitch(&moved, after(boundary, 1.0), 72);
+    let attacks_at_boundary = bass_events(&moved)
+        .into_iter()
+        .filter(|(frame, _, on)| *on && frame.abs_diff(boundary) < BUFFER_FRAMES)
+        .count();
+    assert_eq!(attacks_at_boundary, 0, "Tied n'ajoute pas d'attaque musicale au transfert");
 }

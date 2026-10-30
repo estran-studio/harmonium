@@ -1392,6 +1392,12 @@ impl StyleProfile {
                     "niveau de zone fini dans -60..12 dB",
                 )?;
                 check(
+                    zone.glide_ms.is_finite()
+                        && (zone.glide_ms == 0.0 || (40.0..=500.0).contains(&zone.glide_ms)),
+                    &format!("{field}.glide_ms"),
+                    "temps nominal de glissando fini : 0 (désactivé) ou 40..500 ms",
+                )?;
+                check(
                     zone.morph.len() <= crate::odin::ODIN_MAX_RULES,
                     &format!("{field}.morph"),
                     &format!("au plus {} règles par zone", crate::odin::ODIN_MAX_RULES),

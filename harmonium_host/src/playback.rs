@@ -1385,15 +1385,15 @@ impl PlaybackEngine {
                         && let Some(update) = &mut self.odin_update
                     {
                         for (index, target) in update.patches.iter_mut().enumerate() {
-                            if let Some(patch) = patches
-                                .iter()
-                                .rev()
-                                .filter_map(|patches| patches[index])
-                                .find(|patch| {
-                                    target.is_some_and(|target| {
-                                        (target.zone, target.preset) == (patch.zone, patch.preset)
-                                    })
-                                })
+                            if let Some(patch) =
+                                patches.iter().rev().filter_map(|patches| patches[index]).find(
+                                    |patch| {
+                                        target.is_some_and(|target| {
+                                            (target.zone, target.preset, target.legato)
+                                                == (patch.zone, patch.preset, patch.legato)
+                                        })
+                                    },
+                                )
                             {
                                 *target = Some(patch);
                             }

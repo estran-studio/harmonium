@@ -87,13 +87,13 @@ mod parse {
     }
 }
 
-/// Identité d'une zone : deux zones utilisant le même preset restent distinctes.
+/// Identité d'installation : zone, preset et mode mono préparé hors callback.
 #[cfg(feature = "odin")]
-pub type OdinKeys = [Option<(usize, usize)>; harmonium_core::timeline::TrackId::ALL.len()];
+pub type OdinKeys = [Option<(usize, usize, bool)>; harmonium_core::timeline::TrackId::ALL.len()];
 
 #[cfg(feature = "odin")]
 pub fn patch_keys(patches: &harmonium_core::odin::OdinPatches) -> OdinKeys {
-    patches.map(|patch| patch.map(|patch| (patch.zone, patch.preset)))
+    patches.map(|patch| patch.map(|patch| (patch.zone, patch.preset, patch.legato)))
 }
 
 /// Acquittement minimal du lecteur, sans horloge : emplacement actif et fondu.
@@ -210,7 +210,9 @@ impl OdinDispatch {
         patches: harmonium_core::odin::OdinPatches,
     ) -> Result<Option<Box<OdinUpdate>>, &'static str> {
         if patches.iter().flatten().any(|patch| {
-            !patch.gain.is_finite() || patch.params.values.iter().any(|value| !value.is_finite())
+            !patch.gain.is_finite()
+                || !patch.glide.is_finite()
+                || patch.params.values.iter().any(|value| !value.is_finite())
         }) {
             return Err("paramètre de morphing Odin non fini");
         }
@@ -225,9 +227,15 @@ impl OdinDispatch {
                 return None;
             }
             let mut engine = Box::new(odin2_core::OdinEngine::new(self.sample_rate));
-            engine
-                .load_config(self.configs[patch.preset])
-                .expect("matrice validée au chargement de la banque");
+            let mut config = self.configs[patch.preset];
+            if patch.legato {
+                // Le mode n'est exposé que par load_config (hors callback).
+                // Les attaques Normal seront explicitement relâchées avant
+                // note_on ; seules les attaques Legato réutilisent la tenue.
+                config.play_mode = odin2_core::preset::PlayMode::Legato;
+                config.glide = 0.0;
+            }
+            engine.load_config(config).expect("matrice validée au chargement de la banque");
             instance_ids[index] = self.next_instance;
             self.next_instance += 1;
             Some(engine)
