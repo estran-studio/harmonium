@@ -1,6 +1,6 @@
 # Phase 018 — Grille d'accords, moteur neutre et variété procédurale
 
-**Statut** : planifiée le 2026-10-30, sous la constitution 4.4.0. Rien n'est lancé. Phases
+**Statut** : planifiée le 2026-10-30, sous la constitution 4.4.0. Vague 1 lancée le 2026-10-30. Phases
 précédentes closes ou en suivi : 016 (variété par graine, timbre par zone, glissando, zones Z1 ;
 `specs/016-variete-et-timbres/plan.md`), 017 (plugin Bevy, `specs/017-plugin-bevy/plan.md`).
 
@@ -122,10 +122,12 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 
 ## Exécution (rappel pour la reprise)
 
-- Agents : omp personnel, **jamais Claude** ; OpenRouter à sec (40 $/40 $), Muse épuisé
-  jusqu'au 2026-11-02, Antigravity : seul Gemini 3.8 Flash disponible. **Codex**
-  `openai-codex/gpt-6.1-sol` pour le code, overlay `modelRoles` tout Codex
-  (`default`, `slow`, `plan`, `smol`). Limite d'usage Codex atteinte à 5 agents simultanés.
+- Agents : omp personnel, **jamais l'abonnement Claude perso**. Depuis le 2026-10-30 (décision du
+  propriétaire) : **Codex** `openai-codex/gpt-6.1-sol` et la clé **`anthropic-api`** (crédits
+  API, `claude-opus-5-5`, `claude-sonnet-5-5`). Overlays : `/tmp/harmonium-018/codex-anthropic.yml`
+  (code : Codex, relais anthropic-api sur limite d'usage) et `anthropic-codex.yml` (recherche :
+  anthropic-api, relais Codex). OpenRouter à sec, Muse épuisé jusqu'au 2026-11-02. Limite
+  d'usage Codex atteinte à 5 agents simultanés.
 - Lancement : `orca terminal create --worktree path:<wt> --title … --command 'env -u OMP_PROFILE
   -u PI_PROFILE -u ALL_PROXY -u http_proxy -u https_proxy ~/.local/bin/omp --profile default
   --model openai-codex/gpt-6.1-sol --config <overlay> @<brief>'`. Briefs : l'agent commite sur
@@ -140,6 +142,8 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| L0, E0, E2, E9, E4 | à lancer (vague 1) | — |
+| E0, E2, E9 | lancées (vague 1) : worktree `e0-e2-e9`, Codex | — |
+| E4 | lancée (vague 1) : worktree `e4-notes-jouees`, Codex | — |
+| L0 | lancée (vague 1) : labo, worktree `l0-corpus-jazz`, anthropic-api Opus | — |
 | N1 | en attente de E0, E2 | — |
 | E1, E3, E5, E6, E7, P1, P2 | en attente | — |
