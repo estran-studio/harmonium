@@ -74,8 +74,8 @@ au-delà de six (à décider après N1, sur un besoin réel).
 
 ### N1 — Moteur neutre (détail)
 
-- Renommer le module `harmonium_core/src/trad/` en un nom générique (proposé : `compose` ;
-  **pas `gen`**, réservé en Rust 2024) et les types `Trad*` / `Reel*` (`ReelFiddleParams`,
+- Renommer le module `harmonium_core/src/trad/` en `compose` (nom fixé par la constitution
+  4.5.0 ; **pas `gen`**, réservé en Rust 2024) et les types `Trad*` / `Reel*` (`ReelFiddleParams`,
   `ReelArrangement`, `TradGenerator`, `TradChord`…) selon leur rôle musical.
 - Renommer le schéma public selon le **rôle**, pas l'instrument ni la tradition :
   `fiddle_duration`, `guitar_velocity`, `chop_intensity`, `feet_*`, `strain`… et les pistes
@@ -142,7 +142,7 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| E0, E2, E9 | lancées (vague 1) : worktree `e0-e2-e9`, Codex | — |
+| E0, E2, E9 | terminées et vérifiées (vague 1) : branche `wquintal/e0-e2-e9`, à relire et fusionner | [Compte rendu](e0-e2-e9.md) |
 | E4 | lancée (vague 1) : worktree `e4-notes-jouees`, Codex | — |
 | L0 | lancée (vague 1) : labo, worktree `l0-corpus-jazz`, anthropic-api Opus | — |
 | N1 | en attente de E0, E2 | — |
