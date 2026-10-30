@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve studio/web/resources studio/site studio/site/deploy test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
+.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve studio/web/resources studio/site studio/site/deploy bevy/demo bevy/test bevy/check test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -92,16 +92,36 @@ CLOUDFLARE_PROJECT ?= harmonium-website
 studio/site/deploy: studio/site
 	npx --yes wrangler@4 pages deploy $(SITE_DIR) --project-name $(CLOUDFLARE_PROJECT) --branch main
 
+# BEVY : natif, ressources lues directement par AssetServer, aucune copie dans le studio.
+# Les banques reprennent le checkout principal ; les presets Odin sont des fichiers plats.
+HARMONIUM_BANKS ?= $(STUDIO_BANKS)
+HARMONIUM_ODIN ?= $(HOME)/Project/bascanada/odin-presets
+
+bevy/demo:
+	HARMONIUM_BANKS="$(HARMONIUM_BANKS)" HARMONIUM_ODIN="$(HARMONIUM_ODIN)" cargo run -p harmonium_bevy --release --example demo --features demo,odin -- $(ARGS)
+
+## Séparer les compilations pour ne pas unifier Odin/GPL avec la configuration sans Odin.
+bevy/test:
+	cargo +stable test -p harmonium_bevy --no-default-features
+	cargo +stable test -p harmonium_bevy --no-default-features --features odin
+
+bevy/check:
+	cargo +stable clippy -p harmonium_bevy --no-deps --no-default-features --all-targets -- -D warnings
+	cargo +stable clippy -p harmonium_bevy --no-deps --no-default-features --features demo,odin --all-targets -- -D warnings
+	cargo check -p harmonium_bevy --no-default-features --target wasm32-unknown-unknown
+	cargo check -p harmonium_bevy --no-default-features --features odin --target wasm32-unknown-unknown
+
 # ════════════════════════════════════════════════════════════════════
 # TESTS
 # ════════════════════════════════════════════════════════════════════
 
-## Sans `odin` (configuration livrée par 1837), puis le studio (toujours avec `odin`, donc à part :
-## les options s'unifient entre paquets compilés ensemble), puis le contrat Odin du host.
+## Sans `odin` (configuration livrée par 1837), puis studio et Bevy séparément :
+## les options s'unifient entre paquets compilés ensemble ; Odin implique GPL.
 test:
-	cargo +stable test --workspace --exclude harmonium_studio
+	cargo +stable test --workspace --exclude harmonium_studio --exclude harmonium_bevy
 	cargo +stable test -p harmonium_studio
 	cargo +stable test -p harmonium --features odin --test odin_contract_tests
+	$(MAKE) bevy/test
 
 test/sheet:
 	cargo test -p harmonium_core --test music_generation_tests generate_all_music_tests -- --ignored --nocapture
@@ -132,8 +152,9 @@ fmt:
 	cargo +nightly fmt --all -- --check
 
 lint:
-	cargo +stable clippy --workspace --exclude harmonium_studio --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
+	cargo +stable clippy --workspace --exclude harmonium_studio --exclude harmonium_bevy --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
 	cargo +stable clippy -p harmonium_studio --all-targets -- -A clippy::all -W clippy::unwrap_used -W clippy::panic -W clippy::todo -W clippy::expect_used
+	$(MAKE) bevy/check
 
 audit:
 	cargo audit

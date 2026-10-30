@@ -7,10 +7,13 @@ members = [
     "harmonium_lab",
     "harmonium_determinism",
     "harmonium_studio",
+    "harmonium_bevy",
 ]
 # Le studio est toujours compilé avec `odin` (GPL) ; les options s'unifient entre les paquets
 # compilés ensemble. Un `cargo build` ou `cargo test` nu reste donc sans `odin`, comme 1837.
 # Le studio se construit et se teste par son nom (`-p harmonium_studio`, `make studio*`).
+# Le plugin Bevy reste lui aussi hors des membres par défaut : les jeux le compilent
+# explicitement, sans imposer Bevy ni l'option GPL `odin` aux outils du moteur.
 default-members = [
     "harmonium_core",
     "harmonium_audio",

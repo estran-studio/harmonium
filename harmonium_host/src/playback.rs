@@ -136,9 +136,11 @@ pub enum PlaybackCommand {
         bank_id: i32,
     },
     SetOutputMute(bool),
-    /// Listening volume `0..=1` (linear amplitude), applied to the output
-    /// buffer after rendering, with a short ramp. Recordings do not follow it.
-    SetMasterVolume(f32),
+    /// Volume linéaire, lissé après rendu ; révision acquittée dans `TransportClock`.
+    SetMasterVolume {
+        volume: f32,
+        revision: u64,
+    },
     Seek(usize),
     SeekPlayhead(usize),
     /// Evict every staged measure with `index >= bar`, handing the boxes
@@ -668,6 +670,8 @@ impl PlaybackEngine {
         }
 
         self.apply_master_volume(output, channels);
+        self.clock.output_gain = self.master_gain;
+        self.publish_clock();
 
         // Zero output when muted or before the first measure is loaded
         // (suppresses DSP-graph initialization transients)
@@ -1160,16 +1164,15 @@ impl PlaybackEngine {
     fn in_loop(&self, bar: usize) -> bool {
         self.loop_region.is_some_and(|(start, end)| bar >= start && bar <= end)
     }
-    /// Prepare a jump to `target_bar`. Must run under [`RtGuard`], before
-    /// [`Playhead::seek_to_bar`]. Re-seeking the loaded bar restarts it
-    /// (the box stays, cursors reset in `seek_to_bar`); any other jump
-    /// unloads the held box, and prefetch behind the target — outside the
-    /// loop region — is handed back. Prefetch at or past the target stays:
-    /// it is still valid (exact-index load guarantees no stale play).
-    fn evict_for_seek(&mut self, target_bar: usize) {
-        if self.playhead.current_bar() == target_bar && !self.playhead.needs_measure() {
-            // Same bar, box loaded: keep it, restart from step 0.
-            // A parked finished box (crossed mid-buffer) is already played.
+    /// Prépare un saut sous [`RtGuard`], avant [`Playhead::seek_to_bar`].
+    /// Seul le saut doux conserve la mesure chargée si elle est la cible.
+    /// Un saut dur doit recharger sa remplaçante, même au même numéro (nouvelle
+    /// graine ou nouveau profil). Les boîtes quittées sont rendues au compositeur.
+    fn evict_for_seek(&mut self, target_bar: usize, keep_current: bool) {
+        if keep_current
+            && self.playhead.current_bar() == target_bar
+            && !self.playhead.needs_measure()
+        {
             self.reclaim_finished();
         } else if let Some(measure) = self.playhead.unload_current() {
             let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
@@ -1259,9 +1262,10 @@ impl PlaybackEngine {
                         }
                     }
                 }
-                PlaybackCommand::SetMasterVolume(volume) => {
+                PlaybackCommand::SetMasterVolume { volume, revision } => {
                     if volume.is_finite() {
                         self.master_volume = volume.clamp(0.0, 1.0);
+                        self.clock.volume_revision = revision;
                     }
                 }
                 PlaybackCommand::Seek(bar) => {
@@ -1272,7 +1276,7 @@ impl PlaybackEngine {
                     }
                     {
                         let _rt = RtGuard::enter();
-                        self.evict_for_seek(target_bar);
+                        self.evict_for_seek(target_bar, false);
                     }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
@@ -1281,6 +1285,8 @@ impl PlaybackEngine {
                     // the target bar from step 0.
                     self.sample_counter = 0;
                     self.step_open = false;
+                    // L'ancienne pulse n'est plus une horloge valide après ce saut.
+                    self.clock.next_pulse_frame = 0;
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);
@@ -1290,7 +1296,7 @@ impl PlaybackEngine {
                     }
                     {
                         let _rt = RtGuard::enter();
-                        self.evict_for_seek(target_bar);
+                        self.evict_for_seek(target_bar, true);
                     }
                     self.playhead.seek_to_bar(target_bar);
                     self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);

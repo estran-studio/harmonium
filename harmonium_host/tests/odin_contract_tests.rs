@@ -572,7 +572,8 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
         }
 
         composer.set_profile(dark.clone()).unwrap();
-        while commands.push(PlaybackCommand::SetMasterVolume(1.0)).is_ok() {}
+        while commands.push(PlaybackCommand::SetMasterVolume { volume: 1.0, revision: 0 }).is_ok() {
+        }
         assert!(
             composer.send_odin(&mut commands).is_err(),
             "une file pleine refuse l'update sans le considérer comme transmis"

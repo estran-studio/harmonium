@@ -51,6 +51,11 @@ pub struct TransportClock {
     /// minus the plan's frame for `plan_instant` (anchored at the first played step).
     /// Non-zero after an underflow; published, never corrected silently.
     pub plan_gap_frames: i64,
+    /// Révision de la dernière commande de volume consommée par le callback.
+    pub volume_revision: u64,
+    /// Gain de sortie atteint, après la rampe du dernier tampon rendu.
+    /// Avec `volume_revision`, permet d'attendre un silence réellement rendu.
+    pub output_gain: f32,
 }
 
 impl TransportClock {
@@ -71,6 +76,8 @@ impl TransportClock {
             step_start_frame: 0,
             plan_instant: Flicks::ZERO,
             plan_gap_frames: 0,
+            volume_revision: 0,
+            output_gain: 1.0,
         }
     }
 }
