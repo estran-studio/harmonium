@@ -12,7 +12,14 @@ fn rule(param: OdinMorphParam) -> OdinMorphRule {
 }
 
 fn zone(preset: &str, morph: Vec<OdinMorphRule>) -> OdinZone {
-    OdinZone { when: None, preset: preset.into(), level_db: 0.0, glide_ms: 80.0, morph }
+    OdinZone {
+        when: None,
+        preset: preset.into(),
+        level_db: 0.0,
+        glide_ms: 80.0,
+        transpose: 0,
+        morph,
+    }
 }
 
 fn single(preset: &str, morph: Vec<OdinMorphRule>) -> OdinTrackSpec {

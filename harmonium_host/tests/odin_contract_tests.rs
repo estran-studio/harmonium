@@ -636,6 +636,7 @@ fn zoned_pad() -> StyleProfile {
             preset: "clair".into(),
             level_db: -3.0,
             glide_ms: 80.0,
+            transpose: 0,
             morph: Vec::new(),
         },
         default,
@@ -1046,6 +1047,19 @@ fn zero_glide_jumps_to_the_target_without_restarting_the_legato_envelope() {
 }
 
 #[test]
+fn a_zone_transpose_shifts_the_sounding_pitch_but_not_the_score() {
+    let mut profile = ascending_bass(0.0);
+    profile.odin.get_mut(&TrackId::Bass).unwrap().zones[0].transpose = 12;
+    let take = render_bass(profile, 1, Vec::new());
+    let plain = render_bass(ascending_bass(0.0), 1, Vec::new());
+    assert_eq!(bass_events(&take), bass_events(&plain), "MIDI et partition inchangés");
+    for (frame, pitch) in [(0, 60), (SAMPLE_RATE as usize, 67), (2 * SAMPLE_RATE as usize, 72)] {
+        assert_pitch(&take, after(frame, 0.5), pitch + 12);
+    }
+    assert_bass_finished(&take, 0);
+}
+
+#[test]
 fn tied_bass_keeps_its_pitch_and_envelope_across_the_barline() {
     let take = render_bass(bass_profile(vec![bass_note(0, 32, 0, true)], 2, 80.0), 2, Vec::new());
     let boundary = take.bar_frames[&2];
@@ -1075,6 +1089,7 @@ fn zoned_bass(notes: Vec<BassMotifNote>) -> StyleProfile {
             preset: "basse_zone".into(),
             level_db: 0.0,
             glide_ms: 500.0,
+            transpose: 0,
             morph: Vec::new(),
         },
     );

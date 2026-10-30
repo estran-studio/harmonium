@@ -1398,6 +1398,11 @@ impl StyleProfile {
                     "temps nominal de glissando fini : 0 (désactivé) ou 40..500 ms",
                 )?;
                 check(
+                    (-24..=24).contains(&zone.transpose),
+                    &format!("{field}.transpose"),
+                    "transposition du preset dans -24..24 demi-tons",
+                )?;
+                check(
                     zone.morph.len() <= crate::odin::ODIN_MAX_RULES,
                     &format!("{field}.morph"),
                     &format!("au plus {} règles par zone", crate::odin::ODIN_MAX_RULES),

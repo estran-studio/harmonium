@@ -247,13 +247,18 @@ operations = [
 ]
 
 # Zones de timbre Odin (Z1), priorité dans l'ordre : étrange (tension >= 0,6),
-# combat (arousal >= 0,7), menace (valence <= -0,3), puis le son par défaut,
-# validé à l'écoute et inchangé. Niveaux de zone appariés au défaut (RMS du solo
-# de piste, ±0,5 dB). Bascule à la frontière de partie suivante (T1).
+# combat (arousal >= 0,7), menace (valence <= -0,3), puis le son par défaut.
+# Basse par défaut : Growly FM Bass remontée de deux octaves (choix d'écoute du
+# propriétaire ; joué tel quel, le preset sonne deux octaves sous la note et la
+# relance devient indiscernable). Chaque preset de basse reçoit la transposition
+# qui le ramène au registre écrit (mesurée par suivi de hauteur sur la relance).
+# Niveaux de zone appariés au défaut (RMS du solo de piste, ±0,5 dB). Bascule à
+# la frontière de partie suivante (T1).
 [[odin.Bass.zones]]
 when = { tension = [0.6, 1.0] }
 preset = "Bass Low [RM]"
-level_db = -4.5
+transpose = 24
+level_db = -0.5
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
@@ -263,8 +268,9 @@ morph = [
 
 [[odin.Bass.zones]]
 when = { arousal = [0.7, 1.0] }
-preset = "Growly FM Bass [XR]"
-level_db = -2.5
+preset = "Analog Bass [tx]"
+transpose = 12
+level_db = 4.0
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
@@ -275,7 +281,8 @@ morph = [
 [[odin.Bass.zones]]
 when = { valence = [-1.0, -0.3] }
 preset = "DeepBass [Photonic]"
-level_db = 4.5
+transpose = 12
+level_db = 5.0
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },
@@ -284,7 +291,9 @@ morph = [
 ]
 
 [[odin.Bass.zones]]
-preset = "Sausage Bassener"
+preset = "Growly FM Bass [XR]"
+transpose = 24
+level_db = -3.0
 morph = [
   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
   { param = "fil1_res", tension = 0.3 },

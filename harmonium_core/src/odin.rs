@@ -15,6 +15,7 @@
 //! [[odin.Bass.zones]]
 //! preset = "basse_saturee"
 //! glide_ms = 80.0 # temps nominal pour parcourir 90 % de l'écart à 44 800 Hz
+//! transpose = 12  # demi-tons joués par le preset (registre propre au preset)
 //! morph = [
 //!   { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
 //!   { param = "fil1_res", tension = 0.35 },
@@ -155,6 +156,11 @@ pub struct OdinZone {
     /// Le coefficient natif est borné : ce n'est pas une durée linéaire.
     #[serde(default = "default_glide_ms")]
     pub glide_ms: f32,
+    /// Décalage en demi-tons des notes envoyées au preset (`-24..=24`, défaut
+    /// 0) : beaucoup de presets de basse sonnent une ou deux octaves sous la
+    /// note jouée. La partition, le MIDI et le SoundFont ne changent pas.
+    #[serde(default)]
+    pub transpose: i8,
     #[serde(default)]
     pub morph: Vec<OdinMorphRule>,
 }
@@ -277,6 +283,8 @@ pub struct OdinTrackPatch {
     pub gain: f32,
     /// Commande native de glide précalculée hors callback depuis `glide_ms`.
     pub glide: f32,
+    /// Décalage en demi-tons des notes envoyées au moteur de cette zone.
+    pub transpose: i8,
     /// Éligibilité au legato, calculée par le compositeur depuis les données
     /// musicales ; la banque initialise cette valeur à `false`.
     pub legato: bool,
@@ -350,6 +358,7 @@ impl OdinBank {
                         ((0.1_f32.powf(1.0 / (zone.glide_ms * 44.8)) - 0.9985) / 0.0014)
                             .clamp(0.01, 1.0)
                     },
+                    transpose: zone.transpose,
                     legato: false,
                     params: preset.base.morphed(&zone.morph, emotions),
                 });

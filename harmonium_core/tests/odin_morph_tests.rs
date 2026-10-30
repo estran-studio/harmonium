@@ -50,7 +50,7 @@ fn zone(
     level_db: f32,
     morph: Vec<OdinMorphRule>,
 ) -> OdinZone {
-    OdinZone { when, preset: preset.into(), level_db, glide_ms: 80.0, morph }
+    OdinZone { when, preset: preset.into(), level_db, glide_ms: 80.0, transpose: 0, morph }
 }
 
 fn tension_spec() -> OdinTrackSpec {

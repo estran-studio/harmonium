@@ -55,7 +55,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`feet.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
-| `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
+| `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms`, `transpose` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
@@ -236,6 +236,15 @@ morph = [
   partager un preset et différer par leur niveau ou leur morphing.
   `isaac_burning` réunit A par défaut (Bass Crusher [RM] + Haunt [RM]) et B
   sous tension (Bass Low [RM] −5 dB + Moonshade −7 dB).
+- **Registre du preset.** `transpose` (demi-tons, `-24..24`, défaut 0) décale
+  seulement les notes envoyées au preset de la zone ; partition, MIDI et
+  SoundFont ne changent pas. Beaucoup de presets de basse d'usine sonnent une
+  ou deux octaves sous la note jouée (Growly FM Bass, Bass Low, Sausage
+  Bassener, BS PWM Bass : deux ; DeepBass, Analog Bass, Bass Simple PM : une,
+  mesuré par suivi de hauteur sur la relance de `nt_desert`) : sans
+  correction, une ligne écrite en D2–G#2 tombe sous 50 Hz et ses notes ne se
+  distinguent plus. La touche jouée est figée à l'attaque : un morphing ou une
+  bascule de zone ne change pas la fin d'une note en cours.
 - **Legato mono et glissando (G2).** Une note `Legato` enchaînant une autre
   hauteur tenue réutilise les enveloppes Odin, sans nouvelle attaque. La
   première note, une note après silence, une répétition de même hauteur et

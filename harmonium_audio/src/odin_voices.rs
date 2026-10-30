@@ -42,6 +42,9 @@ struct OdinInstance {
     engine: Box<OdinEngine>,
     patch: OdinTrackPatch,
     velocity: [u8; 128],
+    /// Touche réellement jouée par le moteur pour chaque note de la partition
+    /// (transposition de la zone figée à l'attaque : un morphing ne la change pas).
+    engine_key: [u8; 128],
     mono_note: Option<u8>,
     diagnostic: OdinInstanceDiagnostic,
 }
@@ -75,7 +78,9 @@ impl OdinInstance {
         if self.velocity[usize::from(note)] != 0 {
             self.note_off(note);
         }
-        self.engine.note_on(note, velocity);
+        let key = (i16::from(note) + i16::from(self.patch.transpose)).clamp(0, 127) as u8;
+        self.engine.note_on(key, velocity);
+        self.engine_key[usize::from(note)] = key;
         self.velocity[usize::from(note)] = velocity;
         self.diagnostic.note_on += 1;
         self.diagnostic.active_notes += 1;
@@ -94,7 +99,7 @@ impl OdinInstance {
         if self.velocity[usize::from(note)] == 0 {
             return;
         }
-        self.engine.note_off(note);
+        self.engine.note_off(self.engine_key[usize::from(note)]);
         self.velocity[usize::from(note)] = 0;
         self.diagnostic.note_off += 1;
         self.diagnostic.active_notes -= 1;
@@ -247,6 +252,7 @@ impl OdinMixer {
                         engine: update.engines[index].take().expect("instance Odin préparée"),
                         patch,
                         velocity: [0; 128],
+                        engine_key: [0; 128],
                         mono_note: None,
                         diagnostic: OdinInstanceDiagnostic {
                             id: update.instance_ids[index],
