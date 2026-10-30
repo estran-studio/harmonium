@@ -2,7 +2,9 @@ use std::sync::{Arc, Mutex};
 
 // Decoupled architecture: MusicComposer (main thread) + PlaybackEngine (audio thread)
 pub mod composer;
+pub mod live_notes;
 pub mod playback;
+pub use live_notes::{LiveNoteError, LiveNoteSender};
 
 // SoundFont resolution and fallback
 pub mod soundfont;

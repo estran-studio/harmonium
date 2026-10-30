@@ -2,12 +2,10 @@
 //! synthé réel, commandes, rapports et début/fin d'enregistrement.
 //!
 //! `PlaybackEngine::process_buffer` s'exécute entièrement sous la garde du
-//! moteur : une allocation, une libération ou un verrou pris par le callback
-//! panique ici (profil de débogage, allocateur de contrôle de `harmonium`).
+//! moteur : une allocation ou une libération dans le callback panique ici
+//! (profil de débogage). L'allocateur ne détecte pas les verrous ; le callback
+//! communique par SPSC et ne prend pas le verrou de publication des fichiers.
 //! Le thread d'enregistrement alloue librement : le test attend ses fichiers.
-//!
-//! Exception documentée, hors de ce test : le `Vec` que `oxisynth` alloue à
-//! chaque NoteOn (`allow_allocation` dans `harmonium_audio`).
 
 use std::{
     sync::{Arc, Mutex, atomic::AtomicU64},
