@@ -631,6 +631,9 @@ impl TradGenerator {
         position: &mut TunePosition,
         rng: &mut dyn RngCore,
     ) {
+        if self.profile.fixed_tonality.is_some() {
+            return;
+        }
         let dynamics = &self.tuning.profile.dynamics;
         let Some(tune) = self.tunes.get_mut(&position.tune_index) else { return };
         let tune = Arc::make_mut(tune);
