@@ -29,12 +29,21 @@ bascule A → B d'`isaac_burning` jugée « très bien ».
   → remplacé par PAD Open. Le lead (`Melody`) de `nt_desert` reste SoundFont.
 - `isaac_downpour` « étrange » : Bass Crusher et Eerie Pad restaient 2–3 dB sous le défaut même
   à +12 dB (notes de deux mesures, attaque douce) → BS PWM Bass XY et Haunt.
+- **Écoute du propriétaire (2026-10-30)** : Isaac validé ; `nt_desert` « sonne comme du caca »,
+  seule la scie GM 81 rend les notes de la relance distinctes. Cause mesurée par suivi de hauteur
+  sur la relance : les presets de basse d'usine sonnent une ou deux octaves sous la note
+  (Growly FM Bass, Bass Low, Sausage Bassener : deux ; DeepBass, Analog Bass : une) → 0 à 38 %
+  de notes reconnues contre 96 % pour la scie. Ajout de `transpose` par zone (moteur, données) ;
+  le propriétaire choisit **Growly FM Bass remontée de deux octaves** comme défaut de
+  `nt_desert` (90 % de notes reconnues). Zones de basse de `nt_desert` refaites au bon registre :
+  étrange Bass Low +24, combat Analog Bass +12, menace DeepBass +12 ; nappes inchangées.
 
 | Profil | Piste | Zone | Preset | `level_db` |
 |---|---|---|---|---:|
-| `nt_desert` | Bass | étrange | Bass Low [RM] | −4,5 |
-| `nt_desert` | Bass | combat | Growly FM Bass [XR] | −2,5 |
-| `nt_desert` | Bass | menace | DeepBass [Photonic] | +4,5 |
+| `nt_desert` | Bass | étrange | Bass Low [RM], `transpose = 24` | −0,5 |
+| `nt_desert` | Bass | combat | Analog Bass [tx], `transpose = 12` | +4,0 |
+| `nt_desert` | Bass | menace | DeepBass [Photonic], `transpose = 12` | +5,0 |
+| `nt_desert` | Bass | défaut | Growly FM Bass [XR], `transpose = 24` | −3,0 |
 | `nt_desert` | Chords | étrange | Moonshade | −5,5 |
 | `nt_desert` | Chords | combat | PAD Open | −2,5 |
 | `nt_desert` | Chords | menace | Alone in the Subway | −0,5 |
@@ -76,7 +85,7 @@ bascule A → B d'`isaac_burning` jugée « très bien ».
 
 | Rendu | menace | combat | étrange | retour au défaut | crête max |
 |---|---|---|---|---|---:|
-| `nuclear_throne/ecoute_g7/z1_nt_desert_zones.wav` | 0:13,7 | 0:54,2 | 1:19,4 | 1:46,3 | −2,2 dBFS |
+| `nuclear_throne/ecoute_g7/z1_nt_desert_zones.wav` (basse au bon registre) | 0:13,7 | 0:54,2 | 1:19,4 | 1:46,3 | −0,9 dBFS |
 | `isaac/ecoute/z1_isaac_basement_zones.wav` | 0:27,3 | 0:54,2 | 1:19,4 | 1:46,3 | −5,4 dBFS |
 | `isaac/ecoute/z1_isaac_cellar_zones.wav` | 0:27,3 | 0:54,2 | 1:19,4 | 1:46,3 | −5,6 dBFS |
 | `isaac/ecoute/z1_isaac_burning_zones.wav` | 0:27,3 | 0:54,2 | 1:19,4 | 1:46,3 | −3,1 dBFS |
