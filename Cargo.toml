@@ -9,6 +9,8 @@ members = [
     "harmonium_studio",
     "harmonium_bevy",
 ]
+# Dépendance tierce vendue, pas un paquet du moteur ni une cible des tests workspace.
+exclude = ["vendor/oxisynth"]
 # Le studio est toujours compilé avec `odin` (GPL) ; les options s'unifient entre les paquets
 # compilés ensemble. Un `cargo build` ou `cargo test` nu reste donc sans `odin`, comme 1837.
 # Le studio se construit et se teste par son nom (`-p harmonium_studio`, `make studio*`).

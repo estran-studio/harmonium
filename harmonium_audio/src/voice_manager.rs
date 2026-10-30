@@ -315,11 +315,6 @@ impl VoiceManager {
                 // CC mono/portamento sans les interpréter. Odin traite le
                 // glissando dans son propre mixeur.
                 let midi_ch = self.midi_channel_map[channel as usize];
-                // Dette tierce assumée et circonscrite : `oxisynth` alloue puis libère
-                // un `Vec` de 64 pointeurs à chaque NoteOn (`core/midi.rs`, `inner_noteon`).
-                // Seul cet appel échappe à la garde ; rendu, NoteOff, CC et tout le code
-                // de ce dépôt restent sous `RTCheckAllocator`.
-                let _allowed = crate::realtime::rt_check::allow_allocation();
                 let _ = self.synth.send_event(oxisynth::MidiEvent::NoteOn {
                     channel: midi_ch,
                     key: note,
