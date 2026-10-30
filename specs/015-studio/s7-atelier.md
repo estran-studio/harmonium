@@ -79,8 +79,8 @@ distribué, brouillon copié, erreur au bout de `cells.toml`, « Go to line ». 
 2. « Profile folder » : un chemin, Save ; `harmonium-cli --profile <chemin>` le joue.
 3. Web (`make studio/web/serve`) : mêmes gestes ; « Download .zip », puis « Upload… » du `.zip` ; recharger la
    page : le brouillon est toujours là.
-4. Firefox et Safari : le choix de fichiers part d'une image egui qui suit le clic (activation transitoire du
-   geste), pas du gestionnaire du clic lui-même ; mesuré seulement dans Chromium.
+4. Firefox et Safari : essayés par le propriétaire (2026-10-29), atelier et site sans problème (le choix de
+   fichiers part d'une image egui qui suit le clic, et passe dans les trois navigateurs).
 
 ## Limites
 

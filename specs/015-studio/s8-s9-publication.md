@@ -76,13 +76,12 @@ plus basse (à écouter) ; téléchargement des ressources en parallèle du wasm
 
 ## À faire par le propriétaire
 
-1. **Jeton Cloudflare pour la CI** : tableau de bord Cloudflare → *My Profile → API Tokens → Create Token*,
-   modèle « Edit Cloudflare Workers » ou permission *Account → Cloudflare Pages → Edit* sur le compte ; puis
-   `gh secret set CLOUDFLARE_API_TOKEN`. Ensuite chaque push sur `main` met le site à jour.
+1. ~~Jeton Cloudflare pour la CI~~ : fait le 2026-10-30 (`CLOUDFLARE_API_TOKEN`) ; déploiement par la CI vérifié
+   (run `40914231559` relancé, production `c0408af6`). Chaque push sur `main` met le site à jour.
 2. **Domaine** (facultatif) : `harmonium.estran.studio` répond 522 (enregistrement DNS vers une origine morte) ;
    le rattacher au projet `harmonium-website` (*Custom domains*) donnerait `https://harmonium.estran.studio/studio/`.
 3. **Écouter** sur le site en ligne : `reel_quebecois` (banque SF3), `nt_desert` et les styles d'Isaac (Odin).
-4. **Firefox et Safari** : chargement, cache (visite suivante sans requête de banque), lecture 5 min.
+4. ~~Firefox et Safari~~ : site et atelier essayés par le propriétaire (2026-10-29), sans problème.
 5. **Seuil du premier chargement** : choisir une des pistes ci-dessus, ou relever le seuil.
 6. L'ancien site du projet `harmonium-website` (dépôt privé `harmonium_website`, « Harmonium Training ») est
    remplacé par cette page d'accueil ; ses déploiements restent dans l'historique du projet Cloudflare.
