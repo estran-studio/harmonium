@@ -22,16 +22,24 @@ struct PulseLevel(f32);
 #[derive(Resource)]
 struct Smoke(Option<Duration>);
 
+/// Dossier lu dans une variable d'environnement : `~` développé (une variable passée à
+/// `make VAR=~/…` arrive non développée sous zsh), chemin absolu, erreur qui nomme le dossier.
+fn folder(var: &str, default: PathBuf) -> Result<PathBuf, Box<dyn Error>> {
+    let raw = env::var_os(var).map_or(default, PathBuf::from);
+    let home = PathBuf::from(env::var_os("HOME").unwrap_or_default());
+    let path = match raw.strip_prefix("~") {
+        Ok(rest) => home.join(rest),
+        Err(_) => raw,
+    };
+    path.canonicalize().map_err(|error| {
+        format!("{var} : dossier introuvable « {} » ({error})", path.display()).into()
+    })
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
-    let banks = env::var_os("HARMONIUM_BANKS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("assets"));
-    let presets = env::var_os("HARMONIUM_ODIN").map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from(env::var_os("HOME").unwrap_or_default())
-            .join("Project/bascanada/odin-presets")
-    });
-    let banks = banks.canonicalize()?;
-    let presets = presets.canonicalize()?;
+    let home = PathBuf::from(env::var_os("HOME").unwrap_or_default());
+    let banks = folder("HARMONIUM_BANKS", PathBuf::from("assets"))?;
+    let presets = folder("HARMONIUM_ODIN", home.join("Project/bascanada/odin-presets"))?;
     let mut odin_presets = Vec::new();
     for entry in std::fs::read_dir(&presets)? {
         let entry = entry?;
