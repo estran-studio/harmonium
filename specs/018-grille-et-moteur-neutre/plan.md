@@ -1,6 +1,6 @@
 # Phase 018 — Grille d'accords, moteur neutre et variété procédurale
 
-**Statut** : planifiée le 2026-10-30, sous la constitution 4.4.0. Vague 1 lancée le 2026-10-30. Phases
+**Statut** : planifiée le 2026-10-30, sous la constitution 4.5.0. Vague 1 lancée le 2026-10-30. Phases
 précédentes closes ou en suivi : 016 (variété par graine, timbre par zone, glissando, zones Z1 ;
 `specs/016-variete-et-timbres/plan.md`), 017 (plugin Bevy, `specs/017-plugin-bevy/plan.md`).
 
