@@ -44,9 +44,21 @@ Trois besoins, validés par le propriétaire le 2026-10-30 (« oui, oui, oui »)
   passe par cette même file (studio, jeux). Un seul mécanisme, deux points d'entrée. Raison :
   la file seule tient la latence (≤ 1 buffer) dans les deux cas ; le risque est le **verrou** :
   `LiveHost::apply` demande `&mut self`, un thread MIDI attendrait pendant que `pump` compose
-  (durée non mesurée, à mesurer dans E4).
+  (mesuré dans E4 : `pump()` jusqu'à 0,26 ms en release, 8,5 ms en debug).
 - **F3 — Corpus jazz/blues (E7)** : le propriétaire a autorisé la recherche ; **aucune licence
   n'est affirmée sans vérification**. Tâche L0 ci-dessous ; le propriétaire choisit.
+  **Choix du propriétaire (2026-10-31)** sur [`corpus/sources-jazz.md`](../../../harmonium_lab/corpus/sources-jazz.md)
+  (labo) : combinaison 1 pour le profil distribué (WJazzD, statistiques par temps, ODbL ;
+  Groove MIDI Dataset, batterie, CC BY 4.0 ; Jazz Trio Database, timing, MIT ; grilles du
+  domaine public), mentions ODbL §4.3, CC BY et MIT portées par le profil ; sources NC/SA
+  (iRb, PiJAMA, JHT, JAAH, ancien corpus McKenzie) admises **au labo seulement**, jamais dans
+  un profil (champ licence obligatoire au manifeste) ; nom du profil E7 : **`wjazzd_swing`** ;
+  grilles du domaine public vérifiées aux **États-Unis et au Canada**. Pas de source
+  distribuable de voicings : E5 repose sur des règles codées, validées au labo et à l'écoute.
+- **Oxisynth (E4, propriétaire, 2026-10-31)** : NoteOn sans allocation par un fork
+  [`estran-studio/OxiSynth`](https://github.com/estran-studio/OxiSynth/tree/harmonium/rt-noteon)
+  (branche `harmonium/rt-noteon`, révision épinglée dans `harmonium_audio/Cargo.toml`), pas de
+  copie dans `vendor/`. Rendus identiques octet pour octet à l'ancienne dépendance.
 - **Moteur neutre** : approuvé. Mêmes notes, octet pour octet ; renommage sans alias (principe IV).
 - **Procédural** : approuvé à l'essai, **en option dans les données** ; les profils actuels ne
   changent pas tant qu'une variante n'est pas prouvée meilleure (mesure + écoute).
@@ -142,8 +154,8 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| E0, E2, E9 | terminées et vérifiées (vague 1) : branche `wquintal/e0-e2-e9`, à relire et fusionner | [Compte rendu](e0-e2-e9.md) |
-| E4 | lancée (vague 1) : worktree `e4-notes-jouees`, Codex | — |
-| L0 | lancée (vague 1) : labo, worktree `l0-corpus-jazz`, anthropic-api Opus | — |
-| N1 | en attente de E0, E2 | — |
+| E0, E2, E9 | fusionnées (`d5e5db8`), suite workspace verte | [Compte rendu](e0-e2-e9.md) |
+| E4 | fusionnée (`14eb55a`), oxisynth du fork estran-studio | [Compte rendu](e4-notes-jouees.md) |
+| L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
+| N1 | lancée (vague 2) : worktree `n1-moteur-neutre`, Codex | — |
 | E1, E3, E5, E6, E7, P1, P2 | en attente | — |
