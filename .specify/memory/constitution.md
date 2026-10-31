@@ -10,6 +10,11 @@ suivent (clones de Nuclear Throne et de The Binding of Isaac). Le beat est
 exposé au gameplay ; quatre émotions (arousal, valence, density, tension)
 pilotent la musique, et chaque jeu traduit ses propres signaux en émotions.
 
+Des clients externes, par exemple `harmonium_training` (hors dépôt),
+consomment aussi l'API publique de `harmonium_host`. Ils peuvent piloter le
+moteur par une grille d'accords et des notes jouées, sans passer par les
+émotions. Aucun code de client externe n'entre dans ce dépôt.
+
 Ce document est court à dessein. Il fixe ce qui ne se renégocie pas à chaque
 feature. Le reste se décide en écoutant.
 
@@ -24,8 +29,9 @@ fort, prochaine pulse en temps mur). Tout l'intérieur — générateur,
 harmonisation, banques de cellules, playhead — est détail d'implémentation.
 
 Un changement qui altère le snapshot pour un même seed + mêmes entrées est
-une rupture : bump de version de `TuningParams`, goldens régénérés
-explicitement dans le même commit.
+une rupture : bump de `TUNING_VERSION` dans `TuningParams`, goldens régénérés
+explicitement dans le même commit. Le contrat public consommé par les clients
+externes suit les mêmes règles de rupture.
 
 ### II. Déterminisme
 
@@ -59,6 +65,11 @@ dans `TuningParams` / `StyleProfile` (TOML), jamais en constante inline ni en
 `match` sur un nom de style. Ajouter un style ne demande que des données ; un
 algorithme manquant (ex. appel-réponse, bourdon, riff en ostinato) s'ajoute
 une fois, en code générique, réutilisable par tous les styles.
+Le générateur neutre se nomme `compose` (`gen` est réservé en Rust 2024).
+Aucun vocabulaire propre à une tradition ne doit nommer ses modules, types,
+pistes ou champs, ni apparaître dans le schéma public : les noms de
+tradition vivent uniquement dans les données des profils. La migration du
+générateur actuel relève de N1 (phase 018).
 `harmonium_lab` mesure la distance entre le généré et un corpus de référence
 par style ; les décisions de style s'appuient sur cette mesure et sur
 l'écoute, dans cet ordre.
@@ -101,7 +112,7 @@ son style d'origine est un défaut.
   (callback cpal), `LiveHost` (l'hôte vivant : exécute les `EngineCommand`,
   génération pilotée par l'appelant via `pump`), module OSC,
   `create_offline_engine`. Aucun binaire : le REPL de `harmonium_cli`, le
-  studio et le plugin Bevy sont ses seuls hôtes.
+  studio, le plugin Bevy et les clients externes en sont les hôtes.
 - `harmonium_cli` — REPL d'écoute et de test.
 - `harmonium_lab` — ingestion de corpus, métriques, tuning assisté.
 - `harmonium_determinism` — harnais : mêmes snapshots en natif et en wasm.
@@ -110,11 +121,12 @@ son style d'origine est un défaut.
 - `harmonium_bevy` — plugin Bevy mince sur `LiveHost`, ajouté par chaque jeu,
   avec son application de test locale ; aucune logique musicale propre.
 
-Un seul frontend, `harmonium_studio`. Il ne lit que le contrat (principe I)
-et l'API publique du host, et exécute les commandes par le même chemin que
-le REPL, qui garde les mêmes capacités. L'intégration Bevy est
-`harmonium_bevy` : chaque jeu ajoute le plugin, fournit ses ressources
-(banques, presets) et traduit ses propres signaux en émotions.
+Un seul frontend **dans le dépôt**, `harmonium_studio`. Il ne lit que le
+contrat (principe I) et l'API publique du host, et exécute les commandes par
+le même chemin que le REPL, qui garde les mêmes capacités. Un client externe
+n'est pas un frontend du dépôt. L'intégration Bevy est `harmonium_bevy` :
+chaque jeu ajoute le plugin, fournit ses ressources (banques, presets) et
+traduit ses propres signaux en émotions.
 
 ## Contraintes techniques
 
@@ -148,11 +160,8 @@ fichiers touchés, critère d'acceptation observable. Pas de template, pas de
 spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
-**Version** : 4.4.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-29
-(moteur tous styles et multi-jeux, fusion en données — principe VIII ;
-sources sous droits analysables, seuls les dérivés entrent au dépôt —
-principe VII ; un seul frontend, `harmonium_studio`, vitrine web et atelier
-natif ; synthé Odin en option GPL par piste, licence MIT OR Apache-2.0 ;
-le moteur compile pour `wasm32-unknown-unknown` et y produit les mêmes
-snapshots, vérifié en CI ; tirages d'entiers en largeur fixe ; intégration
-Bevy dans `harmonium_bevy`, plugin mince sur `LiveHost`)
+**Version** : 4.5.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-30
+(clients externes hors dépôt sur l'API publique de `harmonium_host`, pilotage
+par grille d'accords et notes jouées, mêmes règles de rupture — principe I ;
+studio seul frontend du dépôt ; générateur neutre `compose`, vocabulaire de
+tradition uniquement dans les données des profils — principe V, migration N1)

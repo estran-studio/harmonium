@@ -17,7 +17,7 @@ const BUFFER_SIZE: usize = 1024;
 /// Style-specific rendering parameters beyond TuningParams.
 /// These control the emotional/dynamic state of the engine.
 pub struct RenderConfig {
-    /// BPM (70-180)
+    /// BPM (40 à 300)
     pub bpm: f32,
     /// Density (0.0-1.0) — how many notes per beat
     pub density: f32,

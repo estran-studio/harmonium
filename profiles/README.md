@@ -49,6 +49,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
 | `[files]` | `cells`, `feet`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
+| `[fixed_tonality]` | Optionnel : `key` (classe MIDI 0..11, do = 0) et `mode` (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) obligatoires. Verrouille la tonalité de tous les airs : priorité sur `melody.key_modes`, `dynamics.color`, pondération du set et bascules parallèles. Absent : comportement émotionnel inchangé. Voir « Tonalité verrouillée ». |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "Heel", "Toe"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "trad_functional"`, `"jazz_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
@@ -58,13 +59,41 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms`, `transpose` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
-| `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
+| `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Sans `fixed_tonality`, chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois par piste et EQ stéréo ; schéma et bornes ci-dessous. |
 | `[set]` (`set.toml`) | Longueur, tonalités, raccords, clôture, rampe par air et mémoire signature ; section « Forme longue (set) » ci-dessous. |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
 d'harmonie non implémenté est refusé : aucune substitution silencieuse.
+
+## Tonalité verrouillée
+
+Pour un accompagnement piloté par une grille relative à la tonique, ajouter au
+`profile.toml` (ou au profil autonome) :
+
+```toml
+[fixed_tonality]
+key = 5
+mode = "ionian"
+```
+
+Tous les airs restent ici en fa ionien, même quand la valence change. Le verrou ne
+demande pas de mélodie active et ne remplace pas les autres sections du profil.
+Ses deux champs sont requis ; une tonique hors de 0..11, un mode inconnu ou un
+champ supplémentaire sont refusés. En harmonie `trad_functional`, les candidats
+d'accords du mode fixé restent requis ; aucune bascule parallèle de ce mode n'est
+nécessaire. Les banques et courbes déclarées restent validées.
+
+Le verrou fixe la **tonalité**, pas toutes les réactions émotionnelles : registre,
+vélocités, timbres et autres axes restent actifs. Une grille `loop` conserve ainsi
+ses accords relatifs, chromatiques ou par degrés ; le verrou ne transforme pas
+une grammaire `jazz_functional` sensible à la valence en grille écrite.
+
+Pour transposer, reconstruire le profil avec une autre valeur de
+`fixed_tonality.key` et l'envoyer par `EngineCommand::SetStyleProfile` : le host
+l'applique à la prochaine mesure, sans seek ni réinitialisation de la graine.
+Aucune nouvelle commande ; aucune modification des profils distribués.
 
 ## Batterie par graine
 
@@ -1006,7 +1035,8 @@ Mesures reproductibles : `specs/012-vie-realisme/measure_ornaments.py` (`corpus`
 
 Un **set** est une suite d'airs d'un même profil (même mètre, même forme), jouée sans pause de
 session. `set.toml`, référencé par `[files] set = "set.toml"`, règle la longueur du set et le
-choix de la tonalité d'un air au suivant. Le jeu garde la priorité : la couleur (tonalité, mode)
+choix de la tonalité d'un air au suivant. Avec `fixed_tonality`, tous les airs gardent la
+tonique et le mode imposés. Sinon, le jeu garde la priorité : la couleur (tonalité, mode)
 reste décidée par la valence ; le set ne fait que **pondérer** des candidats que la valence
 autorise (`melody.key_modes` à `neutral_valence`, `[[color]]` évalué à la valence ailleurs).
 

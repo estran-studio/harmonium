@@ -12,7 +12,7 @@ use crate::events::RecordFormat;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum EngineCommand {
     // === GLOBAL ===
-    /// Set BPM (70-180). Sets a user override that persists through emotion changes.
+    /// Fixe le BPM (40 à 300). La surcharge persiste lors des changements d'émotions.
     SetBpm(f32),
 
     /// Clear the user's BPM override, returning to emotion-mapped BPM

@@ -25,7 +25,7 @@ pub fn print_help() {
     print_section(
         "GLOBAL PARAMETERS",
         &[
-            ("set bpm <70-180>", "Set BPM (overrides emotion-mapped BPM)"),
+            ("set bpm <40-300>", "Set BPM (overrides emotion-mapped BPM)"),
             ("set volume <0-1>", "Set master volume"),
             ("set time <n/d>", "Set time signature (e.g., 4/4)"),
             ("set rhythm|harmony|melody <on|off>", "Enable or disable a generation module"),
@@ -137,7 +137,7 @@ pub fn print_command_help(command: &str) {
             println!("  set <parameter> <value>");
             println!();
             println!("{}", "AVAILABLE PARAMETERS:".bold());
-            println!("  {}  - BPM (70-180)", "bpm".green());
+            println!("  {}  - BPM (40-300)", "bpm".green());
             println!("  {}  - Master volume (0-1)", "volume".green());
             println!("  {}  - Time signature (e.g., 4/4)", "time".green());
             println!("  {}  - Module on/off: set rhythm|harmony|melody on|off", "rhythm".green());

@@ -421,10 +421,13 @@ pub struct KeyCandidate {
     pub weight: f64,
 }
 
-/// Candidats de tonalité à `valence` : `melody.key_modes` à `neutral_valence`, `[[color]]`
-/// évalué à la valence ailleurs. Seule source des candidats : le jeu garde la couleur.
+/// Candidats de tonalité : verrou du profil s'il est présent ; sinon `melody.key_modes`
+/// à `neutral_valence`, `[[color]]` évalué à la valence ailleurs.
 #[must_use]
 pub fn candidates(profile: &StyleProfile, valence: f32) -> Vec<KeyCandidate> {
+    if let Some(fixed) = profile.fixed_tonality {
+        return vec![KeyCandidate { key: fixed.key, mode: fixed.mode, weight: 1.0 }];
+    }
     let dynamics = &profile.dynamics;
     if valence == dynamics.neutral_valence {
         profile

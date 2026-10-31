@@ -519,11 +519,23 @@ impl ProfileInstruments {
     }
 }
 
+/// Tonique et mode imposés à tous les airs, indépendamment de la valence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FixedTonality {
+    /// Classe de hauteur MIDI, de 0 (do) à 11 (si).
+    pub key: u8,
+    pub mode: Mode,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StyleProfile {
     pub meta: ProfileMeta,
     pub meter: ProfileMeter,
+    /// Présent : remplace les distributions de tonalité et désactive les bascules de mode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fixed_tonality: Option<FixedTonality>,
     pub form: ProfileForm,
     pub melody: ProfileMelody,
     pub harmony: ProfileHarmony,
@@ -799,6 +811,9 @@ impl StyleProfile {
         Ok(profile)
     }
     pub fn validate(&self) -> Result<(), ProfileError> {
+        if let Some(fixed) = self.fixed_tonality {
+            check(fixed.key < 12, "fixed_tonality.key", "attendu 0..11")?;
+        }
         self.mix.validate()?;
         self.performance.validate(self.meter.steps_per_bar)?;
         self.ornaments.validate()?;
@@ -1222,36 +1237,37 @@ impl StyleProfile {
                 "tonique I et dominante V requises",
             )?;
         }
-        // Modes atteignables : `key_modes` (valence neutre) et `color`
-        // (ailleurs), fermés par les bascules parallèles dans les deux sens.
-        // Eux seuls exigent accords candidats et ligne de bascule : un profil
-        // qui n'emploie ni le phrygien ni le mineur harmonique reste valide
-        // sans eux, et leurs notes ne changent pas.
+        // Avec verrou, seul le mode fixé est atteignable. Sans verrou, conserver
+        // la fermeture des distributions par les bascules parallèles.
         let mut reachable = std::collections::HashSet::new();
-        reachable.extend(self.melody.key_modes.iter().map(|k| k.mode));
-        reachable.extend(self.dynamics.color.iter().map(|c| c.mode));
-        loop {
-            let mut fringe = Vec::new();
-            for row in &self.dynamics.parallel_modes {
-                if reachable.contains(&row.bright) {
-                    fringe.push(row.dark);
+        if let Some(fixed) = self.fixed_tonality {
+            reachable.insert(fixed.mode);
+        } else {
+            reachable.extend(self.melody.key_modes.iter().map(|k| k.mode));
+            reachable.extend(self.dynamics.color.iter().map(|c| c.mode));
+            loop {
+                let mut fringe = Vec::new();
+                for row in &self.dynamics.parallel_modes {
+                    if reachable.contains(&row.bright) {
+                        fringe.push(row.dark);
+                    }
+                    if reachable.contains(&row.dark) {
+                        fringe.push(row.bright);
+                    }
                 }
-                if reachable.contains(&row.dark) {
-                    fringe.push(row.bright);
+                if fringe.iter().all(|mode| reachable.contains(mode)) {
+                    break;
                 }
+                reachable.extend(fringe);
             }
-            if fringe.iter().all(|mode| reachable.contains(mode)) {
-                break;
-            }
-            reachable.extend(fringe);
         }
         check(
             self.harmony.model != "trad_functional"
                 || reachable.iter().all(|mode| modes.contains(mode)),
             "harmony.candidates",
-            "accords requis pour chaque mode atteignable (key_modes, color, parallel_modes)",
+            "accords requis pour chaque mode atteignable (fixed_tonality ou key_modes, color, parallel_modes)",
         )?;
-        for mode in &reachable {
+        for mode in reachable.iter().filter(|_| self.fixed_tonality.is_none()) {
             if mode.is_minor() {
                 check(
                     self.dynamics.parallel_modes.iter().any(|c| c.dark == *mode),
