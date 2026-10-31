@@ -161,7 +161,14 @@ spec avant d'avoir entendu. Les décisions de style se figent en ADR dans le
 plan de la phase *après* validation à l'oreille et au lab.
 
 **Version** : 4.5.0 | **Ratifiée** : 2026-10-18 | **Amendée** : 2026-10-30
-(clients externes hors dépôt sur l'API publique de `harmonium_host`, pilotage
+(moteur tous styles et multi-jeux, fusion en données — principe VIII ;
+sources sous droits analysables, seuls les dérivés entrent au dépôt —
+principe VII ; un seul frontend dans le dépôt, `harmonium_studio`, vitrine
+web et atelier natif ; synthé Odin en option GPL par piste, licence MIT OR
+Apache-2.0 ; le moteur compile pour `wasm32-unknown-unknown` et y produit les
+mêmes snapshots, vérifié en CI ; tirages d'entiers en largeur fixe ;
+intégration Bevy dans `harmonium_bevy`, plugin mince sur `LiveHost` ;
+clients externes hors dépôt sur l'API publique de `harmonium_host`, pilotés
 par grille d'accords et notes jouées, mêmes règles de rupture — principe I ;
-studio seul frontend du dépôt ; générateur neutre `compose`, vocabulaire de
-tradition uniquement dans les données des profils — principe V, migration N1)
+générateur neutre `compose`, vocabulaire de tradition uniquement dans les
+données des profils — principe V, migration N1 de la phase 018)
