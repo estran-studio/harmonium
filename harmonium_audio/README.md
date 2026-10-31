@@ -4,7 +4,7 @@
 
 ## Architecture
 
-Everything implements the **`AudioRenderer`** trait (`handle_event` / `process_buffer`). **`AudioProcessor`** wraps a renderer and exposes event + buffer processing.
+Les voies générées implémentent **`AudioRenderer`** (`handle_event` / `process_buffer`). **`AudioProcessor`** enveloppe un renderer ; la voie jouée indépendante utilise directement `PlayedNotes::handle_event` et `render_add`.
 
 ```mermaid
 graph TD
@@ -78,11 +78,43 @@ de test, distingue leurs presets et vérifie que le PCM du programme 0 /
 banque 0 est identique à celui de la banque GM seule, tandis que Heel/Toe
 conservent le preset dédié en banque 1.
 
+### `played_notes`
+
+`PlayedNotes::new(sf2_bytes, sample_rate)` charge un synthé SoundFont distinct,
+hors callback : les notes jouées ne partagent ni voix, ni programmes, ni
+contrôleurs avec les pistes générées. Les seize canaux MIDI, **y compris 9**,
+sont mélodiques ; le programme global démarre à 0 et `SetProgram` le change
+pour les notes suivantes. La voie reste SoundFont même avec l'option `odin`.
+
+`PlayedNoteEvent` est `Copy` : `NoteOn`, `NoteOff`, `AllNotesOff` et
+`SetProgram`. Les données MIDI hors plage sont ignorées sans panique ;
+`NoteOn` de vélocité 0 libère la note. `NoteOff` respecte le relâchement de la
+banque. `AllNotesOff` coupe immédiatement les voix puis purge le bloc interne
+précalculé de 64 frames ; seule l'horloge privée du synthé silencieux avance.
+Réverbération et chorus sont désactivés pour éviter toute queue d'effet.
+
+`render_add(output, channels)` ajoute le signal sans effacer la sortie, via un
+scratch fixe de 64 frames stéréo, quelle que soit la taille du callback. En
+mono, les côtés sont moyennés ; en multicanal, seuls les deux premiers canaux
+reçoivent le signal. Une frame incomplète reste intacte. Sans banque valide,
+la voie est silencieuse. Le rendu conserve la latence interne oxisynth d'au
+plus 63 frames entre un événement et le prochain bloc synthétisé.
+
+La polyphonie est bornée à 256 voix SoundFont (une note peut utiliser plusieurs
+zones). Le stockage est réservé au constructeur ; à saturation, le vol de
+voix existant d'oxisynth s'applique sans croissance mémoire.
+
 ### `realtime`
 
 `RTCheckAllocator`: debug-build allocation tracker that panics on allocations and deallocations inside the audio callback. Contexts nest (`enter_audio_context` / `exit_audio_context` form a depth counter); `PlaybackEngine::process_buffer` holds one for the whole call.
 
-`allow_allocation()` lifts the check for the lifetime of its guard. It marks the documented real-time debt and nothing else: the `Vec` that `oxisynth` allocates on every NoteOn (`VoiceManager::process_event`). New code must not use it.
+La garde n'a aucune exemption d'allocation. Le fork
+[`estran-studio/OxiSynth`](https://github.com/estran-studio/OxiSynth/tree/harmonium/rt-noteon)
+(oxisynth 0.1.0, LGPL-2.1, révision épinglée dans `Cargo.toml`) remplace le `Vec`
+temporaire de chaque `NoteOn` par `[None; 64]` et réserve le stockage des voix
+avant le callback, y compris lors d'une augmentation explicite de la limite de
+polyphonie hors callback. Le premier `NoteOn`, le rendu et le vol de voix à
+saturation restent soumis au même allocateur que le reste du moteur.
 
 ## Dependencies
 

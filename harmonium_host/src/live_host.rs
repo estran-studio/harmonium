@@ -17,6 +17,7 @@ use crate::{
     audio::{self, EngineControls},
     clock::{BeatInfo, ClockReader},
     composer::MusicComposer,
+    live_notes::LiveNoteSender,
     playback::{PlaybackCommand, PlaybackEngine, TransportPosition},
 };
 
@@ -42,21 +43,24 @@ unsafe impl Sync for OutputStream {}
 ///
 /// It owns the `MusicComposer` (main thread), the command producer toward the
 /// audio-thread `PlaybackEngine`, the report consumer, the transport position
-/// and the predictive clock reader. Two entry points do everything:
+/// and the predictive clock reader.
 ///
-/// - [`apply`](Self::apply) executes an [`EngineCommand`] — the only way to
-///   change the engine;
+/// - [`apply`](Self::apply) executes an [`EngineCommand`] ;
 /// - [`pump`](Self::pump) composes ahead of the playhead and drains the
 ///   published reports — the caller drives generation (a thread in the REPL
 ///   and the native studio, a Worker timer in the web studio).
+/// - [`take_note_sender`](Self::take_note_sender) fournit au thread MIDI une
+///   entrée de notes jouées indépendante, vers la même voie que `NoteOn/Off`.
 ///
-/// Both take `&mut self`: callers that share the host between threads put it
-/// behind a `Mutex`.
+/// `apply` et `pump` prennent `&mut self` : l'hôte partagé peut être derrière
+/// un `Mutex`. La poignée MIDI reste indépendante de cet emprunt.
 pub struct LiveHost {
     /// Output stream; `None` for a [detached](Self::detached) host.
     stream: Option<OutputStream>,
     composer: MusicComposer,
     playback_cmd_tx: rtrb::Producer<PlaybackCommand>,
+    note_commands: LiveNoteSender,
+    note_sender: Option<LiveNoteSender>,
     report_rx: rtrb::Consumer<EngineReport>,
     /// Shared transport position, packed (bar, step) — written by the audio
     /// thread, read lock-free through the host's own Arc clone
@@ -137,6 +141,8 @@ impl LiveHost {
             stream,
             composer: controls.composer,
             playback_cmd_tx: controls.commands,
+            note_commands: controls.note_commands,
+            note_sender: Some(controls.note_sender),
             report_rx: controls.reports,
             transport_position: controls.transport_position,
             clock_reader: Some(controls.clock_reader),
@@ -202,6 +208,15 @@ impl LiveHost {
     /// the beat again (the reader is single-consumer, not cloneable).
     pub fn restore_clock_reader(&mut self, reader: ClockReader) {
         self.clock_reader = Some(reader);
+    }
+
+    /// Prend l'unique producteur MIDI `Send`, indépendant de `pump`.
+    ///
+    /// Non clonable : sa file SPSC a un seul producteur. `apply` possède sa
+    /// propre file, drainée par le même callback et vers les mêmes voix.
+    /// Retourne `None` après le premier appel.
+    pub fn take_note_sender(&mut self) -> Option<LiveNoteSender> {
+        self.note_sender.take()
     }
 
     // === Generation, driven by the caller ===
@@ -305,7 +320,7 @@ impl LiveHost {
 
     // === The executor ===
 
-    /// Execute a command: the only way to change the engine.
+    /// Exécute une commande ; les notes jouées rejoignent la voie de la poignée MIDI.
     ///
     /// Changes to the generation take effect on the next composed bar
     /// (future bars are invalidated and evicted from playback); playback
@@ -460,6 +475,21 @@ impl LiveHost {
                 &mut self.playback_cmd_tx,
                 &self.finished_recordings,
             ),
+
+            // Même transport et mêmes voix que la poignée MIDI ; aucun
+            // événement joué ne passe par le compositeur ou la timeline.
+            EngineCommand::NoteOn { channel, note, velocity } => {
+                self.note_commands.note_on(channel, note, velocity).map_err(|e| e.to_string())
+            }
+            EngineCommand::NoteOff { channel, note } => {
+                self.note_commands.note_off(channel, note).map_err(|e| e.to_string())
+            }
+            EngineCommand::AllNotesOff => {
+                self.note_commands.all_notes_off().map_err(|e| e.to_string())
+            }
+            EngineCommand::SetLiveProgram(program) => {
+                self.note_commands.set_program(program).map_err(|e| e.to_string())
+            }
         }
     }
 

@@ -118,37 +118,6 @@ pub fn exit_audio_context() {
     AUDIO_DEPTH.with(|depth| depth.set(depth.get().saturating_sub(1)));
 }
 
-/// Scope in which allocation is explicitly allowed again, inside an audio
-/// context (see [`allow_allocation`]). Restores the previous depth on drop.
-#[must_use = "the exemption ends when this guard is dropped"]
-pub struct AllocationAllowed {
-    #[cfg(debug_assertions)]
-    saved_depth: u32,
-}
-
-/// Lift the real-time check for the lifetime of the returned guard.
-///
-/// Reserved for the few one-off operations that cannot be made allocation-free
-/// (loading a SoundFont). Every use is a documented real-time debt; nothing on
-/// the steady-state audio path may use it.
-#[cfg(debug_assertions)]
-pub fn allow_allocation() -> AllocationAllowed {
-    AllocationAllowed { saved_depth: AUDIO_DEPTH.with(|depth| depth.replace(0)) }
-}
-
-#[cfg(debug_assertions)]
-impl Drop for AllocationAllowed {
-    fn drop(&mut self) {
-        AUDIO_DEPTH.with(|depth| depth.set(self.saved_depth));
-    }
-}
-
-/// No-op in release builds
-#[cfg(not(debug_assertions))]
-pub fn allow_allocation() -> AllocationAllowed {
-    AllocationAllowed {}
-}
-
 /// No-op in release builds
 #[cfg(not(debug_assertions))]
 #[inline]

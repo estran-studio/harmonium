@@ -209,16 +209,17 @@ struct TrackState {
 /// pop/push, window insert/remove, box moves) performs no allocation, no
 /// deallocation and takes no lock. Played boxes travel back through the
 /// return ring so only the main thread drops them; commands and reports carry
-/// `Copy` payloads. Documented exceptions (SoundFont loading, oxisynth's
-/// per-note `Vec`) live in `harmonium_audio` under `allow_allocation`. A box is only ever loaded when its index equals the playhead bar;
-/// otherwise the engine underflows (silence), exactly like a missing page
-/// before.
+/// `Copy` payloads. Le rendu SoundFont utilise une version locale d'oxisynth
+/// sans allocation à l'attaque. Une mesure ne se charge que si son index
+/// correspond au playhead ; sinon le moteur poursuit en sous-alimentation.
 pub struct PlaybackEngine {
     // Playhead
     playhead: Playhead,
 
     // Audio renderer
     renderer: Box<dyn AudioRenderer>,
+    // Voie jouée hors timeline, propre réserve de voix SoundFont.
+    played_notes: Option<PlayedNoteLane>,
 
     // Timing
     sample_counter: usize,
@@ -355,6 +356,25 @@ struct WindowSlot {
     measure: Box<Measure>,
 }
 
+struct PlayedNoteLane {
+    voices: harmonium_audio::played_notes::PlayedNotes,
+    inputs: [rtrb::Consumer<harmonium_audio::played_notes::PlayedNoteEvent>; 2],
+}
+
+impl PlayedNoteLane {
+    fn drain(&mut self) {
+        // Borne fixe même si un producteur remplit pendant le callback.
+        // FIFO par entrée ; commandes de l'hôte avant événements MIDI.
+        let pending = self.inputs.each_ref().map(rtrb::Consumer::slots);
+        for (input, count) in self.inputs.iter_mut().zip(pending) {
+            for _ in 0..count {
+                if let Ok(event) = input.pop() {
+                    self.voices.handle_event(event);
+                }
+            }
+        }
+    }
+}
 /// An in-flight tempo ramp (D4): at each pulse boundary the audible tempo
 /// takes the next value of [`ramp_tempo`] from `from` to `target`, landing
 /// exactly on `target` after `total` pulses (the shared plan's rule).
@@ -411,6 +431,7 @@ impl PlaybackEngine {
         Self {
             playhead: Playhead::new(sample_rate, 4),
             renderer,
+            played_notes: None,
             sample_rate_hz,
             sample_counter: 0,
             samples_per_step,
@@ -475,6 +496,14 @@ impl PlaybackEngine {
             last_chord_is_minor: false,
             first_measure_loaded: false,
         }
+    }
+
+    pub(crate) fn set_played_notes(
+        &mut self,
+        voices: harmonium_audio::played_notes::PlayedNotes,
+        inputs: [rtrb::Consumer<harmonium_audio::played_notes::PlayedNoteEvent>; 2],
+    ) {
+        self.played_notes = Some(PlayedNoteLane { voices, inputs });
     }
 
     #[cfg(feature = "odin")]
@@ -588,6 +617,9 @@ impl PlaybackEngine {
         let _rt = RtGuard::enter();
         // Process commands first
         self.process_commands();
+        if let Some(lane) = &mut self.played_notes {
+            lane.drain();
+        }
 
         // Publish the buffer anchor once per buffer: the wall-clock/frame
         // mapping the reader interpolates from.
@@ -669,13 +701,21 @@ impl PlaybackEngine {
             }
         }
 
+        // Les transitoires du moteur généré restent muets avant sa première
+        // mesure ; les notes jouées, elles, fonctionnent sans aucun `pump`.
+        if !self.first_measure_loaded {
+            output.fill(0.0);
+        }
+        if let Some(lane) = &mut self.played_notes {
+            lane.voices.render_add(output, channels);
+        }
+
         self.apply_master_volume(output, channels);
         self.clock.output_gain = self.master_gain;
         self.publish_clock();
 
-        // Zero output when muted or before the first measure is loaded
-        // (suppresses DSP-graph initialization transients)
-        if self.output_muted || !self.first_measure_loaded {
+        // Le mute de sortie s'applique aussi à la voie jouée.
+        if self.output_muted {
             for sample in output.iter_mut() {
                 *sample = 0.0;
             }

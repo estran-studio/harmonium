@@ -12,6 +12,7 @@ use web_time::Instant;
 use crate::{
     clock::{ClockReader, TransportClock},
     composer::MusicComposer,
+    live_notes::LiveNoteSender,
     playback::{
         MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure, pack,
     },
@@ -24,6 +25,10 @@ pub struct EngineControls {
     pub composer: MusicComposer,
     /// Commands to the playback engine.
     pub commands: rtrb::Producer<PlaybackCommand>,
+    /// Notes jouées émises par `LiveHost::apply`.
+    pub note_commands: LiveNoteSender,
+    /// Producteur unique destiné au thread MIDI, indépendant de `pump`.
+    pub note_sender: LiveNoteSender,
     /// Reports published by the playback engine.
     pub reports: rtrb::Consumer<harmonium_core::EngineReport>,
     /// Packed transport position `(bar, step)`, written by the playback
@@ -54,6 +59,8 @@ pub(crate) fn build_engine(
     // Command/report ring buffers (lock-free for audio thread)
     let (commands, playback_cmd_rx) = rtrb::RingBuffer::<PlaybackCommand>::new(256);
     let (report_tx, reports) = rtrb::RingBuffer::<harmonium_core::EngineReport>::new(256);
+    let (note_commands, note_command_rx) = LiveNoteSender::channel();
+    let (note_sender, note_rx) = LiveNoteSender::channel();
 
     // Handoff rings: composer → playback staged measures, playback →
     // composer returned boxes (deallocated on the main thread).
@@ -100,6 +107,10 @@ pub(crate) fn build_engine(
         transport_position.clone(),
         clock_tx,
     );
+    playback.set_played_notes(
+        harmonium_audio::played_notes::PlayedNotes::new(sf2_bytes, sample_rate as f32),
+        [note_command_rx, note_rx],
+    );
     #[cfg(feature = "odin")]
     {
         let (returned_tx, returned_rx) = rtrb::RingBuffer::new(256);
@@ -116,6 +127,8 @@ pub(crate) fn build_engine(
         EngineControls {
             composer,
             commands,
+            note_commands,
+            note_sender,
             reports,
             transport_position,
             clock_reader,

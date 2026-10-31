@@ -364,6 +364,18 @@ fn report(command: &EngineCommand, host: &LiveHost) {
             print_success_msg(&format!("Loop set: bars {start_bar}-{end_bar}"));
         }
         EngineCommand::ClearLoop => print_success_msg("Loop cleared"),
+        EngineCommand::NoteOn { channel, note, velocity } => {
+            print_success_msg(&format!(
+                "Note jouée : canal {channel}, hauteur {note}, vélocité {velocity}"
+            ));
+        }
+        EngineCommand::NoteOff { channel, note } => {
+            print_success_msg(&format!("Note relâchée : canal {channel}, hauteur {note}"));
+        }
+        EngineCommand::AllNotesOff => print_success_msg("Voix jouées coupées"),
+        EngineCommand::SetLiveProgram(program) => {
+            print_success_msg(&format!("Programme des notes jouées : {program}"));
+        }
     }
 }
 

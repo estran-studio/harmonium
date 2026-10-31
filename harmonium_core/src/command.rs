@@ -117,6 +117,20 @@ pub enum EngineCommand {
     /// meter), no loop, no imposed audible tempo; replays from bar 1 with
     /// the same seed
     Reset,
+
+    // === NOTES JOUÉES (hors composition et snapshots) ===
+    /// Attaque sur la voie jouée dédiée, au prochain callback.
+    /// Canal `0..16`, hauteur et vélocité `0..128` ; vélocité zéro = NoteOff.
+    NoteOn { channel: u8, note: u8, velocity: u8 },
+
+    /// Relâche une note de la voie jouée, sans toucher aux pistes générées.
+    NoteOff { channel: u8, note: u8 },
+
+    /// Coupe immédiatement toutes les voix jouées, pas les pistes générées.
+    AllNotesOff,
+
+    /// Programme SoundFont `0..128` de la voie jouée (défaut : 0).
+    SetLiveProgram(u8),
 }
 
 #[cfg(test)]

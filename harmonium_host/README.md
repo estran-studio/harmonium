@@ -21,11 +21,82 @@ graph LR
 *   **`audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets, buffer_frames)`** (`src/audio.rs`): builds the whole graph plus a `cpal::Stream`. `audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, odin_presets, sample_rate)` builds the same graph without a stream, for tests and offline rendering. `sf2_bytes = None` runs oxisynth without a bank (silence, but the engine and snapshot stream work); `feet_sf2_bytes` charge la banque de pieds dédiée (Heel/Toe → canaux 3/4).
 *   **`LiveHost`** (`src/live_host.rs`): owns the stream, the composer, the command producer, the report consumer, the transport position and the clock reader.
     *   `LiveHost::start(sf2, feet_sf2, odin_presets, buffer_frames)` / `start_paused(…)` open the default output device (`buffer_frames`: device buffer in frames, `None` = platform default); `LiveHost::detached(…, sample_rate)` builds a host without device and hands back the `PlaybackEngine` for the caller to run (tests, rendering).
-    *   **`apply(EngineCommand)`** is the only way to change the engine. Generation changes invalidate the future measures (the bar under the playhead is kept) and evict them from playback; playback commands (mixer, loop, audible tempo, recording) go through the lock-free ring. `harmonium_core::EngineCommand` lists every command: emotions and modes, BPM, time signature, swing, audible tempo (ramp / clear), style profile, feet density, intensity, module toggles, mixer, routing, output mute, seed, seek (deterministic or soft), loop, writehead lookahead, recording, reset.
+    *   **`apply(EngineCommand)`** exécute les commandes. Une modification de génération invalide les mesures futures, garde celle du playhead et évince les mesures remplacées du playback. Mixeur, boucle, tempo audible et enregistrement passent par la file de commandes audio ; `NoteOn`, `NoteOff`, `AllNotesOff` et `SetLiveProgram` rejoignent la voie jouée décrite ci-dessous.
     *   **`pump()`** is the generation driver: it composes ahead of the playhead, frees the played boxes, drains the audio thread's reports and returns the `MeasureSnapshot`s composed since the last call. The caller decides where it runs (a thread every ~50 ms in the REPL and the native studio, a Worker timer in the web studio). `apply` never composes: the replacement bars come from the next `pump`.
     *   **Published state**: `poll_state()` (last `EngineReport`), `transport_position()` (lock-free), `beat_info(now)` / `take_clock_reader()` / `restore_clock_reader()` (predictive clock), `take_recordings()`, `musical_params()`, `emotions()`, `is_emotion_mode()`, `session_seed()`, `session_config()`, `profile_bar_info(bar)`.
     *   `apply` and `pump` take `&mut self`: a host shared between threads sits behind a `Mutex` (as in the REPL). On wasm the output stream is not `Send`, and neither is the host: it lives on the page's one thread.
 *   **`osc`** (`src/osc.rs`): native OSC listener on UDP (`rosc`). `/harmonium/params <arousal> <valence> <density> <tension>` (4 floats) becomes `EngineCommand::SetEmotionParams`, handed to a callback that applies it to the host: `OscListener::spawn(osc::DEFAULT_ADDR, |command| …)`. `harmonium-cli --osc` and the native studio (Live screen, Engine → OSC listener) open it on `127.0.0.1:8080`.
+
+### Notes jouées en direct (MIDI, studio, jeux)
+
+Une seule voie sonore, deux entrées : `LiveHost::apply(EngineCommand::NoteOn/NoteOff)`
+et une poignée `LiveNoteSender` obtenue **une fois** par `take_note_sender()`.
+La poignée est `Send`, non `Clone`, et ne référence pas l'hôte : le thread MIDI
+ne prend pas le verrou éventuel de `LiveHost` pendant que `pump()` compose.
+
+```rust,no_run
+use harmonium::LiveHost;
+use harmonium_core::EngineCommand;
+
+# fn exemple(mut host: LiveHost) -> Result<(), Box<dyn std::error::Error>> {
+host.apply(EngineCommand::SetLiveProgram(0))?; // programme SoundFont, index 0-based
+let mut notes = host.take_note_sender().ok_or("poignée déjà prise")?;
+let midi = std::thread::spawn(move || -> Result<(), harmonium::LiveNoteError> {
+    // Depuis les rappels du périphérique MIDI, sans accès à LiveHost :
+    notes.note_on(0, 60, 100)?;
+    notes.note_off(0, 60)?;
+    notes.all_notes_off()?;
+    Ok(())
+});
+// Entrée équivalente pour les actions de l'interface ou les systèmes de jeu :
+host.apply(EngineCommand::NoteOn { channel: 0, note: 64, velocity: 100 })?;
+host.apply(EngineCommand::NoteOff { channel: 0, note: 64 })?;
+# midi.join().map_err(|_| "thread MIDI interrompu")??;
+# Ok(())
+# }
+```
+
+- **Transport borné** : deux files SPSC `rtrb` fixes de 256 événements, une
+  par producteur (`apply`, MIDI), drainées par le même callback vers le même
+  synthé. Ni verrou ni allocation à l'envoi ou à la consommation. La poignée
+  n'est pas clonable pour conserver un seul producteur par file.
+- **Ordre et latence** : FIFO par entrée ; à chaque début de callback, les
+  commandes jouées de l'hôte précèdent les événements MIDI. Le nombre à
+  dépiler est capturé pour les deux entrées avant leur drain (au plus 512).
+  Tout événement déjà publié à ce point est appliqué dans ce callback,
+  sans attendre `pump` ni une frontière musicale. Pas d'ordre temporel global
+  entre les deux producteurs ; un NoteOn MIDI peut suivre un AllNotesOff de
+  l'hôte au même callback. Oxisynth conserve un bloc PCM interne de 64 frames :
+  jusqu'à 63 frames de délai de synthèse, distinct du transport par callback.
+- **Refus explicite** : `LiveNoteError::Full` ou `InvalidMidiData` ; `apply`
+  retourne l'erreur en texte. Aucun blocage, aucune perte silencieuse. Un NoteOff
+  refusé laisse la note tenue : garder le relâchement à réessayer, ou réessayer
+  `all_notes_off` après le prochain callback. Aucun envoi n'est consommé tant
+  que la sortie est suspendue.
+- **MIDI** : canaux `0..16`, hauteur/vélocité/programme `0..128`, tous 0-based ;
+  vélocité zéro = NoteOff. Les seize canaux, y compris 9, sont mélodiques.
+  `set_program(u8)` / `SetLiveProgram(u8)` choisit un programme global de banque 0
+  pour les prochaines attaques (défaut 0), sans modifier les notes déjà tenues.
+- **Voix indépendantes** : synthé SoundFont dédié, 256 voix propres préallouées
+  (plusieurs zones possibles par note), sans vol de voix aux pistes générées.
+  Mutes, gains, programmes, routages et seeks des pistes ne le coupent pas.
+  NoteOff respecte le relâchement SF2 ; AllNotesOff coupe la seule voie jouée,
+  y compris son PCM précalculé. Le volume et le mute de sortie restent globaux.
+- **Périmètre** : la voie fonctionne sans mesure composée ; ni snapshot, ni
+  timeline, ni compositeur, ni export WAV/MIDI/MusicXML ne reçoit ces notes.
+  Le retour direct est ajouté après l'enregistreur et avant le volume de sortie.
+  Pas de réverbération ou chorus sur cette voie. Sans banque valide, silence ;
+  avec `odin`, les notes jouées restent SoundFont (aucun preset Odin dans cette API).
+  La banque est chargée une seconde fois à la construction, hors callback.
+- **Clients** : le studio remettra la poignée au rappel du clavier MIDI et
+  utilisera les commandes pour son clavier à l'écran ; Bevy pourra la déplacer
+  dans sa tâche MIDI et envoyer les mêmes commandes depuis ses systèmes.
+  Aucun branchement studio/Bevy n'est inclus dans E4. Sur le web, les rappels
+  Web MIDI peuvent posséder la poignée sur le même thread, sans créer de thread.
+
+Les mesures de `pump`, les preuves hors ligne et le patch oxisynth sans
+exemption d'allocation figurent dans le
+[compte rendu E4](../specs/018-grille-et-moteur-neutre/e4-notes-jouees.md).
 
 ### Zones Odin et hôte direct
 

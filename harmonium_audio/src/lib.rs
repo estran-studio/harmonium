@@ -3,6 +3,7 @@ pub mod odin_bank;
 pub mod odin_source;
 #[cfg(feature = "odin")]
 pub mod odin_voices;
+pub mod played_notes;
 pub mod realtime;
 pub mod voice_manager;
 
