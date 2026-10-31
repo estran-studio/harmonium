@@ -108,12 +108,13 @@ voix existant d'oxisynth s'applique sans croissance mémoire.
 
 `RTCheckAllocator`: debug-build allocation tracker that panics on allocations and deallocations inside the audio callback. Contexts nest (`enter_audio_context` / `exit_audio_context` form a depth counter); `PlaybackEngine::process_buffer` holds one for the whole call.
 
-La garde n'a aucune exemption d'allocation. La copie locale d'oxisynth remplace
-le `Vec` temporaire de chaque `NoteOn` par `[None; 64]` et réserve le stockage
-des voix avant le callback, y compris lors d'une augmentation explicite de la
-limite de polyphonie hors callback. Le premier `NoteOn`, le rendu et le vol de
-voix à saturation restent soumis au même allocateur que le reste du moteur.
-Voir [la provenance, la licence LGPL-2.1 et le détail du patch](../vendor/oxisynth/README.md).
+La garde n'a aucune exemption d'allocation. Le fork
+[`estran-studio/OxiSynth`](https://github.com/estran-studio/OxiSynth/tree/harmonium/rt-noteon)
+(oxisynth 0.1.0, LGPL-2.1, révision épinglée dans `Cargo.toml`) remplace le `Vec`
+temporaire de chaque `NoteOn` par `[None; 64]` et réserve le stockage des voix
+avant le callback, y compris lors d'une augmentation explicite de la limite de
+polyphonie hors callback. Le premier `NoteOn`, le rendu et le vol de voix à
+saturation restent soumis au même allocateur que le reste du moteur.
 
 ## Dependencies
 

@@ -4757,6 +4757,7 @@ dependencies = [
 [[package]]
 name = "oxisynth"
 version = "0.1.0"
+source = "git+https://github.com/estran-studio/OxiSynth?rev=a8643ca#a8643ca4d5835abc6f4a7a9a269dd81f4b4641dc"
 dependencies = [
  "bitflags 2.10.0",
  "lewton",
@@ -4769,8 +4770,7 @@ dependencies = [
 [[package]]
 name = "oxisynth-chorus"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "755d6ea336fc37043b00a1b54198e24cb4537c509435c7aca2d837d36185703b"
+source = "git+https://github.com/estran-studio/OxiSynth?rev=a8643ca#a8643ca4d5835abc6f4a7a9a269dd81f4b4641dc"
 dependencies = [
  "log",
 ]
@@ -4778,8 +4778,7 @@ dependencies = [
 [[package]]
 name = "oxisynth-reverb"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdbb2d72d399b03dc7546c1087fabcdba68402f987bea903fe284c946fcca7aa"
+source = "git+https://github.com/estran-studio/OxiSynth?rev=a8643ca#a8643ca4d5835abc6f4a7a9a269dd81f4b4641dc"
 
 [[package]]
 name = "parking"
@@ -5745,8 +5744,7 @@ dependencies = [
 [[package]]
 name = "soundfont"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a7f4cb358863e55f8f1a3882f68601360cf6c42fc53ff2fe9aea41c33e24489"
+source = "git+https://github.com/estran-studio/OxiSynth?rev=a8643ca#a8643ca4d5835abc6f4a7a9a269dd81f4b4641dc"
 
 [[package]]
 name = "spin"

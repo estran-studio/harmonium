@@ -59,7 +59,8 @@ chaque NoteOn : oxisynth 0.1.0 construisait un `Vec` pour initialiser un tableau
 fixe de 64 modulateurs. Son stockage de voix pouvait aussi croître aux premières
 attaques. Cela ne satisfaisait pas l'acceptation E4.
 
-La copie locale `vendor/oxisynth` remplace le temporaire par `[None; 64]` et
+Le fork `estran-studio/OxiSynth` (branche `harmonium/rt-noteon`, révision `a8643ca`,
+décision du propriétaire le 2026-10-31, à la place d'une copie dans `vendor/`) remplace le temporaire par `[None; 64]` et
 réserve la capacité de voix à la construction/configuration. Aucun algorithme
 DSP ni politique de vol de voix ne change. L'exemption et son API inutilisée sont
 supprimées : premier NoteOn, allocations/libérations et saturation passent sous
@@ -69,9 +70,12 @@ pas les verrous : l'absence de verrou relève aussi de cette structure de code.
 Un journaliseur installé par l'appelant doit rester temps réel sur les messages
 éventuels du synthé tiers.
 
-Provenance, correctifs et licence **LGPL-2.1**, déjà celle de la dépendance amont :
-[`vendor/oxisynth/README.md`](../../vendor/oxisynth/README.md). Ce code tiers n'est
-pas relicencié MIT/Apache ; ses obligations de distribution restent applicables.
+Licence **LGPL-2.1**, déjà celle de la dépendance amont ; le correctif (12 lignes,
+deux fichiers) est public sur la branche du fork. Ce code tiers n'est pas
+relicencié MIT/Apache ; ses obligations de distribution restent applicables. Les
+sous-crates `soundfont`, `oxisynth-chorus` et `oxisynth-reverb` viennent du même
+commit que la publication 0.1.0 : sources identiques à crates.io pour chorus et
+reverb, différences de style seulement (imports, `matches!`) pour `soundfont`.
 
 ## Preuves comportementales observées
 
@@ -89,6 +93,10 @@ de la rafale de saturation, les 13 tests E4 passent également.
   place au callback ; ordre inter-producteurs exercé.
 - Snapshots sérialisés strictement égaux, avec les mêmes commandes de composition,
   avec ou sans les événements joués des deux producteurs.
+- Rendus SoundFont identiques octet pour octet à `main` avec le fork oxisynth
+  (orchestrateur, 2026-10-31) : `harmonium-cli --export --bars 16 --seed 2
+  --record-wav …` pour `reel_quebecois`, `isaac_cellar` et `nt_desert`, lancé
+  depuis le checkout principal (les worktrees n'ont pas `assets/`).
 - Mutes, gains et seek générés ne modifient aucun échantillon de la note jouée.
   NoteOff et AllNotesOff joués ne coupent pas le couple canal/hauteur généré.
   Une rafale de 512 attaques dépasse la réserve jouée ; après sa coupure, le PCM
@@ -186,9 +194,6 @@ construction du synthé porte sur un descripteur constant valide, avec justifica
 locale. Les échecs de préparation des tests consommateurs sont des assertions.
 Les avertissements Cargo de compatibilité future concernent `glutin`,
 `glutin-winit`, `nix` et `winit`, pas la voie jouée.
-
-Le format tiers est conservé par `vendor/oxisynth/rustfmt.toml` ; le contrôle
-`fmt --all` passe sans reformater l'ensemble des sources amont.
 
 ### Suite finale workspace
 
