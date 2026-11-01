@@ -177,7 +177,7 @@ fn principe_viii_la_valse_basse_motivique_emploie_le_legato_sans_changer_ses_not
         .collect();
 
     for (i, s) in snapshots.iter().enumerate() {
-        let degrees = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let degrees = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             [1, 2, 3]
         } else {
             [5, 4, 2]

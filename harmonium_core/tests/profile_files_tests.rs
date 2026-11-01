@@ -183,14 +183,16 @@ fn validation_error_in_the_arrangement_bank_names_that_file() -> TestResult {
 #[test]
 fn syntax_error_names_file_line_and_column() -> TestResult {
     let copy = Copy::of("nt_desert", "syntax")?;
-    let text = copy.read("feet.toml")?;
+    let text = copy.read("percussion.toml")?;
     let line = text.lines().count() + 2;
-    copy.write("feet.toml", &format!("{text}\nbroken = [1, 2\n"))?;
+    copy.write("percussion.toml", &format!("{text}\nbroken = [1, 2\n"))?;
     let error = StyleProfile::load(&copy.dir).err().ok_or("syntaxe invalide acceptée")?;
-    assert_eq!(error.file.as_deref(), Some("feet.toml"), "{error}");
+    assert_eq!(error.file.as_deref(), Some("percussion.toml"), "{error}");
     assert!(error.line.is_some_and(|l| l >= line), "ligne {:?} attendue ≥ {line}", error.line);
     assert!(error.column.is_some(), "{error}");
-    assert!(error.to_string().starts_with(&format!("feet.toml:{}: ", error.line.unwrap_or(0))));
+    assert!(
+        error.to_string().starts_with(&format!("percussion.toml:{}: ", error.line.unwrap_or(0)))
+    );
     Ok(())
 }
 
@@ -222,7 +224,7 @@ fn in_memory_files_report_the_same_errors_as_the_disk() -> TestResult {
     let files: BTreeMap<String, String> = [
         "profile.toml",
         "cells.toml",
-        "feet.toml",
+        "percussion.toml",
         "arrangement.toml",
         "dynamics.toml",
         "set.toml",

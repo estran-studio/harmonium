@@ -211,11 +211,10 @@ fn phrase_grouping_controls_percussion_boundaries_and_arbitrary_lengths() {
     p.form.parts[0].phrase_ends = vec![3, 6];
     let s = stream(&p, 19, 12);
     for (i, s) in s.iter().enumerate() {
-        assert_eq!(s.position.unwrap().bar_in_strain, i % 6 + 1);
-        let flam = s
-            .notes
-            .iter()
-            .any(|n| n.pitch == 40 && n.track == harmonium_core::timeline::TrackId::Toe.channel());
+        assert_eq!(s.position.unwrap().bar_in_part, i % 6 + 1);
+        let flam = s.notes.iter().any(|n| {
+            n.pitch == 40 && n.track == harmonium_core::timeline::TrackId::PercussionHigh.channel()
+        });
         assert_eq!(flam, [2, 5].contains(&(i % 6)), "mesure {}", i + 1);
     }
 }

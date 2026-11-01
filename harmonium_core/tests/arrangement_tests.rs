@@ -16,7 +16,7 @@ use rand_chacha::ChaCha8Rng;
 
 const SEEDS: [u64; 5] = [1, 2, 3, 7, 11];
 
-fn reel_params() -> MusicalParams {
+fn tune_params() -> MusicalParams {
     let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
 
@@ -40,7 +40,7 @@ fn stream_with(
 }
 
 fn stream(seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
-    stream_with(seed, bars, reel_params(), flat_tuning())
+    stream_with(seed, bars, tune_params(), flat_tuning())
 }
 
 /// Tuning avec les entrées D11 par défaut mais sans intro (P1-T11) :
@@ -112,7 +112,7 @@ fn later_tours_do_not_consume_the_rng() {
     for seed in SEEDS {
         let linear = stream(seed, 100);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut sought = TuneGenerator::new(reel_params(), flat_tuning());
+        let mut sought = TuneGenerator::new(tune_params(), flat_tuning());
         sought.reset_to_initial();
         sought.silent_advance(97, &mut rng);
         for b in 97..=100 {
@@ -133,11 +133,11 @@ fn invalid_arrangement_tables_are_rejected_with_explicit_errors() {
         Arrangement::from_toml(&DEFAULT_ARRANGEMENT_TOML.replace(from, to))
     };
     assert_eq!(
-        with("Heel = { tour = 2", "Heel = { tour = 0"),
-        Err(ArrangementError::TourOutOfRange { track: TrackId::Heel, tour: 0 })
+        with("PercussionLow = { tour = 2", "PercussionLow = { tour = 0"),
+        Err(ArrangementError::TourOutOfRange { track: TrackId::PercussionLow, tour: 0 })
     );
     assert_eq!(
-        with("Toe = {", "Cymbale = {"),
+        with("PercussionHigh = {", "Cymbale = {"),
         Err(ArrangementError::UnknownTrack("Cymbale".to_owned()))
     );
     assert_eq!(
@@ -149,7 +149,7 @@ fn invalid_arrangement_tables_are_rejected_with_explicit_errors() {
 #[test]
 fn game_flags_cap_the_arrangement() {
     let ceiling = |edit: fn(&mut MusicalParams)| {
-        let mut params = reel_params();
+        let mut params = tune_params();
         edit(&mut params);
         stream_with(1, 97, params, flat_tuning())
     };
@@ -157,21 +157,30 @@ fn game_flags_cap_the_arrangement() {
     let no_harmony = ceiling(|p| p.enable_harmony = false);
     let no_melody = ceiling(|p| p.enable_melody = false);
     for b in 1..=97 {
-        assert!(!has(bar(&no_rhythm, b), TrackId::Heel) && !has(bar(&no_rhythm, b), TrackId::Toe));
+        assert!(
+            !has(bar(&no_rhythm, b), TrackId::PercussionLow)
+                && !has(bar(&no_rhythm, b), TrackId::PercussionHigh)
+        );
         assert!(!has(bar(&no_harmony, b), TrackId::Chords));
         assert!(!has(bar(&no_harmony, b), TrackId::Bass));
         assert!(!has(bar(&no_melody, b), TrackId::Melody));
     }
     // Les autres pistes suivent toujours l'arrangement.
     assert!(has(bar(&no_rhythm, 40), TrackId::Bass) && has(bar(&no_rhythm, 40), TrackId::Melody));
-    assert!(has(bar(&no_harmony, 40), TrackId::Heel));
-    assert!(!has(bar(&no_melody, 1), TrackId::Melody) && has(bar(&no_melody, 40), TrackId::Toe));
+    assert!(has(bar(&no_harmony, 40), TrackId::PercussionLow));
+    assert!(
+        !has(bar(&no_melody, 1), TrackId::Melody)
+            && has(bar(&no_melody, 40), TrackId::PercussionHigh)
+    );
 
-    // feet_density 0 : plus de pointe, le talon reste.
-    let mut params = reel_params();
-    params.set_feet_density(0);
+    // percussion_density 0 : plus de percussion aiguë, la percussion grave reste.
+    let mut params = tune_params();
+    params.set_percussion_density(0);
     let snaps = stream_with(1, 40, params, flat_tuning());
-    assert!(has(bar(&snaps, 40), TrackId::Heel) && !has(bar(&snaps, 40), TrackId::Toe));
+    assert!(
+        has(bar(&snaps, 40), TrackId::PercussionLow)
+            && !has(bar(&snaps, 40), TrackId::PercussionHigh)
+    );
 }
 
 #[test]
@@ -186,14 +195,14 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
         assert_eq!(pos.tour, in_tune / 32 + 1, "m.{b}");
         assert_eq!(pos.part, if in_tour < 16 { Part(0) } else { Part(1) }, "m.{b}");
         assert_eq!(pos.pass, (in_tour % 16) / 8 + 1, "m.{b}");
-        assert_eq!(pos.bar_in_strain, in_tour % 8 + 1, "m.{b}");
+        assert_eq!(pos.bar_in_part, in_tour % 8 + 1, "m.{b}");
         assert_eq!(pos.is_last_tour(), pos.tour == 3, "m.{b}");
     }
-    // Repères lisibles par le gameplay : les pieds entrent à la mesure 33 (tour 2, A, passe 1).
-    let first_percussion = snaps.iter().position(|s| has(s, TrackId::Heel)).map(|i| i + 1);
+    // Repères lisibles par le gameplay : la percussion entrent à la mesure 33 (tour 2, A, passe 1).
+    let first_percussion = snaps.iter().position(|s| has(s, TrackId::PercussionLow)).map(|i| i + 1);
     assert_eq!(first_percussion, Some(33));
     let pos = position(&snaps, 33)?;
-    assert_eq!((pos.tour, pos.part, pos.pass, pos.bar_in_strain), (2, Part(0), 1, 1));
+    assert_eq!((pos.tour, pos.part, pos.pass, pos.bar_in_part), (2, Part(0), 1, 1));
     assert!(position(&snaps, 65)?.is_last_tour());
     Ok(())
 }
@@ -202,8 +211,8 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
 fn first_tune_of_each_set_replays_the_progressive_entries() {
     let mut tuning = flat_tuning();
     tuning.profile.set.length = vec![SetLength { tunes: 1, weight: 1 }];
-    let snaps = stream_with(1, 106, reel_params(), tuning);
-    for t in [TrackId::Chords, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
+    let snaps = stream_with(1, 106, tune_params(), tuning);
+    for t in [TrackId::Chords, TrackId::Bass, TrackId::PercussionLow, TrackId::PercussionHigh] {
         assert!(!has(bar(&snaps, 97), t), "{t:?} ne doit pas jouer à la mesure 97");
     }
     assert!(has(bar(&snaps, 97), TrackId::Melody));
@@ -214,10 +223,10 @@ fn first_tune_of_each_set_replays_the_progressive_entries() {
 fn tours_per_tune_controls_the_tune_length() -> Result<(), String> {
     let mut tuning = flat_tuning();
     tuning.profile.arrangement.tours_per_tune = 1;
-    let snaps = stream_with(1, 33, reel_params(), tuning);
+    let snaps = stream_with(1, 33, tune_params(), tuning);
     let pos = position(&snaps, 33)?;
     assert_eq!((pos.tune_index, pos.tour, pos.tours), (1, 1, 1));
-    // Un seul tour : l'entrée « tour 2 » des pieds est ramenée au dernier tour (le 1er).
-    assert!(has(bar(&snaps, 1), TrackId::Heel));
+    // Un seul tour : l'entrée « tour 2 » de la percussion est ramenée au dernier tour (le 1er).
+    assert!(has(bar(&snaps, 1), TrackId::PercussionLow));
     Ok(())
 }

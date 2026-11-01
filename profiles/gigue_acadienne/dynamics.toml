@@ -13,27 +13,27 @@ arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, -0.03], [0.3, 0.0], [1.0, 0.10]]
 tempo_offset = [[0.0, -10.0], [0.5, 0.0], [1.0, 15.0]]
 melody_velocity = [[0.0, 0.72], [0.5, 1.0], [1.0, 1.35]]
-guitar_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 0.80]]
+chords_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 0.80]]
 bass_velocity = [[0.0, 0.80], [0.5, 1.0], [1.0, 1.0]]
-feet_velocity = [[0.0, 0.60], [0.5, 1.0], [1.0, 1.65]]
-feet_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
-fiddle_duration = [[0.0, 1.15], [0.5, 1.0], [1.0, 0.85]]
+percussion_velocity = [[0.0, 0.60], [0.5, 1.0], [1.0, 1.65]]
+percussion_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+melody_duration = [[0.0, 1.15], [0.5, 1.0], [1.0, 0.85]]
 strong_accent = [[0.0, -4.0], [0.5, 0.0], [1.0, 8.0]]
-chop_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
+chords_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
 run_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.5]]
 arp_weight = [[0.0, 0.5], [0.5, 1.0], [1.0, 2.0]]
 turn_weight = [[0.0, 2.0], [0.5, 1.0], [1.0, 0.4]]
 
 color_register = [[0.0, -5.0], [0.65, 0.0], [1.0, 5.0]]
 brightness_accent = [[0.0, -8.0], [0.65, 0.0], [1.0, 10.0]]
-density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
-density_chop = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
+density_percussion = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+density_chords = [[0.0, -1.0], [0.5, 0.0], [1.0, 0.5]]
 density_tracks = [
   { track = "Melody", minimum = 0.0 },
   { track = "Bass", minimum = 0.15 },
   { track = "Chords", minimum = 0.25 },
-  { track = "Heel", minimum = 0.10 },
-  { track = "Toe", minimum = 0.35 },
+  { track = "PercussionLow", minimum = 0.10 },
+  { track = "PercussionHigh", minimum = 0.35 },
 ]
 
 tension_offbeat = [[0.0, -3.0], [0.3, 0.0], [1.0, 24.0]]

@@ -8,8 +8,8 @@
 //! - Rythme pointé du hornpipe (`default_swing_ratio = 0.65`, tempo à 92 BPM)
 //! - Forme AABB de 32 mesures (parties de 8 mesures)
 //! - Notes de mélodie dans le mode publié
-//! - Accompagnement aux pas attendus (basse et accords simples, sans chop québécois)
-//! - Absence totale de podorythmie québécoise (aucun coup sur Heel / Toe)
+//! - Accompagnement aux pas attendus (basse et accords simples, sans les attaques sèches québécoises)
+//! - Absence totale de percussion québécoise (aucun coup sur PercussionLow / PercussionHigh)
 //! - Déterminisme strict (même graine => mêmes snapshots)
 
 use harmonium_core::{
@@ -82,8 +82,8 @@ fn jig_metadata_and_corpus_citation() {
             && p.meta.corpus.contains("John Chambers")
             && p.meta.corpus.contains("Cahusac")
     );
-    assert_eq!(p.instruments.melody_program, 40); // Violon GM 40
-    assert_eq!(p.instruments.chords_program, Some(24)); // Guitare nylon GM 24
+    assert_eq!(p.instruments.melody_program, 40); // programme GM 40 (mélodie)
+    assert_eq!(p.instruments.chords_program, Some(24)); // programme GM 24 (nylon)
     assert_eq!(p.instruments.bass_program, Some(32)); // Basse acoustique GM 32
 }
 
@@ -121,7 +121,7 @@ fn jig_form_aabb_and_repeats() {
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -154,11 +154,11 @@ fn jig_accompaniment_steps_and_no_percussion() {
     let p = jig_profile();
     let snaps = generate_snapshots(&p, 1, 32);
     for s in &snaps {
-        // Aucune podorythmie (Heel/Toe = pistes 3 et 4)
+        // Aucune percussion (PercussionLow/PercussionHigh = pistes 3 et 4)
         let drum_notes: Vec<_> = s.notes.iter().filter(|n| n.track == 3 || n.track == 4).collect();
-        assert!(drum_notes.is_empty(), "aucune note de podorythmie attendue");
+        assert!(drum_notes.is_empty(), "aucune note de percussion attendue");
 
-        // Accords simples posés sur les temps 0 et 6 (pas le chop québécois sur 4 et 10)
+        // Accords simples posés sur les temps 0 et 6 (pas les attaques sèches québécoises sur 4 et 10)
         let chord_steps: Vec<_> =
             s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {
@@ -216,7 +216,7 @@ fn hornpipe_metadata_and_corpus_citation() {
             && p.meta.corpus.contains("John Chambers")
             && p.meta.corpus.contains("Cahusac")
     );
-    assert_eq!(p.instruments.melody_program, 40); // Violon GM 40
+    assert_eq!(p.instruments.melody_program, 40); // programme GM 40 (mélodie)
     assert_eq!(p.instruments.chords_program, Some(24));
     assert_eq!(p.instruments.bass_program, Some(32));
 }
@@ -257,7 +257,7 @@ fn hornpipe_form_aabb_and_repeats() {
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -290,11 +290,11 @@ fn hornpipe_accompaniment_steps_and_no_percussion() {
     let p = hornpipe_profile();
     let snaps = generate_snapshots(&p, 1, 32);
     for s in &snaps {
-        // Aucune podorythmie
+        // Aucune percussion
         let drum_notes: Vec<_> = s.notes.iter().filter(|n| n.track == 3 || n.track == 4).collect();
-        assert!(drum_notes.is_empty(), "aucune note de podorythmie attendue");
+        assert!(drum_notes.is_empty(), "aucune note de percussion attendue");
 
-        // Accords aux pas 0 et 8 (pas le chop québécois sur contretemps 4 et 12)
+        // Accords aux pas 0 et 8 (pas les attaques sèches québécoises sur contretemps 4 et 12)
         let chord_steps: Vec<_> =
             s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         if !chord_steps.is_empty() {

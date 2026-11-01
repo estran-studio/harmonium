@@ -1,10 +1,10 @@
 # Table percussive (désactivée : pas de podorythmie dans la tradition britannique coloniale).
 
-heel_note = 36
-toe_note = 37
-heel_velocity = 0
-toe_velocity = 0
-feet_gain = 0.0
+low_note = 36
+high_note = 37
+low_velocity = 0
+high_velocity = 0
+percussion_gain = 0.0
 velocity_humanize = 0
 
 [[patterns]]

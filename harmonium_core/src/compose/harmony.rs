@@ -492,8 +492,8 @@ mod tests {
         assert_eq!(major(ChordDegree::BVII).pitch_classes(9, Mode::Aeolian).as_slice(), [7, 11, 2]);
     }
 
-    /// 16 mesures distinctes : strain A sur I, strain B sur IV (hors cadences).
-    fn two_strain_melody() -> Vec<Vec<TimelineNote>> {
+    /// 16 mesures distinctes : part A sur I, part B sur IV (hors cadences).
+    fn two_part_melody() -> Vec<Vec<TimelineNote>> {
         (0..StyleProfile::default().form.unique_bars())
             .map(|i| {
                 melody(if i < 8 { "1 3 5 3 1 3 5 3" } else { "4 6 8 6 4 6 8 6" }, Mode::Ionian)
@@ -505,7 +505,7 @@ mod tests {
     fn repeats_return_identical_chords() -> Result<(), TuneHarmonyError> {
         let plan = fixed_plan(Mode::Ionian);
         let harmony =
-            TuneHarmony::new(plan.clone(), &two_strain_melody(), &AccompanimentParams::default())?;
+            TuneHarmony::new(plan.clone(), &two_part_melody(), &AccompanimentParams::default())?;
         for bar in 0..32 {
             let section = bar / 8;
             let first_pass = bar - if section % 2 == 1 { 8 } else { 0 };
@@ -515,7 +515,7 @@ mod tests {
                 "bar {bar}"
             );
         }
-        // B diffère de A, cadences imposées dans chaque strain.
+        // B diffère de A, cadences imposées dans chaque part.
         assert_eq!(
             harmony.chords_for_bar(0).iter().map(|c| c.degree).collect::<Vec<_>>(),
             [ChordDegree::I; 2]
@@ -524,14 +524,10 @@ mod tests {
             harmony.chords_for_bar(16).iter().map(|c| c.degree).collect::<Vec<_>>(),
             [ChordDegree::IV; 2]
         );
-        for strain_start in [0, 8, 16, 24] {
-            assert_eq!(harmony.chords_for_bar(strain_start + 3)[1].degree, ChordDegree::V);
+        for part_start in [0, 8, 16, 24] {
+            assert_eq!(harmony.chords_for_bar(part_start + 3)[1].degree, ChordDegree::V);
             assert_eq!(
-                harmony
-                    .chords_for_bar(strain_start + 7)
-                    .iter()
-                    .map(|c| c.degree)
-                    .collect::<Vec<_>>(),
+                harmony.chords_for_bar(part_start + 7).iter().map(|c| c.degree).collect::<Vec<_>>(),
                 [ChordDegree::V, ChordDegree::I]
             );
         }

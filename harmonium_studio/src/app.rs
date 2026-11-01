@@ -88,7 +88,7 @@ fn prepare(resources: &LoadedResources, buffer_frames: Option<u32>) -> Result<Re
     let session = open_session(resources, buffer_frames)?;
     let pump = start_pump(&session)?;
     let credits = Credits {
-        feet_bank: resources.feet_bank.is_some(),
+        percussion_bank: resources.percussion_bank.is_some(),
         odin_presets: resources.odin_presets.iter().map(|(name, _)| name.to_string()).collect(),
     };
     Ok(Ready { session, pump, credits, error: None })

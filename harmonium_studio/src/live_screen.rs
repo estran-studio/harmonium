@@ -38,8 +38,8 @@ const NOTICES_KEPT: usize = 4;
 /// Ce qui a été chargé, pour les crédits du panneau « About ».
 #[derive(Clone, Debug, Default)]
 pub struct Credits {
-    /// Une banque de pieds est chargée.
-    pub feet_bank: bool,
+    /// Une banque de percussion est chargée.
+    pub percussion_bank: bool,
     /// Presets Odin chargés (noms courts).
     pub odin_presets: Vec<String>,
 }
@@ -321,14 +321,14 @@ impl LiveScreen {
 
         ui.separator();
         ui.horizontal(|ui| {
-            ui.label("Feet");
+            ui.label("Percussion");
             for density in 0..=2u8 {
                 if ui
-                    .add(egui::Button::selectable(view.feet == density, density.to_string()))
+                    .add(egui::Button::selectable(view.percussion == density, density.to_string()))
                     .clicked()
-                    && view.feet != density
+                    && view.percussion != density
                 {
-                    command(intents, EngineCommand::SetFeetDensity(density));
+                    command(intents, EngineCommand::SetPercussionDensity(density));
                 }
             }
         });
@@ -649,7 +649,7 @@ impl LiveScreen {
                     ui.hyperlink_to("GeneralUser GS", GENERALUSER_URL);
                     ui.label("by S. Christian Collins (compressed to SF3 for the web).");
                 });
-                if credits.feet_bank {
+                if credits.percussion_bank {
                     ui.label("Foot percussion: CC0 samples from Freesound.");
                 }
                 if credits.odin_presets.is_empty() {
@@ -863,8 +863,8 @@ const fn track_color(track: TrackId) -> Color32 {
         TrackId::Countermelody => Color32::from_rgb(230, 120, 160),
         TrackId::Chords => Color32::from_rgb(110, 170, 240),
         TrackId::Bass => Color32::from_rgb(120, 210, 140),
-        TrackId::Heel => Color32::from_rgb(200, 200, 200),
-        TrackId::Toe => Color32::from_rgb(160, 160, 175),
+        TrackId::PercussionLow => Color32::from_rgb(200, 200, 200),
+        TrackId::PercussionHigh => Color32::from_rgb(160, 160, 175),
     }
 }
 
@@ -904,7 +904,7 @@ impl ScoreLayout {
         let tune = row(ruler.bottom(), Self::TUNE);
         let form = row(tune.bottom(), Self::FORM);
         let chords = row(form.bottom(), Self::CHORDS);
-        // Les pistes mélodiques ont plus de hauteur que les frappes de pieds.
+        // Les pistes mélodiques ont plus de hauteur que les frappes de percussion.
         let lanes_top = chords.bottom() + 4.0;
         let unit = ((rect.bottom() - lanes_top) / LANE_WEIGHTS.iter().sum::<f32>()).max(4.0);
         let mut top = lanes_top;
@@ -1063,7 +1063,7 @@ fn paint_score(
                 PART_COLORS[form.part % PART_COLORS.len()]
             };
             painter.rect_filled(cell, 2.0, color);
-            if form.intro || form.bar_in_strain == 1 || offset == 0 {
+            if form.intro || form.bar_in_part == 1 || offset == 0 {
                 painter.text(
                     cell.left_center() + Vec2::new(3.0, 0.0),
                     Align2::LEFT_CENTER,

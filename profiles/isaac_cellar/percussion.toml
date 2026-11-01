@@ -1,0 +1,112 @@
+# « Stomp » du Basement (grille §6.2 des références) : grosse caisse sur 0, 2
+# et 6, caisse claire sur les temps 2, 3 et 4 (pas 4, 8, 12), sans charleston
+# continu. Densité 0 : ossature (kick 0, caisse 8) ; densité 2 : stomp plus
+# charleston discret aux contretemps. Fills de toms aux fins de phrase.
+low_note = 36
+high_note = 38
+low_velocity = 96
+high_velocity = 86
+percussion_gain = 1.0
+velocity_humanize = 4
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 8, track = "PercussionHigh", delta_velocity = -10 },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 2, track = "PercussionLow", delta_velocity = -22 },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+]
+
+[[patterns]]
+density = 2
+weight = 1
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 2, track = "PercussionLow", delta_velocity = -22 },
+  { step = 2, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 6, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 10, track = "PercussionLow", delta_velocity = -20 },
+  { step = 10, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+]
+
+# Réponse de stomp : mêmes temps lourds, contretemps de grosse caisse déplacé.
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 8, track = "PercussionHigh" },
+  { step = 10, track = "PercussionLow", delta_velocity = -22 },
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+]
+
+[[patterns]]
+density = 2
+weight = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 2, track = "PercussionLow", delta_velocity = -22 },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 8, track = "PercussionHigh" },
+  { step = 10, track = "PercussionLow", delta_velocity = -20 },
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 14, track = "PercussionLow", delta_velocity = -24 },
+  { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+]
+
+[[cadence_patterns]]
+density = 0
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 14, track = "PercussionHigh", note = 41, delta_velocity = -16 },
+]
+
+[[cadence_patterns]]
+density = 1
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 2, track = "PercussionLow", delta_velocity = -22 },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 8, track = "PercussionHigh" },
+  { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+  { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+  { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+]
+
+[[cadence_patterns]]
+density = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 2, track = "PercussionLow", delta_velocity = -22 },
+  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 8, track = "PercussionHigh" },
+  { step = 10, track = "PercussionHigh", delta_velocity = -18 },
+  { step = 11, track = "PercussionHigh", delta_velocity = -22 },
+  { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+  { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+  { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+]

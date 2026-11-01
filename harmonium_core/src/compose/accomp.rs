@@ -432,7 +432,7 @@ fn close_voicings(
     })
 }
 
-/// Guitare d'accompagnement : enchaîne les voicings d'une mesure à l'autre.
+/// Accords d'accompagnement : enchaîne les voicings d'une mesure à l'autre.
 ///
 /// Un `ChordPlayer` neuf démarre sans voicing précédent ; en créer un par tune.
 #[derive(Clone, Debug, Default)]
@@ -457,8 +457,8 @@ impl ChordPlayer {
     ) -> Option<arrayvec::ArrayVec<u8, 3>> {
         let candidates = close_voicings(chord, key, mode).filter(|v| {
             v.len() < 3
-                || params.chords.strings <= 3
-                || v[usize::from(params.chords.strings - 4)] <= 115
+                || params.chords.note_count <= 3
+                || v[usize::from(params.chords.note_count - 4)] <= 115
         });
         let best = if params.chords.voicing == ChordVoicing::FixedTriad {
             candidates
@@ -519,33 +519,33 @@ impl ChordPlayer {
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
         let voice = &params.chords;
-        let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.strings));
+        let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.note_count));
         for hit in hits.iter().filter(|hit| super::chord_spread::selected(hit, seed)) {
             let step = hit.step;
             let Some(voicing) = self.voice(chords[step / steps_per_chord], key, mode, params)
             else {
                 continue;
             };
-            // Les cordes supplémentaires doublent les triades seulement :
+            // Les voix supplémentaires doublent les triades seulement :
             // une pédale écrite reste une note, un voisin reste une dyade.
-            let strings =
-                if voicing.len() == 3 { usize::from(voice.strings) } else { voicing.len() };
+            let note_count =
+                if voicing.len() == 3 { usize::from(voice.note_count) } else { voicing.len() };
             let mut pitches = [0u8; 6];
             pitches[..voicing.len()].copy_from_slice(&voicing);
-            for i in voicing.len()..strings {
+            for i in voicing.len()..note_count {
                 pitches[i] = pitches[i - voicing.len()] + 12;
             }
-            let (first, count) = if hit.stroke == super::accomp_profile::AttackDirection::Up {
+            let (first, count) = if hit.direction == super::accomp_profile::AttackDirection::Up {
                 let count = voice
-                    .strum
+                    .spread
                     .as_ref()
-                    .map_or(strings, |s| usize::from(s.up_strings).min(strings));
-                (strings - count, count)
+                    .map_or(note_count, |s| usize::from(s.up_note_count).min(note_count));
+                (note_count - count, count)
             } else {
-                (0, strings)
+                (0, note_count)
             };
             let pitches = &mut pitches[first..first + count];
-            if hit.stroke == super::accomp_profile::AttackDirection::Up {
+            if hit.direction == super::accomp_profile::AttackDirection::Up {
                 pitches.reverse();
             }
             let velocities = super::chord_spread::velocities(voice, hit, count, seed);
@@ -606,12 +606,12 @@ mod tests {
 
     fn mechanical() -> AccompanimentParams {
         let mut p = AccompanimentParams::default();
-        p.chords.strings = 3;
-        p.chords.strum = None;
+        p.chords.note_count = 3;
+        p.chords.spread = None;
         p
     }
 
-    fn chop(chord_player: &mut ChordPlayer, chords: [DegreeChord; 2]) -> Vec<TimelineNote> {
+    fn chord(chord_player: &mut ChordPlayer, chords: [DegreeChord; 2]) -> Vec<TimelineNote> {
         chord_player.chord_bar(&chords, D, Mode::Ionian, &mechanical(), 8, 0, &mut ids())
     }
 
@@ -667,15 +667,15 @@ mod tests {
     }
 
     #[test]
-    fn guitar_chops_on_steps_4_and_12_with_three_chord_tones() {
+    fn chord_hits_on_steps_4_and_12_with_three_chord_tones() {
         let chords = [major(ChordDegree::I), major(ChordDegree::IV)];
-        let notes = chop(&mut ChordPlayer::new(), chords);
+        let notes = chord(&mut ChordPlayer::new(), chords);
         assert_eq!(notes.len(), 6);
         for (i, step) in [4, 12].into_iter().enumerate() {
             let group: Vec<_> = notes.iter().filter(|n| n.start_step == step).collect();
             assert_eq!(group.len(), 3, "step {step}");
-            let chop_velocity = AccompanimentParams::default().chords.patterns[1].hits[0].velocity;
-            assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == chop_velocity));
+            let chord_velocity = AccompanimentParams::default().chords.patterns[1].hits[0].velocity;
+            assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == chord_velocity));
             let mut pitches: Vec<u8> = group.iter().map(|n| n.pitch).collect();
             pitches.sort_unstable();
             pitches.dedup();
@@ -692,7 +692,7 @@ mod tests {
 
     #[test]
     fn first_voicing_is_closest_to_c4() {
-        let notes = chop(&mut ChordPlayer::new(), [major(ChordDegree::I); 2]);
+        let notes = chord(&mut ChordPlayer::new(), [major(ChordDegree::I); 2]);
         let mut pitches: Vec<u8> = notes.iter().take(3).map(|n| n.pitch).collect();
         pitches.sort_unstable();
         // Ré majeur : La3 Ré4 Fa♯4, centre 61,7 (C4 = 60).
@@ -702,8 +702,8 @@ mod tests {
     #[test]
     fn next_voicing_is_the_closest_to_the_previous_one() {
         let mut chord_player = ChordPlayer::new();
-        let _ = chop(&mut chord_player, [major(ChordDegree::I); 2]);
-        let notes = chop(&mut chord_player, [major(ChordDegree::IV); 2]);
+        let _ = chord(&mut chord_player, [major(ChordDegree::I); 2]);
+        let notes = chord(&mut chord_player, [major(ChordDegree::IV); 2]);
         let mut pitches: Vec<u8> = notes.iter().take(3).map(|n| n.pitch).collect();
         pitches.sort_unstable();
         // La3 Ré4 Fa♯4 → Si3 Ré4 Sol4 (mouvement total 1+0+1 = 2).
@@ -729,7 +729,7 @@ mod tests {
     }
 
     #[test]
-    fn note_ids_are_unique_across_bass_and_guitar() {
+    fn note_ids_are_unique_across_bass_and_chords() {
         let mut next_id = ids();
         let params = AccompanimentParams::default();
         let chords = [major(ChordDegree::I); 2];

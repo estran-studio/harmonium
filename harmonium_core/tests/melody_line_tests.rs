@@ -1,4 +1,4 @@
-//! Tests d'acceptation observables pour P1-T2 — Ligne de violon d'un reel (D4, D6).
+//! Tests d'acceptation observables pour P1-T2 — Ligne mélodique d'un air (D4, D6).
 //!
 //! Couvre les 6 critères d'acceptation sur 20 seeds déterministes (`ChaCha8Rng`)
 //! ainsi qu'un test `#[ignore]` d'export MIDI dans `target/` pour l'écoute.
@@ -61,37 +61,37 @@ fn cadence_degree_bar8(plan: &TunePlan, notes: &[TimelineNote]) -> Option<u8> {
     plan.mode.scale_degree_of_midi(plan.key, last.pitch)
 }
 
-/// Critère 1 : Mesures 5–6 = 1–2 (hauteurs et positions) dans chaque strain ;
+/// Critère 1 : Mesures 5–6 = 1–2 (hauteurs et positions) dans chaque part ;
 /// passes 1 et 2 identiques (sur 20 seeds).
 #[test]
-fn acceptance_1_form_repeats_and_strain_passes_identical_20_seeds() {
+fn acceptance_1_form_repeats_and_part_passes_identical_20_seeds() {
     for seed in 0..NUM_SEEDS {
         let (_, _, tune) = generate_melody_tune(seed);
         assert_eq!(tune.len(), 32, "seed {seed}: un tune AABB doit compter 32 mesures");
 
-        // Strain A : passe 1 (0..8) == passe 2 (8..16)
+        // Part A : passe 1 (0..8) == passe 2 (8..16)
         for b in 0..8 {
             assert_eq!(
                 tune[b],
                 tune[b + 8],
-                "seed {seed}: strain A passe 1 mesure {} != passe 2 mesure {}",
+                "seed {seed}: part A passe 1 mesure {} != passe 2 mesure {}",
                 b + 1,
                 b + 9
             );
         }
 
-        // Strain B : passe 1 (16..24) == passe 2 (24..32)
+        // Part B : passe 1 (16..24) == passe 2 (24..32)
         for b in 16..24 {
             assert_eq!(
                 tune[b],
                 tune[b + 8],
-                "seed {seed}: strain B passe 1 mesure {} != passe 2 mesure {}",
+                "seed {seed}: part B passe 1 mesure {} != passe 2 mesure {}",
                 b + 1,
                 b + 9
             );
         }
 
-        // Dans chaque strain (A passe 1, A passe 2, B passe 1, B passe 2), mesures 5-6 == 1-2
+        // Dans chaque part (A passe 1, A passe 2, B passe 1, B passe 2), mesures 5-6 == 1-2
         for section_start in [0usize, 8, 16, 24] {
             assert_eq!(
                 tune[section_start + 4],
@@ -115,7 +115,7 @@ fn acceptance_2_half_and_full_cadences_20_seeds() {
         let (plan, _, tune) = generate_melody_tune(seed);
 
         for section_start in [0usize, 8, 16, 24] {
-            // Mesure 4 de la strain (indice section_start + 3)
+            // Mesure 4 de la part (indice section_start + 3)
             let bar4 = &tune[section_start + 3];
             assert!(!bar4.is_empty(), "seed {seed}: mesure 4 vide");
             let last_bar4 = &bar4[bar4.len() - 1];
@@ -125,7 +125,7 @@ fn acceptance_2_half_and_full_cadences_20_seeds() {
                 "seed {seed} section {section_start}: mesure 4 finit sur degré {deg4:?} (attendu 2, 5 ou 7)"
             );
 
-            // Mesure 8 de la strain (indice section_start + 7)
+            // Mesure 8 de la part (indice section_start + 7)
             let bar8 = &tune[section_start + 7];
             assert!(!bar8.is_empty(), "seed {seed}: mesure 8 vide");
             let deg8 = cadence_degree_bar8(&plan, bar8);
@@ -209,9 +209,9 @@ fn acceptance_4_inter_bar_continuity_at_least_95_percent_20_seeds() {
 
 /// Critère 5 (P1-T7) : contraste partie B − partie A en moyenne sur 20 seeds
 /// dans 0..=4 demi-tons (l'ancienne règle « B sur 6–8 » produisait +6 ;
-/// cible `strain_b_lift_semitones` = +2 autour de `melody_center_midi`).
+/// cible `part_b_lift_semitones` = +2 autour de `melody_center_midi`).
 #[test]
-fn acceptance_5_strain_b_lift_contrast_0_to_4_semitones_20_seeds() {
+fn acceptance_5_part_b_lift_contrast_0_to_4_semitones_20_seeds() {
     let mut total_b_minus_a = 0.0;
     for seed in 0..NUM_SEEDS {
         let (_, _, tune) = generate_melody_tune(seed);
@@ -257,7 +257,7 @@ fn acceptance_6_determinism_and_seed_diversity() {
 
 /// Anti-répétition sur les mesures libres (`ImposedRole::Free`) :
 /// sur 20 seeds (et sur la seed 42 signalée à l'écoute), aucune mesure `Free`
-/// (mesures 2, 3 et 7 de chaque strain) ne réutilise la cellule de la mesure précédente.
+/// (mesures 2, 3 et 7 de chaque part) ne réutilise la cellule de la mesure précédente.
 #[test]
 fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
     for seed in (0..NUM_SEEDS).chain(std::iter::once(42)) {
@@ -269,10 +269,10 @@ fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
                 let curr_cell = line.cell_for_bar(bar);
                 assert!(
                     !same_cell_up_to_octave(curr_cell, prev_cell),
-                    "seed {seed} bar {} (strain {:?} m.{}): la mesure Free a réutilisé la cellule de la mesure précédente",
+                    "seed {seed} bar {} (part {:?} m.{}): la mesure Free a réutilisé la cellule de la mesure précédente",
                     bar + 1,
-                    role.strain,
-                    role.bar_in_strain
+                    role.part,
+                    role.bar_in_part
                 );
                 assert_ne!(
                     tune[bar],
@@ -285,13 +285,13 @@ fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
     }
 }
 
-/// Export MIDI d'un tune complet de 32 mesures dans `target/trad_fiddle_demo.mid` pour écoute.
+/// Export MIDI d'un tune complet de 32 mesures dans `target/melody_line_demo.mid` pour écoute.
 ///
 /// Commande :
-/// `cargo test -p harmonium_core --test trad_fiddle_tests export_fiddle_tune_to_midi_for_listening -- --ignored --nocapture`
+/// `cargo test -p harmonium_core --test melody_line_tests export_melody_tune_to_midi_for_listening -- --ignored --nocapture`
 #[test]
 #[ignore = "écrit un fichier MIDI de démonstration dans target/ pour écoute manuelle"]
-fn export_fiddle_tune_to_midi_for_listening() {
+fn export_melody_tune_to_midi_for_listening() {
     let (plan, _, tune) = generate_melody_tune(42);
     let mut timeline = ScoreTimeline::new(64);
     let time_sig = plan.profile.meter.time_signature;
@@ -314,7 +314,7 @@ fn export_fiddle_tune_to_midi_for_listening() {
         .parent()
         .map_or_else(|| PathBuf::from("target"), |root| root.join("target"));
     let _ = std::fs::create_dir_all(&target_dir);
-    let midi_path = target_dir.join("trad_fiddle_demo.mid");
+    let midi_path = target_dir.join("melody_line_demo.mid");
 
     let res = write_midi(&timeline, &plan.profile, &midi_path);
     assert!(res.is_ok(), "échec de l'écriture MIDI: {res:?}");

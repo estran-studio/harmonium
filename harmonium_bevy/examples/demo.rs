@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     .init_resource::<PulseLevel>()
     .add_plugins(HarmoniumPlugin::new(HarmoniumConfig {
         main_bank: Some("banks://GeneralUser-GS.sf2".into()),
-        feet_bank: Some("banks://harmonium_trad.sf2".into()),
+        percussion_bank: Some("banks://harmonium_trad.sf2".into()),
         odin_presets,
         ..default()
     }))

@@ -1,0 +1,135 @@
+# Table de percussion militaire (fifre et tambour) pour la marche britannique coloniale.
+#
+# Voix :
+# - Grosse caisse (Bass drum) : touche GM 36 sur piste PercussionLow (canal MIDI 9)
+# - Caisse claire standard (Snare) : touche GM 38 sur piste PercussionHigh (canal MIDI 9)
+# - Caisse claire flam / coup accentué : touche GM 40 sur piste PercussionHigh (canal MIDI 9)
+#
+# Motifs :
+# - Pas cadencé : pulsation de marche aux temps forts (gauche 0, droite 8)
+# - Roulements (16ᵉ) : doubles croches soutenues à densité 2
+# - Flams : frappes accentuées de conclusion aux cadences (m.4 et m.8)
+
+low_note = 36
+high_note = 38
+low_velocity = 85
+high_velocity = 80
+percussion_gain = 1.0
+velocity_humanize = 8
+intro_tracks = ["PercussionLow", "PercussionHigh"]
+
+[[voices]]
+name = "bass_drum"
+note = 36
+velocity = 85
+track = "PercussionLow"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 80
+track = "PercussionHigh"
+
+[[voices]]
+name = "flam"
+note = 40
+velocity = 95
+track = "PercussionHigh"
+
+# -----------------------------------------------------------------------------
+# Patterns courants (densités 0, 1, 2)
+# -----------------------------------------------------------------------------
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 8, track = "PercussionLow" },
+  { step = 12, track = "PercussionHigh" },
+]
+
+[[patterns]]
+density = 1
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 0, track = "PercussionHigh" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 6, track = "PercussionHigh" },
+  { step = 7, track = "PercussionHigh", delta_velocity = -15 },
+  { step = 8, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 12, track = "PercussionHigh" },
+  { step = 14, track = "PercussionHigh" },
+]
+
+[[patterns]]
+density = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 0, track = "PercussionHigh" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 6, track = "PercussionHigh" },
+  { step = 7, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 8, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 9, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 10, track = "PercussionHigh" },
+  { step = 11, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 12, track = "PercussionHigh" },
+  { step = 13, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 14, track = "PercussionHigh" },
+  { step = 15, track = "PercussionHigh" },
+]
+
+# -----------------------------------------------------------------------------
+# Patterns de cadence (fins de phrase, demi-cadence m.4 et cadence finale m.8)
+# -----------------------------------------------------------------------------
+
+[[cadence_patterns]]
+density = 0
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 0, track = "PercussionHigh" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 8, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 12, track = "PercussionHigh" },
+  { step = 14, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 15, voice = "flam", delta_velocity = 15 },
+]
+
+[[cadence_patterns]]
+density = 1
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 0, track = "PercussionHigh" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 8, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 10, track = "PercussionHigh" },
+  { step = 11, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 12, track = "PercussionHigh" },
+  { step = 13, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 14, track = "PercussionHigh" },
+  { step = 15, voice = "flam", delta_velocity = 20 },
+]
+
+[[cadence_patterns]]
+density = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 0, track = "PercussionHigh" },
+  { step = 4, track = "PercussionHigh" },
+  { step = 6, track = "PercussionHigh" },
+  { step = 7, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 8, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 9, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 10, track = "PercussionHigh" },
+  { step = 11, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 12, track = "PercussionHigh" },
+  { step = 13, track = "PercussionHigh", delta_velocity = -10 },
+  { step = 14, voice = "flam", delta_velocity = 10 },
+  { step = 15, voice = "flam", delta_velocity = 25 },
+]

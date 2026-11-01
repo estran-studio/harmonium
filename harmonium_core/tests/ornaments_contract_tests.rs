@@ -163,7 +163,7 @@ fn per_bar_rates_target_the_bar_of_the_part() {
     for seed in 0..30 {
         let (a, b) = (stream(&plain, seed, 32), stream(&p, seed, 32));
         for (x, y) in a.iter().zip(&b).filter(|(x, _)| in_tour(x)) {
-            let bar = x.position.unwrap().bar_in_strain;
+            let bar = x.position.unwrap().bar_in_part;
             hits[bar - 1] += melody(y).len() - melody(x).len();
         }
     }
@@ -408,13 +408,13 @@ fn protected_bars_stay_plain_and_context_filters_apply() {
                 let same = json(std::slice::from_ref(x)) == json(std::slice::from_ref(y));
                 let guarded = protected
                     .as_ref()
-                    .map_or(pos.bar_in_strain == p.form.parts[pos.part.0].roles.len(), |bars| {
-                        bars.contains(&pos.bar_in_strain)
+                    .map_or(pos.bar_in_part == p.form.parts[pos.part.0].roles.len(), |bars| {
+                        bars.contains(&pos.bar_in_part)
                     });
                 assert!(
                     same || !guarded,
                     "{kind:?} m.{} ornée alors que protégée",
-                    pos.bar_in_strain
+                    pos.bar_in_part
                 );
                 touched += usize::from(!same);
             }
@@ -434,7 +434,7 @@ fn protected_bars_stay_plain_and_context_filters_apply() {
             graces += 1;
             let index = written.iter().position(|w| w.start_step == g.start_step).unwrap();
             assert!(index > 0 && written[index].pitch.abs_diff(written[index - 1].pitch) > 2);
-            let bar = x.position.unwrap().bar_in_strain;
+            let bar = x.position.unwrap().bar_in_part;
             assert!(bar % 4 != 0, "phrase_end = never : m.{bar} est une fin de phrase");
         }
     }

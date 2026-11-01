@@ -121,7 +121,7 @@ pub fn open_session(
         .collect();
     let host = LiveHost::start_paused(
         Some(&resources.main_bank),
-        resources.feet_bank.as_deref(),
+        resources.percussion_bank.as_deref(),
         &presets,
         buffer_frames,
     )?;

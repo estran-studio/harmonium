@@ -473,7 +473,7 @@ pub struct ProfileHarmony {
     pub steps_per_chord: usize,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<ModeChords>,
-    /// Règles et poids du modèle jazz ; les profils trad ne les consultent pas.
+    /// Règles et poids du modèle de réécriture ; les autres modèles ne les consultent pas.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<crate::models::rewrite::RewriteRule>,
     #[serde(default)]
@@ -514,7 +514,7 @@ impl ProfileInstruments {
             TrackId::Countermelody => self.countermelody_program,
             TrackId::Chords => self.chords_program,
             TrackId::Bass => self.bass_program,
-            TrackId::Heel | TrackId::Toe => Some(self.percussion_program),
+            TrackId::PercussionLow | TrackId::PercussionHigh => Some(self.percussion_program),
         }
     }
 }
@@ -582,8 +582,8 @@ impl StyleProfile {
                     && self.instruments.bass_program.is_some()
                     && self.arrangement.has_track(TrackId::Bass)
             }
-            TrackId::Heel => self.arrangement.has_track(TrackId::Heel),
-            TrackId::Toe => self.arrangement.has_track(TrackId::Toe),
+            TrackId::PercussionLow => self.arrangement.has_track(TrackId::PercussionLow),
+            TrackId::PercussionHigh => self.arrangement.has_track(TrackId::PercussionHigh),
         }
     }
 }
@@ -758,7 +758,7 @@ impl StyleProfile {
             for (key, filename) in files {
                 let target = match key.as_str() {
                     "cells" => "melody.cells",
-                    "feet" => "percussion",
+                    "percussion" => "percussion",
                     "arrangement" => "arrangement",
                     "dynamics" => "dynamics",
                     "set" => "set",
@@ -1179,10 +1179,10 @@ impl StyleProfile {
         check(
             matches!(
                 self.harmony.model.as_str(),
-                "trad_functional" | "jazz_functional" | "loop" | "none"
+                "melody_functional" | "rewrite_functional" | "loop" | "none"
             ),
             "harmony.model",
-            "modèles disponibles : trad_functional, jazz_functional, loop, none",
+            "modèles disponibles : melody_functional, rewrite_functional, loop, none",
         )?;
         check(
             self.harmony.steps_per_chord > 0
@@ -1191,12 +1191,12 @@ impl StyleProfile {
             "doit diviser steps_per_bar",
         )?;
         crate::models::chord_loop::validate(self)?;
-        if self.harmony.model == "jazz_functional" {
+        if self.harmony.model == "rewrite_functional" {
             check(self.harmony.max_recursion <= 16, "harmony.max_recursion", "attendu 0..16")?;
             check(
                 !self.harmony.rules.is_empty() && self.harmony.rules.len() <= 256,
                 "harmony.rules",
-                "1..256 règles requises pour jazz_functional",
+                "1..256 règles requises pour rewrite_functional",
             )?;
             let mut total = 0.0f32;
             for (i, rule) in self.harmony.rules.iter().enumerate() {
@@ -1213,7 +1213,7 @@ impl StyleProfile {
                     "poids fini positif ou nul, 1..64 symboles, valences ordonnées dans -1..1",
                 )?;
                 total += rule.weight
-                    * crate::models::rewrite::GrammarStyle::Jazz.category_weight(rule.category);
+                    * crate::models::rewrite::GrammarStyle::Extended.category_weight(rule.category);
             }
             check(
                 total.is_finite() && total > 0.0,
@@ -1260,7 +1260,7 @@ impl StyleProfile {
             }
         }
         check(
-            self.harmony.model != "trad_functional"
+            self.harmony.model != "melody_functional"
                 || reachable.iter().all(|mode| modes.contains(mode)),
             "harmony.candidates",
             "accords requis pour chaque mode atteignable (fixed_tonality ou key_modes, color, parallel_modes)",
@@ -1283,13 +1283,13 @@ impl StyleProfile {
         if let Some(a) = &self.accompaniment {
             check(
                 a.bass.motifs.is_empty()
-                    || matches!(self.harmony.model.as_str(), "trad_functional" | "loop"),
+                    || matches!(self.harmony.model.as_str(), "melody_functional" | "loop"),
                 "accompaniment.bass.motifs",
-                "les motifs de basse demandent une harmonie trad_functional ou loop",
+                "les motifs de basse demandent une harmonie melody_functional ou loop",
             )?;
             a.validate_accompaniment(
                 m.steps_per_bar,
-                self.harmony.model == "jazz_functional",
+                self.harmony.model == "rewrite_functional",
                 &self.form.parts,
             )?;
         } else {
@@ -1319,8 +1319,8 @@ impl StyleProfile {
             )?;
         }
         check(
-            self.percussion.heel_note <= 127 && self.percussion.toe_note <= 127,
-            "percussion.heel_note",
+            self.percussion.low_note <= 127 && self.percussion.high_note <= 127,
+            "percussion.low_note",
             "notes MIDI dans 0..127",
         )?;
         let i = &self.instruments;

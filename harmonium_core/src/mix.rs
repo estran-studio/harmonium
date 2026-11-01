@@ -49,10 +49,10 @@ pub struct MixTracks {
     pub chords: TrackMix,
     #[serde(rename = "Bass")]
     pub bass: TrackMix,
-    #[serde(rename = "Heel")]
-    pub heel: TrackMix,
-    #[serde(rename = "Toe")]
-    pub toe: TrackMix,
+    #[serde(rename = "PercussionLow")]
+    pub percussion_low: TrackMix,
+    #[serde(rename = "PercussionHigh")]
+    pub percussion_high: TrackMix,
     #[serde(rename = "Countermelody", default)]
     pub countermelody: TrackMix,
 }
@@ -67,8 +67,8 @@ impl MixTracks {
             TrackId::Melody => self.melody,
             TrackId::Chords => self.chords,
             TrackId::Bass => self.bass,
-            TrackId::Heel => self.heel,
-            TrackId::Toe => self.toe,
+            TrackId::PercussionLow => self.percussion_low,
+            TrackId::PercussionHigh => self.percussion_high,
             TrackId::Countermelody => self.countermelody,
         }
     }

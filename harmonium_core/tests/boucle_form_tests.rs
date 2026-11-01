@@ -49,12 +49,12 @@ fn boucle_quatre_mesures_melodie_entre_au_tour_2() -> Result<(), Box<dyn std::er
     for seed in [1, 2] {
         let snapshots = stream(&profile, seed, 64);
         assert_eq!(snapshots.len(), 64, "seed {seed}");
-        // Tour 1 (mesures 1-8) : pas de mélodie, accompagnement et pieds présents.
+        // Tour 1 (mesures 1-8) : pas de mélodie, accompagnement et percussion présents.
         for snapshot in snapshots.iter().take(8) {
             assert!(melody(snapshot).is_empty(), "mélodie au tour 1, seed {seed}");
             assert!(has_track(snapshot, 1), "accords au tour 1, seed {seed}");
             assert!(has_track(snapshot, 2), "basse au tour 1, seed {seed}");
-            assert!(has_track(snapshot, 3), "pieds au tour 1, seed {seed}");
+            assert!(has_track(snapshot, 3), "percussion au tour 1, seed {seed}");
         }
         // Tours 2-8 : la mélodie joue chaque mesure.
         for snapshot in snapshots.iter().skip(8) {

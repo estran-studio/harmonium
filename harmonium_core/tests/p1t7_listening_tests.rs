@@ -1,5 +1,5 @@
 //! Critères d'écoute P1-T7 sur le flux de snapshots (20 seeds × 32 mesures) :
-//! variété des débuts, registre (centre si4, lift B), pieds discrets par défaut,
+//! variété des débuts, registre (centre si4, lift B), percussion discrets par défaut,
 //! ouvertures différentes entre tunes consécutifs.
 
 use std::collections::BTreeSet;
@@ -19,7 +19,7 @@ const BARS_32: usize = 32;
 
 /// Tuning « un seul tour, tout le monde dès la mesure 1 » : isole la forme, l'harmonie
 /// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
-/// `trad_arrangement_tests`.
+/// `arrangement_tests`.
 fn flat_tuning() -> TuningParams {
     TuningParams {
         profile: {
@@ -31,7 +31,7 @@ fn flat_tuning() -> TuningParams {
     }
 }
 
-fn reel_params(feet_density: u8) -> MusicalParams {
+fn tune_params(percussion_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
     let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
@@ -39,13 +39,16 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;
-    params.set_feet_density(feet_density);
+    params.set_percussion_density(percussion_density);
     params
 }
 
-fn generate_32_snapshots(seed: u64, feet_density: u8) -> (TuneGenerator, Vec<MeasureSnapshot>) {
+fn generate_32_snapshots(
+    seed: u64,
+    percussion_density: u8,
+) -> (TuneGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut tune_gen = TuneGenerator::new(reel_params(feet_density), flat_tuning());
+    let mut tune_gen = TuneGenerator::new(tune_params(percussion_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_32);
     for bar in 1..=BARS_32 {
         let m = tune_gen.generate_measure(bar, &mut rng);
@@ -90,8 +93,8 @@ fn p1t7_distinct_openings_and_register_20_seeds() -> Result<(), String> {
         let mean = melody_mean(&snapshots).ok_or("mélodie vide".to_string())?;
         assert!((68.0..=75.0).contains(&mean), "seed {seed}: moyenne {mean:.1} hors 68..=75");
 
-        let mean_a = melody_mean(&snapshots[..16]).ok_or("strain A vide".to_string())?;
-        let mean_b = melody_mean(&snapshots[16..]).ok_or("strain B vide".to_string())?;
+        let mean_a = melody_mean(&snapshots[..16]).ok_or("part A vide".to_string())?;
+        let mean_b = melody_mean(&snapshots[16..]).ok_or("part B vide".to_string())?;
         b_minus_a_sum += mean_b - mean_a;
     }
 
@@ -103,29 +106,35 @@ fn p1t7_distinct_openings_and_register_20_seeds() -> Result<(), String> {
 }
 
 #[test]
-fn p1t7_feet_quiet_by_default() {
+fn p1t7_percussion_quiet_by_default() {
     // Avec l'humanisation (±velocity_humanize), le pied doit rester discret
-    // face au violon (vélocité de base ~84) : plafond = base + humanisation.
+    // face à la mélodie (vélocité de base ~84) : plafond = base + humanisation.
     let table = TuningParams::default().profile.percussion;
-    let heel_ceiling = table.heel_velocity.saturating_add(table.velocity_humanize);
-    let toe_ceiling = table.toe_velocity.saturating_add(table.velocity_humanize);
-    assert!(heel_ceiling <= 84, "talon trop fort par défaut : plafond {heel_ceiling}");
-    assert!(toe_ceiling <= 84, "pointe trop forte par défaut : plafond {toe_ceiling}");
+    let percussion_low_ceiling = table.low_velocity.saturating_add(table.velocity_humanize);
+    let percussion_high_ceiling = table.high_velocity.saturating_add(table.velocity_humanize);
+    assert!(
+        percussion_low_ceiling <= 84,
+        "percussion grave trop fort par défaut : plafond {percussion_low_ceiling}"
+    );
+    assert!(
+        percussion_high_ceiling <= 84,
+        "percussion aiguë trop forte par défaut : plafond {percussion_high_ceiling}"
+    );
 
     for density in 0..=2u8 {
         let (_, snapshots) = generate_32_snapshots(1, density);
         for snap in &snapshots {
-            for n in notes_on_track(snap, TrackId::Heel) {
+            for n in notes_on_track(snap, TrackId::PercussionLow) {
                 assert!(
-                    n.velocity <= heel_ceiling,
-                    "talon vélocité {} > {heel_ceiling}",
+                    n.velocity <= percussion_low_ceiling,
+                    "percussion grave vélocité {} > {percussion_low_ceiling}",
                     n.velocity
                 );
             }
-            for n in notes_on_track(snap, TrackId::Toe) {
+            for n in notes_on_track(snap, TrackId::PercussionHigh) {
                 assert!(
-                    n.velocity <= toe_ceiling,
-                    "pointe vélocité {} > {toe_ceiling}",
+                    n.velocity <= percussion_high_ceiling,
+                    "percussion aiguë vélocité {} > {percussion_high_ceiling}",
                     n.velocity
                 );
             }
@@ -138,7 +147,7 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
     for seed_u32 in 1..=NUM_SEEDS {
         let seed = u64::from(seed_u32);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut tune_gen = TuneGenerator::new(reel_params(1), flat_tuning());
+        let mut tune_gen = TuneGenerator::new(tune_params(1), flat_tuning());
         for bar in 1..=64 {
             let _ = tune_gen.generate_measure(bar, &mut rng);
         }
@@ -146,8 +155,8 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
         let tune2 = tune_gen.tune_for_bar(33).ok_or("tune 2 absent".to_string())?;
         assert!(
             !same_cell_up_to_octave(
-                &tune1.fiddle.cells_for_part(harmonium_core::compose::Part(0))[0],
-                &tune2.fiddle.cells_for_part(harmonium_core::compose::Part(0))[0]
+                &tune1.melody.cells_for_part(harmonium_core::compose::Part(0))[0],
+                &tune2.melody.cells_for_part(harmonium_core::compose::Part(0))[0]
             ),
             "seed {seed}: tunes 1 et 2 commencent par la même cellule"
         );

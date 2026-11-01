@@ -29,10 +29,10 @@ struct Args {
     /// errors and exit 0 (valid) or 1 (invalid). Runs without starting the engine.
     #[arg(long, value_name = "FILE")]
     check_cells: Option<String>,
-    /// Path to the feet SoundFont (.sf2). Defaults to `assets/harmonium_trad.sf2`
-    /// when present (else the feet fall back to the GM kit on channel 9).
+    /// Path to the percussion SoundFont (.sf2). Defaults to `assets/harmonium_trad.sf2`
+    /// when present (else the percussion fall back to the GM kit on channel 9).
     #[arg(long)]
-    feet_soundfont: Option<String>,
+    percussion_soundfont: Option<String>,
     /// Dossier de presets Odin (`.odin` fournis par le jeu) : chaque piste
     /// qui déclare le preset en données joue Odin, les autres SoundFont.
     /// Sans effet sans la compilation `--features odin`.
@@ -77,15 +77,15 @@ struct Args {
     #[arg(long)]
     seed: Option<u64>,
 
-    /// Podorythmie (`0`, `1`, `2` ou `off` pour exporter sans pieds)
+    /// Percussion (`0`, `1`, `2` ou `off` pour exporter sans percussion)
     #[arg(long)]
-    feet: Option<String>,
+    percussion: Option<String>,
 
     /// Swing des croches à l'export (0,5 = droit ; remplace le swing du style)
     #[arg(long)]
     swing: Option<f32>,
 
-    /// Tours AABB joués par air avant d'en tirer un nouveau (défaut : `reel_arrangement.toml`)
+    /// Tours AABB joués par air avant d'en tirer un nouveau (défaut : `arrangement.toml`)
     #[arg(long, value_name = "N")]
     tours: Option<usize>,
     /// Record WAV output to file
@@ -129,8 +129,8 @@ fn main() -> Result<()> {
     } else {
         args.style.as_deref().map(parser::parse_style_value).transpose()?
     };
-    let parsed_feet = match args.feet.as_deref() {
-        Some(s) => Some(parser::parse_feet_value(s).map_err(|e| anyhow::anyhow!(e))?),
+    let parsed_percussion = match args.percussion.as_deref() {
+        Some(s) => Some(parser::parse_percussion_value(s).map_err(|e| anyhow::anyhow!(e))?),
         None => None,
     };
     if let Some(swing) = args.swing {
@@ -149,7 +149,8 @@ fn main() -> Result<()> {
     }
 
     let sf2_bytes = harmonium::load_soundfont(args.soundfont.as_deref())?;
-    let feet_sf2_bytes = harmonium::load_percussion_soundfont(args.feet_soundfont.as_deref())?;
+    let percussion_sf2_bytes =
+        harmonium::load_percussion_soundfont(args.percussion_soundfont.as_deref())?;
     #[cfg(feature = "odin")]
     let odin_owned = load_odin_presets(args.odin_presets.as_deref())?;
     #[cfg(feature = "odin")]
@@ -174,14 +175,14 @@ fn main() -> Result<()> {
         };
         export::run(
             sf2_bytes.as_deref(),
-            feet_sf2_bytes.as_deref(),
+            percussion_sf2_bytes.as_deref(),
             &odin_presets,
             args.duration,
             args.bars,
             args.solo_track,
             parsed_style,
             args.seed,
-            parsed_feet,
+            parsed_percussion,
             args.swing,
             args.tours,
             args.automation,
@@ -194,9 +195,13 @@ fn main() -> Result<()> {
         // Interactive REPL mode: needs audio device
         println!("Initializing Harmonium engine...");
 
-        let mut host =
-            LiveHost::start(sf2_bytes.as_deref(), feet_sf2_bytes.as_deref(), &odin_presets, None)
-                .map_err(|e| anyhow::anyhow!(e))?;
+        let mut host = LiveHost::start(
+            sf2_bytes.as_deref(),
+            percussion_sf2_bytes.as_deref(),
+            &odin_presets,
+            None,
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
         if let Some(seed) = args.seed {
             host.apply(EngineCommand::SetSeed(seed)).map_err(|e| anyhow::anyhow!(e))?;
         }

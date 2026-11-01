@@ -19,7 +19,7 @@ pub struct Key {
     pub density: Option<f32>,
     pub tension: Option<f32>,
     pub bpm: Option<f32>,
-    pub feet: Option<f32>,
+    pub percussion: Option<f32>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -30,7 +30,7 @@ pub struct Values {
     pub density: Option<f32>,
     pub tension: Option<f32>,
     pub bpm: Option<f32>,
-    pub feet: Option<f32>,
+    pub percussion: Option<f32>,
 }
 
 impl Automation {
@@ -61,7 +61,7 @@ impl Automation {
                 ("density", key.density, 0.0, 1.0),
                 ("tension", key.tension, 0.0, 1.0),
                 ("bpm", key.bpm, 40.0, 300.0),
-                ("feet", key.feet, 0.0, 2.0),
+                ("percussion", key.percussion, 0.0, 2.0),
             ];
             if fields.iter().all(|(_, v, _, _)| v.is_none()) {
                 bail!("automation: bar={} ne contient aucun paramètre", key.bar);
@@ -105,7 +105,7 @@ impl Automation {
             density: self.interpolate(bar, |k| k.density),
             tension: self.interpolate(bar, |k| k.tension),
             bpm: self.interpolate(bar, |k| k.bpm),
-            feet: self.interpolate(bar, |k| k.feet),
+            percussion: self.interpolate(bar, |k| k.percussion),
         }
     }
 
@@ -132,8 +132,8 @@ impl Automation {
         if let Some(value) = values.bpm {
             composer.set_bpm(value);
         }
-        if let Some(value) = values.feet {
-            composer.set_feet_density(value.round() as u8);
+        if let Some(value) = values.percussion {
+            composer.set_percussion_density(value.round() as u8);
         }
         composer.invalidate_future();
     }
@@ -153,7 +153,7 @@ mod tests {
             ("keys=[]", "au moins une"),
             ("[[keys]]\nbar=0\nintensity=0.5", "bar=0"),
             ("[[keys]]\nbar=1\nintensity=nan", "intensity"),
-            ("[[keys]]\nbar=1\nfeet=3", "feet"),
+            ("[[keys]]\nbar=1\npercussion=3", "percussion"),
             ("[[keys]]\nbar=1\nintensite=0.2", "unknown field"),
             ("[[keys]]\nbar=1\nintensity=0.2\n[[keys]]\nbar=1\nintensity=0.9", "strictement"),
             ("[[keys]]\nbar=1", "aucun paramètre"),
@@ -165,9 +165,9 @@ mod tests {
 
     #[test]
     fn sparse_fields_interpolate_independently_and_hold_endpoints() {
-        let a=Automation::from_toml("[[keys]]\nbar=1\nintensity=0.0\nfeet=0\n[[keys]]\nbar=5\nvalence=-1.0\n[[keys]]\nbar=9\nintensity=1.0\nfeet=2\nvalence=1.0").unwrap();
+        let a=Automation::from_toml("[[keys]]\nbar=1\nintensity=0.0\npercussion=0\n[[keys]]\nbar=5\nvalence=-1.0\n[[keys]]\nbar=9\nintensity=1.0\npercussion=2\nvalence=1.0").unwrap();
         assert_eq!(a.at_bar(5).intensity, Some(0.5));
-        assert_eq!(a.at_bar(5).feet, Some(1.0));
+        assert_eq!(a.at_bar(5).percussion, Some(1.0));
         assert_eq!(a.at_bar(7).valence, Some(0.0));
         assert_eq!(a.at_bar(1).valence, Some(-1.0));
         assert_eq!(a.at_bar(100).intensity, Some(1.0));
@@ -290,11 +290,11 @@ mod tests {
                     tuning.profile.heterophony = None;
                     if let Some(a) = &mut tuning.profile.accompaniment {
                         a.bass.passing = None;
-                        a.chords.strings = 3;
-                        a.chords.strum = None;
+                        a.chords.note_count = 3;
+                        a.chords.spread = None;
                         for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
                             hit.probability = 1.0;
-                            hit.stroke =
+                            hit.direction =
                                 harmonium_core::compose::accomp_profile::AttackDirection::Block;
                             hit.velocity = 72;
                         }

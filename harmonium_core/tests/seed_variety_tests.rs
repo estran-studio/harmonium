@@ -17,7 +17,7 @@ fn params(profile: &StyleProfile, density: u8) -> MusicalParams {
         time_signature: profile.meter.time_signature,
         swing_ratio: profile.meter.default_swing_ratio,
         harmony_valence: profile.dynamics.neutral_valence,
-        feet_density: density,
+        percussion_density: density,
         ..Default::default()
     }
 }
@@ -81,8 +81,8 @@ fn retours_de_partie_et_second_tour_conservent_les_choix() -> TestResult {
         let mut profile = StyleProfile::named(id)?;
         // Isoler l'identité des patterns de la rampe d'intensité, qui peut changer
         // la densité effective entre les deux tours.
-        profile.dynamics.feet_intensity.0 = vec![[0.0, 0.0], [1.0, 0.0]];
-        profile.dynamics.density_feet.0 = vec![[0.0, 0.0], [1.0, 0.0]];
+        profile.dynamics.percussion_intensity.0 = vec![[0.0, 0.0], [1.0, 0.0]];
+        profile.dynamics.density_percussion.0 = vec![[0.0, 0.0], [1.0, 0.0]];
         // Downpour n'a qu'un tour en données ; exercer aussi son second tour.
         profile.arrangement.tours_per_tune = 2;
         let bars = profile.form.bars_per_tour();
@@ -94,7 +94,7 @@ fn retours_de_partie_et_second_tour_conservent_les_choix() -> TestResult {
                 if position.is_intro() {
                     continue;
                 }
-                let key = (position.part.0, position.bar_in_strain);
+                let key = (position.part.0, position.bar_in_part);
                 let score =
                     (snapshot.chord_root_offset, snapshot.chord_is_minor, grid(snapshot, &[3, 4]));
                 if let Some(previous) = written.insert(key, score.clone()) {
@@ -151,7 +151,7 @@ fn changer_de_densite_ne_retire_pas_les_patterns_ni_les_accords() -> TestResult 
         TuneGenerator::new(params(&profile, 1), TuningParams { profile: profile.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     for (index, expected) in reference.iter().enumerate() {
-        generator.musical_params.feet_density = if index % 2 == 0 { 2 } else { 1 };
+        generator.musical_params.percussion_density = if index % 2 == 0 { 2 } else { 1 };
         let actual =
             MeasureSnapshot::from_measure(&generator.generate_measure(index + 1, &mut rng));
         assert_eq!(

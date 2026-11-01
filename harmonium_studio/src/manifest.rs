@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 pub const MANIFEST_FILE: &str = "assets.json";
 /// Rôle de la banque principale (obligatoire).
 pub const MAIN_BANK_ID: &str = "main-bank";
-/// Rôle de la banque de pieds (facultative : sans elle, les pieds jouent le kit GM du canal 9).
-pub const PERCUSSION_BANK_ID: &str = "feet-bank";
+/// Rôle de la banque de percussion (facultative : sans elle, la percussion jouent le kit GM du canal 9).
+pub const PERCUSSION_BANK_ID: &str = "percussion-bank";
 /// Préfixe du rôle d'un preset Odin : `odin:<nom court>`, le nom étant celui que les profils
 /// désignent (`[odin.<piste>]`).
 pub const ODIN_ID_PREFIX: &str = "odin:";
@@ -38,7 +38,7 @@ pub struct Resource {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role<'a> {
     MainBank,
-    FeetBank,
+    PercussionBank,
     /// Preset Odin, par son nom court.
     OdinPreset(&'a str),
 }
@@ -48,7 +48,7 @@ impl Resource {
     pub fn role(&self) -> Option<Role<'_>> {
         match self.id.as_str() {
             MAIN_BANK_ID => Some(Role::MainBank),
-            PERCUSSION_BANK_ID => Some(Role::FeetBank),
+            PERCUSSION_BANK_ID => Some(Role::PercussionBank),
             id => id
                 .strip_prefix(ODIN_ID_PREFIX)
                 .filter(|name| !name.is_empty())
@@ -148,7 +148,7 @@ pub fn hashed_file_name(original: &str, sha256: &str) -> String {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LoadedResources {
     pub main_bank: Vec<u8>,
-    pub feet_bank: Option<Vec<u8>>,
+    pub percussion_bank: Option<Vec<u8>>,
     /// Presets Odin `(nom court, octets)`, triés par nom : zéro preset est un cas normal.
     pub odin_presets: Vec<(String, Vec<u8>)>,
 }
@@ -167,7 +167,7 @@ impl LoadedResources {
                 .ok_or_else(|| format!("resource `{}` was not loaded", resource.id))?;
             match resource.role() {
                 Some(Role::MainBank) => main_bank = Some(bytes),
-                Some(Role::FeetBank) => loaded.feet_bank = Some(bytes),
+                Some(Role::PercussionBank) => loaded.percussion_bank = Some(bytes),
                 Some(Role::OdinPreset(name)) => loaded.odin_presets.push((name.to_owned(), bytes)),
                 None => return Err(format!("unknown resource id `{}`", resource.id)),
             }

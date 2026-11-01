@@ -20,9 +20,9 @@ fn profile(
         r#"
 velocity_humanize = 0
 patterns = [
- {{ density = 0, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "Toe" }},
- {{ density = 1, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "Toe" }},
- {{ density = 2, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "Toe" }}
+ {{ density = 0, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "PercussionHigh" }},
+ {{ density = 1, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "PercussionHigh" }},
+ {{ density = 2, euclid = {{ pulses = {pulses}, steps = {steps}, rotation = {rotation} }}, track = "PercussionHigh" }}
 ]
 "#
     ))?;

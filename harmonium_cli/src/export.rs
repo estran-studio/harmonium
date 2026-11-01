@@ -26,14 +26,14 @@ const BUFFER_SIZE: usize = 256;
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     sf2_bytes: Option<&[u8]>,
-    feet_sf2_bytes: Option<&[u8]>,
+    percussion_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     duration_secs: Option<u64>,
     target_bars: Option<usize>,
     solo_track: Option<String>,
     style: Option<Box<harmonium_core::StyleProfile>>,
     seed: Option<u64>,
-    feet: Option<PercussionOpt>,
+    percussion: Option<PercussionOpt>,
     swing: Option<f32>,
     tours: Option<usize>,
     automation_path: Option<String>,
@@ -50,7 +50,7 @@ pub fn run(
         mut report_rx,
         mut clock_reader,
         finished_recordings,
-    ) = audio::create_offline_engine(sf2_bytes, feet_sf2_bytes, odin_presets, SAMPLE_RATE)
+    ) = audio::create_offline_engine(sf2_bytes, percussion_sf2_bytes, odin_presets, SAMPLE_RATE)
         .map_err(|e| anyhow::anyhow!(e))?;
 
     if let Some(s) = seed {
@@ -71,8 +71,8 @@ pub fn run(
         }
         composer.set_swing_ratio(clamped);
     }
-    match feet {
-        Some(PercussionOpt::Density(fd)) => composer.set_feet_density(fd),
+    match percussion {
+        Some(PercussionOpt::Density(fd)) => composer.set_percussion_density(fd),
         Some(PercussionOpt::Off) => composer.enable_rhythm(false),
         None => {}
     }
@@ -133,12 +133,13 @@ pub fn run(
 
     {
         let mp = composer.musical_params();
-        let feet = if mp.enable_rhythm { mp.feet_density.to_string() } else { "off".to_string() };
+        let percussion =
+            if mp.enable_rhythm { mp.percussion_density.to_string() } else { "off".to_string() };
         println!(
-            "Profil {} : seed={}, feet={}, tours/air={}, bpm={:.1}, swing={:.2}, sig={}/{}",
+            "Profil {} : seed={}, percussion={}, tours/air={}, bpm={:.1}, swing={:.2}, sig={}/{}",
             mp.profile_id,
             composer.session_seed(),
-            feet,
+            percussion,
             composer.tours_per_tune(),
             mp.bpm,
             mp.swing_ratio,

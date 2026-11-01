@@ -146,7 +146,7 @@ fn emotion_mapping_reads_style_tempo_data_and_preserves_runtime_contract() -> Re
     tuning.profile.meter.default_bpm = 250.0;
     composer.set_tuning(tuning);
     composer.set_swing_ratio(0.61);
-    composer.set_feet_density(2);
+    composer.set_percussion_density(2);
     composer.set_end_after_tour(true);
     composer.use_emotion_mode();
     composer.set_emotions(1.0, 0.0, 0.8, 0.9);
@@ -157,7 +157,7 @@ fn emotion_mapping_reads_style_tempo_data_and_preserves_runtime_contract() -> Re
     assert_eq!(params.swing_ratio, 0.61);
     assert_eq!(params.time_signature.numerator, 2);
     assert!(params.end_after_tour);
-    assert_eq!(params.feet_density, 2);
+    assert_eq!(params.percussion_density, 2);
     let first = composer.take_snapshots().into_iter().next().ok_or("snapshot absent")?;
     assert_eq!(first.tempo, 265.0);
     Ok(())

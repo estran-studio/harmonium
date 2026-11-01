@@ -2,7 +2,7 @@
 //!
 //! Une cellule représente une mesure de reel en 2/2 découpée en 8 croches
 //! diatoniques (`CellNote::Degree(i8)` ou `CellNote::Hold`).
-//! La banque par défaut est embarquée via `include_str!("reel_cells.toml")` et
+//! La banque par défaut est embarquée via `include_str!("cells.toml")` et
 //! portée par [`crate::tuning::TuningParams`] conformément au principe V de la
 //! constitution.
 
@@ -36,11 +36,11 @@ const CADENCE_HALF_CLASSES: [i8; 3] = [1, 4, 6];
 /// Contenu brut de la banque TOML embarquée du reel.
 pub const DEFAULT_CELLS_TOML: &str = include_str!("../../../profiles/reel_quebecois/cells.toml");
 
-/// Rôle fonctionnel d'une cellule mélodique dans une strain de 8 mesures (D5).
+/// Rôle fonctionnel d'une cellule mélodique dans une part de 8 mesures (D5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CellRole {
-    /// Début de phrase (mesure 1 de la strain).
+    /// Début de phrase (mesure 1 de la part).
     Open,
     /// Mouvement majoritairement conjoint.
     Run,
@@ -191,7 +191,7 @@ impl std::error::Error for CellBankError {}
 /// Cellule mélodique d'une mesure de reel (8 croches, D5).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Cell {
-    /// Rôle fonctionnel de la cellule dans la strain.
+    /// Rôle fonctionnel de la cellule dans la part.
     pub role: CellRole,
     /// Unités de la mesure ; longueur validée par le profil.
     pub notes: Vec<CellNote>,
@@ -271,7 +271,7 @@ impl Cell {
     /// - autres rôles : toujours vrai.
     ///
     /// Les cellules minées du corpus ne finissent pas toutes ainsi : la sélection
-    /// (`fiddle`) n'utilise que celles qui respectent la cadence imposée par le plan.
+    /// (`melody`) n'utilise que celles qui respectent la cadence imposée par le plan.
     #[must_use]
     pub fn respects_cadence(&self) -> bool {
         let class = |d: i8| degree_to_diatonic_step(d).rem_euclid(7);
@@ -405,7 +405,7 @@ impl<'de> Deserialize<'de> for Cell {
     }
 }
 
-/// Format racine du fichier `reel_cells.toml`.
+/// Format racine du fichier `cells.toml`.
 #[derive(Deserialize)]
 struct RawCellBank {
     cells: Vec<RawCell>,
@@ -419,7 +419,7 @@ pub struct CellBank {
 }
 
 impl Default for CellBank {
-    /// Charge la banque embarquée `reel_cells.toml` sans jamais paniquer à
+    /// Charge la banque embarquée `cells.toml` sans jamais paniquer à
     /// l'exécution (en cas d'erreur de données, retourne une banque vide ; la
     /// validité de `DEFAULT_CELLS_TOML` est garantie par les tests unitaires et
     /// [`crate::tuning::TuningParams::validate`]).
@@ -429,7 +429,7 @@ impl Default for CellBank {
 }
 
 impl CellBank {
-    /// Charge et valide une [`CellBank`] depuis une chaîne TOML au format `reel_cells.toml`.
+    /// Charge et valide une [`CellBank`] depuis une chaîne TOML au format `cells.toml`.
     pub fn from_toml(toml_str: &str) -> Result<Self, CellBankError> {
         let raw: RawCellBank =
             toml::from_str(toml_str).map_err(|e| CellBankError::TomlParse(e.to_string()))?;
@@ -551,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn embedded_reel_cell_bank_loads_and_validates() -> Result<(), CellBankError> {
+    fn embedded_cell_bank_loads_and_validates() -> Result<(), CellBankError> {
         let bank = CellBank::from_toml(DEFAULT_CELLS_TOML)?;
         bank.validate()?;
 

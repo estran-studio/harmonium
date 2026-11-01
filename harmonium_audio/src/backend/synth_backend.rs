@@ -20,7 +20,7 @@ pub struct SynthBackend {
 impl SynthBackend {
     /// Build the backend. `sf2_bytes = None` starts without any bank loaded:
     /// the engine renders silence.
-    /// `feet_sf2_bytes` charge la banque de pieds en banque
+    /// `percussion_sf2_bytes` charge la banque de percussion en banque
     /// [`PERCUSSION_BANK_OFFSET`] ; le profil décide qui l'emploie
     /// (`apply_profile_programs`, un seul chemin).
     /// `initial_routing` holds signed bank ids per logical channel
@@ -31,7 +31,7 @@ impl SynthBackend {
     pub fn new(
         sample_rate: f64,
         sf2_bytes: Option<&[u8]>,
-        feet_sf2_bytes: Option<&[u8]>,
+        percussion_sf2_bytes: Option<&[u8]>,
         initial_routing: &[i32],
     ) -> Self {
         let mut voice_manager = VoiceManager::new(sf2_bytes, sample_rate as f32);
@@ -63,7 +63,7 @@ impl SynthBackend {
         if has_gm_kit {
             percussion_banks.push(128);
         }
-        if let Some(bytes) = feet_sf2_bytes {
+        if let Some(bytes) = percussion_sf2_bytes {
             match relocate_font_banks(bytes, PERCUSSION_BANK_OFFSET as u16) {
                 Ok(prepared) => {
                     if voice_manager.add_font(0, &prepared) {
@@ -96,7 +96,7 @@ impl SynthBackend {
     }
 
     /// Banques SF2 portant un kit de percussion jouable (`128` : kit GM de la
-    /// banque principale ; [`PERCUSSION_BANK_OFFSET`] : banque de pieds chargée).
+    /// banque principale ; [`PERCUSSION_BANK_OFFSET`] : banque de percussion chargée).
     /// Les profils qui en désignent une autre sont avertis au chargement.
     #[must_use]
     pub fn percussion_banks(&self) -> &[u16] {
@@ -114,7 +114,7 @@ impl SynthBackend {
             width: mix.room.width,
             level: mix.room.level,
         });
-        // En GM les pieds partagent le canal 9 : Toe est envoyé en dernier et gagne.
+        // En GM les deux voix de percussion partagent le canal 9 : PercussionHigh est envoyé en dernier et gagne.
         for (channel, track) in mix.tracks.into_iter().enumerate() {
             for (ctrl, value) in track.controllers() {
                 self.voice_manager.process_event(AudioEvent::ControlChange {
@@ -249,18 +249,18 @@ impl AudioRenderer for SynthBackend {
 /// Appelé uniquement par le constructeur, avant le démarrage du callback.
 fn relocate_font_banks(bytes: &[u8], offset: u16) -> Result<Vec<u8>, &'static str> {
     if bytes.get(..4) != Some(b"RIFF") || bytes.get(8..12) != Some(b"sfbk") {
-        return Err("Banque de pieds : en-tête RIFF/sfbk invalide");
+        return Err("Banque de percussion : en-tête RIFF/sfbk invalide");
     }
     let size = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as usize;
-    let end = size.checked_add(8).ok_or("Banque de pieds : taille RIFF excessive")?;
-    let chunks = bytes.get(12..end).ok_or("Banque de pieds : RIFF tronqué")?;
+    let end = size.checked_add(8).ok_or("Banque de percussion : taille RIFF excessive")?;
+    let chunks = bytes.get(12..end).ok_or("Banque de percussion : RIFF tronqué")?;
     let pdta = find_sf2_chunk(chunks, b"LIST", Some(b"pdta"))?;
     let phdr = find_sf2_chunk(&chunks[pdta.start + 4..pdta.end], b"phdr", None)?;
     let start = 12 + pdta.start + 4 + phdr.start;
     let end = 12 + pdta.start + 4 + phdr.end;
     let headers = &bytes[start..end];
     if headers.len() < 76 || !headers.len().is_multiple_of(38) {
-        return Err("Banque de pieds : en-têtes de presets SF2 invalides");
+        return Err("Banque de percussion : en-têtes de presets SF2 invalides");
     }
     let mut prepared = bytes.to_vec();
     // Inclure le terminal : certaines banques omettent son nom EOP et
@@ -268,7 +268,8 @@ fn relocate_font_banks(bytes: &[u8], offset: u16) -> Result<Vec<u8>, &'static st
     let (headers, _) = prepared[start..end].as_chunks_mut::<38>();
     for header in headers {
         let bank = u16::from_le_bytes([header[22], header[23]]);
-        let bank = bank.checked_add(offset).ok_or("Banque de pieds : numéro de banque excessif")?;
+        let bank =
+            bank.checked_add(offset).ok_or("Banque de percussion : numéro de banque excessif")?;
         header[22..24].copy_from_slice(&bank.to_le_bytes());
     }
     Ok(prepared)
@@ -284,13 +285,13 @@ fn find_sf2_chunk(
         let header = chunks
             .get(position..)
             .and_then(|remaining| remaining.get(..8))
-            .ok_or("Banque de pieds : en-tête de bloc tronqué")?;
+            .ok_or("Banque de percussion : en-tête de bloc tronqué")?;
         let size = u32::from_le_bytes([header[4], header[5], header[6], header[7]]) as usize;
         let start = position + 8;
         let end = start
             .checked_add(size)
             .filter(|&end| end <= chunks.len())
-            .ok_or("Banque de pieds : bloc SF2 tronqué")?;
+            .ok_or("Banque de percussion : bloc SF2 tronqué")?;
         let data = &chunks[start..end];
         if &header[..4] == id && kind.is_none_or(|kind| data.get(..4) == Some(kind.as_slice())) {
             return Ok(start..end);
@@ -298,9 +299,9 @@ fn find_sf2_chunk(
         position = end
             .checked_add(size % 2)
             .filter(|&next| next <= chunks.len())
-            .ok_or("Banque de pieds : alignement SF2 tronqué")?;
+            .ok_or("Banque de percussion : alignement SF2 tronqué")?;
     }
-    Err("Banque de pieds : bloc SF2 requis absent")
+    Err("Banque de percussion : bloc SF2 requis absent")
 }
 
 #[cfg(test)]
@@ -316,27 +317,27 @@ mod tests {
     }
 
     #[test]
-    fn gm_piano_is_not_masked_by_the_feet_font() {
+    fn gm_piano_is_not_masked_by_the_percussion_font() {
         let gm = named_font(b"GM piano");
-        let mut feet = named_font(b"Dedicated feet");
+        let mut percussion = named_font(b"Dedicated percussion");
         // Même terminal anonyme que la banque harmonium_trad fournie.
-        let phdr = feet.windows(4).position(|chunk| chunk == b"phdr").unwrap();
-        let size = u32::from_le_bytes(feet[phdr + 4..phdr + 8].try_into().unwrap()) as usize;
-        feet[phdr + 8 + size - 38..phdr + 8 + size - 18].fill(0);
-        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&feet), &[0; 5]);
+        let phdr = percussion.windows(4).position(|chunk| chunk == b"phdr").unwrap();
+        let size = u32::from_le_bytes(percussion[phdr + 4..phdr + 8].try_into().unwrap()) as usize;
+        percussion[phdr + 8 + size - 38..phdr + 8 + size - 18].fill(0);
+        let mut backend = SynthBackend::new(44100.0, Some(&gm), Some(&percussion), &[0; 5]);
         backend.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         let piano = backend.voice_manager.synth.channel_preset(1).unwrap();
         assert_eq!(piano.name(), "GM piano");
         assert_eq!(piano.banknum(), 0);
         for channel in [3, 4] {
             let preset = backend.voice_manager.synth.channel_preset(channel).unwrap();
-            assert_eq!(preset.name(), "Dedicated feet");
+            assert_eq!(preset.name(), "Dedicated percussion");
             assert_eq!(preset.banknum(), PERCUSSION_BANK_OFFSET);
             assert_eq!(backend.voice_manager.midi_channel_map[channel as usize], channel);
         }
 
         let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5]);
-        // Banques de percussion annoncées à l'hôte : celle des pieds chargée,
+        // Banques de percussion annoncées à l'hôte : celle chargée à part,
         // aucune sans elle (le test.sf2 n'a pas de kit GM en banque 128).
         assert_eq!(backend.percussion_banks(), [PERCUSSION_BANK_OFFSET as u16]);
         assert!(reference.percussion_banks().is_empty());
@@ -359,7 +360,7 @@ mod tests {
 
     #[test]
     fn malformed_or_overflowing_font_banks_are_rejected() {
-        let bytes = named_font(b"Feet");
+        let bytes = named_font(b"Percussion");
         for end in [0, 4, 11, bytes.len() - 1] {
             assert!(relocate_font_banks(&bytes[..end], 1).is_err());
         }

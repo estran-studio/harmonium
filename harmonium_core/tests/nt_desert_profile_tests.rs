@@ -99,7 +99,7 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
                 );
             }
         }
-        // Le premier A1 ouvre sans pieds ni lead ; la voix entre en A2 et
+        // Le premier A1 ouvre sans percussion ni lead ; la voix entre en A2 et
         // revient après le pont, notamment sur la reprise A1'.
         for s in &snapshots[..8] {
             for track in [0, 3, 4, 5] {
@@ -312,7 +312,7 @@ fn quatre_emotions_observees_dans_les_snapshots() -> TestResult {
     };
     assert!(
         average_velocity(&intense) > average_velocity(&calm),
-        "arousal sans effet sur la dynamique des pieds"
+        "arousal sans effet sur la dynamique de la percussion"
     );
 
     // La densité enlève les couches, pas la nappe ; les deux voix arrivent

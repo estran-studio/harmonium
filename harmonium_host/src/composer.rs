@@ -553,8 +553,8 @@ impl MusicComposer {
         self.set_profile(profile)
     }
 
-    pub fn set_feet_density(&mut self, density: u8) {
-        self.musical_params.set_feet_density(density);
+    pub fn set_percussion_density(&mut self, density: u8) {
+        self.musical_params.set_percussion_density(density);
     }
 
     /// Énergie du style (0..1), audible après `invalidate_future`.
@@ -851,7 +851,7 @@ impl MusicComposer {
         &self.generator.tuning.profile
     }
 
-    /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
+    /// Nombre de tours AABB joués par air (D11, `arrangement.tours_per_tune`).
     #[must_use]
     pub fn tours_per_tune(&self) -> usize {
         self.generator.tuning.profile.arrangement.tours_per_tune

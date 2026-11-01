@@ -53,7 +53,7 @@ strong_eighth_velocity_offset = 8
 even_eighth_velocity_offset = -6
 
 [harmony]
-model = "jazz_functional"
+model = "rewrite_functional"
 steps_per_chord = 16
 max_recursion = 2
 scale_guidance = true
@@ -114,11 +114,11 @@ default_pattern = 0
 patterns = [{ hits = [{ step = 4, duration = 2, velocity = 64 }, { step = 12, duration = 2, velocity = 64 }] }]
 
 [percussion]
-heel_note = 51
-toe_note = 42
-heel_velocity = 55
-toe_velocity = 45
-feet_gain = 1.0
+low_note = 51
+high_note = 42
+low_velocity = 55
+high_velocity = 45
+percussion_gain = 1.0
 velocity_humanize = 0
 patterns = [
  { density = 0, euclid = { pulses = 2, steps = 16, rotation = 1 } },
@@ -139,8 +139,8 @@ tours_per_tune = 1
 Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
-Heel = { tour = 1, part = 0, pass = 1 }
-Toe = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
 [arrangement.intro]
 forms = []
 pickup_eighths = 0

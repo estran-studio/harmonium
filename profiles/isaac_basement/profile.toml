@@ -12,7 +12,7 @@
 # densités 1/2 et cellules de chœur tenues supplémentaires. Pédale conservée.
 [files]
 cells = "cells.toml"
-feet = "feet.toml"
+percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
@@ -67,7 +67,7 @@ name = "Pont"
 melody_center_offset = -3
 phrase_ends = [8]
 # Retombée : la batterie se tait, nappe, basse et chœur seuls.
-tracks_off = ["Heel", "Toe"]
+tracks_off = ["PercussionLow", "PercussionHigh"]
 roles = ["Open", "Free", "Free", "Free", "Open", "Free", "Free", "Free"]
 
 [melody]
@@ -243,9 +243,9 @@ notes = [
 [accompaniment.chords]
 center = 60
 max_drift = 6
-strings = 4
+note_count = 4
 default_pattern = 0
-patterns = [{ hits = [{ step = 0, stroke = "block", duration = 16, velocity = 56, tie = true }] }]
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 16, velocity = 56, tie = true }] }]
 
 [instruments]
 # GeneralUser GS : basse doigts 33, nappe chœur 91, chœur Aahs 52 en dessus.
@@ -346,11 +346,11 @@ reverb_send = 0.25
 level_db = 0.0
 pan = 0.0
 reverb_send = 0.1
-[mix.tracks.Heel]
+[mix.tracks.PercussionLow]
 level_db = -5.0
 pan = -0.06
 reverb_send = 0.06
-[mix.tracks.Toe]
+[mix.tracks.PercussionHigh]
 level_db = -6.0
 pan = 0.06
 reverb_send = 0.06
@@ -361,16 +361,16 @@ presence_db = 1.0
 presence_q = 0.8
 
 # Groove : micro-timing léger et accent du temps fort sur les deux pieds.
-[performance.tracks.Heel]
+[performance.tracks.PercussionLow]
 jitter = 0.02
-[[performance.tracks.Heel.rules]]
+[[performance.tracks.PercussionLow.rules]]
 articulation = "Accent"
 weight = 4.0
 steps = [0]
 accent = 4.0
-[performance.tracks.Toe]
+[performance.tracks.PercussionHigh]
 jitter = 0.02
-[[performance.tracks.Toe.rules]]
+[[performance.tracks.PercussionHigh.rules]]
 articulation = "Accent"
 weight = 4.0
 steps = [0]

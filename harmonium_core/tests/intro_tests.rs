@@ -12,7 +12,7 @@ use harmonium_core::{
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-fn reel_params() -> MusicalParams {
+fn tune_params() -> MusicalParams {
     let rf = TuningParams::default().profile.meter;
     let mut params = MusicalParams::default();
 
@@ -24,7 +24,7 @@ fn reel_params() -> MusicalParams {
 
 fn stream_with(seed: u64, bars: usize, tuning: TuningParams) -> Vec<MeasureSnapshot> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut tune_gen = TuneGenerator::new(reel_params(), tuning);
+    let mut tune_gen = TuneGenerator::new(tune_params(), tuning);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&tune_gen.generate_measure(bar, &mut rng)))
         .collect()
@@ -64,18 +64,21 @@ use harmonium_core::timeline::TrackId;
 // ---------------------------------------------------------------------------
 
 #[test]
-fn percussion_intro_has_heel_only() {
+fn percussion_intro_has_percussion_low_only() {
     let snaps = stream_with(1, 3, tuning_single_form(IntroRole::Percussion, 1, 0));
-    // 1 mesure d'intro : percussion (talon) seul
-    assert!(has(bar(&snaps, 1), TrackId::Heel), "talon attendu dans l'intro");
-    assert!(!has(bar(&snaps, 1), TrackId::Toe), "pas de pointe dans l'intro percussion");
-    assert!(!has(bar(&snaps, 1), TrackId::Melody), "pas de violon dans percussion (levée 0)");
-    assert!(!has(bar(&snaps, 1), TrackId::Chords), "pas de guitare dans percussion");
+    // 1 mesure d'intro : percussion (percussion grave) seul
+    assert!(has(bar(&snaps, 1), TrackId::PercussionLow), "percussion grave attendu dans l'intro");
+    assert!(
+        !has(bar(&snaps, 1), TrackId::PercussionHigh),
+        "pas de percussion aiguë dans l'intro percussion"
+    );
+    assert!(!has(bar(&snaps, 1), TrackId::Melody), "pas de mélodie dans percussion (levée 0)");
+    assert!(!has(bar(&snaps, 1), TrackId::Chords), "pas d'accords dans l'intro percussion");
     // L'air commence à la mesure 2 (A1)
     let p = position(&snaps, 2);
     assert_eq!(p.section, Section::Tour);
     assert_eq!(
-        (p.tour, p.part, p.pass, p.bar_in_strain),
+        (p.tour, p.part, p.pass, p.bar_in_part),
         (1, harmonium_core::compose::Part(0), 1, 1)
     );
 }
@@ -83,12 +86,12 @@ fn percussion_intro_has_heel_only() {
 #[test]
 fn tail_intro_has_melody_only() {
     let snaps = stream_with(1, 4, tuning_single_form(IntroRole::Tail, 2, 0));
-    // 2 mesures d'intro : violon seul (les 2 dernières mesures de l'air)
+    // 2 mesures d'intro : mélodie seule (les 2 dernières mesures de l'air)
     for b in 1..=2 {
-        assert!(has(bar(&snaps, b), TrackId::Melody), "m.{b}: violon attendu");
+        assert!(has(bar(&snaps, b), TrackId::Melody), "m.{b}: mélodie attendue");
         assert!(!has(bar(&snaps, b), TrackId::Chords));
         assert!(!has(bar(&snaps, b), TrackId::Bass));
-        assert!(!has(bar(&snaps, b), TrackId::Heel));
+        assert!(!has(bar(&snaps, b), TrackId::PercussionLow));
     }
     // L'air commence à la mesure 3
     assert_eq!(position(&snaps, 3).section, Section::Tour);
@@ -98,25 +101,31 @@ fn tail_intro_has_melody_only() {
 fn vamp_intro_has_chords_only() {
     let snaps = stream_with(1, 4, tuning_single_form(IntroRole::Vamp, 2, 0));
     for b in 1..=2 {
-        assert!(has(bar(&snaps, b), TrackId::Chords), "m.{b}: guitare attendue");
+        assert!(has(bar(&snaps, b), TrackId::Chords), "m.{b}: accords attendue");
         assert!(!has(bar(&snaps, b), TrackId::Melody));
-        assert!(!has(bar(&snaps, b), TrackId::Heel));
+        assert!(!has(bar(&snaps, b), TrackId::PercussionLow));
     }
     assert_eq!(position(&snaps, 3).section, Section::Tour);
 }
 
-/// Écoute 2026-10-22 : le décompte aux pieds s'arrêtait quand le violon entrait.
+/// Écoute 2026-10-22 : le décompte à la percussion s'arrêtait quand la mélodie entrait.
 /// Une piste qui a lancé l'air continue pendant le premier tour, même si
 /// l'arrangement la fait normalement entrer plus tard.
 #[test]
 fn intro_instruments_keep_playing_into_the_tune() {
     let snaps = stream_with(1, 10, tuning_single_form(IntroRole::Percussion, 1, 0));
     for b in 2..=10 {
-        assert!(has(bar(&snaps, b), TrackId::Heel), "m.{b}: le talon du décompte doit continuer");
+        assert!(
+            has(bar(&snaps, b), TrackId::PercussionLow),
+            "m.{b}: la percussion grave du décompte doit continuer"
+        );
     }
     let snaps = stream_with(1, 12, tuning_single_form(IntroRole::Vamp, 2, 0));
     for b in 3..=12 {
-        assert!(has(bar(&snaps, b), TrackId::Chords), "m.{b}: la guitare du vamp doit continuer");
+        assert!(
+            has(bar(&snaps, b), TrackId::Chords),
+            "m.{b}: les accords du vamp doivent continuer"
+        );
     }
 }
 
@@ -156,14 +165,14 @@ fn melody_after_intro_identical_to_no_intro() {
     let flat = stream_with(7, 32, flat_tuning);
     // Générer intro + 32 mesures, puis lire intro_bars via la première mesure Tour
     let mut rng = ChaCha8Rng::seed_from_u64(7);
-    let mut tune_gen = TuneGenerator::new(reel_params(), intro_tuning.clone());
+    let mut tune_gen = TuneGenerator::new(tune_params(), intro_tuning.clone());
     for b in 1..=40 {
         let _ = tune_gen.generate_measure(b, &mut rng);
     }
     // Trouver la première mesure Tour (fin de l'intro)
     let intro_bars = {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let mut g = TuneGenerator::new(reel_params(), intro_tuning);
+        let mut g = TuneGenerator::new(tune_params(), intro_tuning);
         let mut n = 0usize;
         for b in 1..=8 {
             let m = g.generate_measure(b, &mut rng);
@@ -176,7 +185,7 @@ fn melody_after_intro_identical_to_no_intro() {
     };
 
     let mut rng2 = ChaCha8Rng::seed_from_u64(7);
-    let mut tune_gen2 = TuneGenerator::new(reel_params(), TuningParams::default());
+    let mut tune_gen2 = TuneGenerator::new(tune_params(), TuningParams::default());
     for tune_bar in 1..=32 {
         let m = tune_gen2.generate_measure(tune_bar + intro_bars, &mut rng2);
         let mel: Vec<u8> = m.notes_for_track(TrackId::Melody).iter().map(|n| n.pitch).collect();
@@ -192,7 +201,7 @@ fn melody_after_intro_identical_to_no_intro() {
 
 #[test]
 fn pickup_ascends_to_first_a1_note_with_small_leaps() {
-    // percussion (1 mesure, pas de violon) + levée 2 : la seule mélodie
+    // percussion (1 mesure, pas de mélodie) + levée 2 : la seule mélodie
     // de l'intro est la levée.
     let tuning = tuning_single_form(IntroRole::Percussion, 1, 2);
     let snaps = stream_with(3, 6, tuning);
@@ -236,7 +245,7 @@ fn second_tune_of_a_set_has_pickup_only() {
     let second_tune_start = (2..=110)
         .find(|&b| {
             let p = position(&snaps, b);
-            p.tune_index == 1 && p.section == Section::Tour && p.bar_in_strain == 1
+            p.tune_index == 1 && p.section == Section::Tour && p.bar_in_part == 1
         })
         .expect("début du 2ᵉ air");
 
@@ -276,7 +285,7 @@ fn end_after_tour_ends_last_measure_with_tonic() {
     tuning.profile.arrangement.intro = IntroConfig::none();
     tuning.profile.arrangement.tours_per_tune = 3;
 
-    let mut params = reel_params();
+    let mut params = tune_params();
     params.end_after_tour = true;
 
     let mut rng = ChaCha8Rng::seed_from_u64(1);
@@ -288,12 +297,12 @@ fn end_after_tour_ends_last_measure_with_tonic() {
     // accentuée au pas 0, puis silence.
     let fin = bar(&snaps, 96);
     assert_eq!(fin.position.unwrap().is_last_tour(), true);
-    for t in [TrackId::Melody, TrackId::Chords, TrackId::Bass, TrackId::Heel] {
+    for t in [TrackId::Melody, TrackId::Chords, TrackId::Bass, TrackId::PercussionLow] {
         assert!(has(fin, t), "{t:?} attendu dans la fin");
     }
     // Une seule note par piste (tonique), au pas 0.
     let mel = track(fin, TrackId::Melody);
-    assert_eq!(mel.len(), 1, "une seule note de violon dans la fin");
+    assert_eq!(mel.len(), 1, "une seule note de mélodie dans la fin");
     assert_eq!(mel[0].start_step, 0);
 
     // Après la fin (mesure 97), plus de nouvel air : mesure vide.

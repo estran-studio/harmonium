@@ -501,7 +501,8 @@ fn a_profile_without_set_is_one_endless_set() {
     let playing = |snapshot: &MeasureSnapshot, track: TrackId| {
         snapshot.notes.iter().any(|n| n.track == track.channel())
     };
-    let first_bar = second_tour.map(|s| (playing(s, TrackId::Bass), playing(s, TrackId::Heel)));
+    let first_bar =
+        second_tour.map(|s| (playing(s, TrackId::Bass), playing(s, TrackId::PercussionLow)));
     assert_eq!(first_bar, Ok((true, true)), "toutes les pistes dès A1 au 2ᵉ air");
 }
 

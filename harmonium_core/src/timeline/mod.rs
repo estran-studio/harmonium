@@ -31,10 +31,10 @@ pub enum TrackId {
     Chords,
     /// Bass / Kick (MIDI channel 2)
     Bass,
-    /// Heel / Foot stomp (MIDI channel 3)
-    Heel,
-    /// Toe / Foot tap (MIDI channel 4)
-    Toe,
+    /// PercussionLow / Foot stomp (MIDI channel 3)
+    PercussionLow,
+    /// PercussionHigh / Foot tap (MIDI channel 4)
+    PercussionHigh,
     /// Independent melodic voice (MIDI channel 5).
     Countermelody,
 }
@@ -47,23 +47,29 @@ impl TrackId {
             Self::Melody => 0,
             Self::Chords => 1,
             Self::Bass => 2,
-            Self::Heel => 3,
-            Self::Toe => 4,
+            Self::PercussionLow => 3,
+            Self::PercussionHigh => 4,
             Self::Countermelody => 5,
         }
     }
 
     /// All track IDs in canonical order
-    pub const ALL: [TrackId; 6] =
-        [Self::Melody, Self::Chords, Self::Bass, Self::Heel, Self::Toe, Self::Countermelody];
+    pub const ALL: [TrackId; 6] = [
+        Self::Melody,
+        Self::Chords,
+        Self::Bass,
+        Self::PercussionLow,
+        Self::PercussionHigh,
+        Self::Countermelody,
+    ];
 
     pub const fn name(self) -> &'static str {
         match self {
             Self::Melody => "Melody",
             Self::Chords => "Chords",
             Self::Bass => "Bass",
-            Self::Heel => "Heel",
-            Self::Toe => "Toe",
+            Self::PercussionLow => "PercussionLow",
+            Self::PercussionHigh => "PercussionHigh",
             Self::Countermelody => "Countermelody",
         }
     }
@@ -216,7 +222,7 @@ pub struct Measure {
     pub swing_ratio: f32,
     /// Dance pulse captured at generation time (see `MusicalParams::pulse`)
     pub pulse: PulseSpec,
-    /// Position de la mesure dans l'air (tour, partie, passe) ; `None` hors style trad.
+    /// Position de la mesure dans l'air (tour, partie, passe) ; `None` hors style à airs.
     pub position: Option<crate::compose::TunePosition>,
     /// Chord context for this measure
     pub chord_context: ChordContext,
@@ -450,8 +456,8 @@ mod tests {
         assert_eq!(TrackId::Melody.channel(), 0);
         assert_eq!(TrackId::Chords.channel(), 1);
         assert_eq!(TrackId::Bass.channel(), 2);
-        assert_eq!(TrackId::Heel.channel(), 3);
-        assert_eq!(TrackId::Toe.channel(), 4);
+        assert_eq!(TrackId::PercussionLow.channel(), 3);
+        assert_eq!(TrackId::PercussionHigh.channel(), 4);
     }
 
     #[test]

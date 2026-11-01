@@ -39,7 +39,7 @@ bounded!(presence_q, "mix.eq.presence_q", eq.presence_q, [0.09, 10.1]);
 
 #[test]
 fn every_logical_track_is_validated() {
-    for name in ["Melody", "Chords", "Bass", "Heel", "Toe"] {
+    for name in ["Melody", "Chords", "Bass", "PercussionLow", "PercussionHigh"] {
         let profile = StyleProfile::builtin();
         let mut value: toml::Value = toml::from_str(&profile.to_toml().unwrap()).unwrap();
         for (field, invalid) in [("level_db", 1.0), ("pan", -2.0), ("reverb_send", 2.0)] {
@@ -80,8 +80,8 @@ fn timeline_midi_writes_profile_controllers_before_instrument_notes() {
     mix.tracks.melody = track;
     mix.tracks.chords = track;
     mix.tracks.bass = track;
-    mix.tracks.heel = TrackMix { level_db: 0.0, pan: 0.0, reverb_send: 0.0 };
-    mix.tracks.toe = track;
+    mix.tracks.percussion_low = TrackMix { level_db: 0.0, pan: 0.0, reverb_send: 0.0 };
+    mix.tracks.percussion_high = track;
     let mut score = ScoreTimeline::new(1);
     let mut measure = Measure::new(1, TimeSignature::new(4, 4), 120.0, 16);
     measure.add_note(
@@ -119,7 +119,10 @@ fn timeline_midi_writes_profile_controllers_before_instrument_notes() {
                 MidiMessage::Controller { controller: cc.into(), value: value.into() }
             );
         }
-        assert!(events.len() >= 3, "les trois CC précèdent les notes, Toe gagne sur Heel en GM");
+        assert!(
+            events.len() >= 3,
+            "les trois CC précèdent les notes, PercussionHigh gagne sur PercussionLow en GM"
+        );
     }
 }
 

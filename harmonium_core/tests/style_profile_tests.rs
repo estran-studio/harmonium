@@ -16,8 +16,8 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     p.performance = Default::default();
     p.heterophony = None;
     p.accompaniment.as_mut().unwrap().bass.passing = None;
-    p.accompaniment.as_mut().unwrap().chords.strum = None;
-    p.accompaniment.as_mut().unwrap().chords.strings = 3;
+    p.accompaniment.as_mut().unwrap().chords.spread = None;
+    p.accompaniment.as_mut().unwrap().chords.note_count = 3;
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -81,10 +81,10 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     }
     for pattern in &mut p.percussion.patterns {
         pattern.hits = vec![
-            PercussionHit::heel(0),
-            PercussionHit::toe(3),
-            PercussionHit::heel(6),
-            PercussionHit::toe(9),
+            PercussionHit::low(0),
+            PercussionHit::high(3),
+            PercussionHit::low(6),
+            PercussionHit::high(9),
         ];
     }
     p.arrangement = Arrangement::from_start(1, Part(p.form.sequence[0]));
@@ -236,7 +236,7 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -323,7 +323,7 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -341,8 +341,8 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         profile.heterophony = None;
         profile.ornaments = Default::default();
         profile.accompaniment.as_mut().unwrap().bass.passing = None;
-        profile.accompaniment.as_mut().unwrap().chords.strum = None;
-        profile.accompaniment.as_mut().unwrap().chords.strings = 3;
+        profile.accompaniment.as_mut().unwrap().chords.spread = None;
+        profile.accompaniment.as_mut().unwrap().chords.note_count = 3;
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();
@@ -365,7 +365,7 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         params.bpm = profile.meter.default_bpm;
         params.enable_melody = true;
         params.enable_harmony = true;
-        params.enable_rhythm = false; // --feet off
+        params.enable_rhythm = false; // --percussion off
         let mut all_runs = serde_json::Map::new();
         for seed in 1..=3 {
             let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
@@ -406,7 +406,7 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         assert_eq!(
             canonical(actual)?,
             canonical(golden)?,
-            "notes de {style_id} différentes de la référence (graines 1..3, 64 mesures, feet off)"
+            "notes de {style_id} différentes de la référence (graines 1..3, 64 mesures, percussion off)"
         );
     }
     Ok(())

@@ -152,7 +152,7 @@ fn prepared_playhead_path_is_allocation_free_under_debug_allocator() {
 }
 
 #[test]
-fn prepared_strum_and_bass_walk_cross_the_bar_under_rt_allocator() {
+fn prepared_spread_and_bass_walk_cross_the_bar_under_rt_allocator() {
     let (mut tx, rx) = rtrb::RingBuffer::<TaggedMeasure>::new(16);
     let (return_tx, _return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(64);
     let (_commands, commands) = rtrb::RingBuffer::<PlaybackCommand>::new(16);

@@ -123,7 +123,7 @@ fn riff_deux_mesures_exact_et_transpose_avec_les_accords() -> TestResult {
     for s in &ss[8..] {
         let r = root(s, 26)?;
         roots.insert(r);
-        let expected = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let expected = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             &first[..]
         } else {
             &second[..]
@@ -145,7 +145,7 @@ fn banque_ponderee_variantes_reelles_et_poids_nul_jamais_choisi() -> TestResult 
         for s in &ss[8..] {
             let notes = bass(s);
             assert!(notes.iter().all(|n| n.3 != 1), "sentinelle de poids nul sélectionnée");
-            if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+            if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
                 choices.insert(notes[0].3);
             }
         }
@@ -228,7 +228,7 @@ fn valse_marche_modale_et_copies_interparties_sur_le_meme_mecanisme() -> TestRes
         let r = root(s, 38)?;
         let scale: Vec<_> =
             (r..=r + 24).filter(|n| [2, 4, 6, 7, 9, 11, 1].contains(&(n % 12))).collect();
-        let degrees = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let degrees = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             [1, 2, 3]
         } else {
             [5, 4, 2]

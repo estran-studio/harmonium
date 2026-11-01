@@ -26,7 +26,7 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
     use RomanNumeral::{I, II, V};
     let mut p = StyleProfile::default();
     p.ornaments = Default::default();
-    p.harmony.model = "jazz_functional".into();
+    p.harmony.model = "rewrite_functional".into();
     p.harmony.steps_per_chord = period;
     p.harmony.rules = vec![rule(I, vec![II], 1.0), rule(II, vec![V], 1.0), rule(V, vec![I], 1.0)];
     p.harmony.candidates.clear();
@@ -38,10 +38,10 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
         a.bass.walk_low = None;
         a.bass.walk_high = None;
         a.bass.passing = None;
-        a.chords.strum = None;
-        a.chords.strings = 3;
+        a.chords.spread = None;
+        a.chords.note_count = 3;
         for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
-            hit.stroke = harmonium_core::compose::accomp_profile::AttackDirection::Block;
+            hit.direction = harmonium_core::compose::accomp_profile::AttackDirection::Block;
             hit.probability = 1.0;
         }
     }
@@ -61,7 +61,7 @@ fn stream(p: StyleProfile, seed: u64) -> Result<Vec<MeasureSnapshot>, Box<dyn st
         .collect())
 }
 #[test]
-fn jazz_harmonic_slots_publish_correct_absolute_chords_and_melody()
+fn rewrite_harmonic_slots_publish_correct_absolute_chords_and_melody()
 -> Result<(), Box<dyn std::error::Error>> {
     for period in [4, 8, 16] {
         for guidance in [false, true] {

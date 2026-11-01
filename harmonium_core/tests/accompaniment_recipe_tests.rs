@@ -109,7 +109,7 @@ fn piano_recipe_octaves_tenths_and_runs_follow_the_low_bass_targets() {
 }
 
 #[test]
-fn accordion_recipe_has_fixed_buttons_and_no_walking_or_strum() {
+fn accordion_recipe_has_fixed_buttons_and_no_walking_or_spread() {
     let mut p = recipe("accordeon_basse_accord");
     p.harmony.steps_per_chord = p.meter.steps_per_bar;
     let mut buttons = std::collections::BTreeMap::new();

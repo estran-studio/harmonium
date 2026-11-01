@@ -3,7 +3,7 @@
 # Fixture technique, non validée à l’écoute ; banques de la gigue québécoise.
 [files]
 cells = "cells.toml"
-feet = "feet.toml"
+percussion = "percussion.toml"
 dynamics = "dynamics.toml"
 
 [meta]
@@ -78,7 +78,7 @@ name = "B"
 melody_center_offset = 2
 # Principe VIII (014-G7b) : la partie B tait les pieds en données, par le
 # même mécanisme que le pont de `nt_desert`.
-tracks_off = ["Heel", "Toe"]
+tracks_off = ["PercussionLow", "PercussionHigh"]
 phrase_ends = [4, 8]
 rhythm = [
   { bar = 4, patterns = [
@@ -176,19 +176,19 @@ hits = [
 [accompaniment.chords]
 center = 60
 max_drift = 6
-strings = 4
+note_count = 4
 default_pattern = 1
 patterns = [
-  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }] },
-  { hits = [{ step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
-  { hits = [{ step = 2, stroke = "down", duration = 1, velocity = 66 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 8, stroke = "down", duration = 1, velocity = 66 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
-  { hits = [{ step = 0, stroke = "down", duration = 1, velocity = 72 }, { step = 2, stroke = "up", duration = 1, velocity = 54 }, { step = 4, stroke = "down", duration = 1, velocity = 72 }, { step = 6, stroke = "down", duration = 1, velocity = 72 }, { step = 8, stroke = "up", duration = 1, velocity = 54 }, { step = 10, stroke = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, direction = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 4, direction = "down", duration = 1, velocity = 72 }, { step = 10, direction = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 2, direction = "down", duration = 1, velocity = 66 }, { step = 4, direction = "down", duration = 1, velocity = 72 }, { step = 8, direction = "down", duration = 1, velocity = 66 }, { step = 10, direction = "down", duration = 1, velocity = 72 }] },
+  { hits = [{ step = 0, direction = "down", duration = 1, velocity = 72 }, { step = 2, direction = "up", duration = 1, velocity = 54 }, { step = 4, direction = "down", duration = 1, velocity = 72 }, { step = 6, direction = "down", duration = 1, velocity = 72 }, { step = 8, direction = "up", duration = 1, velocity = 54 }, { step = 10, direction = "down", duration = 1, velocity = 72 }] },
 ]
 
-[accompaniment.chords.strum]
+[accompaniment.chords.spread]
 down_gap_ms = 7.0
 up_gap_ms = 5.0
-up_strings = 3
+up_note_count = 3
 gap_jitter = 0.3
 anchor = 0.5
 tempo_exponent = 0.0
@@ -229,11 +229,11 @@ reverb_send = 0.22
 level_db = -8.0
 pan = 0.0
 reverb_send = 0.08
-[mix.tracks.Heel]
+[mix.tracks.PercussionLow]
 level_db = -6.0
 pan = -0.06
 reverb_send = 0.1
-[mix.tracks.Toe]
+[mix.tracks.PercussionHigh]
 level_db = -6.0
 pan = 0.06
 reverb_send = 0.1
@@ -244,8 +244,8 @@ tours_per_tune = 8
 Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
-Heel = { tour = 1, part = 0, pass = 1 }
-Toe = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
 [arrangement.intro]
 forms = []
 pickup_eighths = 0
@@ -256,7 +256,7 @@ rate_scale = 0.0
 # Nuclear Throne (`profiles/nt_desert`), en données — micro-timing et
 # dispersion légers sur les deux pieds. Sans règle d'accent : ni hauteurs, ni
 # vélocités, ni durées ne changent, seuls les décalages publiés bougent.
-[performance.tracks.Heel]
+[performance.tracks.PercussionLow]
 jitter = 0.02
-[performance.tracks.Toe]
+[performance.tracks.PercussionHigh]
 jitter = 0.02

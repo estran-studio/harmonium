@@ -1,4 +1,4 @@
-//! Fixture synthétique, pas un style distribué ni un substitut de corpus jazz.
+//! Fixture synthétique, pas un style distribué ni un substitut de corpus.
 use harmonium_core::{
     StyleProfile, TuningParams,
     compose::TuneGenerator,
@@ -27,7 +27,7 @@ fn stream(seed: u64) -> Result<Vec<MeasureSnapshot>, Box<dyn std::error::Error>>
         .collect())
 }
 #[test]
-fn synthetic_jazz_profile_publishes_aaba_swing_ii_v_i_and_euclidean_percussion()
+fn synthetic_rewrite_profile_publishes_aaba_swing_ii_v_i_and_euclidean_percussion()
 -> Result<(), Box<dyn std::error::Error>> {
     for seed in 1..=10 {
         let snapshots = stream(seed)?;

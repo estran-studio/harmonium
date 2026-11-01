@@ -91,30 +91,30 @@ fn pont_muette_batterie_basse_puis_reprend_sans_orpheline() -> TestResult {
         }
         let _ = reader.take_finished();
     }
-    // Pont (mes. 17–32) : aucune attaque basse ni pieds. La scie liée y
+    // Pont (mes. 17–32) : aucune attaque basse ni percussion. La scie liée y
     // tient sans réattaque : sa présence est prouvée au snapshot (G7).
     for bar in 17..=32 {
         let attaques = on_par_mesure.get(&bar).cloned().unwrap_or_default();
         assert!(
             !attaques.contains(&2) && !attaques.contains(&3) && !attaques.contains(&4),
-            "attaque basse ou pieds au pont, mesure {bar} : {attaques:?}"
+            "attaque basse ou percussion au pont, mesure {bar} : {attaques:?}"
         );
     }
-    // Reprise en B (mes. 33–40) : la basse et les pieds rejouent.
+    // Reprise en B (mes. 33–40) : la basse et la percussion rejouent.
     let b: Vec<u8> = (33..=40)
         .filter_map(|bar| on_par_mesure.get(&bar))
         .flat_map(|v| v.iter().copied())
         .collect();
     assert!(b.contains(&2), "basse absente de tout B");
     assert!(b.contains(&3), "grosse caisse absente de tout B");
-    assert!(b.contains(&4), "pieds absents de tout B");
+    assert!(b.contains(&4), "percussion absents de tout B");
     // Les tenues qui traversaient la frontière se sont fermées proprement.
     assert!(balance.values().all(|&v| v == 0), "notes orphelines : {balance:?}");
     Ok(())
 }
 
 #[test]
-fn gigue_bourdon_partie_b_sans_pieds() -> TestResult {
+fn gigue_bourdon_partie_b_sans_percussion() -> TestResult {
     // Principe VIII : le même mécanisme dans un autre style (gigue 6/8).
     let p = load_fixture("gigue_bourdon")?;
     let snapshots = stream(&p, 1, 32)?;
@@ -123,13 +123,24 @@ fn gigue_bourdon_partie_b_sans_pieds() -> TestResult {
         let a = &snapshots[*debut..*debut + 8];
         let b = &snapshots[*debut + 8..*debut + 16];
         assert!(
-            a.iter().any(|s| notes(s, TrackId::Heel) + notes(s, TrackId::Toe) > 0),
-            "pieds absents de tout A (tour {})",
+            a.iter()
+                .any(|s| notes(s, TrackId::PercussionLow) + notes(s, TrackId::PercussionHigh) > 0),
+            "percussion absents de tout A (tour {})",
             tour + 1
         );
         for s in b {
-            assert_eq!(notes(s, TrackId::Heel), 0, "talon en B, mesure {}", s.index);
-            assert_eq!(notes(s, TrackId::Toe), 0, "pointe en B, mesure {}", s.index);
+            assert_eq!(
+                notes(s, TrackId::PercussionLow),
+                0,
+                "percussion grave en B, mesure {}",
+                s.index
+            );
+            assert_eq!(
+                notes(s, TrackId::PercussionHigh),
+                0,
+                "percussion aiguë en B, mesure {}",
+                s.index
+            );
             assert!(!s.notes.is_empty(), "mesure B vide {}", s.index);
         }
     }
@@ -140,14 +151,14 @@ fn gigue_bourdon_partie_b_sans_pieds() -> TestResult {
 fn validation_piste_inconnue_doublon_et_motif_sans_emploi() -> TestResult {
     // Piste inconnue : refusée au chargement avec le champ fautif.
     let err = toml::from_str::<ProfilePart>(
-        "name = \"A\"\nroles = []\nmelody_center_offset = 0\ntracks_off = [\"Violon\"]",
+        "name = \"A\"\nroles = []\nmelody_center_offset = 0\ntracks_off = [\"Inconnue\"]",
     )
     .unwrap_err()
     .to_string();
     assert!(err.contains("tracks_off"), "champ fautif absent : {err}");
     // Doublon : refusé à la validation.
     let mut p = load_fixture("gigue_bourdon")?;
-    p.form.parts[1].tracks_off.push(TrackId::Heel);
+    p.form.parts[1].tracks_off.push(TrackId::PercussionLow);
     assert_eq!(p.validate().unwrap_err().field, "form.parts[1].tracks_off");
     // Partie inexistante : un motif qui la nomme est refusé (garde existante).
     let mut p = load_distribué()?;
@@ -197,18 +208,18 @@ fn validation_piste_inconnue_doublon_et_motif_sans_emploi() -> TestResult {
 }
 
 #[test]
-fn gigue_bourdon_pieds_micro_timing_publie() -> TestResult {
-    // Principe VIII (014-G7c) : le micro-timing des pieds employé par
+fn gigue_bourdon_percussion_micro_timing_publie() -> TestResult {
+    // Principe VIII (014-G7c) : le micro-timing de la percussion employé par
     // `nt_desert` vit aussi dans un autre style (gigue 6/8), en données.
     let p = load_fixture("gigue_bourdon")?;
     p.validate()?;
     let snapshots = stream(&p, 1, 32)?;
-    let mut pieds = 0;
+    let mut percussion = 0;
     let mut decales = 0;
     for s in snapshots.iter().take(8) {
         for n in &s.notes {
-            if n.track == TrackId::Heel as u8 || n.track == TrackId::Toe as u8 {
-                pieds += 1;
+            if n.track == TrackId::PercussionLow as u8 || n.track == TrackId::PercussionHigh as u8 {
+                percussion += 1;
                 assert!(
                     (-20..=20).contains(&n.performance.offset),
                     "décalage hors ±0,02 pas, mesure {} : {n:?}",
@@ -218,7 +229,7 @@ fn gigue_bourdon_pieds_micro_timing_publie() -> TestResult {
             }
         }
     }
-    assert!(pieds > 0, "aucun coup de pieds en A");
-    assert!(decales > 0, "micro-timing nul sur tous les pieds");
+    assert!(percussion > 0, "aucun coup de percussion en A");
+    assert!(decales > 0, "micro-timing nul sur toute la percussion");
     Ok(())
 }

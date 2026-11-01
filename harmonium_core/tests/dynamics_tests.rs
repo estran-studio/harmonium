@@ -56,7 +56,7 @@ fn intensity_changes_energy_and_articulation_not_the_current_tune() {
     for (a, b) in low.iter().zip(&high) {
         assert_eq!(melody(a), melody(b));
     }
-    for track in [TrackId::Melody, TrackId::Heel] {
+    for track in [TrackId::Melody, TrackId::PercussionLow] {
         assert!(
             mean(&notes(&high, track), |n| f64::from(n.velocity))
                 > mean(&notes(&low, track), |n| f64::from(n.velocity))
@@ -67,8 +67,9 @@ fn intensity_changes_energy_and_articulation_not_the_current_tune() {
             < mean(&notes(&low, TrackId::Melody), |n| n.duration_steps as f64)
     );
     assert!(
-        notes(&high, TrackId::Heel).len() + notes(&high, TrackId::Toe).len()
-            > notes(&low, TrackId::Heel).len() + notes(&low, TrackId::Toe).len()
+        notes(&high, TrackId::PercussionLow).len() + notes(&high, TrackId::PercussionHigh).len()
+            > notes(&low, TrackId::PercussionLow).len()
+                + notes(&low, TrackId::PercussionHigh).len()
     );
     assert!(notes(&high, TrackId::Chords).len() > notes(&low, TrackId::Chords).len());
     assert_eq!(low[0].tempo, 220.0);
@@ -155,8 +156,8 @@ fn style_curves_reject_invalid_profiles_and_interpolate() {
     dynamics.tempo_offset.0[1][0] = 0.0;
     assert!(dynamics.validate().unwrap_err().contains("tempo_offset"));
     let mut dynamics = StyleDynamics::default();
-    dynamics.feet_velocity.0[0][1] = f32::NAN;
-    assert!(dynamics.validate().unwrap_err().contains("feet_velocity"));
+    dynamics.percussion_velocity.0[0][1] = f32::NAN;
+    assert!(dynamics.validate().unwrap_err().contains("percussion_velocity"));
     let mut dynamics = StyleDynamics::default();
     for c in &mut dynamics.color {
         c.weight = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);

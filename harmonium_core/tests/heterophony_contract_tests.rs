@@ -73,7 +73,7 @@ fn two_hundred_airs_keep_cadences_register_and_strong_beats() {
                     continue;
                 }
                 let part = &profile.form.parts[position.part.0];
-                if part.phrase_ends.contains(&position.bar_in_strain) && !second.is_empty() {
+                if part.phrase_ends.contains(&position.bar_in_part) && !second.is_empty() {
                     let lead = measure.notes_for_track(TrackId::Melody);
                     let tail = second.last().unwrap();
                     let last_step = lead.iter().map(|n| n.start_step).max().unwrap();
@@ -154,8 +154,7 @@ fn configured_weights_control_octaves_and_weak_note_silences_on_two_hundred_airs
         for seed in 0..200 {
             for measure in stream(&profile, seed, 32, 0.5) {
                 let position = measure.position.unwrap();
-                if profile.form.parts[position.part.0].phrase_ends.contains(&position.bar_in_strain)
-                {
+                if profile.form.parts[position.part.0].phrase_ends.contains(&position.bar_in_part) {
                     continue;
                 }
                 for lead in measure.notes_for_track(TrackId::Melody) {
@@ -241,9 +240,7 @@ fn thirds_and_sixths_follow_weights_only_on_harmonic_cadence_targets() {
         for seed in 0..200 {
             for measure in stream(&profile, seed, 32, 0.5) {
                 let position = measure.position.unwrap();
-                if !profile.form.parts[position.part.0]
-                    .phrase_ends
-                    .contains(&position.bar_in_strain)
+                if !profile.form.parts[position.part.0].phrase_ends.contains(&position.bar_in_part)
                 {
                     continue;
                 }
@@ -313,7 +310,7 @@ fn plain_omits_ornaments_and_unison_reuses_v3b_while_independent_seed_varies_it(
         let c = stream(&independent, seed, 8, 0.5);
         for ((a, b), c) in a.iter().zip(&b).zip(&c) {
             let position = a.position.unwrap();
-            if unison.form.parts[position.part.0].phrase_ends.contains(&position.bar_in_strain) {
+            if unison.form.parts[position.part.0].phrase_ends.contains(&position.bar_in_part) {
                 continue;
             }
             assert_eq!(
@@ -358,7 +355,7 @@ fn emotion_multiplier_and_position_filters_bound_the_realized_variation() {
                         .unwrap();
                     if n.pitch != lead.pitch {
                         assert_eq!(n.pitch, lead.pitch + 12);
-                        assert!([2, 6].contains(&position.bar_in_strain));
+                        assert!([2, 6].contains(&position.bar_in_part));
                         assert!(!n.start_step.is_multiple_of(profile.meter.steps_per_pulse));
                         assert_ne!(measure.state_snapshot.arousal, 0.0);
                         high_changes += 1;

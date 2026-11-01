@@ -1,0 +1,86 @@
+# Ossature clairsemée de River of Despair (grille §6.2 des références) :
+# caisse claire au temps 3 (pas 8), grosse caisse douce aux temps 1 et 2,
+# charleston épars seulement à densité 2. Vélocités basses : la batterie
+# reste sous la nappe.
+low_note = 36
+high_note = 38
+low_velocity = 82
+high_velocity = 74
+percussion_gain = 1.0
+velocity_humanize = 4
+
+[[patterns]]
+density = 0
+hits = [
+  { step = 8, track = "PercussionHigh", delta_velocity = -6 },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 4, track = "PercussionLow", delta_velocity = -14 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+]
+
+[[patterns]]
+density = 2
+weight = 1
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 4, track = "PercussionLow", delta_velocity = -14 },
+  { step = 6, track = "PercussionHigh", note = 42, delta_velocity = -36 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -36 },
+]
+
+# Variante de respiration : grosse caisse tardive, nappe toujours au premier plan.
+[[patterns]]
+density = 1
+weight = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
+  { step = 12, track = "PercussionLow", delta_velocity = -18 },
+]
+
+[[patterns]]
+density = 2
+weight = 2
+hits = [
+  { step = 0, track = "PercussionLow" },
+  { step = 4, track = "PercussionHigh", note = 42, delta_velocity = -36 },
+  { step = 8, track = "PercussionHigh" },
+  { step = 12, track = "PercussionLow", delta_velocity = -18 },
+  { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -36 },
+]
+
+[[cadence_patterns]]
+density = 0
+hits = [
+  { step = 8, track = "PercussionHigh", delta_velocity = -6 },
+  { step = 14, track = "PercussionHigh", note = 41, delta_velocity = -20 },
+]
+
+[[cadence_patterns]]
+density = 1
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 4, track = "PercussionLow", delta_velocity = -14 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -16 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -12 },
+]
+
+[[cadence_patterns]]
+density = 2
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 4, track = "PercussionLow", delta_velocity = -14 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+  { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+  { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+]

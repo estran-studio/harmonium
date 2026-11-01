@@ -15,7 +15,7 @@ const BARS_64: usize = 64;
 
 /// Tuning « un seul tour, tout le monde dès la mesure 1 » : isole la forme, l'harmonie
 /// et l'accompagnement (D4–D9) de l'arrangement progressif (D11), couvert par
-/// `trad_arrangement_tests`.
+/// `arrangement_tests`.
 fn flat_tuning() -> TuningParams {
     TuningParams {
         profile: {
@@ -27,8 +27,8 @@ fn flat_tuning() -> TuningParams {
             // Les contrats de set ont leur propre flux avec raccords et clôture.
             p.set = Default::default();
             p.accompaniment.as_mut().unwrap().bass.passing = None;
-            p.accompaniment.as_mut().unwrap().chords.strum = None;
-            p.accompaniment.as_mut().unwrap().chords.strings = 3;
+            p.accompaniment.as_mut().unwrap().chords.spread = None;
+            p.accompaniment.as_mut().unwrap().chords.note_count = 3;
             for part in &mut p.form.parts {
                 part.second_ending = None;
                 use harmonium_core::compose::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
@@ -42,7 +42,7 @@ fn flat_tuning() -> TuningParams {
     }
 }
 
-fn reel_params(feet_density: u8) -> MusicalParams {
+fn tune_params(percussion_density: u8) -> MusicalParams {
     let tuning = TuningParams::default();
     let rf = &tuning.profile.meter;
     let mut params = MusicalParams::default();
@@ -50,13 +50,16 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     params.bpm = rf.default_bpm;
     params.set_swing_ratio(rf.default_swing_ratio);
     params.time_signature = rf.time_signature;
-    params.set_feet_density(feet_density);
+    params.set_percussion_density(percussion_density);
     params
 }
 
-fn generate_64_snapshots(seed: u64, feet_density: u8) -> (TuneGenerator, Vec<MeasureSnapshot>) {
+fn generate_64_snapshots(
+    seed: u64,
+    percussion_density: u8,
+) -> (TuneGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut tune_gen = TuneGenerator::new(reel_params(feet_density), flat_tuning());
+    let mut tune_gen = TuneGenerator::new(tune_params(percussion_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_64);
     for bar in 1..=BARS_64 {
         let m = tune_gen.generate_measure(bar, &mut rng);
@@ -93,7 +96,7 @@ fn cadence_degree_bar8(plan: &TunePlan, melody: &[&NoteSnapshot]) -> Option<u8> 
 }
 
 #[test]
-fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
+fn form_aabb_and_cadences_20_seeds_64_bars() {
     for seed in 0..NUM_SEEDS {
         let (tune_gen, snapshots) = generate_64_snapshots(seed, 1);
         assert_eq!(snapshots.len(), BARS_64);
@@ -125,12 +128,12 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
                 assert_eq!(b1.chord_name, b2.chord_name, "seed {seed}: accord B1 != B2");
             }
 
-            // Dans chaque strain, mesures 5-6 == 1-2 pour la mélodie, et cadences aux mesures 4 et 8
-            for strain_start in [0usize, 8, 16, 24].map(|s| tune_offset + s) {
-                let m1 = notes_on_track(&snapshots[strain_start], TrackId::Melody);
-                let m2 = notes_on_track(&snapshots[strain_start + 1], TrackId::Melody);
-                let m5 = notes_on_track(&snapshots[strain_start + 4], TrackId::Melody);
-                let m6 = notes_on_track(&snapshots[strain_start + 5], TrackId::Melody);
+            // Dans chaque part, mesures 5-6 == 1-2 pour la mélodie, et cadences aux mesures 4 et 8
+            for part_start in [0usize, 8, 16, 24].map(|s| tune_offset + s) {
+                let m1 = notes_on_track(&snapshots[part_start], TrackId::Melody);
+                let m2 = notes_on_track(&snapshots[part_start + 1], TrackId::Melody);
+                let m5 = notes_on_track(&snapshots[part_start + 4], TrackId::Melody);
+                let m6 = notes_on_track(&snapshots[part_start + 5], TrackId::Melody);
                 assert_eq!(
                     m5.iter()
                         .map(|n| (n.pitch, n.start_step, n.duration_steps, n.velocity))
@@ -151,21 +154,21 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
                 );
 
                 // Mesure 4 : demi-cadence sur degré 2, 5 ou 7
-                let m4 = notes_on_track(&snapshots[strain_start + 3], TrackId::Melody);
+                let m4 = notes_on_track(&snapshots[part_start + 3], TrackId::Melody);
                 assert!(!m4.is_empty(), "seed {seed}: m.4 vide");
                 let Some(last4) = m4.last() else { continue };
                 let deg4 = plan.mode.scale_degree_of_midi(plan.key, last4.pitch);
                 assert!(matches!(deg4, Some(2 | 5 | 7)), "seed {seed}: m.4 finit sur {deg4:?}");
 
                 // Mesure 8 : cadence parfaite sur la tonique (degré 1) et accord d'attaque V (seconde moitié I)
-                let m8 = notes_on_track(&snapshots[strain_start + 7], TrackId::Melody);
+                let m8 = notes_on_track(&snapshots[part_start + 7], TrackId::Melody);
                 assert_eq!(
                     cadence_degree_bar8(&plan, &m8),
                     Some(1),
                     "seed {seed}: m.8 ne finit pas sur le degré 1"
                 );
                 assert_eq!(
-                    snapshots[strain_start + 7].chord_root_offset,
+                    snapshots[part_start + 7].chord_root_offset,
                     7,
                     "seed {seed}: m.8 1re moitié doit être sur V (+7 demi-tons)"
                 );
@@ -175,7 +178,7 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
 }
 
 #[test]
-fn accompaniment_and_feet_positions_match_d8_d9() {
+fn accompaniment_and_percussion_positions_match_d8_d9() {
     for density in 0..=2u8 {
         let (_, snapshots) = generate_64_snapshots(1, density);
         for snap in &snapshots {
@@ -186,7 +189,7 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
                 vec![(0, 4), (8, 4)]
             );
 
-            // Guitare (Chords) : 3 sons sur le pas 4, 3 sons sur le pas 12, durée 1
+            // Accords (Chords) : 3 sons sur le pas 4, 3 sons sur le pas 12, durée 1
             let chords = notes_on_track(snap, TrackId::Chords);
             assert_eq!(chords.len(), 6);
             assert_eq!(
@@ -198,26 +201,28 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
                 3
             );
 
-            // Podorythmie D9
-            let heel = notes_on_track(snap, TrackId::Heel);
-            let toe = notes_on_track(snap, TrackId::Toe);
-            assert!(heel.iter().all(|n| n.pitch == 36 && n.duration_steps == 0));
-            assert!(toe.iter().all(|n| n.pitch == 37 && n.duration_steps == 0));
+            // Percussion D9
+            let percussion_low = notes_on_track(snap, TrackId::PercussionLow);
+            let percussion_high = notes_on_track(snap, TrackId::PercussionHigh);
+            assert!(percussion_low.iter().all(|n| n.pitch == 36 && n.duration_steps == 0));
+            assert!(percussion_high.iter().all(|n| n.pitch == 37 && n.duration_steps == 0));
 
-            let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
-            let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
+            let percussion_low_steps: Vec<usize> =
+                percussion_low.iter().map(|n| n.start_step).collect();
+            let percussion_high_steps: Vec<usize> =
+                percussion_high.iter().map(|n| n.start_step).collect();
             match density {
                 0 => {
-                    assert_eq!(heel_steps, vec![0, 8]);
-                    assert!(toe_steps.is_empty());
+                    assert_eq!(percussion_low_steps, vec![0, 8]);
+                    assert!(percussion_high_steps.is_empty());
                 }
                 1 => {
-                    assert_eq!(heel_steps, vec![0, 4, 8, 12]);
-                    assert_eq!(toe_steps, vec![2, 6, 10, 14]);
+                    assert_eq!(percussion_low_steps, vec![0, 4, 8, 12]);
+                    assert_eq!(percussion_high_steps, vec![2, 6, 10, 14]);
                 }
                 2 => {
-                    assert_eq!(heel_steps, vec![0, 4, 8, 12]);
-                    assert_eq!(toe_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
+                    assert_eq!(percussion_low_steps, vec![0, 4, 8, 12]);
+                    assert_eq!(percussion_high_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
                 }
                 _ => unreachable!(),
             }
@@ -226,12 +231,12 @@ fn accompaniment_and_feet_positions_match_d8_d9() {
 }
 
 #[test]
-fn trad_generator_silent_advance_matches_linear() {
+fn tune_generator_silent_advance_matches_linear() {
     let seed = 7u64;
     let (_, linear) = generate_64_snapshots(seed, 1);
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut sought = TuneGenerator::new(reel_params(1), flat_tuning());
+    let mut sought = TuneGenerator::new(tune_params(1), flat_tuning());
     sought.reset_to_initial();
     sought.silent_advance(40, &mut rng);
 

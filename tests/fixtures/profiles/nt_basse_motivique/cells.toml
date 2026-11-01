@@ -1,4 +1,4 @@
-# Cellules synthétiques, cachées à l'écoute ; servent au vote trad_functional.
+# Cellules synthétiques, cachées à l'écoute ; servent au vote melody_functional.
 cells = [
  { role = "open", notes = "1 3 5 3 1 3 5 3 1 3 5 3", weight = 1 },
  { role = "run", notes = "1 2 3 4 5 6 7 8 7 6 5 4", weight = 1 },

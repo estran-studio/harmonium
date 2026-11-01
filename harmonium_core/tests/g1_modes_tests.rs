@@ -1,5 +1,5 @@
 //! G1 (phase 014) : les modes phrygien et mineur harmonique portent la
-//! grammaire d'un profil trad existant (copies du reel québécois).
+//! grammaire d'un profil à airs existant (copies d'un profil distribué).
 //!
 //! Contrat sur le flux de snapshots, plusieurs graines : chaque note de
 //! mélodie appartient à la gamme du mode publié, et le V joué en mineur
@@ -65,13 +65,13 @@ fn check_melody_in_mode(id: &str, mode: Mode, key: u8) -> Result<(), Box<dyn std
 }
 
 #[test]
-fn phrygian_fixture_keeps_reel_melodies_in_the_phrygian_scale()
--> Result<(), Box<dyn std::error::Error>> {
+fn phrygian_fixture_keeps_melodies_in_the_phrygian_scale() -> Result<(), Box<dyn std::error::Error>>
+{
     check_melody_in_mode("reel_phrygien", Mode::Phrygian, 2)
 }
 
 #[test]
-fn harmonic_minor_fixture_keeps_reel_melodies_in_scale_with_major_v()
+fn harmonic_minor_fixture_keeps_melodies_in_scale_with_major_v()
 -> Result<(), Box<dyn std::error::Error>> {
     check_melody_in_mode("reel_mineur_harmonique", Mode::HarmonicMinor, 2)?;
     // Le V joué par l'harmonie (premier accord publié, cadences imposées)

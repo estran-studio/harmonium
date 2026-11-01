@@ -7,7 +7,7 @@
 //!   in order (no dangling or orphan ends);
 //! - the file tempo is the real tempo (230 BPM reel) with a 2/2 signature,
 //!   and the MIDI duration matches the rendered audio within one beat;
-//! - `--feet off` (`enable_rhythm(false)`) records no drum-channel notes;
+//! - `--percussion off` (`enable_rhythm(false)`) records no drum-channel notes;
 //! - `--swing 0.5` yields equal eighth-note intervals.
 
 use std::time::Instant;
@@ -20,7 +20,7 @@ const SAMPLE_RATE: f64 = 44100.0;
 const CHANNELS: usize = 2;
 const BUFFER_SIZE: usize = 256;
 const TICKS_PER_QUARTER: u32 = 480;
-const REEL_BPM: f32 = 230.0;
+const DEFAULT_BPM: f32 = 230.0;
 
 struct Export {
     midi: Vec<u8>,
@@ -30,11 +30,11 @@ struct Export {
 /// Render `bars` reel bars offline (silent synth) with the given export
 /// settings, mirroring `harmonium_cli::export::run`, and return the recorded
 /// MIDI bytes plus the rendered audio duration.
-fn render_reel(
+fn render_default_style(
     seed: u64,
     bars: usize,
     swing: Option<f32>,
-    feet_off: bool,
+    percussion_off: bool,
     mechanical: bool,
 ) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
@@ -52,7 +52,7 @@ fn render_reel(
     if let Some(ratio) = swing {
         composer.set_swing_ratio(ratio);
     }
-    if feet_off {
+    if percussion_off {
         composer.enable_rhythm(false);
     }
     composer.invalidate_future();
@@ -137,7 +137,7 @@ fn tempos(smf: &Smf) -> Vec<u32> {
 /// order: simulate the sounding set, which must drain exactly.
 #[test]
 fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
-    let export = render_reel(1, 8, None, false, false)?;
+    let export = render_default_style(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let events = note_events(&smf)?;
     assert!(!events.is_empty(), "reel records notes");
@@ -169,10 +169,10 @@ fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
 /// duration matches the rendered WAV within one beat.
 #[test]
 fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
-    let export = render_reel(1, 8, None, false, false)?;
+    let export = render_default_style(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
 
-    let expected_uspq = (60_000_000.0 / REEL_BPM) as u32;
+    let expected_uspq = (60_000_000.0 / DEFAULT_BPM) as u32;
     assert_eq!(tempos(&smf), vec![expected_uspq], "single real tempo meta");
 
     let sigs: Vec<(u8, u8)> = smf.tracks[0]
@@ -186,8 +186,8 @@ fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
 
     let events = note_events(&smf)?;
     let last_tick = events.iter().map(|e| e.0).max().ok_or("notes")?;
-    let midi_secs = last_tick as f64 / TICKS_PER_QUARTER as f64 * (60.0 / REEL_BPM as f64);
-    let beat = 60.0 / REEL_BPM as f64;
+    let midi_secs = last_tick as f64 / TICKS_PER_QUARTER as f64 * (60.0 / DEFAULT_BPM as f64);
+    let beat = 60.0 / DEFAULT_BPM as f64;
     assert!(
         (midi_secs - export.rendered_secs).abs() <= beat,
         "MIDI {midi_secs:.3}s vs audio {:.3}s (±1 beat {beat:.3}s)",
@@ -196,14 +196,14 @@ fn midi_tempo_signature_and_duration_match_audio() -> Result<(), String> {
     Ok(())
 }
 
-/// Feet off: no notes on the GM drum channel (9).
+/// Percussion off: no notes on the GM drum channel (9).
 #[test]
-fn midi_feet_off_records_no_drums() -> Result<(), String> {
-    let export = render_reel(1, 8, None, true, false)?;
+fn midi_percussion_off_records_no_drums() -> Result<(), String> {
+    let export = render_default_style(1, 8, None, true, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let events = note_events(&smf)?;
     let drum: Vec<_> = events.iter().filter(|e| e.2 == 9).collect();
-    assert!(drum.is_empty(), "drum notes with feet off: {drum:?}");
+    assert!(drum.is_empty(), "drum notes with percussion off: {drum:?}");
     // The other tracks still play.
     assert!(!events.is_empty(), "melody/harmony must remain");
     Ok(())
@@ -212,7 +212,7 @@ fn midi_feet_off_records_no_drums() -> Result<(), String> {
 /// Straight swing: consecutive melody onsets lie on whole eighth-note multiples.
 #[test]
 fn midi_straight_swing_gives_equal_eighths() -> Result<(), String> {
-    let export = render_reel(1, 8, Some(0.5), false, true)?;
+    let export = render_default_style(1, 8, Some(0.5), false, true)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let melody: Vec<u32> =
         note_events(&smf)?.into_iter().filter(|e| e.1 && e.2 == 0).map(|e| e.0).collect();

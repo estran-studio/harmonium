@@ -51,7 +51,7 @@ STUDIO_RESOURCES := harmonium_studio/resources
 studio/assets:
 	cargo run -q -p harmonium_studio --no-default-features --bin studio_assets -- \
 		--main-bank $(STUDIO_BANKS)/GeneralUser-GS.sf2 \
-		--feet-bank $(STUDIO_BANKS)/harmonium_trad.sf2 \
+		--percussion-bank $(STUDIO_BANKS)/harmonium_trad.sf2 \
 		$(if $(STUDIO_ODIN),--odin-dir $(STUDIO_ODIN)) \
 		--out $(STUDIO_RESOURCES)
 
@@ -67,7 +67,7 @@ studio/web/build: studio/assets
 studio/web/serve: studio/assets
 	cd harmonium_studio && trunk serve --release
 
-## Ressources de la vitrine : la release fixée par harmonium_studio/web-resources.json (banque SF3, pieds,
+## Ressources de la vitrine : la release fixée par harmonium_studio/web-resources.json (banque SF3, percussion,
 ## presets Odin des profils), taille et SHA-256 contrôlés, puis copiées à empreinte dans harmonium_studio/resources.
 STUDIO_WEB_STAGE := target/studio-web-resources
 studio/web/resources:
@@ -75,7 +75,7 @@ studio/web/resources:
 	python3 harmonium_studio/scripts/web_resources.py fetch --out $(STUDIO_WEB_STAGE)
 	cargo run -q -p harmonium_studio --no-default-features --bin studio_assets -- \
 		--main-bank "$$(ls $(STUDIO_WEB_STAGE)/main/*)" \
-		--feet-bank "$$(ls $(STUDIO_WEB_STAGE)/feet/*)" \
+		--percussion-bank "$$(ls $(STUDIO_WEB_STAGE)/percussion/*)" \
 		--odin-dir $(STUDIO_WEB_STAGE)/odin \
 		--out $(STUDIO_RESOURCES)
 

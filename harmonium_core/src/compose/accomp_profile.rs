@@ -109,7 +109,7 @@ pub struct ChordHit {
     pub duration: usize,
     pub velocity: u8,
     #[serde(default)]
-    pub stroke: AttackDirection,
+    pub direction: AttackDirection,
     #[serde(default = "unit_multiplier")]
     pub probability: f32,
     /// Liaison : pas de nouvelle attaque si les hauteurs sonnent encore à
@@ -131,10 +131,10 @@ pub struct ChordVoice {
     pub max_drift: u8,
     pub default_pattern: usize,
     pub patterns: Vec<ChordPattern>,
-    #[serde(default = "triad_strings")]
-    pub strings: u8,
+    #[serde(default = "triad_note_count")]
+    pub note_count: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub strum: Option<Spread>,
+    pub spread: Option<Spread>,
     #[serde(default)]
     pub voicing: ChordVoicing,
     #[serde(default = "fixed_low")]
@@ -143,7 +143,7 @@ pub struct ChordVoice {
     pub high: u8,
 }
 
-fn triad_strings() -> u8 {
+fn triad_note_count() -> u8 {
     3
 }
 
@@ -176,7 +176,7 @@ pub enum AttackDirection {
 pub struct Spread {
     pub down_gap_ms: f32,
     pub up_gap_ms: f32,
-    pub up_strings: u8,
+    pub up_note_count: u8,
     pub gap_jitter: f32,
     pub anchor: f32,
     pub tempo_exponent: f32,
@@ -199,9 +199,9 @@ impl ChordVoice {
         self.patterns.iter().flat_map(|p| &p.hits).any(|h| {
             (h.probability > 0.0 && h.probability < 1.0)
                 || (h.probability > 0.0
-                    && h.stroke != AttackDirection::Block
+                    && h.direction != AttackDirection::Block
                     && self
-                        .strum
+                        .spread
                         .as_ref()
                         .is_some_and(|s| s.gap_jitter > 0.0 || s.velocity_jitter > 0))
         })
@@ -209,8 +209,8 @@ impl ChordVoice {
 }
 
 impl Spread {
-    fn validate(&self, strings: u8) -> Result<(), ProfileError> {
-        let field = "accompaniment.chords.strum";
+    fn validate(&self, note_count: u8) -> Result<(), ProfileError> {
+        let field = "accompaniment.chords.spread";
         for (name, value, low, high) in [
             ("down_gap_ms", self.down_gap_ms, 0.0, 40.0),
             ("up_gap_ms", self.up_gap_ms, 0.0, 40.0),
@@ -227,9 +227,9 @@ impl Spread {
             )?;
         }
         require(
-            (2..=strings).contains(&self.up_strings),
-            format!("{field}.up_strings"),
-            "2..strings requis",
+            (2..=note_count).contains(&self.up_note_count),
+            format!("{field}.up_note_count"),
+            "2..note_count requis",
         )?;
         require(self.velocity_slope <= 20, format!("{field}.velocity_slope"), "0..20 requis")?;
         require(self.velocity_jitter <= 20, format!("{field}.velocity_jitter"), "0..20 requis")
@@ -386,16 +386,16 @@ fn validate_hits(
 
 fn validate_doubling(
     doubling: &[BassDoubling],
-    jazz: bool,
+    rewrite: bool,
     low: u8,
     high: u8,
     max_offset: i16,
     field: &str,
 ) -> Result<(), ProfileError> {
     require(
-        !jazz || doubling.is_empty(),
+        !rewrite || doubling.is_empty(),
         field,
-        "les doublures modales demandent l'harmonie trad_functional",
+        "les doublures modales demandent l'harmonie melody_functional",
     )?;
     require(
         doubling.len() <= 2 && doubling.iter().enumerate().all(|(i, d)| !doubling[..i].contains(d)),
@@ -423,7 +423,7 @@ impl AccompanimentParams {
     pub(crate) fn validate_accompaniment(
         &self,
         steps: usize,
-        jazz: bool,
+        rewrite: bool,
         parts: &[crate::style_profile::ProfilePart],
     ) -> Result<(), ProfileError> {
         require(
@@ -443,9 +443,9 @@ impl AccompanimentParams {
             "registre MIDI ordonné requis",
         )?;
         require(
-            !jazz || b.high - b.low >= 11,
+            !rewrite || b.high - b.low >= 11,
             "accompaniment.bass.high",
-            "le registre jazz doit couvrir les douze classes de hauteur",
+            "le registre du modèle rewrite_functional doit couvrir les douze classes de hauteur",
         )?;
         require(
             b.walk_low.unwrap_or(b.low) <= b.low,
@@ -459,9 +459,9 @@ impl AccompanimentParams {
         )?;
         if let Some(passing) = &b.passing {
             require(
-                !jazz || passing.is_inert(),
+                !rewrite || passing.is_inert(),
                 "accompaniment.bass.passing",
-                "les approches modales demandent l'harmonie trad_functional",
+                "les approches modales demandent l'harmonie melody_functional",
             )?;
             passing.validate(steps)?;
         }
@@ -472,7 +472,7 @@ impl AccompanimentParams {
         )?;
         for (i, hit) in b.hits.iter().enumerate() {
             let field = format!("accompaniment.bass.hits[{i}].doubling");
-            validate_doubling(&hit.doubling, jazz, b.low, b.high, 0, &field)?;
+            validate_doubling(&hit.doubling, rewrite, b.low, b.high, 0, &field)?;
         }
         if !b.motifs.is_empty() {
             require(
@@ -481,9 +481,9 @@ impl AccompanimentParams {
                 "hits et motifs sont deux sources exclusives de la même voix",
             )?;
             require(
-                !jazz,
+                !rewrite,
                 "accompaniment.bass.motifs",
-                "les motifs de basse demandent l'harmonie trad_functional",
+                "les motifs de basse demandent l'harmonie melody_functional",
             )?;
             require(
                 b.motifs.len() <= 256,
@@ -591,7 +591,7 @@ impl AccompanimentParams {
                     )?;
                     validate_doubling(
                         &note.doubling,
-                        jazz,
+                        rewrite,
                         b.low,
                         b.high,
                         max_offset,
@@ -622,23 +622,23 @@ impl AccompanimentParams {
         }
         let c = &self.chords;
         require(
-            !jazz
-                || (c.strum.is_none()
-                    && c.strings == 3
+            !rewrite
+                || (c.spread.is_none()
+                    && c.note_count == 3
                     && c.voicing == ChordVoicing::CloseTriad
                     && c.patterns
                         .iter()
                         .flat_map(|p| &p.hits)
-                        .all(|h| h.probability == 1.0 && h.stroke == AttackDirection::Block)),
+                        .all(|h| h.probability == 1.0 && h.direction == AttackDirection::Block)),
             "accompaniment.chords",
-            "les gestes de cordes demandent l'harmonie trad_functional",
+            "les gestes d'attaque demandent l'harmonie melody_functional",
         )?;
         require(c.center <= 127, "accompaniment.chords.center", "registre MIDI requis")?;
         require(c.max_drift <= 127, "accompaniment.chords.max_drift", "registre MIDI requis")?;
         require(
-            (3..=6).contains(&c.strings),
-            "accompaniment.chords.strings",
-            "3..6 cordes requises",
+            (3..=6).contains(&c.note_count),
+            "accompaniment.chords.note_count",
+            "3..6 notes requises",
         )?;
         require(
             c.low <= c.high && c.high <= 127,
@@ -650,8 +650,8 @@ impl AccompanimentParams {
             "accompaniment.chords.high",
             "fixed_triad demande douze hauteurs consécutives",
         )?;
-        if let Some(strum) = &c.strum {
-            strum.validate(c.strings)?;
+        if let Some(spread) = &c.spread {
+            spread.validate(c.note_count)?;
         }
         require(
             c.default_pattern < c.patterns.len(),

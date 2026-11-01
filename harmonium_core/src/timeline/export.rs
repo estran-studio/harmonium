@@ -106,9 +106,11 @@ pub fn timeline_to_musicxml_with_instruments(
     write_header(&mut xml, title);
 
     // Pistes à hauteur définie, dans l'ordre historique (basse, mélodie, accords) puis les autres
-    // de la liste canonique ; les pieds restent regroupés en une partie de percussions.
-    let mut pitched: Vec<TrackId> =
-        TrackId::ALL.into_iter().filter(|t| !matches!(t, TrackId::Heel | TrackId::Toe)).collect();
+    // de la liste canonique ; la percussion restent regroupés en une partie de percussions.
+    let mut pitched: Vec<TrackId> = TrackId::ALL
+        .into_iter()
+        .filter(|t| !matches!(t, TrackId::PercussionLow | TrackId::PercussionHigh))
+        .collect();
     pitched.sort_by_key(|track| match track {
         TrackId::Bass => 0,
         TrackId::Melody => 1,
@@ -270,11 +272,12 @@ fn write_drum_part(xml: &mut String, part_id: &str, measures: &[Measure]) {
             writeln!(xml, "      </attributes>").unwrap();
         }
 
-        // Merge heel and toe notes by start_step
-        let heel_notes = measure.notes_for_track(TrackId::Heel);
-        let toe_notes = measure.notes_for_track(TrackId::Toe);
+        // Merge percussion_low and percussion_high notes by start_step
+        let percussion_low_notes = measure.notes_for_track(TrackId::PercussionLow);
+        let percussion_high_notes = measure.notes_for_track(TrackId::PercussionHigh);
 
-        let mut all_notes: Vec<&TimelineNote> = heel_notes.iter().chain(toe_notes.iter()).collect();
+        let mut all_notes: Vec<&TimelineNote> =
+            percussion_low_notes.iter().chain(percussion_high_notes.iter()).collect();
         all_notes.sort_by_key(|n| n.start_step);
 
         if all_notes.is_empty() {

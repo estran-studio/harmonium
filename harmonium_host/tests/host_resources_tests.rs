@@ -11,8 +11,8 @@ use harmonium::audio::create_offline_engine;
 use harmonium_core::{StyleProfile, host_resources::MissingResource, timeline::TrackId};
 
 const SAMPLE_RATE: f64 = 44100.0;
-/// Banque de test : tient lieu de banque de pieds chargée (banque 1).
-const FEET_BANK: &[u8] = include_bytes!("../../assets/test.sf2");
+/// Banque de test : tient lieu de banque de percussion chargée (banque 1).
+const PERCUSSION_BANK: &[u8] = include_bytes!("../../assets/test.sf2");
 
 fn log_path() -> std::path::PathBuf {
     static INIT: Once = Once::new();
@@ -43,9 +43,9 @@ fn profile(path: &str, id: &str) -> StyleProfile {
     profile
 }
 
-fn engine(feet: Option<&[u8]>) -> harmonium::composer::MusicComposer {
+fn engine(percussion: Option<&[u8]>) -> harmonium::composer::MusicComposer {
     log_path();
-    let (composer, ..) = create_offline_engine(None, feet, &[], SAMPLE_RATE).unwrap();
+    let (composer, ..) = create_offline_engine(None, percussion, &[], SAMPLE_RATE).unwrap();
     composer
 }
 
@@ -61,8 +61,8 @@ fn an_unloaded_percussion_bank_is_reported_when_the_profile_loads() {
 }
 
 #[test]
-fn a_loaded_feet_bank_raises_no_warning() {
-    let mut composer = engine(Some(FEET_BANK));
+fn a_loaded_percussion_bank_raises_no_warning() {
+    let mut composer = engine(Some(PERCUSSION_BANK));
     composer.set_profile(profile("profiles/reel_quebecois", "sans_avert")).unwrap();
 
     assert!(warnings_for("sans_avert").is_empty());
@@ -100,8 +100,8 @@ fn the_same_absence_is_reported_once_not_at_every_tuning_change() {
 
 #[test]
 fn a_missing_resource_changes_no_note() {
-    let notes = |feet: Option<&[u8]>| {
-        let mut composer = engine(feet);
+    let notes = |percussion: Option<&[u8]>| {
+        let mut composer = engine(percussion);
         composer.set_seed(1);
         composer.set_profile(profile("profiles/reel_quebecois", "notes_stables")).unwrap();
         composer.set_writehead_lookahead(12);
@@ -110,7 +110,7 @@ fn a_missing_resource_changes_no_note() {
     };
     let without = notes(None);
     assert!(without.contains("\"notes\""));
-    assert_eq!(without, notes(Some(FEET_BANK)));
+    assert_eq!(without, notes(Some(PERCUSSION_BANK)));
 }
 
 #[cfg(not(feature = "odin"))]
@@ -120,7 +120,7 @@ fn emotion_zones_without_odin_keep_the_soundfont_audio_unchanged() {
 
     let render = |with_zones: bool| {
         let (mut composer, mut playback, mut commands, _, _, _) =
-            create_offline_engine(Some(FEET_BANK), None, &[], SAMPLE_RATE).unwrap();
+            create_offline_engine(Some(PERCUSSION_BANK), None, &[], SAMPLE_RATE).unwrap();
         let mut profile = StyleProfile::named("isaac_burning").unwrap();
         if !with_zones {
             profile.odin.clear();

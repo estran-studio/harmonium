@@ -50,8 +50,8 @@ impl ImposedRole {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BarRole {
-    pub strain: Part,
-    pub bar_in_strain: u8,
+    pub part: Part,
+    pub bar_in_part: u8,
     pub pass: u8,
     pub is_repeat: bool,
     pub role: ImposedRole,
@@ -195,8 +195,8 @@ impl TunePlan {
     pub fn bar_role(&self, bar: usize) -> BarRole {
         let (part, pass, offset, second_ending) = self.position(bar);
         BarRole {
-            strain: Part(part),
-            bar_in_strain: (offset + 1) as u8,
+            part: Part(part),
+            bar_in_part: (offset + 1) as u8,
             pass: pass as u8,
             is_repeat: pass > 1,
             role: if !self.pass_roles.is_empty() {

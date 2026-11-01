@@ -50,11 +50,11 @@ pub fn timeline_to_midi(
     smf.tracks.push(build_tempo_track(measures));
 
     for track in TrackId::ALL {
-        if track == TrackId::Heel {
-            smf.tracks.push(build_drum_track(measures, profile.mix.tracks.toe.midi()));
+        if track == TrackId::PercussionLow {
+            smf.tracks.push(build_drum_track(measures, profile.mix.tracks.percussion_high.midi()));
             continue;
         }
-        if track == TrackId::Toe {
+        if track == TrackId::PercussionHigh {
             continue;
         }
         smf.tracks.push(build_instrument_track(
@@ -276,8 +276,8 @@ fn build_drum_track(
     for measure in measures {
         let base_tick = measure_start(measure);
 
-        // Heel
-        for note in measure.notes_for_track(TrackId::Heel) {
+        // PercussionLow
+        for note in measure.notes_for_track(TrackId::PercussionLow) {
             let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_SNARE };
@@ -297,8 +297,8 @@ fn build_drum_track(
             ));
         }
 
-        // Toe
-        for note in measure.notes_for_track(TrackId::Toe) {
+        // PercussionHigh
+        for note in measure.notes_for_track(TrackId::PercussionHigh) {
             let (on_tick, off_tick) = note_ticks(base_tick, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_HIHAT };
@@ -471,7 +471,7 @@ mod tests {
 
         // Snare on beat 2 and 4
         measure.add_note(
-            TrackId::Heel,
+            TrackId::PercussionLow,
             TimelineNote {
                 id: 20,
                 pitch: 38,
@@ -483,7 +483,7 @@ mod tests {
             },
         );
         measure.add_note(
-            TrackId::Heel,
+            TrackId::PercussionLow,
             TimelineNote {
                 id: 21,
                 pitch: 38,
@@ -498,7 +498,7 @@ mod tests {
         // Hat on every beat
         for step in (0..16).step_by(4) {
             measure.add_note(
-                TrackId::Toe,
+                TrackId::PercussionHigh,
                 TimelineNote {
                     id: 30 + step as u64 / 4,
                     pitch: 42,
@@ -562,7 +562,7 @@ mod tests {
         assert_eq!(count_note_ons(&smf.tracks[2]), 0);
         // Track 3 = Bass: 2 notes
         assert_eq!(count_note_ons(&smf.tracks[3]), 2);
-        // Track 4 = Drums: 2 heel + 4 toe = 6 notes
+        // Track 4 = Drums: 2 percussion_low + 4 percussion_high = 6 notes
         assert_eq!(count_note_ons(&smf.tracks[4]), 6);
     }
 
@@ -657,7 +657,7 @@ mod tests {
         // Read back and verify
         let bytes = std::fs::read(&path).unwrap();
         let smf = Smf::parse(&bytes).expect("written file should parse");
-        // Tempo, une piste par logique, pieds regroupés en une seule percussion.
+        // Tempo, une piste par logique, percussion regroupés en une seule percussion.
         assert_eq!(smf.tracks.len(), TrackId::ALL.len());
 
         // Cleanup

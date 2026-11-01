@@ -77,13 +77,13 @@ fn entering_emotion_mode_starts_from_the_axes_playing() -> Result<(), String> {
 fn generation_commands_change_the_parameters_and_the_published_report() -> Result<(), String> {
     let (mut host, mut playback) = host()?;
     host.apply(EngineCommand::SetSwing(0.9))?;
-    host.apply(EngineCommand::SetFeetDensity(2))?;
+    host.apply(EngineCommand::SetPercussionDensity(2))?;
     host.apply(EngineCommand::SetIntensity(0.8))?;
     host.apply(EngineCommand::EnableMelody(false))?;
     host.apply(EngineCommand::SetTimeSignature { numerator: 3, denominator: 4 })?;
     let params = host.musical_params();
     assert_eq!(params.swing_ratio, 0.75, "le swing est borné par l'hôte");
-    assert_eq!(params.feet_density, 2);
+    assert_eq!(params.percussion_density, 2);
     assert!((params.intensity - 0.8).abs() < 1e-6);
     assert!(!params.enable_melody && params.enable_rhythm && params.enable_harmony);
     assert_eq!((params.time_signature.numerator, params.time_signature.denominator), (3, 4));
@@ -91,7 +91,7 @@ fn generation_commands_change_the_parameters_and_the_published_report() -> Resul
     run(&mut host, &mut playback, 100);
     let report = host.poll_state().ok_or("aucun rapport publié")?;
     assert_eq!(report.musical_params.swing_ratio, 0.75);
-    assert_eq!(report.musical_params.feet_density, 2);
+    assert_eq!(report.musical_params.percussion_density, 2);
     assert!(!report.musical_params.enable_melody);
     Ok(())
 }

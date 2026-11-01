@@ -48,16 +48,16 @@ pub struct ActiveTune {
     /// Plan structurel du tune (tonalité, mode, type, schéma AABB).
     pub plan: TunePlan,
     /// Matériel mélodique des parties, passes et tours configurés.
-    pub fiddle: MelodyLine,
+    pub melody: MelodyLine,
     /// Modèle harmonique sélectionné par le profil, précalculé par mesure.
     pub harmony: HarmonyPlan,
     /// Plan motivique de la basse pour cet air (vide si la basse utilise `hits`).
     bass_plan: BassMotifPlan,
     /// Alternatives de percussion fixées par partie et densité pour cet air.
-    feet_plan: PercussionPatternPlan,
-    /// Décalages d'humanisation des vélocités des pieds, par mesure unique de
+    percussion_plan: PercussionPatternPlan,
+    /// Décalages d'humanisation des vélocités de la percussion, par mesure unique de
     /// chaque partie ; les reprises et les tours relisent les mêmes décalages.
-    pub feet_humanize: Vec<Vec<i8>>,
+    pub percussion_humanize: Vec<Vec<i8>>,
     /// Graine des alternatives harmoniques et rythmiques, retirée à chaque air ;
     /// zéro et aucun tirage si toutes les couches sont uniques.
     pub variant_seed: u64,
@@ -95,9 +95,9 @@ impl ActiveTune {
 /// Générateur de mesures piloté par le profil actif.
 #[derive(Clone, Debug)]
 pub struct TuneGenerator {
-    /// Paramètres musicaux courants (tempo, swing, densité des pieds, activations).
+    /// Paramètres musicaux courants (tempo, swing, densité de la percussion, activations).
     pub musical_params: MusicalParams,
-    /// Paramètres de style et banques de données (cellules, podorythmie, harmonie).
+    /// Paramètres de style et banques de données (cellules, percussion, harmonie).
     pub tuning: TuningParams,
     /// Airs générés indexés par `tune_index` (`0` = mesures 1..=32×tours, etc.).
     tunes: BTreeMap<usize, Arc<ActiveTune>>,
@@ -129,7 +129,7 @@ impl TuneGenerator {
         }
     }
 
-    /// Met à jour les paramètres musicaux (`bpm`, `swing_ratio`, `feet_density`, etc.).
+    /// Met à jour les paramètres musicaux (`bpm`, `swing_ratio`, `percussion_density`, etc.).
     pub fn update_params(&mut self, params: MusicalParams) {
         if params.end_after_tour && !self.musical_params.end_after_tour {
             self.ending_tune = Some(self.position_of(self.current_bar.max(1)).tune_index);
@@ -156,12 +156,12 @@ impl TuneGenerator {
         }
     }
 
-    fn feet_density(&self, intensity: f32) -> u8 {
+    fn percussion_density(&self, intensity: f32) -> u8 {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
-        (f32::from(p.feet_density)
-            + d.feet_intensity.eval(intensity)
-            + d.density_feet.eval(p.rhythm_density))
+        (f32::from(p.percussion_density)
+            + d.percussion_intensity.eval(intensity)
+            + d.density_percussion.eval(p.rhythm_density))
         .round()
         .clamp(0.0, 2.0) as u8
     }
@@ -216,7 +216,7 @@ impl TuneGenerator {
     }
 
     /// Position structurée de la mesure 1-based `bar_number` (unique conversion
-    /// mesure → `(section, tune_index, tour, part, pass, bar_in_strain)`).
+    /// mesure → `(section, tune_index, tour, part, pass, bar_in_part)`).
     ///
     /// Prend en compte les mesures d'intro : parcourt les tunes déjà générés
     /// pour accumuler les barres d'intro et décaler le calcul.
@@ -281,7 +281,7 @@ impl TuneGenerator {
         let flag = match track {
             TrackId::Melody | TrackId::Countermelody => self.musical_params.enable_melody,
             TrackId::Chords | TrackId::Bass => self.musical_params.enable_harmony,
-            TrackId::Heel | TrackId::Toe => self.musical_params.enable_rhythm,
+            TrackId::PercussionLow | TrackId::PercussionHigh => self.musical_params.enable_rhythm,
         };
         let entered = self.tuning.profile.arrangement.allows(track, position, &self.profile.form)
             || self.played_intro(track, position.tune_index);
@@ -339,8 +339,8 @@ impl TuneGenerator {
     }
 
     /// Vrai si `track` a joué l'intro de l'air `tune_index` : une piste qui a
-    /// lancé l'air (décompte aux pieds, vamp) continue au lieu de se taire quand
-    /// le violon entre (écoute 2026-10-22).
+    /// lancé l'air (décompte à la percussion, vamp) continue au lieu de se taire quand
+    /// la mélodie entre (écoute 2026-10-22).
     fn played_intro(&self, track: TrackId, tune_index: usize) -> bool {
         self.tunes.get(&tune_index).is_some_and(|tune| {
             let intro = &tune.intro_info;
@@ -348,7 +348,7 @@ impl TuneGenerator {
                 TrackId::Melody => intro.melody_active(),
                 TrackId::Countermelody => false,
                 TrackId::Chords | TrackId::Bass => intro.chords_active(),
-                TrackId::Heel | TrackId::Toe => intro.feet_active(),
+                TrackId::PercussionLow | TrackId::PercussionHigh => intro.percussion_active(),
             }
         })
     }
@@ -365,8 +365,8 @@ impl TuneGenerator {
                 TrackId::Chords | TrackId::Bass => {
                     intro_info.chords_active() && self.musical_params.enable_harmony
                 }
-                TrackId::Heel | TrackId::Toe => {
-                    intro_info.feet_active() && self.musical_params.enable_rhythm
+                TrackId::PercussionLow | TrackId::PercussionHigh => {
+                    intro_info.percussion_active() && self.musical_params.enable_rhythm
                 }
             }
     }
@@ -471,7 +471,7 @@ impl TuneGenerator {
             None
         };
         if !is_intro && !self.profile.performance.is_neutral() {
-            let offset = position.bar_in_strain - 1;
+            let offset = position.bar_in_part - 1;
             let (start, end) = self.phrase_window(&tune, &position);
             let span = (end - start).max(1) as f32;
             // Flux propre à la mesure : la mesure `n` se joue pareil après un
@@ -498,9 +498,9 @@ impl TuneGenerator {
             } else {
                 self.profile
                     .dynamics
-                    .chop_intensity
+                    .chords_intensity
                     .eval(self.effective_intensity(position.tune_index))
-                    + self.profile.dynamics.density_chop.eval(self.musical_params.rhythm_density)
+                    + self.profile.dynamics.density_chords.eval(self.musical_params.rhythm_density)
             };
             let seed =
                 crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
@@ -594,7 +594,7 @@ impl TuneGenerator {
             mode: tune.plan.mode,
             seed: tune.material_seed,
             bar,
-            phase: (position.bar_in_strain - 1 - start) as f32 / span,
+            phase: (position.bar_in_part - 1 - start) as f32 / span,
             phrase_bars: span,
             density: self.musical_params.rhythm_density,
             arousal: self.musical_params.arousal,
@@ -615,7 +615,7 @@ impl TuneGenerator {
     /// la mesure de `position` : bornes `phrase_ends` du profil, sinon rôles
     /// cadentiels ; la partie entière à défaut de frontière.
     fn phrase_window(&self, tune: &ActiveTune, position: &TunePosition) -> (usize, usize) {
-        let offset = position.bar_in_strain - 1;
+        let offset = position.bar_in_part - 1;
         let base = self.performed_bar(position) - offset;
         let length = self.profile.form.parts[position.part.0].roles.len();
         let mut start = 0;
@@ -660,13 +660,13 @@ impl TuneGenerator {
             tune.mode_requests.insert(bar, target_dark);
         }
         if !position.is_intro()
-            && (position.bar_in_strain == 1
+            && (position.bar_in_part == 1
                 || (matches!(
                     dynamics.mode_shift_boundary,
                     super::dynamics::ModeShiftBoundary::Phrase
                 ) && self.profile.form.phrase_end(
                     position.part.0,
-                    position.bar_in_strain - 2,
+                    position.bar_in_part - 2,
                     tune.plan
                         .bar_role(
                             position.bar_in_tour() - 1
@@ -688,10 +688,10 @@ impl TuneGenerator {
         }
         if tune.plan.mode != mode {
             tune.plan.mode = mode;
-            tune.fiddle.set_mode(mode);
+            tune.melody.set_mode(mode);
             if matches!(tune.harmony, HarmonyPlan::MelodyFunctional(_)) {
                 let melody: Vec<_> = (0..tune.plan.material_bars())
-                    .map(|i| tune.fiddle.notes_for_bar(tune.plan.representative_bar(i)))
+                    .map(|i| tune.melody.notes_for_bar(tune.plan.representative_bar(i)))
                     .collect();
                 if let Some(accompaniment) = &self.tuning.profile.accompaniment
                     && let Ok(h) = TuneHarmony::new(tune.plan.clone(), &melody, accompaniment)
@@ -739,41 +739,41 @@ impl TuneGenerator {
         match form {
             Some(IntroRole::Percussion) => {
                 // Décompte : les pistes de percussion jouent leur pattern seul.
-                let default_intro_tracks = [TrackId::Heel];
+                let default_intro_tracks = [TrackId::PercussionLow];
                 let intro_tracks = tuning
                     .profile
                     .percussion
                     .intro_tracks
                     .as_deref()
                     .unwrap_or(&default_intro_tracks);
-                let heel_wanted = intro_tracks.contains(&TrackId::Heel)
-                    && self.track_active_in_intro(TrackId::Heel, intro);
-                let toe_wanted = intro_tracks.contains(&TrackId::Toe)
-                    && self.track_active_in_intro(TrackId::Toe, intro);
-                if heel_wanted || toe_wanted {
+                let percussion_low_wanted = intro_tracks.contains(&TrackId::PercussionLow)
+                    && self.track_active_in_intro(TrackId::PercussionLow, intro);
+                let percussion_high_wanted = intro_tracks.contains(&TrackId::PercussionHigh)
+                    && self.track_active_in_intro(TrackId::PercussionHigh, intro);
+                if percussion_low_wanted || percussion_high_wanted {
                     let zero_humanize = vec![0i8; steps];
-                    let pattern = tune.feet_plan.pattern(
+                    let pattern = tune.percussion_plan.pattern(
                         &tuning.profile.percussion,
                         plan.profile.form.sequence[0],
-                        self.feet_density(self.effective_intensity(position.tune_index)),
+                        self.percussion_density(self.effective_intensity(position.tune_index)),
                         false,
                     );
-                    let (heel_notes, toe_notes) = percussion_notes(
+                    let (percussion_low_notes, percussion_high_notes) = percussion_notes(
                         &tuning.profile.percussion,
                         pattern,
                         steps,
                         &zero_humanize,
                     );
-                    if heel_wanted {
-                        for mut note in heel_notes {
+                    if percussion_low_wanted {
+                        for mut note in percussion_low_notes {
                             note.id = self.alloc_note_id();
-                            measure.add_note(TrackId::Heel, note);
+                            measure.add_note(TrackId::PercussionLow, note);
                         }
                     }
-                    if toe_wanted {
-                        for mut note in toe_notes {
+                    if percussion_high_wanted {
+                        for mut note in percussion_high_notes {
                             note.id = self.alloc_note_id();
-                            measure.add_note(TrackId::Toe, note);
+                            measure.add_note(TrackId::PercussionHigh, note);
                         }
                     }
                 }
@@ -786,7 +786,7 @@ impl TuneGenerator {
                     let tail_bars = intro.form_bars.max(1);
                     let bar_in_tune =
                         total_bars.saturating_sub(tail_bars) + form_bar.min(tail_bars - 1);
-                    for mut note in tune.fiddle.notes_for_bar(bar_in_tune) {
+                    for mut note in tune.melody.notes_for_bar(bar_in_tune) {
                         note.id = self.alloc_note_id();
                         measure.add_note(TrackId::Melody, note);
                     }
@@ -887,7 +887,7 @@ impl TuneGenerator {
     ) {
         if let HarmonyPlan::RewriteFunctional(bars) = &tune.harmony {
             let slot = tune.plan.material_index(self.performed_bar(position));
-            self.fill_jazz_measure(tune, position, &bars[slot], measure);
+            self.fill_rewrite_measure(tune, position, &bars[slot], measure);
             self.fill_percussion(tune, position, measure);
             return;
         }
@@ -901,7 +901,7 @@ impl TuneGenerator {
                 scale_guidance: None,
             };
             if self.track_active(TrackId::Melody, position) {
-                for mut note in tune.fiddle.notes_for_bar(bar_in_tour) {
+                for mut note in tune.melody.notes_for_bar(bar_in_tour) {
                     note.id = self.alloc_note_id();
                     measure.add_note(TrackId::Melody, note);
                 }
@@ -919,15 +919,15 @@ impl TuneGenerator {
                 .push(ChordChange { start_step: 0, context: measure.chord_context.clone() });
         }
 
-        // 1. Mélodie (violon, D6)
+        // 1. Mélodie (D6)
         if self.track_active(TrackId::Melody, position) {
-            for mut note in tune.fiddle.notes_for_bar(bar_in_tour) {
+            for mut note in tune.melody.notes_for_bar(bar_in_tour) {
                 note.id = self.alloc_note_id();
                 measure.add_note(TrackId::Melody, note);
             }
         }
 
-        // 2. Accompagnement (guitare chop + basse, D8)
+        // 2. Accompagnement (accords + basse, D8)
         if self.track_active(TrackId::Chords, position) {
             for note in self.chord_notes_for_bar(tune, bar_in_tour) {
                 measure.add_note(TrackId::Chords, note);
@@ -970,7 +970,7 @@ impl TuneGenerator {
         self.fill_percussion(tune, position, measure);
     }
 
-    fn fill_jazz_measure(
+    fn fill_rewrite_measure(
         &mut self,
         tune: &ActiveTune,
         position: &TunePosition,
@@ -999,7 +999,7 @@ impl TuneGenerator {
         }
         measure.chord_context = measure.chord_changes[0].context.clone();
         if self.track_active(TrackId::Melody, position) {
-            for mut note in tune.fiddle.notes_for_bar(self.performed_bar(position)) {
+            for mut note in tune.melody.notes_for_bar(self.performed_bar(position)) {
                 note.id = self.alloc_note_id();
                 measure.add_note(TrackId::Melody, note);
             }
@@ -1127,36 +1127,35 @@ impl TuneGenerator {
         position: &TunePosition,
         measure: &mut Measure,
     ) {
-        // 3. Podorythmie (talon + pointe, D9)
-        let heel_active = self.track_active(TrackId::Heel, position);
-        let toe_active = self.track_active(TrackId::Toe, position);
-        if heel_active || toe_active {
-            let slot =
-                self.profile.form.unique_offset(position.part.0) + position.bar_in_strain - 1;
-            let humanize = &tune.feet_humanize[slot];
+        // 3. Percussion (percussion grave + percussion aiguë, D9)
+        let percussion_low_active = self.track_active(TrackId::PercussionLow, position);
+        let percussion_high_active = self.track_active(TrackId::PercussionHigh, position);
+        if percussion_low_active || percussion_high_active {
+            let slot = self.profile.form.unique_offset(position.part.0) + position.bar_in_part - 1;
+            let humanize = &tune.percussion_humanize[slot];
             let is_cadence = self.profile.form.phrase_end(
                 position.part.0,
-                position.bar_in_strain - 1,
+                position.bar_in_part - 1,
                 tune.plan.bar_role(self.performed_bar(position)).role,
             );
-            let pattern = tune.feet_plan.pattern(
+            let pattern = tune.percussion_plan.pattern(
                 &self.tuning.profile.percussion,
                 position.part.0,
-                self.feet_density(self.effective_intensity(position.tune_index)),
+                self.percussion_density(self.effective_intensity(position.tune_index)),
                 is_cadence,
             );
-            let (heel_notes, toe_notes) =
+            let (percussion_low_notes, percussion_high_notes) =
                 percussion_notes(&self.tuning.profile.percussion, pattern, measure.steps, humanize);
-            if heel_active {
-                for mut note in heel_notes {
+            if percussion_low_active {
+                for mut note in percussion_low_notes {
                     note.id = self.alloc_note_id();
-                    measure.add_note(TrackId::Heel, note);
+                    measure.add_note(TrackId::PercussionLow, note);
                 }
             }
-            if toe_active {
-                for mut note in toe_notes {
+            if percussion_high_active {
+                for mut note in percussion_high_notes {
                     note.id = self.alloc_note_id();
-                    measure.add_note(TrackId::Toe, note);
+                    measure.add_note(TrackId::PercussionHigh, note);
                 }
             }
         }
@@ -1203,7 +1202,7 @@ impl TuneGenerator {
         if self.musical_params.enable_harmony {
             let next_id = &mut self.next_note_id;
             if self.tuning.profile.has_track(TrackId::Chords) {
-                // Guitare : accord tonique accentué
+                // Accords : accord tonique accentué
                 measure.add_note(
                     TrackId::Chords,
                     TimelineNote {
@@ -1243,13 +1242,15 @@ impl TuneGenerator {
             }
         }
 
-        // Pieds : talon accentué
-        if self.musical_params.enable_rhythm && self.tuning.profile.has_track(TrackId::Heel) {
+        // Percussion : coup grave accentué
+        if self.musical_params.enable_rhythm
+            && self.tuning.profile.has_track(TrackId::PercussionLow)
+        {
             measure.add_note(
-                TrackId::Heel,
+                TrackId::PercussionLow,
                 TimelineNote {
                     id: self.alloc_note_id(),
-                    pitch: self.tuning.profile.percussion.heel_note,
+                    pitch: self.tuning.profile.percussion.low_note,
                     velocity: 110,
                     start_step: 0,
                     duration_steps: self.profile.meter.steps_per_unit,
@@ -1273,8 +1274,8 @@ impl TuneGenerator {
         let threshold =
             self.tuning.profile.dynamics.tension_dominant.eval(self.musical_params.harmony_tension);
         let role = tune.plan.bar_role(bar);
-        let slot = usize::from(role.bar_in_strain) - 1;
-        let length = self.profile.form.parts[role.strain.0].roles.len();
+        let slot = usize::from(role.bar_in_part) - 1;
+        let length = self.profile.form.parts[role.part.0].roles.len();
         if !matches!(role.role, ImposedRole::CadHalf | ImposedRole::CadFull | ImposedRole::CadTonic)
             && (slot as f32 / length as f32) < threshold
         {
@@ -1296,7 +1297,7 @@ impl TuneGenerator {
         let intensity =
             self.effective_intensity(measure.position.map_or(0, |position| position.tune_index));
         let duration =
-            d.fiddle_duration.eval(intensity) * d.tension_duration.eval(p.harmony_tension);
+            d.melody_duration.eval(intensity) * d.tension_duration.eval(p.harmony_tension);
         let strong = d.strong_accent.eval(intensity)
             + d.brightness_accent.eval(d.valence_input(p.harmony_valence));
         let offbeat = d.tension_offbeat.eval(p.harmony_tension);
@@ -1317,7 +1318,7 @@ impl TuneGenerator {
                     } else {
                         0.0
                     }
-                } else if track == TrackId::Toe || track == TrackId::Heel {
+                } else if track == TrackId::PercussionHigh || track == TrackId::PercussionLow {
                     if note.pitch == 40 { offbeat.max(0.0) } else { 0.0 }
                 } else {
                     0.0
@@ -1364,10 +1365,10 @@ impl TuneGenerator {
         // Omission : la dernière mesure de la partie, si elle porte une cadence.
         let protected = part.ornament_protected_bars.as_ref().map_or_else(
             || {
-                position.bar_in_strain == part.roles.len()
+                position.bar_in_part == part.roles.len()
                     && tune.plan.bar_role(self.performed_bar(position)).role.is_cadential()
             },
-            |bars| bars.contains(&position.bar_in_strain),
+            |bars| bars.contains(&position.bar_in_part),
         );
         let (_, end) = self.phrase_window(tune, position);
         let params = &self.tuning.profile.melody.params;
@@ -1377,7 +1378,7 @@ impl TuneGenerator {
             tessitura: (params.tessitura_min, params.tessitura_max),
             bar_in_part: self.copy_source_bar(tune, position),
             steps_per_pulse: self.profile.meter.steps_per_pulse,
-            phrase_end_bar: position.bar_in_strain == end,
+            phrase_end_bar: position.bar_in_part == end,
             protected,
             repeat: position.pass > 1 || position.tour > 1,
             arousal: self.musical_params.arousal,
@@ -1392,7 +1393,7 @@ impl TuneGenerator {
     /// (`CopyOf`, `CopyOfPart`) emprunte celle de sa source, pour porter les mêmes
     /// ornements qu'elle.
     fn copy_source_bar(&self, tune: &ActiveTune, position: &TunePosition) -> usize {
-        let mut bar = position.bar_in_strain;
+        let mut bar = position.bar_in_part;
         let mut part = position.part.0;
         let mut role = tune.plan.bar_role(self.performed_bar(position)).role;
         for _ in 0..8 {
@@ -1412,21 +1413,21 @@ impl TuneGenerator {
         bar
     }
 
-    /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`ChordPlayer`]
+    /// Calcule les attaques d'accords de `bar_in_tour` en rejouant le [`ChordPlayer`]
     /// depuis le début de la passe courante, sans hypothèse de longueur ;
     /// le matériel rejoué reste stable après invalidation émotionnelle.
     fn chord_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
-        let strain_pass_start = bar_in_tour - offset;
+        let part_pass_start = bar_in_tour - offset;
         let Some(harmony) = self.tuning.profile.accompaniment.as_ref() else {
             return Vec::new();
         };
         let d = &self.tuning.profile.dynamics;
-        let chop_offset = d.chop_intensity.eval(self.effective_intensity(tune.tune_index))
-            + d.density_chop.eval(self.musical_params.rhythm_density);
-        let hits = &harmony.chords.pattern(chop_offset).hits;
+        let chord_offset = d.chords_intensity.eval(self.effective_intensity(tune.tune_index))
+            + d.density_chords.eval(self.musical_params.rhythm_density);
+        let hits = &harmony.chords.pattern(chord_offset).hits;
         let mut chord_player = ChordPlayer::new();
-        for b in strain_pass_start..bar_in_tour {
+        for b in part_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
             chord_player.advance_bar(
                 &c,
@@ -1477,7 +1478,7 @@ impl TuneGenerator {
                 }
                 let prev = tune_idx.checked_sub(1).and_then(|prev_idx| self.tunes.get(&prev_idx));
                 let prev_key_mode = prev.map(|t| (t.plan.key, t.plan.mode));
-                let prev_first_cell = prev.map(|t| t.fiddle.cell_for_bar(0).clone());
+                let prev_first_cell = prev.map(|t| t.melody.cell_for_bar(0).clone());
                 let tune = self.build_tune(tune_idx, prev_key_mode, prev_first_cell, rng);
                 self.tunes.insert(tune_idx, Arc::new(tune));
             }
@@ -1548,13 +1549,13 @@ impl TuneGenerator {
         } else {
             0
         };
-        let (plan, fiddle, loop_harmony) = if let Some(source) = source {
-            let plan = source.fiddle.plan();
+        let (plan, melody, loop_harmony) = if let Some(source) = source {
+            let plan = source.melody.plan();
             let harmony = (self.profile.harmony.model == "loop")
                 .then(|| LoopHarmony::new(plan.clone(), variant_seed));
-            let mut fiddle = source.fiddle.clone();
-            fiddle.set_mode(plan.mode);
-            (plan, fiddle, harmony)
+            let mut melody = source.melody.clone();
+            melody.set_mode(plan.mode);
+            (plan, melody, harmony)
         } else {
             let (key, mode) = self.draw_key_mode(tune_index, prev_key_mode, valence, rng);
             let mut plan = TunePlan::with_profile(key, mode, self.profile.clone());
@@ -1562,7 +1563,7 @@ impl TuneGenerator {
             // Fixer les alternatives avant toute génération et tout guidage mélodique.
             let harmony = (self.profile.harmony.model == "loop")
                 .then(|| LoopHarmony::new(plan.clone(), variant_seed));
-            let mut fiddle_params = self.tuning.profile.melody.params.clone();
+            let mut melody_params = self.tuning.profile.melody.params.clone();
             let intensity = self.effective_intensity(tune_index);
             // Courbe d'intensité sur un rôle employé (au moins 1) ; un poids nul reste nul.
             let scale = |weight: u32, curve: &super::dynamics::Curve| {
@@ -1572,40 +1573,40 @@ impl TuneGenerator {
                     (weight as f32 * curve.eval(intensity)).round().max(1.0) as u32
                 }
             };
-            fiddle_params.weight_role_run =
-                scale(fiddle_params.weight_role_run, &dynamics.run_weight);
-            fiddle_params.weight_role_arp =
-                scale(fiddle_params.weight_role_arp, &dynamics.arp_weight);
-            fiddle_params.weight_role_turn =
-                scale(fiddle_params.weight_role_turn, &dynamics.turn_weight);
-            fiddle_params.melody_center_midi = (f32::from(fiddle_params.melody_center_midi)
+            melody_params.weight_role_run =
+                scale(melody_params.weight_role_run, &dynamics.run_weight);
+            melody_params.weight_role_arp =
+                scale(melody_params.weight_role_arp, &dynamics.arp_weight);
+            melody_params.weight_role_turn =
+                scale(melody_params.weight_role_turn, &dynamics.turn_weight);
+            melody_params.melody_center_midi = (f32::from(melody_params.melody_center_midi)
                 + dynamics.color_register.eval(dynamics.valence_input(valence)))
             .round()
-            .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
+            .clamp(f32::from(melody_params.tessitura_min), f32::from(melody_params.tessitura_max))
                 as u8;
-            let mut fiddle = MelodyLine::with_params(
+            let mut melody = MelodyLine::with_params(
                 plan.clone(),
                 &self.tuning.profile.melody.cells,
-                &fiddle_params,
+                &melody_params,
                 rng,
             );
             if let Some(prev_first) = prev_first_cell {
                 for _ in 0..self.profile.form.opening_retries {
-                    if !same_cell_up_to_octave(fiddle.cell_for_bar(0), &prev_first) {
+                    if !same_cell_up_to_octave(melody.cell_for_bar(0), &prev_first) {
                         break;
                     }
-                    fiddle = MelodyLine::with_params(
+                    melody = MelodyLine::with_params(
                         plan.clone(),
                         &self.tuning.profile.melody.cells,
-                        &fiddle_params,
+                        &melody_params,
                         rng,
                     );
                 }
             }
-            (plan, fiddle, harmony)
+            (plan, melody, harmony)
         };
 
-        let harmony = if self.profile.harmony.model == "jazz_functional" {
+        let harmony = if self.profile.harmony.model == "rewrite_functional" {
             let mut model = SteedmanGrammar::new(
                 self.profile.harmony.rules.clone(),
                 self.profile.harmony.max_recursion,
@@ -1617,7 +1618,12 @@ impl TuneGenerator {
                     (0..chords_per_bar)
                         .map(|_| {
                             let numeral = model.next_numeral(valence, &mut || rng.next_f32());
-                            SteedmanGrammar::realize(numeral, plan.key, valence, GrammarStyle::Jazz)
+                            SteedmanGrammar::realize(
+                                numeral,
+                                plan.key,
+                                valence,
+                                GrammarStyle::Extended,
+                            )
                         })
                         .collect()
                 })
@@ -1629,7 +1635,7 @@ impl TuneGenerator {
             HarmonyPlan::None
         } else if let Some(accompaniment) = &self.tuning.profile.accompaniment {
             let distinct_melody: Vec<_> = (0..plan.material_bars())
-                .map(|i| fiddle.notes_for_bar(plan.representative_bar(i)))
+                .map(|i| melody.notes_for_bar(plan.representative_bar(i)))
                 .collect();
             match TuneHarmony::new(plan.clone(), &distinct_melody, accompaniment) {
                 Ok(h) => HarmonyPlan::MelodyFunctional(h),
@@ -1638,8 +1644,9 @@ impl TuneGenerator {
         } else {
             HarmonyPlan::None
         };
-        let feet_plan = PercussionPatternPlan::new(&plan, &self.profile.percussion, variant_seed);
-        let feet_humanize = draw_percussion_humanize(
+        let percussion_plan =
+            PercussionPatternPlan::new(&plan, &self.profile.percussion, variant_seed);
+        let percussion_humanize = draw_percussion_humanize(
             self.tuning.profile.percussion.velocity_humanize,
             self.profile.form.unique_bars(),
             self.profile.meter.steps_per_bar,
@@ -1653,7 +1660,7 @@ impl TuneGenerator {
         };
 
         // Tirer l'intro (P1-T11)
-        let intro_info = self.draw_intro(tune_index, &plan, &fiddle, rng);
+        let intro_info = self.draw_intro(tune_index, &plan, &melody, rng);
         // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
         // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
         let material_seed = if self.profile.heterophony.is_some()
@@ -1664,7 +1671,7 @@ impl TuneGenerator {
             crate::ornaments::tune_seed(
                 tune_index,
                 (0..plan.material_bars()).flat_map(|i| {
-                    fiddle
+                    melody
                         .notes_for_bar(plan.representative_bar(i))
                         .into_iter()
                         .map(|n| (n.pitch, n.start_step, n.duration_steps))
@@ -1682,7 +1689,7 @@ impl TuneGenerator {
                 crate::ornaments::tune_seed(
                     tune_index,
                     (0..plan.material_bars()).flat_map(|i| {
-                        fiddle
+                        melody
                             .notes_for_bar(plan.representative_bar(i))
                             .into_iter()
                             .map(|n| (n.pitch, n.start_step, n.duration_steps))
@@ -1703,11 +1710,11 @@ impl TuneGenerator {
         ActiveTune {
             tune_index,
             plan: plan.clone(),
-            fiddle,
+            melody,
             harmony,
             bass_plan,
-            feet_plan,
-            feet_humanize,
+            percussion_plan,
+            percussion_humanize,
             variant_seed,
             performance_seed,
             material_seed,
@@ -1762,7 +1769,7 @@ impl TuneGenerator {
         &self,
         tune_index: usize,
         plan: &TunePlan,
-        fiddle: &MelodyLine,
+        melody: &MelodyLine,
         rng: &mut dyn RngCore,
     ) -> IntroInfo {
         let intro_config = &self.tuning.profile.arrangement.intro;
@@ -1811,7 +1818,7 @@ impl TuneGenerator {
 
         // Calculer les notes de levée
         let pickup_notes = if pickup_eighths > 0 && intro_bars > 0 {
-            let first_note_midi = first_melody_note_midi(fiddle, plan, &profile.melody.params);
+            let first_note_midi = first_melody_note_midi(melody, plan, &profile.melody.params);
             compute_pickup_notes(first_note_midi, pickup_eighths, plan.key, plan.mode)
         } else {
             Vec::new()
@@ -1855,9 +1862,9 @@ fn draw_intro_form(config: &IntroConfig, rng: &mut dyn RngCore) -> Option<IntroR
 ///
 /// Lue depuis la ligne rendue (première mesure), sans supposer la forme de
 /// l'air : c'est la note d'arrivée de la levée.
-fn first_melody_note_midi(fiddle: &MelodyLine, plan: &TunePlan, params: &MelodyParams) -> u8 {
+fn first_melody_note_midi(melody: &MelodyLine, plan: &TunePlan, params: &MelodyParams) -> u8 {
     let tonic = tonic_midi_for_key(plan.key, params.tonic_midi_min, params.tonic_midi_max);
-    if let Some(first) = fiddle.notes_for_bar(0).first() {
+    if let Some(first) = melody.notes_for_bar(0).first() {
         return first.pitch;
     }
     // Repli : tonique
@@ -1982,7 +1989,7 @@ mod tests {
         params::{PulseSpec, TimeSignature},
     };
 
-    fn make_reel_params() -> MusicalParams {
+    fn make_tune_params() -> MusicalParams {
         let rf = crate::StyleProfile::default().meter;
         let mut params = MusicalParams::default();
         params.bpm = rf.default_bpm;
@@ -1991,7 +1998,7 @@ mod tests {
         params
     }
 
-    fn make_reel_tuning_flat() -> TuningParams {
+    fn make_flat_tuning() -> TuningParams {
         TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
@@ -2005,8 +2012,8 @@ mod tests {
     #[test]
     fn measure_metadata_matches_d3_and_params() {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
-        let params = make_reel_params();
-        let tuning = make_reel_tuning_flat();
+        let params = make_tune_params();
+        let tuning = make_flat_tuning();
         let mut tune_gen = TuneGenerator::new(params, tuning);
 
         let m1 = tune_gen.generate_measure(1, &mut rng);
@@ -2022,7 +2029,7 @@ mod tests {
     #[test]
     fn intro_position_is_exposed() {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
-        let params = make_reel_params();
+        let params = make_tune_params();
         let mut tune_gen = TuneGenerator::new(params, TuningParams::default());
 
         // La config par défaut a une intro avec `each_tune = false`
@@ -2042,8 +2049,8 @@ mod tests {
 
         // 1. Sans intro : générer les 32 mesures du tune 0
         let mut rng_flat = ChaCha8Rng::seed_from_u64(seed);
-        let params = make_reel_params();
-        let mut flat_gen = TuneGenerator::new(params.clone(), make_reel_tuning_flat());
+        let params = make_tune_params();
+        let mut flat_gen = TuneGenerator::new(params.clone(), make_flat_tuning());
         let flat_notes: Vec<Vec<u8>> = (1..=32)
             .map(|bar| {
                 let m = flat_gen.generate_measure(bar, &mut rng_flat);
@@ -2064,7 +2071,7 @@ mod tests {
 
         // Régénérer depuis le début (même seed) pour la comparaison
         let mut rng_intro2 = ChaCha8Rng::seed_from_u64(seed);
-        let mut intro_gen2 = TuneGenerator::new(make_reel_params(), TuningParams::default());
+        let mut intro_gen2 = TuneGenerator::new(make_tune_params(), TuningParams::default());
 
         for tune_bar in 1..=32 {
             let bar = tune_bar + intro_bars;
@@ -2084,7 +2091,7 @@ mod tests {
     #[test]
     fn each_tune_false_second_tune_no_intro() {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let params = make_reel_params();
+        let params = make_tune_params();
         let tuning = TuningParams::default(); // each_tune = false par défaut
         let mut tune_gen = TuneGenerator::new(params, tuning);
 
@@ -2092,7 +2099,7 @@ mod tests {
         for bar in 1..=200 {
             let m = tune_gen.generate_measure(bar, &mut rng);
             let pos = m.position.unwrap();
-            if pos.tune_index == 1 && pos.section == Section::Tour && pos.bar_in_strain == 1 {
+            if pos.tune_index == 1 && pos.section == Section::Tour && pos.bar_in_part == 1 {
                 // La première mesure du 2ᵉ air ne devrait PAS être précédée d'une intro
                 // (seulement une levée si pickup_eighths > 0)
                 // Vérifions que la mesure juste avant est soit la dernière du tune 0,
@@ -2114,7 +2121,7 @@ mod tests {
     #[test]
     fn pickup_ascends_to_first_a1_note() {
         let mut rng = ChaCha8Rng::seed_from_u64(3);
-        let params = make_reel_params();
+        let params = make_tune_params();
         let tuning = TuningParams::default();
         let mut tune_gen = TuneGenerator::new(params, tuning);
 
@@ -2128,7 +2135,7 @@ mod tests {
 
         if !intro.pickup_notes.is_empty() {
             let target = first_melody_note_midi(
-                &tune.fiddle,
+                &tune.melody,
                 &tune.plan,
                 &tune_gen.tuning.profile.melody.params,
             );
@@ -2167,7 +2174,7 @@ mod tests {
         // Même seed ⇒ même forme d'intro
         let mut rng1 = ChaCha8Rng::seed_from_u64(99);
         let mut rng2 = ChaCha8Rng::seed_from_u64(99);
-        let params = make_reel_params();
+        let params = make_tune_params();
         let tuning = TuningParams::default();
 
         let mut gen1 = TuneGenerator::new(params.clone(), tuning.clone());
@@ -2218,14 +2225,14 @@ mod tests {
 
     #[test]
     fn intro_form_produces_promised_tracks() {
-        // Percussion → Heel présent, Melody absent (sauf levée en dernière mesure)
+        // Percussion → PercussionLow présent, Melody absent (sauf levée en dernière mesure)
         // Tail → Melody présent
         // Vamp → Chords présent
 
         // On teste avec différentes seeds pour couvrir chaque forme
         for seed in 0..100u64 {
             let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let params = make_reel_params();
+            let params = make_tune_params();
             let tuning = TuningParams::default();
             let mut tune_gen = TuneGenerator::new(params, tuning);
 
@@ -2235,22 +2242,22 @@ mod tests {
 
             match intro.form {
                 Some(IntroRole::Percussion) => {
-                    // Talon devrait être présent (sauf si enable_rhythm désactivé)
-                    let heel_notes = m1.notes_for_track(TrackId::Heel);
+                    // Percussion grave devrait être présent (sauf si enable_rhythm désactivé)
+                    let percussion_low_notes = m1.notes_for_track(TrackId::PercussionLow);
                     assert!(
-                        !heel_notes.is_empty(),
-                        "Percussion (seed {seed}): attendu talon présent"
+                        !percussion_low_notes.is_empty(),
+                        "Percussion (seed {seed}): attendu percussion grave présent"
                     );
                 }
                 Some(IntroRole::Tail) => {
                     let mel_notes = m1.notes_for_track(TrackId::Melody);
-                    assert!(!mel_notes.is_empty(), "Tail (seed {seed}): attendu violon présent");
+                    assert!(!mel_notes.is_empty(), "Tail (seed {seed}): attendu mélodie présente");
                 }
                 Some(IntroRole::Vamp) => {
                     let chord_notes = m1.notes_for_track(TrackId::Chords);
                     assert!(
                         !chord_notes.is_empty(),
-                        "Vamp (seed {seed}): attendu guitare présente"
+                        "Vamp (seed {seed}): attendu accords présents"
                     );
                 }
                 None => {}

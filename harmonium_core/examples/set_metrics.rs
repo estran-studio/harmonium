@@ -31,7 +31,7 @@ fn material_hash(tune: &ActiveTune) -> String {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     for bar in 0..tune.plan.total_bars() {
         hash = (hash ^ bar as u64).wrapping_mul(0x0000_0100_0000_01b3);
-        for note in tune.fiddle.notes_for_bar(bar) {
+        for note in tune.melody.notes_for_bar(bar) {
             for value in [u64::from(note.pitch), note.start_step as u64, note.duration_steps as u64]
             {
                 hash = (hash ^ value).wrapping_mul(0x0000_0100_0000_01b3);

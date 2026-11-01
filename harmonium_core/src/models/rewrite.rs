@@ -103,15 +103,15 @@ pub enum RuleCategory {
 /// Presets de style avec distributions de probabilité
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum GrammarStyle {
-    /// Jazz standard (bebop)
+    /// Septièmes, préparations ii-V, back-cycling et substitutions tritoniques
     #[default]
-    Jazz,
-    /// Pop/Rock
-    Pop,
-    /// Classique/Romantique
-    Classical,
-    /// Contemporain/Neo-Soul
-    Contemporary,
+    Extended,
+    /// Triades, cadences basiques
+    Triadic,
+    /// Cadences et déceptions
+    Cadential,
+    /// Échange modal et chromatisme
+    Modal,
 }
 
 impl GrammarStyle {
@@ -119,27 +119,27 @@ impl GrammarStyle {
     #[must_use]
     pub const fn category_weight(&self, category: RuleCategory) -> f32 {
         match (self, category) {
-            // Jazz: ii-V, back-cycling, tritone subs
-            (Self::Jazz, RuleCategory::Preparation) => 1.5,
-            (Self::Jazz, RuleCategory::BackCycle) => 1.3,
-            (Self::Jazz, RuleCategory::TritoneSubstitution) => 1.2,
-            (Self::Jazz, RuleCategory::Cadential) => 0.8,
+            // Extended : ii-V, back-cycling, tritone subs
+            (Self::Extended, RuleCategory::Preparation) => 1.5,
+            (Self::Extended, RuleCategory::BackCycle) => 1.3,
+            (Self::Extended, RuleCategory::TritoneSubstitution) => 1.2,
+            (Self::Extended, RuleCategory::Cadential) => 0.8,
 
-            // Pop: cadences basiques, moins de complexité
-            (Self::Pop, RuleCategory::Cadential) => 1.5,
-            (Self::Pop, RuleCategory::Preparation) => 0.8,
-            (Self::Pop, RuleCategory::BackCycle) => 0.3,
-            (Self::Pop, RuleCategory::TritoneSubstitution) => 0.2,
+            // Triadic : cadences basiques, moins de complexité
+            (Self::Triadic, RuleCategory::Cadential) => 1.5,
+            (Self::Triadic, RuleCategory::Preparation) => 0.8,
+            (Self::Triadic, RuleCategory::BackCycle) => 0.3,
+            (Self::Triadic, RuleCategory::TritoneSubstitution) => 0.2,
 
-            // Classical: cadentiel, déceptif
-            (Self::Classical, RuleCategory::Cadential) => 1.4,
-            (Self::Classical, RuleCategory::Deceptive) => 1.2,
-            (Self::Classical, RuleCategory::TritoneSubstitution) => 0.1,
+            // Cadential : cadentiel, déceptif
+            (Self::Cadential, RuleCategory::Cadential) => 1.4,
+            (Self::Cadential, RuleCategory::Deceptive) => 1.2,
+            (Self::Cadential, RuleCategory::TritoneSubstitution) => 0.1,
 
-            // Contemporary: modal, chromatique
-            (Self::Contemporary, RuleCategory::ModalInterchange) => 1.4,
-            (Self::Contemporary, RuleCategory::Deceptive) => 1.3,
-            (Self::Contemporary, RuleCategory::BackCycle) => 1.1,
+            // Modal : modal, chromatique
+            (Self::Modal, RuleCategory::ModalInterchange) => 1.4,
+            (Self::Modal, RuleCategory::Deceptive) => 1.3,
+            (Self::Modal, RuleCategory::BackCycle) => 1.1,
 
             // Défaut
             _ => 1.0,
@@ -192,7 +192,7 @@ impl SteedmanGrammar {
             pending: VecDeque::new(),
             recursion: HashMap::new(),
             max_recursion,
-            style: GrammarStyle::Jazz,
+            style: GrammarStyle::Extended,
         }
     }
     pub fn set_style(&mut self, style: GrammarStyle) {
@@ -284,7 +284,7 @@ impl SteedmanGrammar {
         );
 
         // === RÈGLE 2: PRÉPARATION ii-V ===
-        // Règle 2a: V -> ii7-V (ii mineur, le standard jazz)
+        // Règle 2a: V -> ii7-V (ii mineur, préparation étendue)
         self.add_rule_ext(
             RomanNumeral::V,
             vec![RomanNumeral::II, RomanNumeral::V],
@@ -513,9 +513,9 @@ impl SteedmanGrammar {
             }
             // Règle 3a/3b: ii réalisation dépend du style
             RomanNumeral::II => match style {
-                GrammarStyle::Jazz | GrammarStyle::Contemporary => ChordType::Minor7,
-                GrammarStyle::Pop => ChordType::Minor,
-                GrammarStyle::Classical => {
+                GrammarStyle::Extended | GrammarStyle::Modal => ChordType::Minor7,
+                GrammarStyle::Triadic => ChordType::Minor,
+                GrammarStyle::Cadential => {
                     if valence < -0.3 {
                         ChordType::Dominant7 // Saveur napolitaine
                     } else {
@@ -524,11 +524,11 @@ impl SteedmanGrammar {
                 }
             },
             RomanNumeral::III => match style {
-                GrammarStyle::Jazz => ChordType::Minor7,
+                GrammarStyle::Extended => ChordType::Minor7,
                 _ => ChordType::Minor,
             },
             RomanNumeral::IV => {
-                if valence > 0.3 && matches!(style, GrammarStyle::Jazz) {
+                if valence > 0.3 && matches!(style, GrammarStyle::Extended) {
                     ChordType::Major7
                 } else {
                     ChordType::Major
@@ -536,7 +536,7 @@ impl SteedmanGrammar {
             }
             RomanNumeral::V => ChordType::Dominant7,
             RomanNumeral::VI => match style {
-                GrammarStyle::Jazz => ChordType::Minor7,
+                GrammarStyle::Extended => ChordType::Minor7,
                 _ => ChordType::Minor,
             },
             RomanNumeral::VII => ChordType::HalfDiminished,
@@ -544,7 +544,7 @@ impl SteedmanGrammar {
             RomanNumeral::FlatII => ChordType::Dominant7,
             // Modal interchange
             RomanNumeral::FlatVI => match style {
-                GrammarStyle::Jazz | GrammarStyle::Contemporary => ChordType::Major7,
+                GrammarStyle::Extended | GrammarStyle::Modal => ChordType::Major7,
                 _ => ChordType::Major,
             },
             RomanNumeral::FlatVII => ChordType::Dominant7,

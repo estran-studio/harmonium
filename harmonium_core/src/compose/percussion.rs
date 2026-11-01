@@ -1,13 +1,13 @@
-//! Podorythmie traditionnelle québécoise et table de patterns pour le reel (D9).
+//! Percussion à deux voix (grave, aiguë) et table de patterns portée en données (D9).
 //!
-//! En musique traditionnelle québécoise, la podorythmie (battement des pieds)
-//! fournit l'assise rythmique principale avec le violon.
+//! La percussion fournit l'assise rythmique principale avec la mélodie ; ses sons
+//! (notes, banque, vélocités) viennent du profil.
 //!
 //! Ce module implémente :
-//! - [`PercussionHit`] : un coup de pied unitaire `(step, piste Heel|Toe, delta_velocity)` ;
-//! - [`PercussionPattern`] : pattern de podorythmie pour une densité donnée ;
-//! - [`PercussionTable`] : table complète portée en données (constitution V) via `reel_feet.toml` ;
-//! - [`percussion_notes`] : fonction pure générant les [`TimelineNote`] de talon et de pointe.
+//! - [`PercussionHit`] : un coup de percussion unitaire `(step, piste PercussionLow|PercussionHigh, delta_velocity)` ;
+//! - [`PercussionPattern`] : pattern de percussion pour une densité donnée ;
+//! - [`PercussionTable`] : table complète portée en données (constitution V) via `percussion.toml` ;
+//! - [`percussion_notes`] : fonction pure générant les [`TimelineNote`] de percussion grave et de percussion aiguë.
 
 use std::{collections::HashSet, fmt};
 
@@ -21,16 +21,16 @@ use crate::{
     timeline::{Articulation, TimelineNote, TrackId},
 };
 
-/// Contenu brut de la table TOML embarquée de podorythmie pour le reel (D9).
+/// Contenu brut de la table TOML embarquée de percussion (D9).
 pub const DEFAULT_PERCUSSION_TOML: &str =
-    include_str!("../../../profiles/reel_quebecois/feet.toml");
+    include_str!("../../../profiles/reel_quebecois/percussion.toml");
 
-/// Un coup de pied individuel dans une mesure de podorythmie (D9).
+/// Un coup de percussion individuel dans une mesure de percussion (D9).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PercussionHit {
     /// Pas dans la mesure (`0..16`, soit `0..=15`).
     pub step: usize,
-    /// Piste ciblée ([`TrackId::Heel`] ou [`TrackId::Toe`]).
+    /// Piste ciblée ([`TrackId::PercussionLow`] ou [`TrackId::PercussionHigh`]).
     pub track: TrackId,
     /// Ajustement de vélocité relatif à la vélocité de base du membre.
     pub delta_velocity: i8,
@@ -41,28 +41,28 @@ pub struct PercussionHit {
 }
 
 impl PercussionHit {
-    /// Crée un coup de pied avec pas, piste et delta de vélocité.
+    /// Crée un coup de percussion avec pas, piste et delta de vélocité.
     #[must_use]
     pub const fn new(step: usize, track: TrackId, delta_velocity: i8) -> Self {
         Self { step, track, delta_velocity, note: None, voice: None }
     }
 
-    /// Raccourci pour un coup de talon (delta de vélocité nul).
+    /// Raccourci pour un coup de percussion grave (delta de vélocité nul).
     #[must_use]
-    pub const fn heel(step: usize) -> Self {
-        Self { step, track: TrackId::Heel, delta_velocity: 0, note: None, voice: None }
+    pub const fn low(step: usize) -> Self {
+        Self { step, track: TrackId::PercussionLow, delta_velocity: 0, note: None, voice: None }
     }
 
-    /// Raccourci pour un coup de pointe (delta de vélocité nul).
+    /// Raccourci pour un coup de percussion aiguë (delta de vélocité nul).
     #[must_use]
-    pub const fn toe(step: usize) -> Self {
-        Self { step, track: TrackId::Toe, delta_velocity: 0, note: None, voice: None }
+    pub const fn high(step: usize) -> Self {
+        Self { step, track: TrackId::PercussionHigh, delta_velocity: 0, note: None, voice: None }
     }
 
-    /// Raccourci pour un coup de pointe avec delta de vélocité explicite.
+    /// Raccourci pour un coup de percussion aiguë avec delta de vélocité explicite.
     #[must_use]
-    pub const fn toe_with_delta(step: usize, delta_velocity: i8) -> Self {
-        Self { step, track: TrackId::Toe, delta_velocity, note: None, voice: None }
+    pub const fn high_with_delta(step: usize, delta_velocity: i8) -> Self {
+        Self { step, track: TrackId::PercussionHigh, delta_velocity, note: None, voice: None }
     }
 
     /// Coup avec note explicite.
@@ -74,7 +74,13 @@ impl PercussionHit {
     /// Coup avec voix percussive nommée.
     #[must_use]
     pub fn with_voice(step: usize, voice: impl Into<String>, delta_velocity: i8) -> Self {
-        Self { step, track: TrackId::Toe, delta_velocity, note: None, voice: Some(voice.into()) }
+        Self {
+            step,
+            track: TrackId::PercussionHigh,
+            delta_velocity,
+            note: None,
+            voice: Some(voice.into()),
+        }
     }
 }
 
@@ -102,10 +108,10 @@ where
 {
     let s = String::deserialize(deserializer)?;
     match s.to_ascii_lowercase().as_str() {
-        "heel" => Ok(TrackId::Heel),
-        "toe" => Ok(TrackId::Toe),
+        "percussionlow" => Ok(TrackId::PercussionLow),
+        "percussionhigh" => Ok(TrackId::PercussionHigh),
         _ => Err(serde::de::Error::custom(format!(
-            "piste invalide pour la podorythmie : attendu 'Heel' ou 'Toe', reçu '{s}'"
+            "piste invalide pour la percussion : attendu 'PercussionLow' ou 'PercussionHigh', reçu '{s}'"
         ))),
     }
 }
@@ -119,10 +125,10 @@ where
     let opt = Option::<String>::deserialize(deserializer)?;
     let Some(s) = opt else { return Ok(None) };
     match s.to_ascii_lowercase().as_str() {
-        "heel" => Ok(Some(TrackId::Heel)),
-        "toe" => Ok(Some(TrackId::Toe)),
+        "percussionlow" => Ok(Some(TrackId::PercussionLow)),
+        "percussionhigh" => Ok(Some(TrackId::PercussionHigh)),
         _ => Err(serde::de::Error::custom(format!(
-            "piste invalide pour la podorythmie : attendu 'Heel' ou 'Toe', reçu '{s}'"
+            "piste invalide pour la percussion : attendu 'PercussionLow' ou 'PercussionHigh', reçu '{s}'"
         ))),
     }
 }
@@ -151,9 +157,9 @@ impl<'de> Deserialize<'de> for PercussionHit {
         match raw {
             RawPercussionHit::Struct { step, track, voice, note, delta_velocity } => {
                 let track = track.unwrap_or(if voice.as_deref() == Some("bass_drum") {
-                    TrackId::Heel
+                    TrackId::PercussionLow
                 } else {
-                    TrackId::Toe
+                    TrackId::PercussionHigh
                 });
                 Ok(Self { step, track, delta_velocity, note, voice })
             }
@@ -186,8 +192,8 @@ const fn is_zero_i8(v: &i8) -> bool {
 impl Serialize for PercussionHit {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let track_str = match self.track {
-            TrackId::Heel => "Heel",
-            TrackId::Toe => "Toe",
+            TrackId::PercussionLow => "PercussionLow",
+            TrackId::PercussionHigh => "PercussionHigh",
             _ => "Unknown",
         };
         let raw = RawPercussionHitSerialize {
@@ -201,7 +207,7 @@ impl Serialize for PercussionHit {
     }
 }
 
-/// Pattern de coups de pieds pour un niveau de densité donné (D9).
+/// Pattern de coups de percussion pour un niveau de densité donné (D9).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PercussionPattern {
     /// Niveau de densité (`0`, `1` ou `2`).
@@ -262,10 +268,14 @@ impl<'de> Deserialize<'de> for PercussionPattern {
                         "euclid : steps dans 1..4096 et pulses <= steps requis",
                     ));
                 }
-                let track = match raw.track.as_deref().unwrap_or("Heel") {
-                    "Heel" | "heel" => TrackId::Heel,
-                    "Toe" | "toe" => TrackId::Toe,
-                    _ => return Err(serde::de::Error::custom("track : Heel ou Toe requis")),
+                let track = match raw.track.as_deref().unwrap_or("PercussionLow") {
+                    "PercussionLow" | "percussionlow" => TrackId::PercussionLow,
+                    "PercussionHigh" | "percussionhigh" => TrackId::PercussionHigh,
+                    _ => {
+                        return Err(serde::de::Error::custom(
+                            "track : PercussionLow ou PercussionHigh requis",
+                        ));
+                    }
                 };
                 euclid = Some((e, track));
                 let mut pattern =
@@ -293,7 +303,10 @@ impl Serialize for PercussionPattern {
         state.serialize_field("weight", &self.weight)?;
         if let Some((pattern, track)) = self.euclid {
             state.serialize_field("euclid", &pattern)?;
-            state.serialize_field("track", if track == TrackId::Toe { "Toe" } else { "Heel" })?;
+            state.serialize_field(
+                "track",
+                if track == TrackId::PercussionHigh { "PercussionHigh" } else { "PercussionLow" },
+            )?;
         } else {
             state.serialize_field("hits", &self.hits)?;
         }
@@ -301,11 +314,11 @@ impl Serialize for PercussionPattern {
     }
 }
 
-const fn default_heel_note() -> u8 {
+const fn default_low_note() -> u8 {
     36
 }
 
-const fn default_toe_note() -> u8 {
+const fn default_high_note() -> u8 {
     37
 }
 
@@ -313,19 +326,19 @@ const fn default_velocity_humanize() -> u8 {
     12
 }
 
-const fn default_heel_velocity() -> u8 {
+const fn default_low_velocity() -> u8 {
     55
 }
 
-const fn default_toe_velocity() -> u8 {
+const fn default_high_velocity() -> u8 {
     45
 }
 
-const fn default_feet_gain() -> f32 {
+const fn default_percussion_gain() -> f32 {
     1.0
 }
 
-/// Voix percussive pour la batterie / percussion militaire ou podorythmie ornée.
+/// Voix percussive pour la batterie / percussion militaire ou percussion ornée.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PercussionVoice {
@@ -338,16 +351,16 @@ pub struct PercussionVoice {
 
 #[derive(Deserialize)]
 struct RawPercussionTable {
-    #[serde(default = "default_heel_note")]
-    heel_note: u8,
-    #[serde(default = "default_toe_note")]
-    toe_note: u8,
-    #[serde(default = "default_heel_velocity")]
-    heel_velocity: u8,
-    #[serde(default = "default_toe_velocity")]
-    toe_velocity: u8,
-    #[serde(default = "default_feet_gain")]
-    feet_gain: f32,
+    #[serde(default = "default_low_note")]
+    low_note: u8,
+    #[serde(default = "default_high_note")]
+    high_note: u8,
+    #[serde(default = "default_low_velocity")]
+    low_velocity: u8,
+    #[serde(default = "default_high_velocity")]
+    high_velocity: u8,
+    #[serde(default = "default_percussion_gain")]
+    percussion_gain: f32,
     #[serde(default = "default_velocity_humanize")]
     velocity_humanize: u8,
     #[serde(default)]
@@ -362,28 +375,28 @@ struct RawPercussionTable {
     cadence_patterns: Vec<PercussionPattern>,
 }
 
-/// Table de podorythmie portée en données (D9, constitution V).
+/// Table de percussion portée en données (D9, constitution V).
 ///
-/// Contient les notes GM et les vélocités de base du talon et de la pointe,
-/// le gain global (`feet_gain`, `0..=1`) ainsi que les patterns associés à
+/// Contient les notes GM et les vélocités de base de la percussion grave et de la percussion aiguë,
+/// le gain global (`percussion_gain`, `0..=1`) ainsi que les patterns associés à
 /// chaque densité (`0..=2`).
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct PercussionTable {
-    /// Note GM du talon (canal 9 percussion, D10).
-    #[serde(default = "default_heel_note")]
-    pub heel_note: u8,
-    /// Note GM de la pointe (canal 9 percussion, D10).
-    #[serde(default = "default_toe_note")]
-    pub toe_note: u8,
-    /// Vélocité de base du talon (MIDI `0..=127`).
-    #[serde(default = "default_heel_velocity")]
-    pub heel_velocity: u8,
-    /// Vélocité de base de la pointe (MIDI `0..=127`).
-    #[serde(default = "default_toe_velocity")]
-    pub toe_velocity: u8,
+    /// Note GM de la percussion grave (canal 9 percussion, D10).
+    #[serde(default = "default_low_note")]
+    pub low_note: u8,
+    /// Note GM de la percussion aiguë (canal 9 percussion, D10).
+    #[serde(default = "default_high_note")]
+    pub high_note: u8,
+    /// Vélocité de base de la percussion grave (MIDI `0..=127`).
+    #[serde(default = "default_low_velocity")]
+    pub low_velocity: u8,
+    /// Vélocité de base de la percussion aiguë (MIDI `0..=127`).
+    #[serde(default = "default_high_velocity")]
+    pub high_velocity: u8,
     /// Gain global appliqué aux vélocités effectives (`0..=1`).
-    #[serde(default = "default_feet_gain")]
-    pub feet_gain: f32,
+    #[serde(default = "default_percussion_gain")]
+    pub percussion_gain: f32,
     /// Amplitude d'humanisation des vélocités (`0..=40`, défaut 12) : chaque
     /// coup reçoit un décalage déterministe uniforme dans `±velocity_humanize`.
     #[serde(default = "default_velocity_humanize")]
@@ -391,7 +404,7 @@ pub struct PercussionTable {
     /// Voix percussives nommées (pour kit de batterie / tambour militaire).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub voices: Vec<PercussionVoice>,
-    /// Pistes actives lors du décompte d'intro percussion (défaut : [Heel]).
+    /// Pistes actives lors du décompte d'intro percussion (défaut : [PercussionLow]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intro_tracks: Option<Vec<TrackId>>,
     /// Patterns de coups par niveau de densité.
@@ -407,11 +420,11 @@ impl<'de> Deserialize<'de> for PercussionTable {
         let raw = RawPercussionTable::deserialize(deserializer)?;
         let patterns = if !raw.patterns.is_empty() { raw.patterns } else { raw.densities };
         Ok(Self {
-            heel_note: raw.heel_note,
-            toe_note: raw.toe_note,
-            heel_velocity: raw.heel_velocity,
-            toe_velocity: raw.toe_velocity,
-            feet_gain: raw.feet_gain,
+            low_note: raw.low_note,
+            high_note: raw.high_note,
+            low_velocity: raw.low_velocity,
+            high_velocity: raw.high_velocity,
+            percussion_gain: raw.percussion_gain,
             velocity_humanize: raw.velocity_humanize,
             voices: raw.voices,
             intro_tracks: raw.intro_tracks,
@@ -434,13 +447,13 @@ pub enum PercussionTableError {
     DuplicateCadenceDensity(u8),
     /// Le poids d'un pattern est nul.
     ZeroWeight { density: u8 },
-    /// Piste invalide (seules `TrackId::Heel` et `TrackId::Toe` sont permises).
+    /// Piste invalide (seules `TrackId::PercussionLow` et `TrackId::PercussionHigh` sont permises).
     InvalidTrack { density: u8, step: usize, track: TrackId },
     /// La vélocité effective (`base + delta`) dépasse la plage MIDI `0..=127`.
     VelocityOutOfRange { density: u8, step: usize, velocity: i16 },
     /// Une vélocité de base est hors de la plage MIDI `0..=127`.
-    BaseVelocityOutOfRange { heel: u8, toe: u8 },
-    /// Le gain global `feet_gain` est hors de la plage `0..=1`.
+    BaseVelocityOutOfRange { percussion_low: u8, percussion_high: u8 },
+    /// Le gain global `percussion_gain` est hors de la plage `0..=1`.
     GainOutOfRange { gain: f32 },
     /// L'humanisation `velocity_humanize` est hors de la plage `0..=40`.
     VelocityHumanizeOutOfRange { humanize: u8 },
@@ -454,11 +467,11 @@ impl fmt::Display for PercussionTableError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TomlParse(msg) => {
-                write!(f, "erreur de lecture TOML de la table de podorythmie : {msg}")
+                write!(f, "erreur de lecture TOML de la table de percussion : {msg}")
             }
-            Self::EmptyTable => write!(f, "la table de podorythmie est vide"),
+            Self::EmptyTable => write!(f, "la table de percussion est vide"),
             Self::MissingDensity(density) => {
-                write!(f, "densité requise manquante dans la table de podorythmie : {density}")
+                write!(f, "densité requise manquante dans la table de percussion : {density}")
             }
             Self::DuplicateCadenceDensity(density) => {
                 write!(f, "densité dupliquée dans les patterns de cadence : {density}")
@@ -469,7 +482,7 @@ impl fmt::Display for PercussionTableError {
             Self::InvalidTrack { density, step, track } => {
                 write!(
                     f,
-                    "piste {track:?} invalide pour la podorythmie à la densité {density}, pas {step}"
+                    "piste {track:?} invalide pour la percussion à la densité {density}, pas {step}"
                 )
             }
             Self::VelocityOutOfRange { density, step, velocity } => {
@@ -478,14 +491,14 @@ impl fmt::Display for PercussionTableError {
                     "vélocité effective {velocity} hors limites MIDI (0..=127) à la densité {density}, pas {step}"
                 )
             }
-            Self::BaseVelocityOutOfRange { heel, toe } => {
+            Self::BaseVelocityOutOfRange { percussion_low, percussion_high } => {
                 write!(
                     f,
-                    "vélocité de base hors limites MIDI (0..=127) : talon={heel}, pointe={toe}"
+                    "vélocité de base hors limites MIDI (0..=127) : percussion grave={percussion_low}, percussion aiguë={percussion_high}"
                 )
             }
             Self::GainOutOfRange { gain } => {
-                write!(f, "gain global hors limites (0..=1) : feet_gain={gain}")
+                write!(f, "gain global hors limites (0..=1) : percussion_gain={gain}")
             }
             Self::VelocityHumanizeOutOfRange { humanize } => {
                 write!(f, "humanisation hors limites (0..=40) : velocity_humanize={humanize}")
@@ -506,17 +519,17 @@ impl fmt::Display for PercussionTableError {
 impl std::error::Error for PercussionTableError {}
 
 impl Default for PercussionTable {
-    /// Charge la table embarquée `reel_feet.toml` sans jamais paniquer à
+    /// Charge la table embarquée `percussion.toml` sans jamais paniquer à
     /// l'exécution (en cas d'erreur de données, retourne une table par défaut
     /// vide ; la validité de `DEFAULT_PERCUSSION_TOML` est garantie par les tests unitaires
     /// et [`crate::tuning::TuningParams::validate`]).
     fn default() -> Self {
         Self::from_toml(DEFAULT_PERCUSSION_TOML).unwrap_or_else(|_| Self {
-            heel_note: default_heel_note(),
-            toe_note: default_toe_note(),
-            heel_velocity: default_heel_velocity(),
-            toe_velocity: default_toe_velocity(),
-            feet_gain: default_feet_gain(),
+            low_note: default_low_note(),
+            high_note: default_high_note(),
+            low_velocity: default_low_velocity(),
+            high_velocity: default_high_velocity(),
+            percussion_gain: default_percussion_gain(),
             velocity_humanize: default_velocity_humanize(),
             voices: Vec::new(),
             intro_tracks: None,
@@ -527,7 +540,7 @@ impl Default for PercussionTable {
 }
 
 impl PercussionTable {
-    /// Charge et valide une [`PercussionTable`] depuis une chaîne TOML au format `reel_feet.toml`.
+    /// Charge et valide une [`PercussionTable`] depuis une chaîne TOML au format `percussion.toml`.
     pub fn from_toml(toml_str: &str) -> Result<Self, PercussionTableError> {
         let table: Self =
             toml::from_str(toml_str).map_err(|e| PercussionTableError::TomlParse(e.to_string()))?;
@@ -540,17 +553,17 @@ impl PercussionTable {
     /// - gain global dans `0..=1` ;
     /// - densités `0`, `1` et `2` présentes, avec un seul pattern de cadence par densité ;
     /// - poids des patterns strictement positifs ;
-    /// - chaque piste est `Heel` ou `Toe` ;
+    /// - chaque piste est `PercussionLow` ou `PercussionHigh` ;
     /// - chaque vélocité calculée (`base + delta`) est dans `0..=127`.
     pub fn validate(&self) -> Result<(), PercussionTableError> {
-        if self.heel_velocity > 127 || self.toe_velocity > 127 {
+        if self.low_velocity > 127 || self.high_velocity > 127 {
             return Err(PercussionTableError::BaseVelocityOutOfRange {
-                heel: self.heel_velocity,
-                toe: self.toe_velocity,
+                percussion_low: self.low_velocity,
+                percussion_high: self.high_velocity,
             });
         }
-        if !(0.0..=1.0).contains(&self.feet_gain) {
-            return Err(PercussionTableError::GainOutOfRange { gain: self.feet_gain });
+        if !(0.0..=1.0).contains(&self.percussion_gain) {
+            return Err(PercussionTableError::GainOutOfRange { gain: self.percussion_gain });
         }
         if self.velocity_humanize > 40 {
             return Err(PercussionTableError::VelocityHumanizeOutOfRange {
@@ -565,8 +578,8 @@ impl PercussionTable {
         for voice in &self.voices {
             if voice.note > 127 || voice.velocity > 127 || voice.name.is_empty() {
                 return Err(PercussionTableError::BaseVelocityOutOfRange {
-                    heel: self.heel_velocity,
-                    toe: self.toe_velocity,
+                    percussion_low: self.low_velocity,
+                    percussion_high: self.high_velocity,
                 });
             }
         }
@@ -583,8 +596,8 @@ impl PercussionTable {
                 (v.velocity, hit.note.unwrap_or(v.note))
             } else {
                 let base = match hit.track {
-                    TrackId::Heel => self.heel_velocity,
-                    TrackId::Toe => self.toe_velocity,
+                    TrackId::PercussionLow => self.low_velocity,
+                    TrackId::PercussionHigh => self.high_velocity,
                     other => {
                         return Err(PercussionTableError::InvalidTrack {
                             density,
@@ -594,8 +607,8 @@ impl PercussionTable {
                     }
                 };
                 let p = hit.note.unwrap_or(match hit.track {
-                    TrackId::Heel => self.heel_note,
-                    TrackId::Toe => self.toe_note,
+                    TrackId::PercussionLow => self.low_note,
+                    TrackId::PercussionHigh => self.high_note,
                     _ => 0,
                 });
                 (base, p)
@@ -767,21 +780,21 @@ pub fn draw_percussion_humanize(
     offsets
 }
 
-/// Génère les notes de podorythmie (talon, pointe) pour une mesure de reel (D9).
+/// Génère les notes de percussion (percussion grave, percussion aiguë) pour une mesure (D9).
 ///
 /// # Paramètres
-/// - `table` : table de podorythmie ([`PercussionTable`]) portant les vélocités de base.
+/// - `table` : table de percussion ([`PercussionTable`]) portant les vélocités de base.
 /// - `pattern` : pattern choisi par [`PercussionPatternPlan::pattern`], cadence comprise.
 /// - `steps` : nombre de pas du profil ; `humanize` contient exactement ce nombre de valeurs.
 ///
 /// # Retour
-/// Tuple `(talon_notes, pointe_notes)` :
-/// - premier élément : notes du talon ([`TrackId::Heel`]), `pitch = table.heel_note` ;
-/// - second élément : notes de la pointe ([`TrackId::Toe`]), `pitch = table.toe_note`.
+/// Tuple `(grave_notes, aigu_notes)` :
+/// - premier élément : notes de la percussion grave ([`TrackId::PercussionLow`]), `pitch = table.low_note` ;
+/// - second élément : notes de la percussion aiguë ([`TrackId::PercussionHigh`]), `pitch = table.high_note`.
 ///
 /// Toutes les notes produites ont `duration_steps = 0` et `articulation = Articulation::Trigger`.
 /// La vélocité est
-/// `((base_velocity + delta_velocity) * feet_gain).round() + humanize[step]`,
+/// `((base_velocity + delta_velocity) * percussion_gain).round() + humanize[step]`,
 /// bornée à `1..=127`.
 #[must_use]
 pub fn percussion_notes(
@@ -794,38 +807,38 @@ pub fn percussion_notes(
 
     let hits = &pattern.hits;
 
-    let mut heel_notes = Vec::new();
-    let mut toe_notes = Vec::new();
+    let mut percussion_low_notes = Vec::new();
+    let mut percussion_high_notes = Vec::new();
 
     for hit in hits {
         let (track, base_velocity, pitch) = if let Some(voice_name) = &hit.voice {
             if let Some(v) = table.voices.iter().find(|v| v.name == *voice_name) {
                 (v.track.unwrap_or(hit.track), v.velocity, hit.note.unwrap_or(v.note))
             } else {
-                (hit.track, table.toe_velocity, hit.note.unwrap_or(table.toe_note))
+                (hit.track, table.high_velocity, hit.note.unwrap_or(table.high_note))
             }
         } else {
             let base = match hit.track {
-                TrackId::Heel => table.heel_velocity,
-                TrackId::Toe => table.toe_velocity,
+                TrackId::PercussionLow => table.low_velocity,
+                TrackId::PercussionHigh => table.high_velocity,
                 _ => continue,
             };
             let p = hit.note.unwrap_or(match hit.track {
-                TrackId::Heel => table.heel_note,
-                TrackId::Toe => table.toe_note,
+                TrackId::PercussionLow => table.low_note,
+                TrackId::PercussionHigh => table.high_note,
                 _ => continue,
             });
             (hit.track, base, p)
         };
 
         let target_vec = match track {
-            TrackId::Heel => &mut heel_notes,
-            TrackId::Toe => &mut toe_notes,
+            TrackId::PercussionLow => &mut percussion_low_notes,
+            TrackId::PercussionHigh => &mut percussion_high_notes,
             _ => continue,
         };
 
         let effective = f32::from(base_velocity) + f32::from(hit.delta_velocity);
-        let base = (effective * table.feet_gain).round() as i32;
+        let base = (effective * table.percussion_gain).round() as i32;
         let velocity = (base + i32::from(humanize[hit.step])).clamp(1, 127) as u8;
 
         target_vec.push(TimelineNote {
@@ -839,10 +852,10 @@ pub fn percussion_notes(
         });
     }
 
-    heel_notes.sort_by_key(|n| n.start_step);
-    toe_notes.sort_by_key(|n| n.start_step);
+    percussion_low_notes.sort_by_key(|n| n.start_step);
+    percussion_high_notes.sort_by_key(|n| n.start_step);
 
-    (heel_notes, toe_notes)
+    (percussion_low_notes, percussion_high_notes)
 }
 
 #[cfg(test)]
@@ -862,24 +875,25 @@ mod tests {
     fn test_embedded_table_validates() {
         let table = PercussionTable::default();
         table.validate().expect("DEFAULT_PERCUSSION_TOML doit être valide");
-        assert_eq!(table.heel_note, 36);
-        assert_eq!(table.toe_note, 37);
-        assert_eq!(table.heel_velocity, 55);
-        assert_eq!(table.toe_velocity, 45);
-        assert_eq!(table.feet_gain, 0.9);
+        assert_eq!(table.low_note, 36);
+        assert_eq!(table.high_note, 37);
+        assert_eq!(table.low_velocity, 55);
+        assert_eq!(table.high_velocity, 45);
+        assert_eq!(table.percussion_gain, 0.9);
         assert_eq!(table.velocity_humanize, 12);
     }
 
     #[test]
     fn test_exact_d9_positions_density_0() {
-        let table = PercussionTable { feet_gain: 1.0, ..PercussionTable::default() };
-        let (heel, toe) = render_density(&table, 0, &[0; 16]);
+        let table = PercussionTable { percussion_gain: 1.0, ..PercussionTable::default() };
+        let (percussion_low, percussion_high) = render_density(&table, 0, &[0; 16]);
 
-        let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
-        assert_eq!(heel_steps, vec![0, 8]);
-        assert!(toe.is_empty());
+        let percussion_low_steps: Vec<usize> =
+            percussion_low.iter().map(|n| n.start_step).collect();
+        assert_eq!(percussion_low_steps, vec![0, 8]);
+        assert!(percussion_high.is_empty());
 
-        for note in &heel {
+        for note in &percussion_low {
             assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
@@ -889,23 +903,25 @@ mod tests {
 
     #[test]
     fn test_exact_d9_positions_density_1() {
-        let table = PercussionTable { feet_gain: 1.0, ..PercussionTable::default() };
-        let (heel, toe) = render_density(&table, 1, &[0; 16]);
+        let table = PercussionTable { percussion_gain: 1.0, ..PercussionTable::default() };
+        let (percussion_low, percussion_high) = render_density(&table, 1, &[0; 16]);
 
-        let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
-        let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
+        let percussion_low_steps: Vec<usize> =
+            percussion_low.iter().map(|n| n.start_step).collect();
+        let percussion_high_steps: Vec<usize> =
+            percussion_high.iter().map(|n| n.start_step).collect();
 
-        assert_eq!(heel_steps, vec![0, 4, 8, 12]);
-        assert_eq!(toe_steps, vec![2, 6, 10, 14]);
+        assert_eq!(percussion_low_steps, vec![0, 4, 8, 12]);
+        assert_eq!(percussion_high_steps, vec![2, 6, 10, 14]);
 
-        for note in &heel {
+        for note in &percussion_low {
             assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
 
-        for note in &toe {
+        for note in &percussion_high {
             assert_eq!(note.pitch, 37);
             assert_eq!(note.velocity, 45);
             assert_eq!(note.duration_steps, 0);
@@ -915,23 +931,25 @@ mod tests {
 
     #[test]
     fn test_exact_d9_positions_density_2() {
-        let table = PercussionTable { feet_gain: 1.0, ..PercussionTable::default() };
-        let (heel, toe) = render_density(&table, 2, &[0; 16]);
+        let table = PercussionTable { percussion_gain: 1.0, ..PercussionTable::default() };
+        let (percussion_low, percussion_high) = render_density(&table, 2, &[0; 16]);
 
-        let heel_steps: Vec<usize> = heel.iter().map(|n| n.start_step).collect();
-        let toe_steps: Vec<usize> = toe.iter().map(|n| n.start_step).collect();
+        let percussion_low_steps: Vec<usize> =
+            percussion_low.iter().map(|n| n.start_step).collect();
+        let percussion_high_steps: Vec<usize> =
+            percussion_high.iter().map(|n| n.start_step).collect();
 
-        assert_eq!(heel_steps, vec![0, 4, 8, 12]);
-        assert_eq!(toe_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
+        assert_eq!(percussion_low_steps, vec![0, 4, 8, 12]);
+        assert_eq!(percussion_high_steps, vec![2, 3, 6, 7, 10, 11, 14, 15]);
 
-        for note in &heel {
+        for note in &percussion_low {
             assert_eq!(note.pitch, 36);
             assert_eq!(note.velocity, 55);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
         }
 
-        for note in &toe {
+        for note in &percussion_high {
             assert_eq!(note.pitch, 37);
             assert_eq!(note.duration_steps, 0);
             assert_eq!(note.articulation, Articulation::Trigger);
@@ -952,8 +970,8 @@ mod tests {
 
         for d in [3, 4, 10, 99, 255] {
             let notes = render_density(&table, d, &[0; 16]);
-            assert_eq!(notes.0.len(), expected_2.0.len(), "densité {d} talon");
-            assert_eq!(notes.1.len(), expected_2.1.len(), "densité {d} pointe");
+            assert_eq!(notes.0.len(), expected_2.0.len(), "densité {d} percussion grave");
+            assert_eq!(notes.1.len(), expected_2.1.len(), "densité {d} percussion aiguë");
             assert_eq!(
                 notes.0.iter().map(|n| n.start_step).collect::<Vec<_>>(),
                 expected_2.0.iter().map(|n| n.start_step).collect::<Vec<_>>()
@@ -968,16 +986,16 @@ mod tests {
     #[test]
     fn test_validation_missing_density() {
         let toml_str = r#"
-heel_note = 35
-toe_note = 37
+low_note = 35
+high_note = 37
 
 [[patterns]]
 density = 0
-hits = [{ step = 0, track = "Heel" }]
+hits = [{ step = 0, track = "PercussionLow" }]
 
 [[patterns]]
 density = 1
-hits = [{ step = 0, track = "Heel" }]
+hits = [{ step = 0, track = "PercussionLow" }]
 "#;
         let err = PercussionTable::from_toml(toml_str).unwrap_err();
         assert_eq!(err, PercussionTableError::MissingDensity(2));
@@ -986,8 +1004,8 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_validation_empty_table() {
         let toml_str = r#"
-heel_note = 35
-toe_note = 37
+low_note = 35
+high_note = 37
 "#;
         let err = PercussionTable::from_toml(toml_str).unwrap_err();
         assert_eq!(err, PercussionTableError::EmptyTable);
@@ -996,32 +1014,35 @@ toe_note = 37
     #[test]
     fn test_validation_base_velocity_out_of_range() {
         let mut table = PercussionTable::default();
-        table.heel_velocity = 128;
+        table.low_velocity = 128;
         assert_eq!(
             table.validate().unwrap_err(),
-            PercussionTableError::BaseVelocityOutOfRange { heel: 128, toe: 45 }
+            PercussionTableError::BaseVelocityOutOfRange {
+                percussion_low: 128,
+                percussion_high: 45
+            }
         );
     }
 
     #[test]
     fn test_validation_effective_velocity_out_of_range() {
         let toml_str = r#"
-heel_note = 35
-toe_note = 37
-heel_velocity = 100
-toe_velocity = 80
+low_note = 35
+high_note = 37
+low_velocity = 100
+high_velocity = 80
 
 [[patterns]]
 density = 0
-hits = [{ step = 0, track = "Heel", delta_velocity = 50 }]
+hits = [{ step = 0, track = "PercussionLow", delta_velocity = 50 }]
 
 [[patterns]]
 density = 1
-hits = [{ step = 0, track = "Heel" }]
+hits = [{ step = 0, track = "PercussionLow" }]
 
 [[patterns]]
 density = 2
-hits = [{ step = 0, track = "Heel" }]
+hits = [{ step = 0, track = "PercussionLow" }]
 "#;
         let err = PercussionTable::from_toml(toml_str).unwrap_err();
         assert_eq!(
@@ -1033,38 +1054,38 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_custom_base_velocities() {
         let table = PercussionTable {
-            heel_velocity: 110,
-            toe_velocity: 90,
-            feet_gain: 1.0,
+            low_velocity: 110,
+            high_velocity: 90,
+            percussion_gain: 1.0,
             ..PercussionTable::default()
         };
 
-        let (heel, toe) = render_density(&table, 2, &[0; 16]);
-        assert_eq!(heel[0].velocity, 110);
-        assert_eq!(toe[0].velocity, 90); // step 2
-        assert_eq!(toe[1].velocity, 70); // step 3 (90 - 20)
+        let (percussion_low, percussion_high) = render_density(&table, 2, &[0; 16]);
+        assert_eq!(percussion_low[0].velocity, 110);
+        assert_eq!(percussion_high[0].velocity, 90); // step 2
+        assert_eq!(percussion_high[1].velocity, 70); // step 3 (90 - 20)
     }
 
     #[test]
-    fn test_feet_gain_scales_velocities() {
+    fn test_percussion_gain_scales_velocities() {
         let table = PercussionTable {
-            heel_velocity: 100,
-            toe_velocity: 80,
-            feet_gain: 0.5,
+            low_velocity: 100,
+            high_velocity: 80,
+            percussion_gain: 0.5,
             ..PercussionTable::default()
         };
         assert!(table.validate().is_ok(), "gain 0.5 valide");
 
-        let (heel, toe) = render_density(&table, 2, &[0; 16]);
-        assert!(heel.iter().all(|n| n.velocity == 50));
-        assert_eq!(toe[0].velocity, 40); // step 2 : 80 * 0.5
-        assert_eq!(toe[1].velocity, 30); // step 3 : (80 - 20) * 0.5
+        let (percussion_low, percussion_high) = render_density(&table, 2, &[0; 16]);
+        assert!(percussion_low.iter().all(|n| n.velocity == 50));
+        assert_eq!(percussion_high[0].velocity, 40); // step 2 : 80 * 0.5
+        assert_eq!(percussion_high[1].velocity, 30); // step 3 : (80 - 20) * 0.5
     }
 
     #[test]
-    fn test_feet_gain_out_of_range_rejected() {
+    fn test_percussion_gain_out_of_range_rejected() {
         for gain in [1.5, -0.5, f32::NAN] {
-            let table = PercussionTable { feet_gain: gain, ..PercussionTable::default() };
+            let table = PercussionTable { percussion_gain: gain, ..PercussionTable::default() };
             assert!(
                 matches!(table.validate(), Err(PercussionTableError::GainOutOfRange { .. })),
                 "gain {gain} rejeté"
@@ -1095,22 +1116,28 @@ hits = [{ step = 0, track = "Heel" }]
         use rand::SeedableRng;
         use rand_chacha::ChaCha8Rng;
         let mut rng = ChaCha8Rng::seed_from_u64(1);
-        let table =
-            PercussionTable { velocity_humanize: 0, feet_gain: 1.0, ..PercussionTable::default() };
+        let table = PercussionTable {
+            velocity_humanize: 0,
+            percussion_gain: 1.0,
+            ..PercussionTable::default()
+        };
         let offsets = draw_percussion_humanize(0, 16, 16, &mut rng);
         assert!(offsets.iter().flatten().all(|&o| o == 0));
 
-        let (heel, toe) = render_density(&table, 1, &offsets[0]);
-        assert!(heel.iter().all(|n| n.velocity == 55));
-        assert!(toe.iter().all(|n| n.velocity == 45));
+        let (percussion_low, percussion_high) = render_density(&table, 1, &offsets[0]);
+        assert!(percussion_low.iter().all(|n| n.velocity == 55));
+        assert!(percussion_high.iter().all(|n| n.velocity == 45));
     }
 
     #[test]
     fn test_velocity_humanize_deterministic_and_bounded() {
         use rand::SeedableRng;
         use rand_chacha::ChaCha8Rng;
-        let table =
-            PercussionTable { velocity_humanize: 12, feet_gain: 1.0, ..PercussionTable::default() };
+        let table = PercussionTable {
+            velocity_humanize: 12,
+            percussion_gain: 1.0,
+            ..PercussionTable::default()
+        };
 
         let mut rng_a = ChaCha8Rng::seed_from_u64(42);
         let mut rng_b = ChaCha8Rng::seed_from_u64(42);
@@ -1124,12 +1151,12 @@ hits = [{ step = 0, track = "Heel" }]
             }
         }
 
-        let (heel, toe) = render_density(&table, 1, &offs_a[0]);
-        for n in heel.iter().chain(toe.iter()) {
+        let (percussion_low, percussion_high) = render_density(&table, 1, &offs_a[0]);
+        for n in percussion_low.iter().chain(percussion_high.iter()) {
             assert!((1..=127).contains(&n.velocity), "vélocité {} hors 1..=127", n.velocity);
         }
-        assert!(heel.iter().all(|n| (43..=67).contains(&n.velocity)));
-        assert!(toe.iter().all(|n| (33..=57).contains(&n.velocity)));
+        assert!(percussion_low.iter().all(|n| (43..=67).contains(&n.velocity)));
+        assert!(percussion_high.iter().all(|n| (33..=57).contains(&n.velocity)));
     }
 
     #[test]
@@ -1149,25 +1176,25 @@ hits = [{ step = 0, track = "Heel" }]
     #[test]
     fn test_tuple_syntax_in_toml() {
         let toml_str = r#"
-heel_note = 35
-toe_note = 37
+low_note = 35
+high_note = 37
 
 [[patterns]]
 density = 0
-hits = [[0, "Heel"], [8, "heel", 0]]
+hits = [[0, "PercussionLow"], [8, "percussionlow", 0]]
 
 [[patterns]]
 density = 1
-hits = [[0, "Heel"], [2, "Toe"]]
+hits = [[0, "PercussionLow"], [2, "PercussionHigh"]]
 
 [[patterns]]
 density = 2
-hits = [[0, "Heel"], [3, "Toe", -20]]
+hits = [[0, "PercussionLow"], [3, "PercussionHigh", -20]]
 "#;
         let table = PercussionTable::from_toml(toml_str).expect("tuple syntax should parse");
-        assert_eq!(table.patterns[0].hits[0], PercussionHit::heel(0));
-        assert_eq!(table.patterns[0].hits[1], PercussionHit::heel(8));
-        assert_eq!(table.patterns[2].hits[1], PercussionHit::toe_with_delta(3, -20));
+        assert_eq!(table.patterns[0].hits[0], PercussionHit::low(0));
+        assert_eq!(table.patterns[0].hits[1], PercussionHit::low(8));
+        assert_eq!(table.patterns[2].hits[1], PercussionHit::high_with_delta(3, -20));
     }
 
     #[test]
@@ -1176,10 +1203,10 @@ hits = [[0, "Heel"], [3, "Toe", -20]]
             r#"
 velocity_humanize = 0
 patterns = [
-    { density = 0, hits = [{step = 0, track = "Heel"}] },
-    { density = 1, weight = 1, hits = [{step = 1, track = "Toe"}] },
-    { density = 1, weight = 9, hits = [{step = 7, track = "Toe"}] },
-    { density = 2, hits = [{step = 8, track = "Heel"}] },
+    { density = 0, hits = [{step = 0, track = "PercussionLow"}] },
+    { density = 1, weight = 1, hits = [{step = 1, track = "PercussionHigh"}] },
+    { density = 1, weight = 9, hits = [{step = 7, track = "PercussionHigh"}] },
+    { density = 2, hits = [{step = 8, track = "PercussionLow"}] },
 ]
 "#,
         )
@@ -1212,7 +1239,7 @@ patterns = [
         let mut table = PercussionTable::default();
         table.patterns.retain(|pattern| pattern.density != 1);
         for step in [1, 7] {
-            let mut pattern = PercussionPattern::new(1, vec![PercussionHit::toe(step)]);
+            let mut pattern = PercussionPattern::new(1, vec![PercussionHit::high(step)]);
             pattern.weight = u32::MAX;
             table.patterns.push(pattern);
         }
@@ -1234,7 +1261,7 @@ patterns = [
         table.patterns[0].weight = 0;
         assert!(matches!(table.validate(), Err(PercussionTableError::ZeroWeight { density: 0 })));
         table.patterns[0].weight = 1;
-        let mut cadence = PercussionPattern::new(1, vec![PercussionHit::toe(15)]);
+        let mut cadence = PercussionPattern::new(1, vec![PercussionHit::high(15)]);
         cadence.weight = 0;
         table.cadence_patterns.push(cadence);
         assert!(matches!(table.validate(), Err(PercussionTableError::ZeroWeight { density: 1 })));
@@ -1249,11 +1276,11 @@ patterns = [
             r#"
 patterns = [
     { density = 0, hits = [] },
-    { density = 1, weight = 2, euclid = {pulses = 3, steps = 16, rotation = 1}, track = "Toe" },
-    { density = 1, weight = 3, euclid = {pulses = 5, steps = 16, rotation = 2}, track = "Toe" },
+    { density = 1, weight = 2, euclid = {pulses = 3, steps = 16, rotation = 1}, track = "PercussionHigh" },
+    { density = 1, weight = 3, euclid = {pulses = 5, steps = 16, rotation = 2}, track = "PercussionHigh" },
     { density = 2, hits = [] },
 ]
-cadence_patterns = [{density = 1, hits = [{step = 15, track = "Toe"}]}]
+cadence_patterns = [{density = 1, hits = [{step = 15, track = "PercussionHigh"}]}]
 "#,
         )
         .unwrap();

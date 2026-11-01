@@ -233,13 +233,13 @@ fn liaison_opt_in_et_refusee_dans_les_regles_d_interpretation() {
 
 #[test]
 fn seuls_les_profils_a_nappes_lient() {
-    // Garde-fou : les 10 profils trad distribués n'emploient pas `tie`, donc
+    // Garde-fou : les 10 profils à airs distribués n'emploient pas `tie`, donc
     // leurs notes publiées sont inchangées. Les profils de jeu (harmonie en
     // boucle : `nt_desert`, `isaac_*`) lient leurs nappes en données, sans
     // toucher au moteur.
     let distributed = StyleProfile::distributed();
     let compose = distributed.iter().filter(|p| p.harmony.model != "loop").count();
-    assert_eq!(compose, 10, "dix profils trad distribués");
+    assert_eq!(compose, 10, "dix profils à airs distribués");
     for p in distributed {
         let tied = p
             .accompaniment

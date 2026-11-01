@@ -316,8 +316,8 @@ fn report(command: &EngineCommand, host: &LiveHost) {
                 params.swing_ratio
             ));
         }
-        EngineCommand::SetFeetDensity(density) => print_success_msg(&format!(
-            "Densité des pieds réglée à {density} (prend effet à la prochaine mesure)"
+        EngineCommand::SetPercussionDensity(density) => print_success_msg(&format!(
+            "Densité de la percussion réglée à {density} (prend effet à la prochaine mesure)"
         )),
         EngineCommand::SetIntensity(value) => {
             print_success_msg(&format!("Intensité {value:.2} : effet à la prochaine mesure"));
@@ -564,11 +564,11 @@ pub fn format_profile_form_position(
     role: harmonium_core::compose::BarRole,
     plan: &harmonium_core::compose::TunePlan,
 ) -> String {
-    let part = &plan.profile.form.parts[role.strain.0];
-    format!("{}{} m.{}/{}", part.name, role.pass, role.bar_in_strain, part.roles.len())
+    let part = &plan.profile.form.parts[role.part.0];
+    format!("{}{} m.{}/{}", part.name, role.pass, role.bar_in_part, part.roles.len())
 }
 
-/// Formate la tonalité et le mode d'un [`harmonium_core::trad::TunePlan`] (ex. `"D Ionian"`).
+/// Formate la tonalité et le mode d'un [`harmonium_core::compose::TunePlan`] (ex. `"D Ionian"`).
 #[must_use]
 pub fn format_profile_tune_key_mode(plan: &harmonium_core::compose::TunePlan) -> String {
     format!("{} {:?}", harmonium_core::compose::pitch_class_name(plan.key), plan.mode)
@@ -580,12 +580,12 @@ fn print_state(host: &mut LiveHost) {
     let bar = reported_bar.unwrap_or_else(|| host.playhead_bar());
     let composer_snapshot = (
         host.musical_params().profile_id.clone(),
-        host.musical_params().feet_density,
+        host.musical_params().percussion_density,
         host.profile_bar_info(bar),
     );
 
     if let Some(report) = host.poll_state() {
-        let (style, feet_density, reel_info) = composer_snapshot;
+        let (style, percussion_density, tune_info) = composer_snapshot;
 
         println!();
         println!("{}", "╔══════════════════════════════════════════════════╗".cyan());
@@ -593,11 +593,11 @@ fn print_state(host: &mut LiveHost) {
         println!("{}", "╚══════════════════════════════════════════════════╝".cyan());
         println!();
 
-        // Style & Trad info
+        // Style & tune info
         println!("{}", "STYLE:".yellow().bold());
         println!("  Style: {}", format!("{style:?}").green());
-        println!("  Feet Density: {}", format!("{feet_density}").green());
-        if let Some((plan, role)) = &reel_info {
+        println!("  Percussion Density: {}", format!("{percussion_density}").green());
+        if let Some((plan, role)) = &tune_info {
             println!("  Tune Key/Mode: {}", format_profile_tune_key_mode(plan).green());
             println!(
                 "  Form Position: {}",
@@ -631,7 +631,7 @@ fn print_state(host: &mut LiveHost) {
         // Harmony
         println!("{}", "HARMONY:".yellow().bold());
         println!("  Current Chord: {}", format!("{}", report.current_chord).magenta().bold());
-        let key_str = match reel_info {
+        let key_str = match tune_info {
             Some((plan, _)) => format_profile_tune_key_mode(&plan),
             None => "—".to_string(),
         };
@@ -654,12 +654,12 @@ fn print_state(host: &mut LiveHost) {
         );
         println!();
     } else {
-        let (style, feet_density, reel_info) = composer_snapshot;
+        let (style, percussion_density, tune_info) = composer_snapshot;
         println!();
         println!("{}", "STYLE:".yellow().bold());
         println!("  Style: {}", format!("{style:?}").green());
-        println!("  Feet Density: {}", format!("{feet_density}").green());
-        if let Some((plan, role)) = reel_info {
+        println!("  Percussion Density: {}", format!("{percussion_density}").green());
+        if let Some((plan, role)) = tune_info {
             println!("  Tune Key/Mode: {}", format_profile_tune_key_mode(&plan).green());
             println!(
                 "  Form Position: {}",
@@ -684,7 +684,7 @@ mod tests {
     }
 
     #[test]
-    fn negative_absolute_valence_reaches_the_trad_mapper() -> Result<()> {
+    fn negative_absolute_valence_reaches_the_tune_mapper() -> Result<()> {
         let mut state = repl()?;
         handle_command("style reel", &mut state)?;
         handle_command("emotion 0.8 -0.5 0.9 0.7", &mut state)?;
@@ -740,14 +740,14 @@ mod tests {
     }
 
     #[test]
-    fn swing_feet_and_intensity_reach_the_composer() -> Result<()> {
+    fn swing_percussion_and_intensity_reach_the_composer() -> Result<()> {
         let mut state = repl()?;
         handle_command("swing 0.9", &mut state)?;
-        handle_command("feet 2", &mut state)?;
+        handle_command("percussion 2", &mut state)?;
         handle_command("intensity 0.8", &mut state)?;
         let host = state.host()?;
         assert_eq!(host.musical_params().swing_ratio, SWING_MAX);
-        assert_eq!(host.musical_params().feet_density, 2);
+        assert_eq!(host.musical_params().percussion_density, 2);
         assert!((host.musical_params().intensity - 0.8).abs() < 0.0001);
         Ok(())
     }

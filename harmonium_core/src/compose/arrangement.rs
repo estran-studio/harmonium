@@ -5,7 +5,7 @@
 //! - [`TunePosition`] : la position structurée `(section, tune_index, tour, …)` d'une
 //!   mesure, calculée en un seul endroit ([`TunePosition::at_bar`]) et exposée au jeu dans
 //!   [`crate::report::MeasureSnapshot`] ;
-//! - [`Arrangement`] : la table `reel_arrangement.toml` (constitution V) qui
+//! - [`Arrangement`] : la table `arrangement.toml` (constitution V) qui
 //!   dit, pour chaque piste, la première position où elle joue ;
 //! - [`IntroConfig`] / [`IntroForm`] / [`IntroRole`] : la section `[intro]` de la
 //!   table, avec les rôles d'intro idiomatiques décrits en données (P1-T11).
@@ -65,7 +65,7 @@ impl Part {
 /// Position structurée d'une mesure dans la suite d'airs d'une session.
 ///
 /// Conventions : `tune_index` et `set_index` sont 0-based (comme `ActiveTune::tune_index`) ;
-/// `tune_in_set`, `tour`, `pass` et `bar_in_strain` sont 1-based, comme les numéros de mesure
+/// `tune_in_set`, `tour`, `pass` et `bar_in_part` sont 1-based, comme les numéros de mesure
 /// du contrat. `bar_in_intro` vaut 0 pour les mesures de tour.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TunePosition {
@@ -92,7 +92,7 @@ pub struct TunePosition {
     /// Passe de la partie (`1` ou `2`). Non significatif pour `Section::Intro`.
     pub pass: usize,
     /// Mesure dans la passe (`1..=8`). Non significatif pour `Section::Intro`.
-    pub bar_in_strain: usize,
+    pub bar_in_part: usize,
     /// Tonique de l'air : stable jusqu'au prochain air.
     pub key: u8,
     /// Mode effectivement entendu à cette mesure.
@@ -107,7 +107,7 @@ impl TunePosition {
     /// Position de la mesure 1-based `bar` quand chaque air dure `tours` tours
     /// et que le premier air est précédé de `intro_bars` mesures d'intro.
     ///
-    /// C'est l'unique conversion mesure → position du moteur trad.
+    /// C'est l'unique conversion mesure → position du moteur.
     /// Passer `intro_bars` identique pour chaque air ; la fonction décale `bar` d'autant.
     #[must_use]
     pub fn at_bar(
@@ -141,7 +141,7 @@ impl TunePosition {
             tours,
             part: Part(part),
             pass: if intro { 0 } else { pass },
-            bar_in_strain: if intro { 0 } else { offset + 1 },
+            bar_in_part: if intro { 0 } else { offset + 1 },
             key,
             mode,
             bar_in_cycle,
@@ -151,7 +151,7 @@ impl TunePosition {
     }
 
     /// Indice 0-based de la mesure dans un tour AABB (`0..32`) : indexe la
-    /// ligne de violon et l'harmonie, identiques à chaque tour.
+    /// ligne mélodique et l'harmonie, identiques à chaque tour.
     /// Panique en debug pour `Section::Intro` (pas de tour pendant l'intro).
     #[must_use]
     pub const fn bar_in_tour(&self) -> usize {
@@ -237,7 +237,7 @@ impl IntroForm {
     }
 }
 
-/// Configuration de l'intro (section `[intro]` de `reel_arrangement.toml`, P1-T11).
+/// Configuration de l'intro (section `[intro]` de `arrangement.toml`, P1-T11).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct IntroConfig {
@@ -310,7 +310,7 @@ impl EntryPoint {
     }
 }
 
-/// Points d'entrée des pistes (clés TOML = noms de [`TrackId`]) ; `Heel` et `Toe` sont requis,
+/// Points d'entrée des pistes (clés TOML = noms de [`TrackId`]) ; `PercussionLow` et `PercussionHigh` sont requis,
 /// une piste omise ne joue pas.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TrackEntries {
@@ -320,10 +320,10 @@ pub struct TrackEntries {
     pub chords: Option<EntryPoint>,
     #[serde(rename = "Bass", skip_serializing_if = "Option::is_none")]
     pub bass: Option<EntryPoint>,
-    #[serde(rename = "Heel")]
-    pub heel: EntryPoint,
-    #[serde(rename = "Toe")]
-    pub toe: EntryPoint,
+    #[serde(rename = "PercussionLow")]
+    pub percussion_low: EntryPoint,
+    #[serde(rename = "PercussionHigh")]
+    pub percussion_high: EntryPoint,
     #[serde(rename = "Countermelody", skip_serializing_if = "Option::is_none")]
     pub countermelody: Option<EntryPoint>,
 }
@@ -334,8 +334,8 @@ impl TrackEntries {
             TrackId::Melody => self.melody,
             TrackId::Chords => self.chords,
             TrackId::Bass => self.bass,
-            TrackId::Heel => Some(self.heel),
-            TrackId::Toe => Some(self.toe),
+            TrackId::PercussionLow => Some(self.percussion_low),
+            TrackId::PercussionHigh => Some(self.percussion_high),
             TrackId::Countermelody => self.countermelody,
         }
     }
@@ -482,8 +482,8 @@ impl TryFrom<RawArrangement> for Arrangement {
                 .map_err(|_| ArrangementError::PassOutOfRange { track, pass: entry.pass })?;
             Ok(EntryPoint { tour, part, pass })
         };
-        let heel = take_required(TrackId::Heel)?;
-        let toe = take_required(TrackId::Toe)?;
+        let percussion_low = take_required(TrackId::PercussionLow)?;
+        let percussion_high = take_required(TrackId::PercussionHigh)?;
 
         let mut take_optional = |track: TrackId| -> Result<Option<EntryPoint>, ArrangementError> {
             let Some(entry) = raw.entries.remove(&format!("{track:?}")) else {
@@ -500,14 +500,15 @@ impl TryFrom<RawArrangement> for Arrangement {
         let chords = take_optional(TrackId::Chords)?;
         let bass = take_optional(TrackId::Bass)?;
         let countermelody = take_optional(TrackId::Countermelody)?;
-        let entries = TrackEntries { melody, chords, bass, heel, toe, countermelody };
+        let entries =
+            TrackEntries { melody, chords, bass, percussion_low, percussion_high, countermelody };
         let table = Self { tours_per_tune, entries, intro: raw.intro };
         Ok(table)
     }
 }
 
 impl Default for Arrangement {
-    /// Charge la table embarquée `reel_arrangement.toml` sans jamais paniquer
+    /// Charge la table embarquée `arrangement.toml` sans jamais paniquer
     /// (sa validité est garantie par les tests et par
     /// [`crate::tuning::TuningParams::validate`]) ; en cas d'erreur de données,
     /// repli sur trois tours avec toutes les pistes dès le début et sans intro.
@@ -528,15 +529,15 @@ impl Arrangement {
                 melody: Some(start),
                 chords: Some(start),
                 bass: Some(start),
-                heel: start,
-                toe: start,
+                percussion_low: start,
+                percussion_high: start,
                 countermelody: Some(start),
             },
             intro: IntroConfig::none(),
         }
     }
 
-    /// Charge et valide une table depuis une chaîne TOML au format `reel_arrangement.toml`.
+    /// Charge et valide une table depuis une chaîne TOML au format `arrangement.toml`.
     pub fn from_toml(toml_str: &str) -> Result<Self, ArrangementError> {
         let raw: RawArrangement =
             toml::from_str(toml_str).map_err(|e| ArrangementError::TomlParse(e.to_string()))?;
@@ -669,7 +670,7 @@ impl IntroInfo {
 
     /// Vrai si la percussion joue pendant l'intro (rôle `Percussion`).
     #[must_use]
-    pub const fn feet_active(&self) -> bool {
+    pub const fn percussion_active(&self) -> bool {
         matches!(self.form, Some(IntroRole::Percussion))
     }
 
@@ -714,7 +715,7 @@ mod tests {
                 tours: 3,
                 part: Part(0),
                 pass: 1,
-                bar_in_strain: 1,
+                bar_in_part: 1,
                 key: 2,
                 mode: super::super::Mode::Ionian,
                 bar_in_cycle: 0,
@@ -730,7 +731,7 @@ mod tests {
             super::super::Mode::Ionian,
             &crate::StyleProfile::default().form,
         );
-        assert_eq!((p.part, p.pass, p.bar_in_strain), (Part(0), 2, 1));
+        assert_eq!((p.part, p.pass, p.bar_in_part), (Part(0), 2, 1));
         let p = TunePosition::at_bar(
             25,
             3,
@@ -739,7 +740,7 @@ mod tests {
             super::super::Mode::Ionian,
             &crate::StyleProfile::default().form,
         );
-        assert_eq!((p.part, p.pass, p.bar_in_strain, p.tour), (Part(1), 2, 1, 1));
+        assert_eq!((p.part, p.pass, p.bar_in_part, p.tour), (Part(1), 2, 1, 1));
         assert_eq!(p.bar_in_tour(), 24);
         let p = TunePosition::at_bar(
             33,
@@ -749,10 +750,7 @@ mod tests {
             super::super::Mode::Ionian,
             &crate::StyleProfile::default().form,
         );
-        assert_eq!(
-            (p.tour, p.part, p.pass, p.bar_in_strain, p.bar_in_tour()),
-            (2, Part(0), 1, 1, 0)
-        );
+        assert_eq!((p.tour, p.part, p.pass, p.bar_in_part, p.bar_in_tour()), (2, Part(0), 1, 1, 0));
         let p = TunePosition::at_bar(
             96,
             3,
@@ -812,7 +810,7 @@ mod tests {
         assert_eq!(p.section, Section::Tour);
         assert_eq!(p.tune_index, 0);
         assert_eq!(p.tour, 1);
-        assert_eq!(p.bar_in_strain, 1);
+        assert_eq!(p.bar_in_part, 1);
 
         // Après tout l'air (2 + 96 = 98), mesure 99 = tune 1
         let p = TunePosition::at_bar(
@@ -831,7 +829,7 @@ mod tests {
     fn entries_beyond_last_tour_are_clamped() {
         let mut table = Arrangement::default();
         assert!(!table.allows(
-            TrackId::Heel,
+            TrackId::PercussionLow,
             &TunePosition::at_bar(
                 1,
                 3,
@@ -845,7 +843,7 @@ mod tests {
         table.tours_per_tune = 1;
         // Tour unique : l'entrée du tour 2 est ramenée au dernier tour (le 1er).
         assert!(table.allows(
-            TrackId::Heel,
+            TrackId::PercussionLow,
             &TunePosition::at_bar(
                 1,
                 1,
@@ -863,8 +861,8 @@ mod tests {
             Melody = { tour = 1, part = 0, pass = 1 }\n\
             Chords = { tour = 1, part = 0, pass = 2 }\n\
             Bass = { tour = 1, part = 0, pass = 2 }\n\
-            Heel = { tour = 2, part = 0, pass = 1 }\n\
-            Toe = { tour = 2, part = 0, pass = 1 }\n";
+            PercussionLow = { tour = 2, part = 0, pass = 1 }\n\
+            PercussionHigh = { tour = 2, part = 0, pass = 1 }\n";
         assert!(ok.contains(replace.0));
         ok.replace(replace.0, replace.1)
     }
@@ -872,23 +870,29 @@ mod tests {
     #[test]
     fn invalid_tables_yield_explicit_errors() {
         assert_eq!(
-            Arrangement::from_toml(&toml_with(("Heel = { tour = 2", "Heel = { tour = 0"))),
-            Err(ArrangementError::TourOutOfRange { track: TrackId::Heel, tour: 0 })
+            Arrangement::from_toml(&toml_with((
+                "PercussionLow = { tour = 2",
+                "PercussionLow = { tour = 0"
+            ))),
+            Err(ArrangementError::TourOutOfRange { track: TrackId::PercussionLow, tour: 0 })
         );
         assert_eq!(
-            Arrangement::from_toml(&toml_with(("Toe = {", "Cymbale = {"))),
+            Arrangement::from_toml(&toml_with(("PercussionHigh = {", "Cymbale = {"))),
             Err(ArrangementError::UnknownTrack("Cymbale".to_owned()))
         );
         assert_eq!(
-            Arrangement::from_toml(&toml_with(("Toe = { tour = 2, part = 0, pass = 1 }\n", ""))),
-            Err(ArrangementError::MissingTrack(TrackId::Toe))
+            Arrangement::from_toml(&toml_with((
+                "PercussionHigh = { tour = 2, part = 0, pass = 1 }\n",
+                ""
+            ))),
+            Err(ArrangementError::MissingTrack(TrackId::PercussionHigh))
         );
         assert_eq!(
             Arrangement::from_toml(&toml_with((
-                "Toe = { tour = 2, part = 0, pass = 1",
-                "Toe = { tour = 2, part = 0, pass = 0"
+                "PercussionHigh = { tour = 2, part = 0, pass = 1",
+                "PercussionHigh = { tour = 2, part = 0, pass = 0"
             ))),
-            Err(ArrangementError::PassOutOfRange { track: TrackId::Toe, pass: 0 })
+            Err(ArrangementError::PassOutOfRange { track: TrackId::PercussionHigh, pass: 0 })
         );
         assert_eq!(
             Arrangement::from_toml(&toml_with(("tours_per_tune = 3", "tours_per_tune = 0"))),

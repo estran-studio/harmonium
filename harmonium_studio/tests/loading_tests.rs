@@ -21,7 +21,7 @@ fn manifest() -> Manifest {
     Manifest {
         resources: vec![
             resource(MAIN_BANK_ID, "bank.sf2", b"bank", 32_319_396),
-            resource(PERCUSSION_BANK_ID, "feet.sf2", b"feet", 154_186),
+            resource(PERCUSSION_BANK_ID, "percussion.sf2", b"percussion", 154_186),
         ],
     }
 }
@@ -71,7 +71,7 @@ fn after_a_load_only_entries_outside_the_manifest_are_deleted() {
 #[test]
 fn an_entry_the_manifest_does_not_name_is_stale() {
     let manifest = Manifest { resources: vec![resource(MAIN_BANK_ID, "bank.sf2", b"b", 1)] };
-    let cached = vec!["resources/feet.000000000000.sf2".to_owned()];
+    let cached = vec!["resources/percussion.000000000000.sf2".to_owned()];
     assert_eq!(stale_entries(&cached, &manifest).len(), 1);
 }
 

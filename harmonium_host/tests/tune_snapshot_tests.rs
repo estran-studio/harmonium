@@ -27,8 +27,8 @@ fn flat_tuning() -> TuningParams {
             p.set = Default::default();
             let a = p.accompaniment.as_mut().unwrap();
             a.bass.passing = None;
-            a.chords.strum = None;
-            a.chords.strings = 3;
+            a.chords.spread = None;
+            a.chords.note_count = 3;
             for part in &mut p.form.parts {
                 part.second_ending = None;
                 use harmonium_core::compose::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
@@ -43,16 +43,16 @@ fn flat_tuning() -> TuningParams {
 }
 
 /// Génère 64 mesures de `Style::Profile` via `create_offline_engine` pour un seed et une densité donnés.
-fn generate_offline_reel_stream(
+fn generate_offline_stream(
     seed: u64,
-    feet_density: u8,
+    percussion_density: u8,
 ) -> Result<(harmonium::composer::MusicComposer, Vec<MeasureSnapshot>), String> {
     let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
         create_offline_engine(None, None, &[], SAMPLE_RATE)?;
 
     composer.set_tuning(flat_tuning());
 
-    composer.set_feet_density(feet_density);
+    composer.set_percussion_density(percussion_density);
     composer.set_seed(seed);
     composer.set_writehead_lookahead(BARS_64 + 4);
     composer.generate_bars(BARS_64);
@@ -107,9 +107,9 @@ fn assert_snapshots_equal(a: &[MeasureSnapshot], b: &[MeasureSnapshot], context:
 
 /// Critères 1, 2, 3 du plan sur le flux de snapshots via `create_offline_engine` (20 seeds, 64 mesures).
 #[test]
-fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), String> {
+fn snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), String> {
     for seed in 0..NUM_SEEDS {
-        let (composer, snapshots) = generate_offline_reel_stream(seed, 1)?;
+        let (composer, snapshots) = generate_offline_stream(seed, 1)?;
         assert_eq!(snapshots.len(), BARS_64, "seed {seed}: 64 snapshots attendus");
         for (idx, snap) in snapshots.iter().enumerate() {
             assert_eq!(snap.index, idx + 1);
@@ -119,7 +119,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             assert_eq!(snap.pulse, PulseSpec { steps_per_pulse: 8, pulses_per_bar: 2 });
             assert!(!snap.chord_name.is_empty());
 
-            // Critère 3 : accompagnement D8 et podorythmie D9 (densité 1)
+            // Critère 3 : accompagnement D8 et percussion D9 (densité 1)
             let bass = notes_on_track(snap, TrackId::Bass);
             assert_eq!(
                 bass.iter().map(|n| (n.start_step, n.duration_steps)).collect::<Vec<_>>(),
@@ -129,7 +129,7 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
             );
 
             let chords = notes_on_track(snap, TrackId::Chords);
-            assert_eq!(chords.len(), 6, "seed {seed} bar {}: 2 chops de 3 notes", snap.index);
+            assert_eq!(chords.len(), 6, "seed {seed} bar {}: 2 attaques de 3 notes", snap.index);
             assert_eq!(
                 chords.iter().filter(|n| n.start_step == 4 && n.duration_steps == 1).count(),
                 3
@@ -139,14 +139,20 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
                 3
             );
 
-            let heel = notes_on_track(snap, TrackId::Heel);
-            let toe = notes_on_track(snap, TrackId::Toe);
+            let percussion_low = notes_on_track(snap, TrackId::PercussionLow);
+            let percussion_high = notes_on_track(snap, TrackId::PercussionHigh);
             assert_eq!(
-                heel.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
+                percussion_low
+                    .iter()
+                    .map(|n| (n.start_step, n.pitch, n.duration_steps))
+                    .collect::<Vec<_>>(),
                 vec![(0, 36, 0), (4, 36, 0), (8, 36, 0), (12, 36, 0)]
             );
             assert_eq!(
-                toe.iter().map(|n| (n.start_step, n.pitch, n.duration_steps)).collect::<Vec<_>>(),
+                percussion_high
+                    .iter()
+                    .map(|n| (n.start_step, n.pitch, n.duration_steps))
+                    .collect::<Vec<_>>(),
                 vec![(2, 37, 0), (6, 37, 0), (10, 37, 0), (14, 37, 0)]
             );
         }
@@ -171,20 +177,20 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
                 assert_eq!(b1.chord_root_offset, b2.chord_root_offset);
             }
 
-            // Par passe de strain (A1, A2, B1, B2) : mesures 5-6 = 1-2 et cadences en 4 et 8
-            for strain_start in [0usize, 8, 16, 24].map(|s| tune_offset + s) {
+            // Par passe de part (A1, A2, B1, B2) : mesures 5-6 = 1-2 et cadences en 4 et 8
+            for part_start in [0usize, 8, 16, 24].map(|s| tune_offset + s) {
                 assert_eq!(
-                    track_tuples(&snapshots[strain_start + 4], TrackId::Melody),
-                    track_tuples(&snapshots[strain_start], TrackId::Melody),
+                    track_tuples(&snapshots[part_start + 4], TrackId::Melody),
+                    track_tuples(&snapshots[part_start], TrackId::Melody),
                     "seed {seed}: m.5 != m.1"
                 );
                 assert_eq!(
-                    track_tuples(&snapshots[strain_start + 5], TrackId::Melody),
-                    track_tuples(&snapshots[strain_start + 1], TrackId::Melody),
+                    track_tuples(&snapshots[part_start + 5], TrackId::Melody),
+                    track_tuples(&snapshots[part_start + 1], TrackId::Melody),
                     "seed {seed}: m.6 != m.2"
                 );
 
-                let m4 = notes_on_track(&snapshots[strain_start + 3], TrackId::Melody);
+                let m4 = notes_on_track(&snapshots[part_start + 3], TrackId::Melody);
                 let last4 = m4.last().ok_or_else(|| "m.4 vide".to_string())?;
                 let deg4 = plan.mode.scale_degree_of_midi(plan.key, last4.pitch);
                 assert!(
@@ -192,14 +198,14 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
                     "seed {seed}: m.4 finit sur {deg4:?} (attendu 2, 5 ou 7)"
                 );
 
-                let m8 = notes_on_track(&snapshots[strain_start + 7], TrackId::Melody);
+                let m8 = notes_on_track(&snapshots[part_start + 7], TrackId::Melody);
                 assert_eq!(
                     cadence_degree_bar8(&plan, &m8),
                     Some(1),
                     "seed {seed}: m.8 doit finir sur la tonique (degré 1)"
                 );
                 assert_eq!(
-                    snapshots[strain_start + 7].chord_root_offset,
+                    snapshots[part_start + 7].chord_root_offset,
                     7,
                     "seed {seed}: m.8 1re moitié doit être sur V"
                 );
@@ -211,17 +217,17 @@ fn reel_snapshot_stream_criteria_1_to_3_across_20_seeds_64_bars() -> Result<(), 
 
 /// Critère 4 : Déterminisme, diversité des seeds, `set_seed` et seek déterministe en `Style::Profile`.
 #[test]
-fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
+fn determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
     for seed in 0..NUM_SEEDS {
-        let (_, run_a) = generate_offline_reel_stream(seed, 1)?;
-        let (_, run_b) = generate_offline_reel_stream(seed, 1)?;
+        let (_, run_a) = generate_offline_stream(seed, 1)?;
+        let (_, run_b) = generate_offline_stream(seed, 1)?;
         assert_snapshots_equal(&run_a, &run_b, &format!("même seed {seed}"));
     }
 
     // Deux seeds différents produisent des flux différents
     for seed in 0..(NUM_SEEDS - 1) {
-        let (_, a) = generate_offline_reel_stream(seed, 1)?;
-        let (_, b) = generate_offline_reel_stream(seed + 1, 1)?;
+        let (_, a) = generate_offline_stream(seed, 1)?;
+        let (_, b) = generate_offline_stream(seed + 1, 1)?;
         assert_ne!(
             serde_json::to_string(&a).unwrap_or_default(),
             serde_json::to_string(&b).unwrap_or_default(),
@@ -230,10 +236,10 @@ fn reel_determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         );
     }
 
-    // Seek déterministe en Reel : sauter à la mesure 19 (strain B du tune 1) puis à la mesure 41 (strain A2 du tune 2)
+    // Seek déterministe en Reel : sauter à la mesure 19 (part B du tune 1) puis à la mesure 41 (part A2 du tune 2)
     for &target_bar in &[1usize, 12, 19, 33, 41] {
         let seed = 7u64;
-        let (_, linear) = generate_offline_reel_stream(seed, 1)?;
+        let (_, linear) = generate_offline_stream(seed, 1)?;
 
         let (mut composer, _playback, _cmd_tx, _report_rx, _clock_reader, _recordings) =
             create_offline_engine(None, None, &[], SAMPLE_RATE)?;

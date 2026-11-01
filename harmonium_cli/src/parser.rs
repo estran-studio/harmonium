@@ -59,7 +59,7 @@ pub fn parse_command(line: &str) -> Result<EngineCommand> {
         "swing" => parse_swing_command(&tokens[1..]),
         "tempo" => parse_tempo_command(&tokens[1..]),
         "style" => parse_style_command(&tokens[1..]),
-        "feet" => parse_feet_command(&tokens[1..]),
+        "percussion" => parse_percussion_command(&tokens[1..]),
         "intensity" => parse_intensity_command(&tokens[1..]),
 
         _ => Err(anyhow!("Unknown command: {}. Type 'help' for available commands.", tokens[0])),
@@ -273,18 +273,18 @@ fn parse_style_command(tokens: &[&str]) -> Result<EngineCommand> {
     Ok(EngineCommand::SetStyleProfile(parse_style_value(tokens[0])?))
 }
 
-/// Parse `feet <0|1|2>`.
-fn parse_feet_command(tokens: &[&str]) -> Result<EngineCommand> {
+/// Parse `percussion <0|1|2>`.
+fn parse_percussion_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() != 1 {
-        return Err(anyhow!("Usage: feet <0|1|2>"));
+        return Err(anyhow!("Usage: percussion <0|1|2>"));
     }
     let density: u8 = tokens[0]
         .parse()
-        .map_err(|_| anyhow!("Densité invalide: {}. Utiliser: feet 0|1|2", tokens[0]))?;
+        .map_err(|_| anyhow!("Densité invalide: {}. Utiliser: percussion 0|1|2", tokens[0]))?;
     if density > 2 {
-        return Err(anyhow!("Densité hors plage ({density}). Utiliser: feet 0|1|2"));
+        return Err(anyhow!("Densité hors plage ({density}). Utiliser: percussion 0|1|2"));
     }
-    Ok(EngineCommand::SetFeetDensity(density))
+    Ok(EngineCommand::SetPercussionDensity(density))
 }
 
 /// Parse `intensity <0..1>`.
@@ -299,23 +299,24 @@ fn parse_intensity_command(tokens: &[&str]) -> Result<EngineCommand> {
     Ok(EngineCommand::SetIntensity(value))
 }
 
-/// Export `--feet` value: a podorythmie density (`0|1|2`) or `off`, which
-/// drops the feet track (same as disabling the rhythm module for the export).
+/// Export `--percussion` value: a percussion density (`0|1|2`) or `off`, which
+/// drops the percussion track (same as disabling the rhythm module for the export).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PercussionOpt {
     Density(u8),
     Off,
 }
 
-/// Parse an export `--feet` value (`0|1|2|off`, case-insensitive).
-pub fn parse_feet_value(raw: &str) -> Result<PercussionOpt> {
+/// Parse an export `--percussion` value (`0|1|2|off`, case-insensitive).
+pub fn parse_percussion_value(raw: &str) -> Result<PercussionOpt> {
     if raw.eq_ignore_ascii_case("off") {
         return Ok(PercussionOpt::Off);
     }
-    let density: u8 =
-        raw.parse().map_err(|_| anyhow!("Densité invalide: {raw}. Utiliser: --feet 0|1|2|off"))?;
+    let density: u8 = raw
+        .parse()
+        .map_err(|_| anyhow!("Densité invalide: {raw}. Utiliser: --percussion 0|1|2|off"))?;
     if density > 2 {
-        return Err(anyhow!("Densité hors plage ({density}). Utiliser: --feet 0|1|2|off"));
+        return Err(anyhow!("Densité hors plage ({density}). Utiliser: --percussion 0|1|2|off"));
     }
     Ok(PercussionOpt::Density(density))
 }
@@ -446,16 +447,16 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_feet() {
+    fn test_parse_percussion() {
         for d in 0..=2u8 {
             assert_eq!(
-                parse_command(&format!("feet {d}")).ok(),
-                Some(EngineCommand::SetFeetDensity(d))
+                parse_command(&format!("percussion {d}")).ok(),
+                Some(EngineCommand::SetPercussionDensity(d))
             );
         }
-        assert!(parse_command("feet").is_err());
-        assert!(parse_command("feet 3").is_err());
-        assert!(parse_command("feet dense").is_err());
+        assert!(parse_command("percussion").is_err());
+        assert!(parse_command("percussion 3").is_err());
+        assert!(parse_command("percussion dense").is_err());
     }
 
     #[test]
@@ -536,14 +537,14 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_feet_value() {
-        assert_eq!(parse_feet_value("0").ok(), Some(PercussionOpt::Density(0)));
-        assert_eq!(parse_feet_value("1").ok(), Some(PercussionOpt::Density(1)));
-        assert_eq!(parse_feet_value("2").ok(), Some(PercussionOpt::Density(2)));
-        assert_eq!(parse_feet_value("off").ok(), Some(PercussionOpt::Off));
-        assert_eq!(parse_feet_value("OFF").ok(), Some(PercussionOpt::Off));
-        assert!(parse_feet_value("3").is_err());
-        assert!(parse_feet_value("dense").is_err());
-        assert!(parse_feet_value("").is_err());
+    fn test_parse_percussion_value() {
+        assert_eq!(parse_percussion_value("0").ok(), Some(PercussionOpt::Density(0)));
+        assert_eq!(parse_percussion_value("1").ok(), Some(PercussionOpt::Density(1)));
+        assert_eq!(parse_percussion_value("2").ok(), Some(PercussionOpt::Density(2)));
+        assert_eq!(parse_percussion_value("off").ok(), Some(PercussionOpt::Off));
+        assert_eq!(parse_percussion_value("OFF").ok(), Some(PercussionOpt::Off));
+        assert!(parse_percussion_value("3").is_err());
+        assert!(parse_percussion_value("dense").is_err());
+        assert!(parse_percussion_value("").is_err());
     }
 }

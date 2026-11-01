@@ -28,7 +28,7 @@ mod web;
 #[derive(Resource, Clone)]
 pub struct HarmoniumConfig {
     pub main_bank: Option<String>,
-    pub feet_bank: Option<String>,
+    pub percussion_bank: Option<String>,
     pub odin_presets: Vec<String>,
     pub pump_interval: Duration,
     pub emotion_interval: Duration,
@@ -43,7 +43,7 @@ impl Default for HarmoniumConfig {
     fn default() -> Self {
         Self {
             main_bank: None,
-            feet_bank: None,
+            percussion_bank: None,
             odin_presets: Vec::new(),
             pump_interval: Duration::from_millis(if cfg!(target_arch = "wasm32") {
                 100
@@ -142,7 +142,7 @@ pub enum HarmoniumStatus {
 #[derive(Resource, Default)]
 struct ResourceHandles {
     main: Option<Handle<HarmoniumAsset>>,
-    feet: Option<Handle<HarmoniumAsset>>,
+    percussion: Option<Handle<HarmoniumAsset>>,
     presets: Vec<Handle<HarmoniumAsset>>,
 }
 
@@ -215,7 +215,7 @@ impl Plugin for HarmoniumPlugin {
 fn load_resources(mut commands: Commands, server: Res<AssetServer>, config: Res<HarmoniumConfig>) {
     commands.insert_resource(ResourceHandles {
         main: config.main_bank.as_ref().map(|path| server.load(path.clone())),
-        feet: config.feet_bank.as_ref().map(|path| server.load(path.clone())),
+        percussion: config.percussion_bank.as_ref().map(|path| server.load(path.clone())),
         presets: config.odin_presets.iter().map(|path| server.load(path.clone())).collect(),
     });
 }
@@ -232,7 +232,8 @@ fn start_host(world: &mut World) {
     let assets = world.resource::<Assets<HarmoniumAsset>>();
     let server = world.resource::<AssetServer>();
     let config = world.resource::<HarmoniumConfig>();
-    for handle in handles.main.iter().chain(handles.feet.iter()).chain(handles.presets.iter()) {
+    for handle in handles.main.iter().chain(handles.percussion.iter()).chain(handles.presets.iter())
+    {
         if let Some(LoadState::Failed(error)) = server.get_load_state(handle.id()) {
             let message = format!(
                 "ressource Harmonium {} : {error}",
@@ -247,7 +248,7 @@ fn start_host(world: &mut World) {
         }
     }
     let main = handles.main.as_ref().and_then(|handle| assets.get(handle));
-    let feet = handles.feet.as_ref().and_then(|handle| assets.get(handle));
+    let percussion = handles.percussion.as_ref().and_then(|handle| assets.get(handle));
     let presets: Vec<_> = handles
         .presets
         .iter()
@@ -255,15 +256,15 @@ fn start_host(world: &mut World) {
         .map(|asset| OdinPresetSource { name: &asset.name, bytes: &asset.bytes })
         .collect();
     info!(
-        "Harmonium : ressources chargées (principale={}, pieds={}, presets={})",
+        "Harmonium : ressources chargées (principale={}, percussion={}, presets={})",
         main.is_some(),
-        feet.is_some(),
+        percussion.is_some(),
         presets.len()
     );
     // Toujours ouvrir en pause : aucune mesure par défaut ne fuit avant l'initialisation.
     let result = LiveHost::start_paused(
         main.map(|asset| asset.bytes.as_slice()),
-        feet.map(|asset| asset.bytes.as_slice()),
+        percussion.map(|asset| asset.bytes.as_slice()),
         &presets,
         config.buffer_frames,
     )

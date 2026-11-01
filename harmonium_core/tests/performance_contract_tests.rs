@@ -100,7 +100,7 @@ fn deterministic_bounded_and_breathes_at_each_configured_boundary() {
         for n in notes {
             assert!((-80..=0).contains(&n.performance.offset), "offset {}", n.performance.offset);
             assert_eq!(n.performance.gate, 870);
-            let breathes = [3, 8].contains(&position.bar_in_strain) && Some(n.start_step) == last;
+            let breathes = [3, 8].contains(&position.bar_in_part) && Some(n.start_step) == last;
             assert_eq!(
                 n.performance.breath > 0,
                 breathes,

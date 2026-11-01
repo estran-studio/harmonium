@@ -14,7 +14,7 @@ use crate::{
     tuning::{MelodyParams, TuningParams},
 };
 
-/// État d'une ligne de violon pour un tune en cours (D4, D6).
+/// État d'une ligne mélodique pour un tune en cours (D4, D6).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MelodyLine {
     plan: TunePlan,
@@ -35,7 +35,7 @@ impl MelodyLine {
     }
 
     /// Construit une [`MelodyLine`] à partir d'un [`TuningParams`] complet
-    /// (utilise `tuning.reel_cells` et `tuning.reel_fiddle`).
+    /// (utilise `tuning.cells` et `tuning.melody`).
     #[must_use]
     pub fn from_tuning(plan: TunePlan, tuning: &TuningParams, rng: &mut dyn RngCore) -> Self {
         Self::with_params(plan, &tuning.profile.melody.cells, &tuning.profile.melody.params, rng)
@@ -114,7 +114,7 @@ impl MelodyLine {
         line
     }
 
-    /// Plan structurel du tune associé à cette ligne de violon.
+    /// Plan structurel du tune associé à cette ligne mélodique.
     #[must_use]
     pub fn plan(&self) -> TunePlan {
         self.plan.clone()
@@ -472,7 +472,7 @@ fn render_cell_notes(
 #[allow(clippy::too_many_arguments)]
 fn select_part_cells(
     plan: &TunePlan,
-    strain: Part,
+    part: Part,
     tonic_midi: u8,
     bank: &CellBank,
     params: &MelodyParams,
@@ -480,16 +480,16 @@ fn select_part_cells(
     previous_parts: &[Vec<Cell>],
     rng: &mut dyn RngCore,
 ) -> Vec<Cell> {
-    let mut chosen: Vec<Cell> = Vec::with_capacity(plan.profile.form.parts[strain.0].roles.len());
+    let mut chosen: Vec<Cell> = Vec::with_capacity(plan.profile.form.parts[part.0].roles.len());
     let mut bar1_first_step: Option<i8> = None;
-    if !plan.profile.form.parts[strain.0].link_previous {
+    if !plan.profile.form.parts[part.0].link_previous {
         *prev_last_step = None;
     }
 
-    let roles = plan.roles_for_part(strain.0);
+    let roles = plan.roles_for_part(part.0);
     for (bar_idx, &bar_role) in roles.iter().enumerate() {
         let cell = select_bar_cell(
-            strain,
+            part,
             bar_idx,
             bar_role,
             plan,
@@ -517,7 +517,7 @@ fn select_part_cells(
 
 #[allow(clippy::too_many_arguments)]
 fn select_bar_cell(
-    strain: Part,
+    part: Part,
     bar_idx: usize,
     bar_role: ImposedRole,
     plan: &TunePlan,
@@ -549,7 +549,7 @@ fn select_bar_cell(
                 None
             };
             pick_cell_for_bar(
-                strain,
+                part,
                 bar_idx,
                 imposed,
                 plan,
@@ -572,7 +572,7 @@ fn select_bar_cell(
             | ImposedRole::CadHalf
             | ImposedRole::CadFifth
     ) && let Some(rhythm) =
-        plan.profile.form.parts[strain.0].rhythm.iter().find(|r| r.bar == bar_idx + 1)
+        plan.profile.form.parts[part.0].rhythm.iter().find(|r| r.bar == bar_idx + 1)
     {
         apply_rhythm(&mut cell, rhythm, rng);
     }
@@ -769,14 +769,14 @@ struct EvaluatedCandidate {
     tessitura_penalty: u8,
     /// Excès de saut au-delà d'une quinte (continuité d'entrée + rebouclage sur la mesure 1).
     fifth_excess: i16,
-    /// `0` si le centre est dans le registre propre de la strain (A vs B), `1` sinon.
+    /// `0` si le centre est dans le registre propre de la part (A vs B), `1` sinon.
     register_penalty: u8,
     /// Excès au-delà du seuil strict de continuité (`max_continuity_step_distance` = tierce).
     continuity_excess: i16,
     /// Distance en pas diatoniques entre le premier degré et le dernier degré précédent.
     continuity_distance: i16,
     /// Distance absolue (en dixièmes de demi-ton) entre le centre rendu de la
-    /// cellule et la cible de la strain (`melody_center_midi`, + lift en B).
+    /// cellule et la cible de la part (`melody_center_midi`, + lift en B).
     contour_distance_tenths: i32,
 }
 
@@ -804,7 +804,7 @@ impl EvaluatedCandidate {
 
 #[allow(clippy::too_many_arguments)]
 fn pick_cell_for_bar(
-    strain: Part,
+    part: Part,
     bar_idx: usize,
     imposed: ImposedRole,
     plan: &TunePlan,
@@ -816,7 +816,7 @@ fn pick_cell_for_bar(
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Cell {
-    let target_midi = part_target_midi(strain, plan, params);
+    let target_midi = part_target_midi(part, plan, params);
     let split_midi = register_split_midi(plan, params);
     let max_retries = params.continuity_max_retries.max(1);
 
@@ -835,7 +835,7 @@ fn pick_cell_for_bar(
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
-                strain,
+                part,
                 bar_idx,
                 target_midi,
                 split_midi,
@@ -869,7 +869,7 @@ fn pick_cell_for_bar(
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
-                strain,
+                part,
                 bar_idx,
                 target_midi,
                 split_midi,
@@ -898,7 +898,7 @@ fn pick_cell_for_bar(
             let cand = evaluate_candidate(
                 base_cell,
                 shift,
-                strain,
+                part,
                 bar_idx,
                 target_midi,
                 split_midi,
@@ -1024,15 +1024,15 @@ fn draw_weighted<'a>(
     None
 }
 
-/// Centre cible en hauteurs MIDI pour une strain (A : `melody_center_midi`,
-/// B : `melody_center_midi + strain_b_lift_semitones`, P1-T7).
-fn part_target_midi(strain: Part, plan: &TunePlan, params: &MelodyParams) -> f32 {
+/// Centre cible en hauteurs MIDI pour une part (A : `melody_center_midi`,
+/// B : `melody_center_midi + part_b_lift_semitones`, P1-T7).
+fn part_target_midi(part: Part, plan: &TunePlan, params: &MelodyParams) -> f32 {
     f32::from(params.melody_center_midi)
-        + f32::from(plan.profile.form.parts[strain.0].melody_center_offset)
+        + f32::from(plan.profile.form.parts[part.0].melody_center_offset)
 }
 
-/// Frontière médiane en hauteurs MIDI séparant le registre de la strain A et
-/// celui de la strain B (`melody_center_midi + lift / 2`, P1-T7).
+/// Frontière médiane en hauteurs MIDI séparant le registre de la part A et
+/// celui de la part B (`melody_center_midi + lift / 2`, P1-T7).
 fn register_split_midi(plan: &TunePlan, params: &MelodyParams) -> f32 {
     let offsets = plan.profile.form.parts.iter().map(|p| p.melody_center_offset);
     let lo = offsets.clone().min().unwrap_or(0);
@@ -1040,7 +1040,7 @@ fn register_split_midi(plan: &TunePlan, params: &MelodyParams) -> f32 {
     f32::from(params.melody_center_midi) + 0.5 * (f32::from(lo) + f32::from(hi))
 }
 
-/// Décalages d'octave candidats pour viser la cible de strain en hauteurs
+/// Décalages d'octave candidats pour viser la cible de part en hauteurs
 /// absolues, triés par proximité du centre rendu à `target_midi` : le premier
 /// tirage strict trouvé est donc le plus proche de la cible (P1-T7).
 fn contour_shifts_for_cell(
@@ -1074,7 +1074,7 @@ fn cell_mean_midi(cell: &Cell, plan: &TunePlan, tonic_midi: u8) -> f32 {
 fn evaluate_candidate(
     base_cell: &Cell,
     octave_shift: i8,
-    strain: Part,
+    part: Part,
     bar_idx: usize,
     target_midi: f32,
     split_midi: f32,
@@ -1121,7 +1121,7 @@ fn evaluate_candidate(
     // Les mesures 4 (index 3, avant la copie de la mesure 1 en mesure 5) et 8
     // (index 7, avant la reprise de la mesure 1 en passe 2) doivent aussi
     // rester à ≤ une quinte du premier degré de la mesure 1.
-    let roles = plan.roles_for_part(strain.0);
+    let roles = plan.roles_for_part(part.0);
     let loop_fifth_excess = if ((plan.profile.form.close_part_loop && bar_idx + 1 == roles.len())
         || roles.get(bar_idx + 1) == Some(&ImposedRole::CopyOf(1)))
         && let Some(b1_first) = bar1_first_step
