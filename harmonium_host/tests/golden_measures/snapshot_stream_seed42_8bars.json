@@ -8,6 +8,11 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": null,
+    "chord_extensions": [],
+    "chord_pitch_classes": [],
     "notes": [
       {
         "track": 0,
@@ -86,6 +91,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -274,6 +288,15 @@
     "chord_name": "A",
     "chord_root_offset": 7,
     "chord_is_minor": false,
+    "chord_root_pc": 9,
+    "chord_bass_pc": 9,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      9,
+      1,
+      4
+    ],
     "notes": [
       {
         "track": 0,
@@ -474,6 +497,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -663,6 +695,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -839,6 +880,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -1027,6 +1077,15 @@
     "chord_name": "A",
     "chord_root_offset": 7,
     "chord_is_minor": false,
+    "chord_root_pc": 9,
+    "chord_bass_pc": 9,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      9,
+      1,
+      4
+    ],
     "notes": [
       {
         "track": 0,
@@ -1227,6 +1286,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -1415,6 +1483,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -1579,6 +1656,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -1877,6 +1963,15 @@
     "chord_name": "A",
     "chord_root_offset": 7,
     "chord_is_minor": false,
+    "chord_root_pc": 9,
+    "chord_bass_pc": 9,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      9,
+      1,
+      4
+    ],
     "notes": [
       {
         "track": 0,
@@ -2194,6 +2289,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -2499,6 +2603,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -2792,6 +2905,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -3090,6 +3212,15 @@
     "chord_name": "A",
     "chord_root_offset": 7,
     "chord_is_minor": false,
+    "chord_root_pc": 9,
+    "chord_bass_pc": 9,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      9,
+      1,
+      4
+    ],
     "notes": [
       {
         "track": 0,
@@ -3407,6 +3538,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -3705,6 +3845,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -4005,6 +4154,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -4291,6 +4449,15 @@
     "chord_name": "G",
     "chord_root_offset": 5,
     "chord_is_minor": false,
+    "chord_root_pc": 7,
+    "chord_bass_pc": 7,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      7,
+      11,
+      2
+    ],
     "notes": [
       {
         "track": 0,
@@ -4603,6 +4770,15 @@
     "chord_name": "G",
     "chord_root_offset": 5,
     "chord_is_minor": false,
+    "chord_root_pc": 7,
+    "chord_bass_pc": 7,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      7,
+      11,
+      2
+    ],
     "notes": [
       {
         "track": 0,
@@ -4902,6 +5078,15 @@
     "chord_name": "G",
     "chord_root_offset": 5,
     "chord_is_minor": false,
+    "chord_root_pc": 7,
+    "chord_bass_pc": 7,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      7,
+      11,
+      2
+    ],
     "notes": [
       {
         "track": 0,
@@ -5200,6 +5385,15 @@
     "chord_name": "D",
     "chord_root_offset": 0,
     "chord_is_minor": false,
+    "chord_root_pc": 2,
+    "chord_bass_pc": 2,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      2,
+      6,
+      9
+    ],
     "notes": [
       {
         "track": 0,
@@ -5486,6 +5680,15 @@
     "chord_name": "G",
     "chord_root_offset": 5,
     "chord_is_minor": false,
+    "chord_root_pc": 7,
+    "chord_bass_pc": 7,
+    "chord_quality": "",
+    "chord_extensions": [],
+    "chord_pitch_classes": [
+      7,
+      11,
+      2
+    ],
     "notes": [
       {
         "track": 0,

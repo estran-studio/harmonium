@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Version du contrat : clé de snapshot `bar_in_part` (ex-`bar_in_strain`, moteur neutre N1).
-pub const TUNING_VERSION: u32 = 22;
+pub const TUNING_VERSION: u32 = 23;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

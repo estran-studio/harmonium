@@ -12,7 +12,7 @@ use super::{
 };
 use crate::{
     style_profile::StyleProfile,
-    theory::{PitchClass, quality::Quality},
+    theory::{PitchClass, chord::Chord, quality::Quality},
     timeline::TimelineNote,
     tuning::AccompanimentParams,
 };
@@ -188,6 +188,23 @@ impl DegreeChord {
     pub fn contains_pitch(self, key: PitchClass, mode: Mode, midi: u8) -> bool {
         let pc = midi % 12;
         self.pitch_classes(key, mode).contains(&pc)
+    }
+
+    /// L'accord absolu typé : la seule conversion `DegreeChord` → [`Chord`]. Qualité,
+    /// extensions et basse (accord slash seulement) viennent de la qualité du profil.
+    /// `None` pour une pédale ou une pédale à voisin : aucune qualité typée à publier.
+    #[must_use]
+    pub fn to_chord(self, key: PitchClass, mode: Mode) -> Option<Chord> {
+        use crate::theory::chord::ChordType;
+        let (chord_type, extensions) = match self.quality {
+            ChordQuality::Major => (ChordType::Major, Vec::new()),
+            ChordQuality::Minor => (ChordType::Minor, Vec::new()),
+            ChordQuality::Typed(quality) => (quality.chord_type(), quality.extensions().to_vec()),
+            ChordQuality::Pedal | ChordQuality::PedalNeighbor(_) => return None,
+        };
+        let mut chord = Chord::new(self.root_pc(key, mode), chord_type);
+        chord.extensions = extensions;
+        Some(if self.is_slash(mode) { chord.with_bass(self.bass_pc(key, mode)) } else { chord })
     }
 }
 
