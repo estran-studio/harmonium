@@ -167,7 +167,11 @@ impl LydianChromaticConcept {
 
             // Dominant 7: la fondamentale est aussi la tonique Lydienne
             // (c'est le degré Mixolydien #4 de son propre Lydien)
-            ChordType::Dominant7 | ChordType::Dominant7Sus4 => chord.root,
+            ChordType::Dominant7
+            | ChordType::Dominant7Sus4
+            | ChordType::Dominant7Sus2
+            | ChordType::Dominant7Flat5
+            | ChordType::Altered => chord.root,
 
             // Accords mineurs: la tonique Lydienne est une tierce majeure EN DESSOUS
             // (Cm est construit sur le degré III de Ab Lydien)
