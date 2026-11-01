@@ -374,7 +374,7 @@ fn switching_profile_inside_bar_one_replaces_the_measure_actually_rendered() -> 
     )?;
     game.prime_clock()?;
     assert_eq!(game.clock().bar, 1);
-    assert_eq!(game.clock().pulses_per_bar, 2, "reel en 2/2 effectivement rendu");
+    assert_eq!(game.clock().pulses_per_bar, 2, "2/2 effectivement rendu");
     game.control().set_profile_id("nt_desert")?;
     game.update(Duration::ZERO);
     for _ in 0..32 {

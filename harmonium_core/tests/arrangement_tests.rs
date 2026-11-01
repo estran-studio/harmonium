@@ -1,4 +1,4 @@
-//! Tests d'acceptation de l'arrangement du reel (D11) sur le flux de snapshots :
+//! Tests d'acceptation de l'arrangement (D11) sur le flux de snapshots :
 //! tours d'un air, entrées progressives des pistes, plafonds `enable_*`, position exposée.
 
 use harmonium_core::{

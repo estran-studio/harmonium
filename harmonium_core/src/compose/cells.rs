@@ -1,6 +1,6 @@
 //! Cellules mélodiques d'une mesure (8 croches) et banque TOML embarquée (D5).
 //!
-//! Une cellule représente une mesure de reel en 2/2 découpée en 8 croches
+//! Une cellule représente une mesure en 2/2 découpée en 8 croches
 //! diatoniques (`CellNote::Degree(i8)` ou `CellNote::Hold`).
 //! La banque par défaut est embarquée via `include_str!("cells.toml")` et
 //! portée par [`crate::tuning::TuningParams`] conformément au principe V de la
@@ -33,7 +33,7 @@ pub const DEFAULT_CELL_WEIGHT: u32 = 1;
 /// Classes de degré (pas diatonique modulo 7) d'une demi-cadence : degrés 2, 5 et 7.
 const CADENCE_HALF_CLASSES: [i8; 3] = [1, 4, 6];
 
-/// Contenu brut de la banque TOML embarquée du reel.
+/// Contenu brut de la banque TOML embarquée par défaut.
 pub const DEFAULT_CELLS_TOML: &str = include_str!("../../../profiles/reel_quebecois/cells.toml");
 
 /// Rôle fonctionnel d'une cellule mélodique dans une part de 8 mesures (D5).
@@ -188,7 +188,7 @@ impl fmt::Display for CellBankError {
 
 impl std::error::Error for CellBankError {}
 
-/// Cellule mélodique d'une mesure de reel (8 croches, D5).
+/// Cellule mélodique d'une mesure (8 croches, D5).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Cell {
     /// Rôle fonctionnel de la cellule dans la part.

@@ -504,7 +504,7 @@ impl TimePlan {
 mod tests {
     use super::*;
 
-    fn reel(tempo: u32, swing: u16) -> BarTiming {
+    fn bar_timing(tempo: u32, swing: u16) -> BarTiming {
         BarTiming {
             tempo: Tempo::from_milli_bpm(tempo),
             swing: Swing::from_ten_thousandths(swing),
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn swing_splits_each_quarter_and_keeps_the_pulse_exact() {
-        let bar = reel(120_000, 6_000);
+        let bar = bar_timing(120_000, 6_000);
         let tempo = bar.tempo;
         let quarter = tempo.quarter().0;
         // Pulse d'une blanche : deux noires ; pas 0-1 longs (0,6 × noire / 2).
@@ -543,13 +543,13 @@ mod tests {
     #[test]
     fn a_tempo_change_ramps_over_the_bar_and_lands_on_the_target() {
         let mut plan = TimePlan::new();
-        plan.push(reel(200_000, 5_000));
-        plan.push(reel(240_000, 5_000));
+        plan.push(bar_timing(200_000, 5_000));
+        plan.push(bar_timing(240_000, 5_000));
         assert_eq!(plan.pulse_tempo(2, 1), Some(Tempo::from_milli_bpm(220_000)));
         assert_eq!(plan.pulse_tempo(2, 2), Some(Tempo::from_milli_bpm(240_000)));
-        let mut jump = reel(240_000, 5_000);
+        let mut jump = bar_timing(240_000, 5_000);
         jump.ramp_in = false;
-        plan.push(reel(200_000, 5_000));
+        plan.push(bar_timing(200_000, 5_000));
         plan.push(jump);
         assert_eq!(plan.pulse_tempo(4, 1), Some(Tempo::from_milli_bpm(240_000)));
     }
@@ -558,7 +558,7 @@ mod tests {
     fn position_and_next_boundaries_follow_the_plan() {
         let mut plan = TimePlan::new();
         for _ in 0..3 {
-            plan.push(reel(230_000, 5_600));
+            plan.push(bar_timing(230_000, 5_600));
         }
         let bar2 = plan.bar_start(2).unwrap_or_default();
         let position = plan.position_at(bar2).unwrap_or_else(|| unreachable!());

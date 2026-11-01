@@ -236,7 +236,7 @@ fn determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         );
     }
 
-    // Seek déterministe en Reel : sauter à la mesure 19 (part B du tune 1) puis à la mesure 41 (part A2 du tune 2)
+    // Seek déterministe : sauter à la mesure 19 (part B du tune 1) puis à la mesure 41 (part A2 du tune 2)
     for &target_bar in &[1usize, 12, 19, 33, 41] {
         let seed = 7u64;
         let (_, linear) = generate_offline_stream(seed, 1)?;
@@ -259,7 +259,7 @@ fn determinism_set_seed_and_deterministic_seek() -> Result<(), String> {
         assert_snapshots_equal(
             &expected,
             &sought_snapshots,
-            &format!("seek déterministe en Reel vers la mesure {target_bar}"),
+            &format!("seek déterministe vers la mesure {target_bar}"),
         );
     }
     Ok(())

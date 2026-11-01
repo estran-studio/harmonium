@@ -1,11 +1,11 @@
 //! MIDI export contract (P1-T10): the recorded MIDI describes exactly what
 //! the WAV plays.
 //!
-//! Drives the real offline engine in reel style and parses the produced
+//! Drives the real offline engine in the default style and parses the produced
 //! bytes with `midly`:
 //! - every `NoteOn` pairs with a `NoteOff` on the same channel and pitch,
 //!   in order (no dangling or orphan ends);
-//! - the file tempo is the real tempo (230 BPM reel) with a 2/2 signature,
+//! - the file tempo is the real tempo (230 BPM default profile) with a 2/2 signature,
 //!   and the MIDI duration matches the rendered audio within one beat;
 //! - `--percussion off` (`enable_rhythm(false)`) records no drum-channel notes;
 //! - `--swing 0.5` yields equal eighth-note intervals.
@@ -27,7 +27,7 @@ struct Export {
     rendered_secs: f64,
 }
 
-/// Render `bars` reel bars offline (silent synth) with the given export
+/// Render `bars` default-profile bars offline (silent synth) with the given export
 /// settings, mirroring `harmonium_cli::export::run`, and return the recorded
 /// MIDI bytes plus the rendered audio duration.
 fn render_default_style(
@@ -140,7 +140,7 @@ fn midi_noteons_all_have_noteoffs() -> Result<(), String> {
     let export = render_default_style(1, 8, None, false, false)?;
     let smf = Smf::parse(&export.midi).map_err(|e| e.to_string())?;
     let events = note_events(&smf)?;
-    assert!(!events.is_empty(), "reel records notes");
+    assert!(!events.is_empty(), "default profile records notes");
 
     let mut sounding: Vec<(u8, u8)> = Vec::new();
     for (tick, on, ch, pitch) in &events {

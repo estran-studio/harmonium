@@ -230,7 +230,7 @@ fn hornpipe_meter_swing_and_tempo_contract() {
     assert_eq!(p.meter.steps_per_pulse, 4); // Pulse à la noire
     assert_eq!(p.meter.pulses_per_bar, 4); // 4 temps par mesure
     assert_eq!(p.meter.default_swing_ratio, 0.65); // Fort swing pointé (0.62–0.67)
-    assert!((p.meter.default_bpm - 92.0).abs() < 0.1); // Plus lent qu'un reel (230 BPM)
+    assert!((p.meter.default_bpm - 92.0).abs() < 0.1); // Plus lent que le profil par défaut (230 BPM)
 
     let snaps = generate_snapshots(&p, 1, 32);
     for s in &snaps {

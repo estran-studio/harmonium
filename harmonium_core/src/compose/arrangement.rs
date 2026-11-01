@@ -1,4 +1,4 @@
-//! Arrangement du reel : tours d'un air, entrées progressives des pistes (D11),
+//! Arrangement : tours d'un air, entrées progressives des pistes (D11),
 //! et intros idiomatiques (P1-T11).
 //!
 //! Ce module porte :
@@ -16,7 +16,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{style_profile::ProfileForm, timeline::TrackId};
 
-/// Contenu brut de la table TOML embarquée d'arrangement du reel (D11 + P1-T11).
+/// Contenu brut de la table TOML embarquée d'arrangement (D11 + P1-T11).
 pub const DEFAULT_ARRANGEMENT_TOML: &str =
     include_str!("../../../profiles/reel_quebecois/arrangement.toml");
 
@@ -418,7 +418,7 @@ impl std::error::Error for ArrangementError {}
 // Arrangement
 // ---------------------------------------------------------------------------
 
-/// Table d'arrangement du reel, portée en données (D11, P1-T11, constitution V).
+/// Table d'arrangement, portée en données (D11, P1-T11, constitution V).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Arrangement {
     /// Nombre de tours AABB joués avant de tirer un nouvel air (`1..=`[`MAX_TOURS`]).

@@ -147,12 +147,12 @@ fn accompaniment_follows_each_profile() {
         let steps: Vec<_> = s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         assert!(steps.iter().all(|step| [2, 4, 8, 10].contains(step)), "piano : accords {steps:?}");
     }
-    let reel = profile("reel_britannique_coloniale");
-    for s in snapshots(&reel, 1, 32) {
+    let two_two = profile("reel_britannique_coloniale");
+    for s in snapshots(&two_two, 1, 32) {
         let steps: Vec<_> = s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         assert!(
             steps.iter().all(|step| *step == 0 || *step == 8),
-            "reel : accords tenus {steps:?}"
+            "reel_britannique_coloniale : accords tenus {steps:?}"
         );
     }
     let waltz = profile("valse_britannique_coloniale");

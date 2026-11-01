@@ -124,8 +124,8 @@ l'hôte, y compris celles posées par l'OSC. Tab complète les commandes et prof
 
 ```bash
 cargo run -p harmonium-cli --release -- --export --bars 64 --seed 1 \
-  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid \
-  --record-musicxml demos/reel_seed1.musicxml
+  --record-wav demos/tune_seed1.wav --record-midi demos/tune_seed1.mid \
+  --record-musicxml demos/tune_seed1.musicxml
 
 cargo run -p harmonium-cli --release -- --export --bars 64 \
   --style valse_quebecoise --seed 1 --percussion off

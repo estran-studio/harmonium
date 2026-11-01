@@ -71,7 +71,7 @@ fn a_loaded_percussion_bank_raises_no_warning() {
 
 #[test]
 fn an_unprovided_odin_preset_is_reported_for_another_style_too() {
-    // Valse 3/4 (autre style que le reel) : même mécanisme, preset non fourni.
+    // Valse 3/4 (autre style que le profil par défaut) : même mécanisme, preset non fourni.
     let mut composer = engine(None);
     composer.set_profile(profile("tests/fixtures/profiles/valse_nappe", "avert_odin")).unwrap();
 
@@ -91,9 +91,9 @@ fn an_unprovided_odin_preset_is_reported_for_another_style_too() {
 #[test]
 fn the_same_absence_is_reported_once_not_at_every_tuning_change() {
     let mut composer = engine(None);
-    let reel = profile("profiles/reel_quebecois", "avert_unique");
-    composer.set_profile(reel.clone()).unwrap();
-    composer.set_profile(reel).unwrap();
+    let first = profile("profiles/reel_quebecois", "avert_unique");
+    composer.set_profile(first.clone()).unwrap();
+    composer.set_profile(first).unwrap();
 
     assert_eq!(warnings_for("avert_unique").len(), 1);
 }
