@@ -143,7 +143,7 @@ impl Automation {
 mod tests {
     use anyhow::anyhow;
     use harmonium::playback::pack;
-    use harmonium_core::{report::MeasureSnapshot, compose::ReelArrangement, tuning::TuningParams};
+    use harmonium_core::{compose::Arrangement, report::MeasureSnapshot, tuning::TuningParams};
 
     use super::*;
 
@@ -186,7 +186,7 @@ mod tests {
         composer.set_tuning(TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
-                p.arrangement = ReelArrangement::from_start(3, Default::default());
+                p.arrangement = Arrangement::from_start(3, Default::default());
                 if !ornaments {
                     // Seule la note de passage de densité existait avant V3b.
                     p.ornaments.types.retain(|kind, _| {
@@ -282,7 +282,9 @@ mod tests {
                 }
 
                 if fixed_roles {
-                    use harmonium_core::compose::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
+                    use harmonium_core::compose::ImposedRole::{
+                        CadFull, CadHalf, CopyOf, Free, Open,
+                    };
                     let mut tuning = harmonium_core::TuningParams::default();
                     tuning.profile.performance = Default::default();
                     tuning.profile.heterophony = None;
@@ -292,7 +294,8 @@ mod tests {
                         a.chords.strum = None;
                         for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
                             hit.probability = 1.0;
-                            hit.stroke = harmonium_core::compose::accomp_profile::Stroke::Block;
+                            hit.stroke =
+                                harmonium_core::compose::accomp_profile::AttackDirection::Block;
                             hit.velocity = 72;
                         }
                     }

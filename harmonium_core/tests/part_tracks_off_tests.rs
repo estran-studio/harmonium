@@ -5,15 +5,15 @@ use std::collections::BTreeMap;
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{
+        TuneGenerator,
+        accomp_profile::{BassMotif, BassMotifNote},
+    },
     events::AudioEvent,
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::ProfilePart,
     timeline::{Measure, Playhead, TrackId},
-    compose::{
-        TradGenerator,
-        accomp_profile::{BassMotif, BassMotifNote},
-    },
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -43,7 +43,7 @@ fn params(p: &StyleProfile) -> MusicalParams {
 
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<MeasureSnapshot>> {
     p.validate()?;
-    let mut g = TradGenerator::new(params(p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
@@ -60,7 +60,7 @@ fn pont_muette_batterie_basse_puis_reprend_sans_orpheline() -> TestResult {
     p.validate()?;
     let signature = p.meter.time_signature;
     let steps = p.meter.steps_per_bar;
-    let mut g = TradGenerator::new(params(&p), TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     // Mesures 1–40 (A1, A2, pont, B) puis une mesure vide qui purge les fins
     // en vol, comme le garde-fou des pédales liées.

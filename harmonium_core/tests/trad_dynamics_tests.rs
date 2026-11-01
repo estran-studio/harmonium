@@ -1,30 +1,30 @@
 //! Contrats musicaux du pilotage continu, observés sur les snapshots.
 use harmonium_core::{
+    compose::{
+        Arrangement, TuneGenerator,
+        dynamics::{Curve, DEFAULT_DYNAMICS_TOML, StyleDynamics},
+    },
     ornaments::OrnamentKind,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    compose::{
-        ReelArrangement, TradGenerator,
-        dynamics::{Curve, REEL_INTENSITY_TOML, StyleDynamics},
-    },
     tuning::TuningParams,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-fn generator() -> (TradGenerator, ChaCha8Rng) {
+fn generator() -> (TuneGenerator, ChaCha8Rng) {
     let tuning = TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p.arrangement = Arrangement::from_start(1, Default::default());
             p.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
             p
         },
         ..Default::default()
     };
     let params = MusicalParams { bpm: tuning.profile.meter.default_bpm, ..Default::default() };
-    (TradGenerator::new(params, tuning), ChaCha8Rng::seed_from_u64(1))
+    (TuneGenerator::new(params, tuning), ChaCha8Rng::seed_from_u64(1))
 }
 fn stream(change: impl Fn(&mut MusicalParams)) -> Vec<MeasureSnapshot> {
     let (mut generator, mut rng) = generator();
@@ -150,7 +150,7 @@ fn density_changes_texture_and_tension_changes_offbeats_and_harmony() {
 
 #[test]
 fn style_curves_reject_invalid_profiles_and_interpolate() {
-    let mut dynamics = StyleDynamics::from_toml(REEL_INTENSITY_TOML).unwrap();
+    let mut dynamics = StyleDynamics::from_toml(DEFAULT_DYNAMICS_TOML).unwrap();
     assert_eq!(Curve(vec![[0.0, 10.0], [0.5, 20.0], [1.0, 0.0]]).eval(0.75), 10.0);
     dynamics.tempo_offset.0[1][0] = 0.0;
     assert!(dynamics.validate().unwrap_err().contains("tempo_offset"));

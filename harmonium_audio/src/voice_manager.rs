@@ -31,8 +31,8 @@ pub const GM_DRUM_CHANNEL: u8 = 9;
 
 /// Décalage de banque dédié à la SoundFont des pieds (`harmonium_trad.sf2`, SK2).
 /// Quand cette banque est chargée, Heel/Toe sélectionnent la banque
-/// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
-pub const FEET_BANK_OFFSET: u32 = 1;
+/// `PERCUSSION_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
+pub const PERCUSSION_BANK_OFFSET: u32 = 1;
 
 /// Programmes des pistes à hauteur définie, résolus depuis la liste canonique.
 /// (sur la pile : utilisable dans le callback sans allouer).
@@ -462,8 +462,8 @@ mod tests {
         vm.apply_profile_programs(&instruments);
         assert_eq!(vm.midi_channel_map[3], 3, "pieds sur canaux propres");
         assert_eq!(vm.midi_channel_map[4], 4, "pieds sur canaux propres");
-        assert_eq!(vm.channel_routing[3].bank, FEET_BANK_OFFSET, "Heel → banque du profil");
-        assert_eq!(vm.channel_routing[4].bank, FEET_BANK_OFFSET, "Toe → banque du profil");
+        assert_eq!(vm.channel_routing[3].bank, PERCUSSION_BANK_OFFSET, "Heel → banque du profil");
+        assert_eq!(vm.channel_routing[4].bank, PERCUSSION_BANK_OFFSET, "Toe → banque du profil");
         assert_eq!(vm.channel_program(3), Some(0), "Heel programme du profil");
         assert_eq!(vm.channel_program(4), Some(0), "Toe programme du profil");
     }

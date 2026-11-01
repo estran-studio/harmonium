@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 
 use harmonium_core::{
-    MeasureSnapshot, StyleProfile, TuningParams, params::MusicalParams, compose::TradGenerator,
+    MeasureSnapshot, StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -24,7 +24,7 @@ fn params(profile: &StyleProfile, density: u8) -> MusicalParams {
 
 fn stream(profile: &StyleProfile, seed: u64, density: u8, bars: usize) -> Vec<MeasureSnapshot> {
     let mut generator =
-        TradGenerator::new(params(profile, density), TuningParams { profile: profile.clone() });
+        TuneGenerator::new(params(profile, density), TuningParams { profile: profile.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -148,7 +148,7 @@ fn changer_de_densite_ne_retire_pas_les_patterns_ni_les_accords() -> TestResult 
     let bars = profile.form.bars_per_tour() * profile.arrangement.tours_per_tune * 2;
     let reference = stream(&profile, 1, 1, bars);
     let mut generator =
-        TradGenerator::new(params(&profile, 1), TuningParams { profile: profile.clone() });
+        TuneGenerator::new(params(&profile, 1), TuningParams { profile: profile.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     for (index, expected) in reference.iter().enumerate() {
         generator.musical_params.feet_density = if index % 2 == 0 { 2 } else { 1 };

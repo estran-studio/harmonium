@@ -95,9 +95,9 @@ fn distributed_profiles_load_their_set_file() {
 // ---------------------------------------------------------------------------
 
 use harmonium_core::{
+    compose::{Mode, TuneGenerator, set::SetKey},
     params::MusicalParams,
     report::MeasureSnapshot,
-    compose::{Mode, TradGenerator, set::SetKey},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -122,7 +122,7 @@ fn session(seed: u64, tuning: &TuningParams, valence: f32, bars: usize) -> Vec<M
     params.time_signature = meter.time_signature;
     params.harmony_valence = valence;
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut generator = TradGenerator::new(params, tuning.clone());
+    let mut generator = TuneGenerator::new(params, tuning.clone());
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
         .collect()
@@ -284,7 +284,7 @@ fn last_dark_keeps_the_last_tune_of_a_set_bright() {
 // Position publiée : set_index, tune_in_set, tunes_in_set
 // ---------------------------------------------------------------------------
 
-use harmonium_core::{timeline::TrackId, compose::TunePosition};
+use harmonium_core::{compose::TunePosition, timeline::TrackId};
 
 fn positions(snapshots: &[MeasureSnapshot]) -> Vec<TunePosition> {
     snapshots.iter().filter_map(|s| s.position).collect()
@@ -401,7 +401,7 @@ fn same_seed_gives_the_same_sets_and_seek_replays_them() {
     let continuous = run(5);
     for target in [40usize, 101, 140] {
         let mut rng = ChaCha8Rng::seed_from_u64(5);
-        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
         generator.silent_advance(target, &mut rng);
         let replay: Vec<_> = (target..=300)
             .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -434,7 +434,7 @@ fn a_valence_change_keeps_the_set_plan_and_follows_the_new_candidates() {
 
         // Le jeu prend la valence −0,6 pendant l'air 2 puis jette les airs encore futurs.
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
         let mut stream: Vec<MeasureSnapshot> = Vec::new();
         let mut bar = 1;
         let change_bar = loop {

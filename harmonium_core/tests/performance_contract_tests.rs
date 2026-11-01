@@ -1,7 +1,7 @@
 //! V2 : décisions observables dans les snapshots, sans inspecter le générateur.
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, performance::Performance,
-    report::MeasureSnapshot, timeline::TrackId, compose::TradGenerator,
+    StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams,
+    performance::Performance, report::MeasureSnapshot, timeline::TrackId,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -24,7 +24,7 @@ tension_advance = 0.10
 tension_detach = 0.20
 arousal_accent = 5.0
 "#;
-fn generator(performance: Performance, tension: f32, arousal: f32) -> TradGenerator {
+fn generator(performance: Performance, tension: f32, arousal: f32) -> TuneGenerator {
     let mut profile = StyleProfile::builtin().clone();
     profile.performance = performance;
     profile.ornaments = Default::default();
@@ -33,7 +33,7 @@ fn generator(performance: Performance, tension: f32, arousal: f32) -> TradGenera
     }
     profile.validate().unwrap();
     let params = MusicalParams { harmony_tension: tension, arousal, ..Default::default() };
-    TradGenerator::new(params, TuningParams { profile, ..Default::default() })
+    TuneGenerator::new(params, TuningParams { profile, ..Default::default() })
 }
 fn stream(performance: Performance, tension: f32, arousal: f32) -> Vec<MeasureSnapshot> {
     let mut generator = generator(performance, tension, arousal);

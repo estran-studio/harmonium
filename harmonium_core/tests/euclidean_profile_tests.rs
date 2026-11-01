@@ -1,9 +1,9 @@
 //! Les motifs déclaratifs euclidiens atteignent les snapshots sans tirages supplémentaires.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, IntroConfig, Part, PercussionTable, TuneGenerator},
     params::MusicalParams,
     report::MeasureSnapshot,
-    compose::{FeetTable, IntroConfig, Part, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -14,9 +14,9 @@ fn profile(
     steps: usize,
 ) -> Result<StyleProfile, Box<dyn std::error::Error>> {
     let mut p = StyleProfile::default();
-    p.arrangement = ReelArrangement::from_start(1, Part(0));
+    p.arrangement = Arrangement::from_start(1, Part(0));
     p.arrangement.intro = IntroConfig::none();
-    p.percussion = FeetTable::from_toml(&format!(
+    p.percussion = PercussionTable::from_toml(&format!(
         r#"
 velocity_humanize = 0
 patterns = [
@@ -38,7 +38,7 @@ fn rotated_euclidean_profile_publishes_exact_onsets() -> Result<(), Box<dyn std:
         (33, vec![1, 5, 9, 13]),
     ] {
         let p = profile(rotation, 4, 16)?;
-        let mut g = TradGenerator::new(
+        let mut g = TuneGenerator::new(
             MusicalParams::default(),
             TuningParams { profile: p, ..Default::default() },
         );
@@ -60,5 +60,5 @@ fn euclidean_bounds_reject_before_generation() {
         assert!(profile(0, pulses, steps).is_err(), "{pulses}/{steps}");
     }
     let ambiguous = r#"patterns = [{density=0,hits=[],euclid={pulses=4,steps=16}}]"#;
-    assert!(FeetTable::from_toml(ambiguous).is_err());
+    assert!(PercussionTable::from_toml(ambiguous).is_err());
 }

@@ -55,7 +55,7 @@ Il retourne les erreurs d'encodage à l'appelant.
 
 `SynthBackend::new` prépare la banque de pieds **avant** le démarrage audio :
 seuls les numéros de banques des en-têtes de presets SF2 (`pdta/phdr`) sont
-translatés de `FEET_BANK_OFFSET`. Samples, programmes et routage restent
+translatés de `PERCUSSION_BANK_OFFSET`. Samples, programmes et routage restent
 inchangés ; la banque préparée est chargée sans offset oxisynth. Les en-têtes
 tronqués et le dépassement de banque sont rejetés, sans saturation.
 

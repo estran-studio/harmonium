@@ -18,11 +18,11 @@ use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_audio::odin_source::OdinPresetSource;
 use harmonium_core::{
     StyleProfile,
+    compose::accomp_profile::{BassMotif, BassMotifNote, BassReference},
     events::{AudioRecordFormat, RecordFormat},
     odin::{OdinMorphParam, OdinMorphRule, OdinZone, OdinZoneWhen},
     report::MeasureSnapshot,
     timeline::TrackId,
-    compose::accomp_profile::{BassMotif, BassMotifNote, BassReference},
 };
 use midly::{MidiMessage, Smf, TrackEventKind};
 

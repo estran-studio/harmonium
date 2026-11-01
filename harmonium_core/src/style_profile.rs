@@ -9,14 +9,14 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    compose::{
+        DegreeChord, Mode, arrangement::Arrangement, cells::CellBank, dynamics::StyleDynamics,
+        percussion::PercussionTable, plan::ImposedRole,
+    },
     params::{PulseSpec, TimeSignature},
     profile_source::{Mount, locate, one_line, parse},
     timeline::TrackId,
-    compose::{
-        Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
-        feet::FeetTable, plan::ImposedRole,
-    },
-    tuning::{ReelFiddleParams, TradHarmonyParams},
+    tuning::{AccompanimentParams, MelodyParams},
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -107,7 +107,7 @@ impl ProfileRole {
         }
     }
     /// Vrai si le rôle peut tirer une cellule de `role` : rôle imposé, ou rôle libre de
-    /// poids positif (`free` : [`crate::ReelFiddleParams::free_role_weights`]).
+    /// poids positif (`free` : [`crate::MelodyParams::free_role_weights`]).
     fn needs_cell_role(
         &self,
         role: crate::compose::CellRole,
@@ -411,7 +411,7 @@ pub struct KeyModeWeight {
 pub struct ProfileMelody {
     pub cell_units: usize,
     pub cells: CellBank,
-    pub params: ReelFiddleParams,
+    pub params: MelodyParams,
     pub key_modes: Vec<KeyModeWeight>,
     pub strong_units: Vec<usize>,
     pub weak_units: Vec<usize>,
@@ -420,7 +420,7 @@ pub struct ProfileMelody {
 #[serde(deny_unknown_fields)]
 pub struct ModeChords {
     pub mode: Mode,
-    pub chords: Vec<TradChord>,
+    pub chords: Vec<DegreeChord>,
 }
 /// Harmonie d'une partie ; les racines numériques suivent le mode actif.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -475,7 +475,7 @@ pub struct ProfileHarmony {
     pub candidates: Vec<ModeChords>,
     /// Règles et poids du modèle jazz ; les profils trad ne les consultent pas.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub rules: Vec<crate::models::jazz::RewriteRule>,
+    pub rules: Vec<crate::models::rewrite::RewriteRule>,
     #[serde(default)]
     pub max_recursion: u8,
     #[serde(default)]
@@ -540,15 +540,15 @@ pub struct StyleProfile {
     pub melody: ProfileMelody,
     pub harmony: ProfileHarmony,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub accompaniment: Option<TradHarmonyParams>,
-    pub percussion: FeetTable,
+    pub accompaniment: Option<AccompanimentParams>,
+    pub percussion: PercussionTable,
     pub instruments: ProfileInstruments,
     /// Zones Odin par piste (`[[odin.<Piste>.zones]]`) : presets fournis par
     /// l'hôte, niveaux et morphing par les 4 émotions. Vide par défaut : tout
     /// joue SoundFont. Le programme SoundFont reste toujours requis (repli).
     #[serde(default)]
     pub odin: std::collections::BTreeMap<TrackId, crate::odin::OdinTrackSpec>,
-    pub arrangement: ReelArrangement,
+    pub arrangement: Arrangement,
     pub dynamics: StyleDynamics,
     #[serde(default)]
     pub mix: crate::mix::ProfileMix,
@@ -1079,17 +1079,15 @@ impl StyleProfile {
                 "VariedEndOf exige au moins deux unités",
             )?;
             let split = self.form.varied_end_split(self.melody.cell_units);
-            let endings = self
-                .melody
-                .cells
-                .cells
-                .iter()
-                .filter(|cell| matches!(cell.notes[split], crate::compose::CellNote::Degree(_)));
+            let endings =
+                self.melody.cells.cells.iter().filter(|cell| {
+                    matches!(cell.notes[split], crate::compose::CellNote::Degree(_))
+                });
             check(
                 split > 0
                     && endings.clone().any(|a| {
                         endings.clone().any(|b| {
-                            !crate::compose::fiddle::same_degree_classes(
+                            !crate::compose::melody::same_degree_classes(
                                 &a.notes[split..],
                                 &b.notes[split..],
                             )
@@ -1215,7 +1213,7 @@ impl StyleProfile {
                     "poids fini positif ou nul, 1..64 symboles, valences ordonnées dans -1..1",
                 )?;
                 total += rule.weight
-                    * crate::models::jazz::GrammarStyle::Jazz.category_weight(rule.category);
+                    * crate::models::rewrite::GrammarStyle::Jazz.category_weight(rule.category);
             }
             check(
                 total.is_finite() && total > 0.0,

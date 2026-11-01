@@ -7,10 +7,10 @@ use std::{net::UdpSocket, time::Duration};
 use harmonium::{LiveHost, playback::PlaybackEngine};
 use harmonium_core::{
     EngineCommand, MeasureSnapshot, StyleProfile,
+    compose::pitch_class_name,
     events::RecordFormat,
     report::NoteSnapshot,
     timeline::{Articulation, TrackId},
-    compose::pitch_class_name,
 };
 use harmonium_studio::{
     live::{Intent, LiveView, Score, Session, TRACKS, score_view},

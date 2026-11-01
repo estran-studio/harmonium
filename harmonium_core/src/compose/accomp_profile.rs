@@ -2,8 +2,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    style_profile::ProfileError, timeline::TrackId, compose::dynamics::Curve,
-    tuning::TradHarmonyParams,
+    compose::dynamics::Curve, style_profile::ProfileError, timeline::TrackId,
+    tuning::AccompanimentParams,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -109,7 +109,7 @@ pub struct ChordHit {
     pub duration: usize,
     pub velocity: u8,
     #[serde(default)]
-    pub stroke: Stroke,
+    pub stroke: AttackDirection,
     #[serde(default = "unit_multiplier")]
     pub probability: f32,
     /// Liaison : pas de nouvelle attaque si les hauteurs sonnent encore à
@@ -134,7 +134,7 @@ pub struct ChordVoice {
     #[serde(default = "triad_strings")]
     pub strings: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub strum: Option<Strum>,
+    pub strum: Option<Spread>,
     #[serde(default)]
     pub voicing: ChordVoicing,
     #[serde(default = "fixed_low")]
@@ -164,7 +164,7 @@ pub enum ChordVoicing {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Stroke {
+pub enum AttackDirection {
     #[default]
     Block,
     Down,
@@ -173,7 +173,7 @@ pub enum Stroke {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Strum {
+pub struct Spread {
     pub down_gap_ms: f32,
     pub up_gap_ms: f32,
     pub up_strings: u8,
@@ -199,7 +199,7 @@ impl ChordVoice {
         self.patterns.iter().flat_map(|p| &p.hits).any(|h| {
             (h.probability > 0.0 && h.probability < 1.0)
                 || (h.probability > 0.0
-                    && h.stroke != Stroke::Block
+                    && h.stroke != AttackDirection::Block
                     && self
                         .strum
                         .as_ref()
@@ -208,7 +208,7 @@ impl ChordVoice {
     }
 }
 
-impl Strum {
+impl Spread {
     fn validate(&self, strings: u8) -> Result<(), ProfileError> {
         let field = "accompaniment.chords.strum";
         for (name, value, low, high) in [
@@ -419,7 +419,7 @@ fn validate_doubling(
     )
 }
 
-impl TradHarmonyParams {
+impl AccompanimentParams {
     pub(crate) fn validate_accompaniment(
         &self,
         steps: usize,
@@ -629,7 +629,7 @@ impl TradHarmonyParams {
                     && c.patterns
                         .iter()
                         .flat_map(|p| &p.hits)
-                        .all(|h| h.probability == 1.0 && h.stroke == Stroke::Block)),
+                        .all(|h| h.probability == 1.0 && h.stroke == AttackDirection::Block)),
             "accompaniment.chords",
             "les gestes de cordes demandent l'harmonie trad_functional",
         )?;

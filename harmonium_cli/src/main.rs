@@ -149,7 +149,7 @@ fn main() -> Result<()> {
     }
 
     let sf2_bytes = harmonium::load_soundfont(args.soundfont.as_deref())?;
-    let feet_sf2_bytes = harmonium::load_feet_soundfont(args.feet_soundfont.as_deref())?;
+    let feet_sf2_bytes = harmonium::load_percussion_soundfont(args.feet_soundfont.as_deref())?;
     #[cfg(feature = "odin")]
     let odin_owned = load_odin_presets(args.odin_presets.as_deref())?;
     #[cfg(feature = "odin")]

@@ -4,12 +4,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     events::AudioEvent,
     mapper::GameControls,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{Measure, Playhead},
-    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -37,7 +37,7 @@ fn stream_with_params(
     bars: usize,
 ) -> TestResult<Vec<MeasureSnapshot>> {
     p.validate()?;
-    let mut g = TradGenerator::new(par, TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(par, TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
@@ -206,7 +206,7 @@ fn motifs_reconnaissables_et_second_tour_varie_sans_changer_accompagnement() -> 
 fn liaisons_sans_reattaque_ni_note_orpheline() -> TestResult {
     let p = load()?;
     let signature = p.meter.time_signature;
-    let mut g = TradGenerator::new(params(&p), TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let mut measures: Vec<_> = (1..=96).map(|b| g.generate_measure(b, &mut rng)).collect();
     measures.push(Measure::new(97, signature, 210.0, 24));

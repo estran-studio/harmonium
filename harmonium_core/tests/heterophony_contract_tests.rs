@@ -1,19 +1,19 @@
 //! Contrats V4 exclusivement sur les mesures publiées.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, TuneGenerator},
     heterophony::{Operation, Variation},
     ornaments::{BeatClass, PhraseEnd},
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::{Measure, TrackId},
-    compose::{ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn stream(profile: &StyleProfile, seed: u64, bars: usize, arousal: f32) -> Vec<Measure> {
     profile.validate().unwrap();
-    let mut generator = TradGenerator::new(
+    let mut generator = TuneGenerator::new(
         MusicalParams {
             bpm: profile.meter.default_bpm,
             arousal,
@@ -126,7 +126,7 @@ fn configured_weights_control_octaves_and_weak_note_silences_on_two_hundred_airs
         let mut profile = StyleProfile::default();
         profile.performance = Default::default();
         profile.ornaments = Default::default();
-        profile.arrangement = ReelArrangement::from_start(2, Default::default());
+        profile.arrangement = Arrangement::from_start(2, Default::default());
         let h = profile.heterophony.as_mut().unwrap();
         h.low = 0;
         h.high = 127;
@@ -206,7 +206,7 @@ fn isolated(operation: Operation) -> StyleProfile {
     let mut profile = StyleProfile::default();
     profile.performance = Default::default();
     profile.ornaments = Default::default();
-    profile.arrangement = ReelArrangement::from_start(2, Default::default());
+    profile.arrangement = Arrangement::from_start(2, Default::default());
     let h = profile.heterophony.as_mut().unwrap();
     h.low = 0;
     h.high = 127;

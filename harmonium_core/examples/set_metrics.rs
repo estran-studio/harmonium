@@ -2,9 +2,9 @@
 //! cargo run --release -p harmonium_core --example set_metrics -- sortie.json [graines] [airs]
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{ActiveTune, TuneGenerator},
     params::MusicalParams,
     timeline::TrackId,
-    compose::{ActiveTune, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     intensity: 0.5,
                     ..Default::default()
                 };
-                let mut generator = TradGenerator::new(params, tuning);
+                let mut generator = TuneGenerator::new(params, tuning);
                 let mut rng = ChaCha8Rng::seed_from_u64(seed);
                 let mut tunes: Vec<serde_json::Value> = Vec::new();
                 let mut materials = Vec::new();

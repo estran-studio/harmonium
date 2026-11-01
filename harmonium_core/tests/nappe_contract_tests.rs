@@ -6,11 +6,11 @@
 //! la fixture valse (principe VIII : aucun nom de style dans le code).
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     events::AudioEvent,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -22,7 +22,7 @@ fn load(id: &str) -> StyleProfile {
 
 fn stream(profile: &StyleProfile, params: &MusicalParams, seed: u64, bars: usize) -> Vec<Measure> {
     profile.validate().unwrap();
-    let mut g = TradGenerator::new(params.clone(), TuningParams { profile: profile.clone() });
+    let mut g = TuneGenerator::new(params.clone(), TuningParams { profile: profile.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars).map(|bar| g.generate_measure(bar, &mut rng)).collect()
 }

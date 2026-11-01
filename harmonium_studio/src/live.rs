@@ -22,9 +22,9 @@ use harmonium::{
 };
 use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot,
+    compose::{Section, TunePosition, pitch_class_name},
     events::RecordFormat,
     timeline::{Articulation, TrackId},
-    compose::{Section, TunePosition, pitch_class_name},
 };
 use web_time::Instant;
 

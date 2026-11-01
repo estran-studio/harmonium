@@ -2,7 +2,7 @@ use harmonium_core::events::AudioEvent;
 
 use crate::{
     backend::AudioRenderer,
-    voice_manager::{ChannelRoute, FEET_BANK_OFFSET, VoiceManager},
+    voice_manager::{ChannelRoute, PERCUSSION_BANK_OFFSET, VoiceManager},
 };
 
 /// SoundFont renderer backed by oxisynth, avec voix Odin par piste derrière
@@ -21,7 +21,7 @@ impl SynthBackend {
     /// Build the backend. `sf2_bytes = None` starts without any bank loaded:
     /// the engine renders silence.
     /// `feet_sf2_bytes` charge la banque de pieds en banque
-    /// [`FEET_BANK_OFFSET`] ; le profil décide qui l'emploie
+    /// [`PERCUSSION_BANK_OFFSET`] ; le profil décide qui l'emploie
     /// (`apply_profile_programs`, un seul chemin).
     /// `initial_routing` holds signed bank ids per logical channel
     /// (negative ⇒ bank 0); entries beyond channel 15 are ignored.
@@ -64,10 +64,10 @@ impl SynthBackend {
             percussion_banks.push(128);
         }
         if let Some(bytes) = feet_sf2_bytes {
-            match relocate_font_banks(bytes, FEET_BANK_OFFSET as u16) {
+            match relocate_font_banks(bytes, PERCUSSION_BANK_OFFSET as u16) {
                 Ok(prepared) => {
                     if voice_manager.add_font(0, &prepared) {
-                        percussion_banks.push(FEET_BANK_OFFSET as u16);
+                        percussion_banks.push(PERCUSSION_BANK_OFFSET as u16);
                     }
                 }
                 Err(error) => harmonium_core::log::error(error),
@@ -96,7 +96,7 @@ impl SynthBackend {
     }
 
     /// Banques SF2 portant un kit de percussion jouable (`128` : kit GM de la
-    /// banque principale ; [`FEET_BANK_OFFSET`] : banque de pieds chargée).
+    /// banque principale ; [`PERCUSSION_BANK_OFFSET`] : banque de pieds chargée).
     /// Les profils qui en désignent une autre sont avertis au chargement.
     #[must_use]
     pub fn percussion_banks(&self) -> &[u16] {
@@ -331,14 +331,14 @@ mod tests {
         for channel in [3, 4] {
             let preset = backend.voice_manager.synth.channel_preset(channel).unwrap();
             assert_eq!(preset.name(), "Dedicated feet");
-            assert_eq!(preset.banknum(), FEET_BANK_OFFSET);
+            assert_eq!(preset.banknum(), PERCUSSION_BANK_OFFSET);
             assert_eq!(backend.voice_manager.midi_channel_map[channel as usize], channel);
         }
 
         let mut reference = SynthBackend::new(44100.0, Some(&gm), None, &[0; 5]);
         // Banques de percussion annoncées à l'hôte : celle des pieds chargée,
         // aucune sans elle (le test.sf2 n'a pas de kit GM en banque 128).
-        assert_eq!(backend.percussion_banks(), [FEET_BANK_OFFSET as u16]);
+        assert_eq!(backend.percussion_banks(), [PERCUSSION_BANK_OFFSET as u16]);
         assert!(reference.percussion_banks().is_empty());
         reference.handle_event(AudioEvent::ProgramChange { channel: 1, program: 0 });
         for synth in [&mut backend, &mut reference] {

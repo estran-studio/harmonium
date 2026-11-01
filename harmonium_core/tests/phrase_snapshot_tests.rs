@@ -1,12 +1,12 @@
 //! Couche phrase : probabilités et opérations observées sur le flux public.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, Cell, CellBank, CellRole, ImposedRole, Mode, TuneGenerator},
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     style_profile::{
         DegreeShift, KeyModeWeight, PartReference, ProfileRole, SequenceRole, WeightedRole,
     },
-    compose::{Cell, CellBank, CellRole, ImposedRole, Mode, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -32,7 +32,7 @@ fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
     p.ornaments = Default::default();
-    p.arrangement = ReelArrangement::from_start(2, Default::default());
+    p.arrangement = Arrangement::from_start(2, Default::default());
     p.set = Default::default();
     p.melody.key_modes = vec![KeyModeWeight { key: 2, mode: Mode::Dorian, weight: 1 }];
     p.melody.cells = CellBank {
@@ -87,7 +87,7 @@ fn fixture() -> StyleProfile {
 fn stream(profile: StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
     let mut params = MusicalParams::default();
     params.bpm = profile.meter.default_bpm;
-    let mut generator = TradGenerator::new(params, TuningParams { profile });
+    let mut generator = TuneGenerator::new(params, TuningParams { profile });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -192,7 +192,7 @@ fn distributed_copy_and_tonic_weights_reach_snapshots_on_200_tunes() {
     for profile in with_choices {
         let mut profile = profile.clone();
         profile.performance = Default::default();
-        profile.arrangement = ReelArrangement::from_start(1, Default::default());
+        profile.arrangement = Arrangement::from_start(1, Default::default());
         let mut copies = [0usize; 2];
         let mut tonics = [0usize; 2];
         for seed in 0..200 {

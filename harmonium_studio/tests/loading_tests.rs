@@ -7,7 +7,7 @@ use harmonium_studio::{
         decide, megabytes, parse_buffer_frames, stale_entries,
     },
     manifest::{
-        FEET_BANK_ID, LoadedResources, MAIN_BANK_ID, Manifest, Resource, hashed_file_name,
+        LoadedResources, MAIN_BANK_ID, Manifest, PERCUSSION_BANK_ID, Resource, hashed_file_name,
         sha256_hex,
     },
 };
@@ -21,7 +21,7 @@ fn manifest() -> Manifest {
     Manifest {
         resources: vec![
             resource(MAIN_BANK_ID, "bank.sf2", b"bank", 32_319_396),
-            resource(FEET_BANK_ID, "feet.sf2", b"feet", 154_186),
+            resource(PERCUSSION_BANK_ID, "feet.sf2", b"feet", 154_186),
         ],
     }
 }
@@ -115,7 +115,7 @@ fn each_line_says_where_the_resource_is() {
     assert_eq!(text(&state, 0), "downloading 12.3 / 32.3 MB");
     state.set_status(MAIN_BANK_ID, ResourceStatus::Loaded(Source::Device));
     assert_eq!(text(&state, 0), "on this device");
-    state.set_status(FEET_BANK_ID, ResourceStatus::Failed("HTTP 404".into()));
+    state.set_status(PERCUSSION_BANK_ID, ResourceStatus::Failed("HTTP 404".into()));
     assert!(text(&state, 1).contains("HTTP 404"));
     assert_eq!(megabytes(154_186), "0.2");
 }
@@ -128,7 +128,7 @@ fn progress_is_weighted_by_size_and_needs_no_content_length() {
     let half_of_the_bank = 16_159_698.0 / 32_473_582.0;
     assert!((state.fraction() - half_of_the_bank).abs() < 1e-4);
     state.set_status(MAIN_BANK_ID, ResourceStatus::Loaded(Source::Network));
-    state.set_status(FEET_BANK_ID, ResourceStatus::Loaded(Source::Network));
+    state.set_status(PERCUSSION_BANK_ID, ResourceStatus::Loaded(Source::Network));
     assert!((state.fraction() - 1.0).abs() < 1e-6);
 }
 
@@ -148,7 +148,7 @@ fn a_return_visit_from_the_cache_has_no_notice() {
     let mut state = state_with(&manifest());
     state.cache_working();
     state.set_status(MAIN_BANK_ID, ResourceStatus::Loaded(Source::Device));
-    state.set_status(FEET_BANK_ID, ResourceStatus::Loaded(Source::Device));
+    state.set_status(PERCUSSION_BANK_ID, ResourceStatus::Loaded(Source::Device));
     assert!(state.notices().is_empty());
 }
 

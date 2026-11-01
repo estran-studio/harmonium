@@ -2,7 +2,7 @@
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use super::accomp_profile::{ChordHit, ChordVoice, Stroke};
+use super::accomp_profile::{AttackDirection, ChordHit, ChordVoice};
 use crate::{
     algo::RngCore,
     ornaments::mix,
@@ -23,7 +23,7 @@ pub(crate) fn selected(hit: &ChordHit, seed: u64) -> bool {
 /// Les vélocités écrites précèdent V2 ; un seul RNG de cordes par attaque.
 pub(crate) fn velocities(voice: &ChordVoice, hit: &ChordHit, count: usize, seed: u64) -> [u8; 6] {
     let mut values = [hit.velocity; 6];
-    let Some(strum) = voice.strum.as_ref().filter(|_| hit.stroke != Stroke::Block) else {
+    let Some(strum) = voice.strum.as_ref().filter(|_| hit.stroke != AttackDirection::Block) else {
         return values;
     };
     let mut rng = (strum.velocity_jitter > 0)
@@ -62,12 +62,14 @@ pub(crate) fn apply(measure: &mut Measure, voice: &ChordVoice, hits: &[ChordHit]
             continue;
         };
         let hit = &hits[hit_index];
-        if hit.stroke == Stroke::Block || count < 2 {
+        if hit.stroke == AttackDirection::Block || count < 2 {
             continue;
         }
-        let gap =
-            f64::from(if hit.stroke == Stroke::Up { strum.up_gap_ms } else { strum.down_gap_ms })
-                * tempo_scale;
+        let gap = f64::from(if hit.stroke == AttackDirection::Up {
+            strum.up_gap_ms
+        } else {
+            strum.down_gap_ms
+        }) * tempo_scale;
         if gap == 0.0 {
             continue;
         }

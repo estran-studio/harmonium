@@ -18,7 +18,7 @@ pub const MANIFEST_FILE: &str = "assets.json";
 /// Rôle de la banque principale (obligatoire).
 pub const MAIN_BANK_ID: &str = "main-bank";
 /// Rôle de la banque de pieds (facultative : sans elle, les pieds jouent le kit GM du canal 9).
-pub const FEET_BANK_ID: &str = "feet-bank";
+pub const PERCUSSION_BANK_ID: &str = "feet-bank";
 /// Préfixe du rôle d'un preset Odin : `odin:<nom court>`, le nom étant celui que les profils
 /// désignent (`[odin.<piste>]`).
 pub const ODIN_ID_PREFIX: &str = "odin:";
@@ -48,7 +48,7 @@ impl Resource {
     pub fn role(&self) -> Option<Role<'_>> {
         match self.id.as_str() {
             MAIN_BANK_ID => Some(Role::MainBank),
-            FEET_BANK_ID => Some(Role::FeetBank),
+            PERCUSSION_BANK_ID => Some(Role::FeetBank),
             id => id
                 .strip_prefix(ODIN_ID_PREFIX)
                 .filter(|name| !name.is_empty())

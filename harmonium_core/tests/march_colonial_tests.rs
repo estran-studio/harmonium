@@ -14,10 +14,10 @@
 
 use harmonium_core::{
     StyleProfile,
+    compose::{Part, TuneGenerator},
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::TrackId,
-    compose::{Part, TradGenerator},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -46,7 +46,7 @@ fn march_params() -> MusicalParams {
     params
 }
 fn generate_snapshots(seed: u64, bars: usize, params: MusicalParams) -> Vec<MeasureSnapshot> {
-    let mut generator = TradGenerator::new(params, march_tuning());
+    let mut generator = TuneGenerator::new(params, march_tuning());
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))

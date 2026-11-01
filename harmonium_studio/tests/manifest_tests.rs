@@ -7,7 +7,7 @@ use std::{collections::BTreeMap, fs};
 
 use harmonium_studio::{
     manifest::{
-        FEET_BANK_ID, HASH_IN_NAME, LoadedResources, MAIN_BANK_ID, MANIFEST_FILE, Manifest,
+        HASH_IN_NAME, LoadedResources, MAIN_BANK_ID, MANIFEST_FILE, Manifest, PERCUSSION_BANK_ID,
         Resource, Role, hashed_file_name, sha256_hex,
     },
     packager::{PackSpec, pack},
@@ -71,7 +71,7 @@ fn a_manifest_with_no_odin_preset_is_normal() {
 
 #[test]
 fn resources_are_sorted_into_their_roles() {
-    let feet = resource(FEET_BANK_ID, &hashed("feet.sf2", b"f"), 1, b"f");
+    let feet = resource(PERCUSSION_BANK_ID, &hashed("feet.sf2", b"f"), 1, b"f");
     let b = resource("odin:b", &hashed("b.odin", b"b"), 1, b"b");
     let a = resource("odin:a", &hashed("a.odin", b"a"), 1, b"a");
     let manifest = Manifest { resources: vec![b, main_bank(b"bank"), feet, a] };
@@ -79,7 +79,7 @@ fn resources_are_sorted_into_their_roles() {
         ("odin:a".to_owned(), b"a".to_vec()),
         ("odin:b".to_owned(), b"b".to_vec()),
         (MAIN_BANK_ID.to_owned(), b"bank".to_vec()),
-        (FEET_BANK_ID.to_owned(), b"f".to_vec()),
+        (PERCUSSION_BANK_ID.to_owned(), b"f".to_vec()),
     ]);
     let loaded = LoadedResources::assemble(&manifest, contents).unwrap();
     assert_eq!(loaded.feet_bank.as_deref(), Some(&b"f"[..]));

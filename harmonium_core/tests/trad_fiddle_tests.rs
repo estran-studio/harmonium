@@ -6,17 +6,17 @@
 use std::path::PathBuf;
 
 use harmonium_core::{
-    timeline::{Measure, ScoreTimeline, TimelineNote, TrackId, write_midi},
     compose::{
-        CellBank, FIFTH_SEMITONES, FiddleLine, ImposedRole, TunePlan, same_cell_up_to_octave, set,
+        CellBank, FIFTH_SEMITONES, ImposedRole, MelodyLine, TunePlan, same_cell_up_to_octave, set,
     },
+    timeline::{Measure, ScoreTimeline, TimelineNote, TrackId, write_midi},
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 const NUM_SEEDS: u64 = 20;
 
-fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNote>>) {
+fn generate_melody_tune(seed: u64) -> (TunePlan, MelodyLine, Vec<Vec<TimelineNote>>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let bank = CellBank::default();
     let mut profile = harmonium_core::StyleProfile::default();
@@ -38,7 +38,7 @@ fn generate_fiddle_tune(seed: u64) -> (TunePlan, FiddleLine, Vec<Vec<TimelineNot
     let candidates = set::candidates(&profile, profile.dynamics.neutral_valence);
     let (key, mode) = profile.set.choose(None, &candidates, false, rng.gen_range(0..1_000_000));
     let plan = TunePlan::with_profile(key, mode, std::sync::Arc::new(profile));
-    let line = FiddleLine::new(plan.clone(), &bank, &mut rng);
+    let line = MelodyLine::new(plan.clone(), &bank, &mut rng);
     let tune = line.render_tune();
     (plan, line, tune)
 }
@@ -66,7 +66,7 @@ fn cadence_degree_bar8(plan: &TunePlan, notes: &[TimelineNote]) -> Option<u8> {
 #[test]
 fn acceptance_1_form_repeats_and_strain_passes_identical_20_seeds() {
     for seed in 0..NUM_SEEDS {
-        let (_, _, tune) = generate_fiddle_tune(seed);
+        let (_, _, tune) = generate_melody_tune(seed);
         assert_eq!(tune.len(), 32, "seed {seed}: un tune AABB doit compter 32 mesures");
 
         // Strain A : passe 1 (0..8) == passe 2 (8..16)
@@ -112,7 +112,7 @@ fn acceptance_1_form_repeats_and_strain_passes_identical_20_seeds() {
 #[test]
 fn acceptance_2_half_and_full_cadences_20_seeds() {
     for seed in 0..NUM_SEEDS {
-        let (plan, _, tune) = generate_fiddle_tune(seed);
+        let (plan, _, tune) = generate_melody_tune(seed);
 
         for section_start in [0usize, 8, 16, 24] {
             // Mesure 4 de la strain (indice section_start + 3)
@@ -142,7 +142,7 @@ fn acceptance_2_half_and_full_cadences_20_seeds() {
 #[test]
 fn acceptance_3_tessitura_and_diatonic_mode_20_seeds() {
     for seed in 0..NUM_SEEDS {
-        let (plan, _, tune) = generate_fiddle_tune(seed);
+        let (plan, _, tune) = generate_melody_tune(seed);
 
         for (bar_idx, bar_notes) in tune.iter().enumerate() {
             assert!(!bar_notes.is_empty(), "seed {seed} bar {bar_idx}: mesure vide");
@@ -172,7 +172,7 @@ fn acceptance_4_inter_bar_continuity_at_least_95_percent_20_seeds() {
     let mut within_fifth_transitions = 0usize;
 
     for seed in 0..NUM_SEEDS {
-        let (_, _, tune) = generate_fiddle_tune(seed);
+        let (_, _, tune) = generate_melody_tune(seed);
         let mut seed_transitions = 0usize;
         let mut seed_within_fifth = 0usize;
 
@@ -214,7 +214,7 @@ fn acceptance_4_inter_bar_continuity_at_least_95_percent_20_seeds() {
 fn acceptance_5_strain_b_lift_contrast_0_to_4_semitones_20_seeds() {
     let mut total_b_minus_a = 0.0;
     for seed in 0..NUM_SEEDS {
-        let (_, _, tune) = generate_fiddle_tune(seed);
+        let (_, _, tune) = generate_melody_tune(seed);
 
         let a_pitches: Vec<f64> =
             tune[0..16].iter().flat_map(|bar| bar.iter().map(|n| f64::from(n.pitch))).collect();
@@ -237,15 +237,15 @@ fn acceptance_5_strain_b_lift_contrast_0_to_4_semitones_20_seeds() {
 #[test]
 fn acceptance_6_determinism_and_seed_diversity() {
     for seed in 0..NUM_SEEDS {
-        let (plan_1, _, tune_1) = generate_fiddle_tune(seed);
-        let (plan_2, _, tune_2) = generate_fiddle_tune(seed);
+        let (plan_1, _, tune_1) = generate_melody_tune(seed);
+        let (plan_2, _, tune_2) = generate_melody_tune(seed);
         assert_eq!(plan_1, plan_2, "seed {seed}: plans non déterministes");
         assert_eq!(tune_1, tune_2, "seed {seed}: notes non déterministes");
     }
 
     for seed in 0..(NUM_SEEDS - 1) {
-        let (_, _, tune_a) = generate_fiddle_tune(seed);
-        let (_, _, tune_b) = generate_fiddle_tune(seed + 1);
+        let (_, _, tune_a) = generate_melody_tune(seed);
+        let (_, _, tune_b) = generate_melody_tune(seed + 1);
         assert_ne!(
             tune_a,
             tune_b,
@@ -261,7 +261,7 @@ fn acceptance_6_determinism_and_seed_diversity() {
 #[test]
 fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
     for seed in (0..NUM_SEEDS).chain(std::iter::once(42)) {
-        let (plan, line, tune) = generate_fiddle_tune(seed);
+        let (plan, line, tune) = generate_melody_tune(seed);
         for bar in 0..plan.total_bars() {
             let role = plan.bar_role(bar);
             if matches!(role.role, ImposedRole::Free) && bar > 0 {
@@ -292,7 +292,7 @@ fn acceptance_7_free_bars_never_repeat_previous_bar_cell_20_seeds() {
 #[test]
 #[ignore = "écrit un fichier MIDI de démonstration dans target/ pour écoute manuelle"]
 fn export_fiddle_tune_to_midi_for_listening() {
-    let (plan, _, tune) = generate_fiddle_tune(42);
+    let (plan, _, tune) = generate_melody_tune(42);
     let mut timeline = ScoreTimeline::new(64);
     let time_sig = plan.profile.meter.time_signature;
     let steps = plan.profile.meter.steps_per_bar;

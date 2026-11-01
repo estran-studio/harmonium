@@ -2,12 +2,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    style_profile::StyleProfile,
     compose::{
         CellRole,
         accomp_profile::{BassVoice, ChordVoice},
         harmony::ChordDegree,
     },
+    style_profile::StyleProfile,
 };
 
 /// Version du contrat : seconde voix mélodique hétérophonique (V4).
@@ -15,7 +15,7 @@ pub const TUNING_VERSION: u32 = 21;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ReelFiddleParams {
+pub struct MelodyParams {
     pub weight_role_run: u32,
     pub weight_role_arp: u32,
     pub weight_role_turn: u32,
@@ -30,12 +30,12 @@ pub struct ReelFiddleParams {
     pub strong_eighth_velocity_offset: i8,
     pub even_eighth_velocity_offset: i8,
 }
-impl Default for ReelFiddleParams {
+impl Default for MelodyParams {
     fn default() -> Self {
         StyleProfile::default().melody.params
     }
 }
-impl ReelFiddleParams {
+impl MelodyParams {
     /// Poids des rôles de cellule libres, tirés par `Free`, `CadOpen` et `CadOther`.
     /// Un poids nul retire le rôle du tirage : sa banque n'est pas exigée.
     #[must_use]
@@ -51,7 +51,7 @@ impl ReelFiddleParams {
 /// Harmonisation, tessitures et motifs d'accompagnement du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct TradHarmonyParams {
+pub struct AccompanimentParams {
     pub strong_steps: Vec<usize>,
     pub strong_weight: u32,
     pub weak_weight: u32,
@@ -59,7 +59,7 @@ pub struct TradHarmonyParams {
     pub bass: BassVoice,
     pub chords: ChordVoice,
 }
-impl Default for TradHarmonyParams {
+impl Default for AccompanimentParams {
     fn default() -> Self {
         match StyleProfile::default().accompaniment {
             Some(a) => a,

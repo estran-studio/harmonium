@@ -3,10 +3,10 @@
 
 use harmonium::audio::create_offline_engine;
 use harmonium_core::{
+    compose::{Arrangement, TunePlan},
     params::PulseSpec,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    compose::{ReelArrangement, TunePlan},
     tuning::TuningParams,
 };
 
@@ -19,7 +19,7 @@ fn flat_tuning() -> TuningParams {
     TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p.arrangement = Arrangement::from_start(1, Default::default());
             p.performance = Default::default();
             p.ornaments = Default::default();
             p.heterophony = None;

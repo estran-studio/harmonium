@@ -2,7 +2,7 @@
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
     StyleProfile,
-    compose::{IntroConfig, Part, ReelArrangement},
+    compose::{Arrangement, IntroConfig, Part},
 };
 
 #[test]
@@ -31,7 +31,7 @@ fn larger_profile_grid_plays_every_step_and_predicts_long_pulses() -> Result<(),
         for hit in profile.percussion.patterns.iter_mut().flat_map(|p| &mut p.hits) {
             hit.step *= 2;
         }
-        profile.arrangement = ReelArrangement::from_start(1, Part(profile.form.sequence[0]));
+        profile.arrangement = Arrangement::from_start(1, Part(profile.form.sequence[0]));
         profile.arrangement.intro = IntroConfig::none();
         let meter = profile.meter.clone();
         // Pulse exacte du plan (pas par noire doublés : 8), arrondie à la frame.

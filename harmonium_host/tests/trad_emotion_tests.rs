@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
-    report::MeasureSnapshot, timeline::TrackId, compose::ReelArrangement, tuning::TuningParams,
+    compose::Arrangement, report::MeasureSnapshot, timeline::TrackId, tuning::TuningParams,
 };
 
 fn melody(snapshot: &MeasureSnapshot) -> Vec<(usize, u8)> {
@@ -35,7 +35,7 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         composer.set_tuning(TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
-                p.arrangement = ReelArrangement::from_start(3, Default::default());
+                p.arrangement = Arrangement::from_start(3, Default::default());
                 p
             },
             ..Default::default()

@@ -3,9 +3,9 @@ use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
+    compose::{Arrangement, Mode},
     ornaments::OrnamentKind,
     timeline::TrackId,
-    compose::{Mode, ReelArrangement},
     tuning::TuningParams,
 };
 
@@ -18,7 +18,7 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
     composer.set_tuning(TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(3, Default::default());
+            p.arrangement = Arrangement::from_start(3, Default::default());
             p.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
             p
         },

@@ -13,13 +13,13 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
+    compose::{BarRole, TuneGenerator, TunePlan},
     host_resources::{HostResources, MissingResource},
     log,
     odin::OdinPatches,
     params::{MusicalParams, SessionConfig, TimeSignature},
     time_plan::score::session_rng,
     timeline::Writehead,
-    compose::{BarRole, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -40,7 +40,7 @@ pub struct MusicComposer {
     pub config: SessionConfig,
 
     // Generation
-    generator: TradGenerator,
+    generator: TuneGenerator,
     writehead: Writehead,
     // Handoff: staged measures (composer → playback) and returned boxes
     // (playback → composer). The timeline is the source of truth; `published`
@@ -139,7 +139,7 @@ impl MusicComposer {
             "MusicComposer - Session: profil {} | BPM: {:.1}",
             musical_params.profile_id, bpm
         ));
-        let generator = TradGenerator::new(musical_params.clone(), tuning);
+        let generator = TuneGenerator::new(musical_params.clone(), tuning);
 
         let writehead = Writehead::new(sample_rate, 4);
 

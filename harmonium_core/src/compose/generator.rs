@@ -9,13 +9,13 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 use super::{
-    accomp::{BassMotifPlan, Guitarist, bass_bar, bass_motif_bar, first_bass_target},
+    accomp::{BassMotifPlan, ChordPlayer, bass_bar, bass_motif_bar, first_bass_target},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     cells::Cell,
-    feet::{FeetPatternPlan, draw_feet_humanize, feet_notes},
-    fiddle::{FiddleLine, same_cell_up_to_octave, tonic_midi_for_key},
-    harmony::{ChordDegree, ChordQuality, TradChord, TuneHarmony},
+    harmony::{ChordDegree, ChordQuality, DegreeChord, TuneHarmony},
+    melody::{MelodyLine, same_cell_up_to_octave, tonic_midi_for_key},
     mode::Mode,
+    percussion::{PercussionPatternPlan, draw_percussion_humanize, percussion_notes},
     plan::{BarRole, ImposedRole, TunePlan},
     set::{KEY_DRAW_RANGE, SetPlan, TransitionKind, candidates},
 };
@@ -24,7 +24,7 @@ use crate::{
     models::{
         HarmonyPlan,
         chord_loop::LoopHarmony,
-        jazz::{GrammarStyle, SteedmanGrammar},
+        rewrite::{GrammarStyle, SteedmanGrammar},
     },
     ornaments::BarContext,
     params::MusicalParams,
@@ -33,14 +33,14 @@ use crate::{
         Articulation, ChordChange, ChordContext, Measure, NoteId, StateSnapshot, TimelineNote,
         TrackId,
     },
-    tuning::{ReelFiddleParams, TuningParams},
+    tuning::{MelodyParams, TuningParams},
 };
 
 // ---------------------------------------------------------------------------
 // ActiveTune
 // ---------------------------------------------------------------------------
 
-/// État d'un air généré par [`TradGenerator`] (rejoué `tours_per_tune` tours).
+/// État d'un air généré par [`TuneGenerator`] (rejoué `tours_per_tune` tours).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActiveTune {
     /// Indice 0-based de l'air dans la session.
@@ -48,13 +48,13 @@ pub struct ActiveTune {
     /// Plan structurel du tune (tonalité, mode, type, schéma AABB).
     pub plan: TunePlan,
     /// Matériel mélodique des parties, passes et tours configurés.
-    pub fiddle: FiddleLine,
+    pub fiddle: MelodyLine,
     /// Modèle harmonique sélectionné par le profil, précalculé par mesure.
     pub harmony: HarmonyPlan,
     /// Plan motivique de la basse pour cet air (vide si la basse utilise `hits`).
     bass_plan: BassMotifPlan,
     /// Alternatives de percussion fixées par partie et densité pour cet air.
-    feet_plan: FeetPatternPlan,
+    feet_plan: PercussionPatternPlan,
     /// Décalages d'humanisation des vélocités des pieds, par mesure unique de
     /// chaque partie ; les reprises et les tours relisent les mêmes décalages.
     pub feet_humanize: Vec<Vec<i8>>,
@@ -89,12 +89,12 @@ impl ActiveTune {
 }
 
 // ---------------------------------------------------------------------------
-// TradGenerator
+// TuneGenerator
 // ---------------------------------------------------------------------------
 
 /// Générateur de mesures piloté par le profil actif.
 #[derive(Clone, Debug)]
-pub struct TradGenerator {
+pub struct TuneGenerator {
     /// Paramètres musicaux courants (tempo, swing, densité des pieds, activations).
     pub musical_params: MusicalParams,
     /// Paramètres de style et banques de données (cellules, podorythmie, harmonie).
@@ -112,8 +112,8 @@ pub struct TradGenerator {
     ending_tune: Option<usize>,
 }
 
-impl TradGenerator {
-    /// Construit un nouveau [`TradGenerator`] avec les paramètres et le tuning donnés.
+impl TuneGenerator {
+    /// Construit un nouveau [`TuneGenerator`] avec les paramètres et le tuning donnés.
     #[must_use]
     pub fn new(musical_params: MusicalParams, tuning: TuningParams) -> Self {
         let ending_tune = musical_params.end_after_tour.then_some(0);
@@ -504,7 +504,12 @@ impl TradGenerator {
             };
             let seed =
                 crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
-            super::strum::apply(&mut measure, &a.chords, &a.chords.pattern(offset).hits, seed);
+            super::chord_spread::apply(
+                &mut measure,
+                &a.chords,
+                &a.chords.pattern(offset).hits,
+                seed,
+            );
         }
         if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
@@ -684,14 +689,14 @@ impl TradGenerator {
         if tune.plan.mode != mode {
             tune.plan.mode = mode;
             tune.fiddle.set_mode(mode);
-            if matches!(tune.harmony, HarmonyPlan::TradFunctional(_)) {
+            if matches!(tune.harmony, HarmonyPlan::MelodyFunctional(_)) {
                 let melody: Vec<_> = (0..tune.plan.material_bars())
                     .map(|i| tune.fiddle.notes_for_bar(tune.plan.representative_bar(i)))
                     .collect();
                 if let Some(accompaniment) = &self.tuning.profile.accompaniment
                     && let Ok(h) = TuneHarmony::new(tune.plan.clone(), &melody, accompaniment)
                 {
-                    tune.harmony = HarmonyPlan::TradFunctional(h);
+                    tune.harmony = HarmonyPlan::MelodyFunctional(h);
                 }
             }
             if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
@@ -753,8 +758,12 @@ impl TradGenerator {
                         self.feet_density(self.effective_intensity(position.tune_index)),
                         false,
                     );
-                    let (heel_notes, toe_notes) =
-                        feet_notes(&tuning.profile.percussion, pattern, steps, &zero_humanize);
+                    let (heel_notes, toe_notes) = percussion_notes(
+                        &tuning.profile.percussion,
+                        pattern,
+                        steps,
+                        &zero_humanize,
+                    );
                     if heel_wanted {
                         for mut note in heel_notes {
                             note.id = self.alloc_note_id();
@@ -786,7 +795,8 @@ impl TradGenerator {
             Some(IntroRole::Vamp) => {
                 // Vamp : l'accompagnement joue sur la tonique.
                 if self.track_active_in_intro(TrackId::Chords, intro) {
-                    let tonic = TradChord { degree: ChordDegree::I, quality: ChordQuality::Major };
+                    let tonic =
+                        DegreeChord { degree: ChordDegree::I, quality: ChordQuality::Major };
                     let chords = vec![tonic; steps / self.profile.harmony.steps_per_chord];
                     let seed = crate::ornaments::mix(
                         tune.material_seed,
@@ -799,8 +809,8 @@ impl TradGenerator {
                         id
                     };
                     if let Some(accompaniment) = &tuning.profile.accompaniment {
-                        let mut guitarist = Guitarist::new();
-                        for note in guitarist.chop_bar(
+                        let mut chord_player = ChordPlayer::new();
+                        for note in chord_player.chord_bar(
                             &chords,
                             plan.key,
                             plan.mode,
@@ -875,7 +885,7 @@ impl TradGenerator {
         position: &TunePosition,
         measure: &mut Measure,
     ) {
-        if let HarmonyPlan::JazzFunctional(bars) = &tune.harmony {
+        if let HarmonyPlan::RewriteFunctional(bars) = &tune.harmony {
             let slot = tune.plan.material_index(self.performed_bar(position));
             self.fill_jazz_measure(tune, position, &bars[slot], measure);
             self.fill_percussion(tune, position, measure);
@@ -919,7 +929,7 @@ impl TradGenerator {
 
         // 2. Accompagnement (guitare chop + basse, D8)
         if self.track_active(TrackId::Chords, position) {
-            for note in self.chop_notes_for_bar(tune, bar_in_tour) {
+            for note in self.chord_notes_for_bar(tune, bar_in_tour) {
                 measure.add_note(TrackId::Chords, note);
             }
         }
@@ -1046,7 +1056,7 @@ impl TradGenerator {
         tune: &ActiveTune,
         position: &TunePosition,
     ) {
-        if !matches!(tune.harmony, HarmonyPlan::JazzFunctional(_) | HarmonyPlan::Loop(_)) {
+        if !matches!(tune.harmony, HarmonyPlan::RewriteFunctional(_) | HarmonyPlan::Loop(_)) {
             return;
         }
         if measure.chord_changes.is_empty() {
@@ -1068,7 +1078,7 @@ impl TradGenerator {
                     measure.chord_changes.get(slot + 1).map_or(measure.steps, |c| c.start_step);
                 let mut segment = note.clone();
                 segment.pitch = match &tune.harmony {
-                    HarmonyPlan::JazzFunctional(bars) => {
+                    HarmonyPlan::RewriteFunctional(bars) => {
                         let chord = &bars[bar][slot];
                         let scale = change
                             .context
@@ -1136,7 +1146,7 @@ impl TradGenerator {
                 is_cadence,
             );
             let (heel_notes, toe_notes) =
-                feet_notes(&self.tuning.profile.percussion, pattern, measure.steps, humanize);
+                percussion_notes(&self.tuning.profile.percussion, pattern, measure.steps, humanize);
             if heel_active {
                 for mut note in heel_notes {
                     note.id = self.alloc_note_id();
@@ -1252,11 +1262,11 @@ impl TradGenerator {
 
     /// Variation harmonique de l'accompagnement uniquement : cadences et
     /// squelette mélodique restent ceux de l'air.
-    fn chords_for_bar<'a>(&self, tune: &'a ActiveTune, bar: usize) -> Cow<'a, [TradChord]> {
+    fn chords_for_bar<'a>(&self, tune: &'a ActiveTune, bar: usize) -> Cow<'a, [DegreeChord]> {
         if let HarmonyPlan::Loop(harmony) = &tune.harmony {
             return Cow::Borrowed(harmony.chords_for_bar(bar));
         }
-        let HarmonyPlan::TradFunctional(harmony) = &tune.harmony else {
+        let HarmonyPlan::MelodyFunctional(harmony) = &tune.harmony else {
             unreachable!("traditional voicing requires traditional harmony")
         };
         let mut chords = Cow::Borrowed(harmony.chords_for_bar(bar));
@@ -1402,10 +1412,10 @@ impl TradGenerator {
         bar
     }
 
-    /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`Guitarist`]
+    /// Calcule les chops de guitare de `bar_in_tour` en rejouant le [`ChordPlayer`]
     /// depuis le début de la passe courante, sans hypothèse de longueur ;
     /// le matériel rejoué reste stable après invalidation émotionnelle.
-    fn chop_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
+    fn chord_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
         let strain_pass_start = bar_in_tour - offset;
         let Some(harmony) = self.tuning.profile.accompaniment.as_ref() else {
@@ -1415,10 +1425,10 @@ impl TradGenerator {
         let chop_offset = d.chop_intensity.eval(self.effective_intensity(tune.tune_index))
             + d.density_chop.eval(self.musical_params.rhythm_density);
         let hits = &harmony.chords.pattern(chop_offset).hits;
-        let mut guitarist = Guitarist::new();
+        let mut chord_player = ChordPlayer::new();
         for b in strain_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
-            guitarist.advance_bar(
+            chord_player.advance_bar(
                 &c,
                 tune.plan.key,
                 tune.plan.mode,
@@ -1435,7 +1445,7 @@ impl TradGenerator {
             *next_note_id += 1;
             id
         };
-        guitarist.chop_bar_on_hits(
+        chord_player.chord_bar_on_hits(
             &chords,
             tune.plan.key,
             tune.plan.mode,
@@ -1514,7 +1524,7 @@ impl TradGenerator {
         eligible.into_iter().nth((u / rate * count as f64) as usize)
     }
 
-    /// Construit un [`ActiveTune`] complet (`TunePlan` + `FiddleLine` + `TuneHarmony` + intro).
+    /// Construit un [`ActiveTune`] complet (`TunePlan` + `MelodyLine` + `TuneHarmony` + intro).
     ///
     /// Règle P1-T7 : deux tunes consécutifs ne commencent pas par la même
     /// cellule (à une transposition d'octave près) ; en cas de collision, la
@@ -1573,7 +1583,7 @@ impl TradGenerator {
             .round()
             .clamp(f32::from(fiddle_params.tessitura_min), f32::from(fiddle_params.tessitura_max))
                 as u8;
-            let mut fiddle = FiddleLine::with_params(
+            let mut fiddle = MelodyLine::with_params(
                 plan.clone(),
                 &self.tuning.profile.melody.cells,
                 &fiddle_params,
@@ -1584,7 +1594,7 @@ impl TradGenerator {
                     if !same_cell_up_to_octave(fiddle.cell_for_bar(0), &prev_first) {
                         break;
                     }
-                    fiddle = FiddleLine::with_params(
+                    fiddle = MelodyLine::with_params(
                         plan.clone(),
                         &self.tuning.profile.melody.cells,
                         &fiddle_params,
@@ -1612,7 +1622,7 @@ impl TradGenerator {
                         .collect()
                 })
                 .collect();
-            HarmonyPlan::JazzFunctional(bars)
+            HarmonyPlan::RewriteFunctional(bars)
         } else if let Some(harmony) = loop_harmony {
             HarmonyPlan::Loop(harmony)
         } else if self.profile.harmony.model == "none" {
@@ -1622,14 +1632,14 @@ impl TradGenerator {
                 .map(|i| fiddle.notes_for_bar(plan.representative_bar(i)))
                 .collect();
             match TuneHarmony::new(plan.clone(), &distinct_melody, accompaniment) {
-                Ok(h) => HarmonyPlan::TradFunctional(h),
+                Ok(h) => HarmonyPlan::MelodyFunctional(h),
                 Err(_) => HarmonyPlan::None,
             }
         } else {
             HarmonyPlan::None
         };
-        let feet_plan = FeetPatternPlan::new(&plan, &self.profile.percussion, variant_seed);
-        let feet_humanize = draw_feet_humanize(
+        let feet_plan = PercussionPatternPlan::new(&plan, &self.profile.percussion, variant_seed);
+        let feet_humanize = draw_percussion_humanize(
             self.tuning.profile.percussion.velocity_humanize,
             self.profile.form.unique_bars(),
             self.profile.meter.steps_per_bar,
@@ -1752,7 +1762,7 @@ impl TradGenerator {
         &self,
         tune_index: usize,
         plan: &TunePlan,
-        fiddle: &FiddleLine,
+        fiddle: &MelodyLine,
         rng: &mut dyn RngCore,
     ) -> IntroInfo {
         let intro_config = &self.tuning.profile.arrangement.intro;
@@ -1845,7 +1855,7 @@ fn draw_intro_form(config: &IntroConfig, rng: &mut dyn RngCore) -> Option<IntroR
 ///
 /// Lue depuis la ligne rendue (première mesure), sans supposer la forme de
 /// l'air : c'est la note d'arrivée de la levée.
-fn first_melody_note_midi(fiddle: &FiddleLine, plan: &TunePlan, params: &ReelFiddleParams) -> u8 {
+fn first_melody_note_midi(fiddle: &MelodyLine, plan: &TunePlan, params: &MelodyParams) -> u8 {
     let tonic = tonic_midi_for_key(plan.key, params.tonic_midi_min, params.tonic_midi_max);
     if let Some(first) = fiddle.notes_for_bar(0).first() {
         return first.pitch;
@@ -1918,9 +1928,9 @@ pub const fn pitch_class_name(pc: PitchClass) -> &'static str {
     }
 }
 
-/// Nom lisible d'un [`TradChord`] dans une tonalité et un mode donnés (ex. `"D"`, `"A"`, `"Bm"`).
+/// Nom lisible d'un [`DegreeChord`] dans une tonalité et un mode donnés (ex. `"D"`, `"A"`, `"Bm"`).
 #[must_use]
-pub fn trad_chord_name(chord: TradChord, key: PitchClass, mode: Mode) -> String {
+pub fn degree_chord_name(chord: DegreeChord, key: PitchClass, mode: Mode) -> String {
     let root = pitch_class_name(chord.root_pc(key, mode));
     match chord.quality {
         ChordQuality::Major => root.to_string(),
@@ -1932,18 +1942,18 @@ pub fn trad_chord_name(chord: TradChord, key: PitchClass, mode: Mode) -> String 
 
 /// Construit le [`ChordContext`] d'une mesure à partir de l'accord de sa première demi-mesure.
 #[must_use]
-pub fn build_chord_context(chord: TradChord, key: PitchClass, mode: Mode) -> ChordContext {
+pub fn build_chord_context(chord: DegreeChord, key: PitchClass, mode: Mode) -> ChordContext {
     ChordContext {
         root_offset: i32::from(chord.root_semitones(mode)),
         is_minor: matches!(chord.quality, ChordQuality::Minor),
-        chord_name: trad_chord_name(chord, key, mode),
+        chord_name: degree_chord_name(chord, key, mode),
         scale_guidance: None,
     }
 }
 
 /// Degré de l'accord tonique pour les assertions de tests.
 #[must_use]
-pub const fn is_tonic_chord(chord: TradChord) -> bool {
+pub const fn is_tonic_chord(chord: DegreeChord) -> bool {
     matches!(chord.degree, ChordDegree::I)
 }
 
@@ -1968,8 +1978,8 @@ mod tests {
 
     use super::*;
     use crate::{
+        compose::{Arrangement, Section},
         params::{PulseSpec, TimeSignature},
-        compose::{ReelArrangement, Section},
     };
 
     fn make_reel_params() -> MusicalParams {
@@ -1985,7 +1995,7 @@ mod tests {
         TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
-                p.arrangement = ReelArrangement::from_start(3, Default::default());
+                p.arrangement = Arrangement::from_start(3, Default::default());
                 p
             },
             ..TuningParams::default()
@@ -1997,9 +2007,9 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         let params = make_reel_params();
         let tuning = make_reel_tuning_flat();
-        let mut trad_gen = TradGenerator::new(params, tuning);
+        let mut tune_gen = TuneGenerator::new(params, tuning);
 
-        let m1 = trad_gen.generate_measure(1, &mut rng);
+        let m1 = tune_gen.generate_measure(1, &mut rng);
         assert_eq!(m1.index, 1);
         assert_eq!(m1.time_signature, TimeSignature::new(2, 2));
         assert_eq!(m1.steps, 16);
@@ -2013,10 +2023,10 @@ mod tests {
     fn intro_position_is_exposed() {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         let params = make_reel_params();
-        let mut trad_gen = TradGenerator::new(params, TuningParams::default());
+        let mut tune_gen = TuneGenerator::new(params, TuningParams::default());
 
         // La config par défaut a une intro avec `each_tune = false`
-        let m1 = trad_gen.generate_measure(1, &mut rng);
+        let m1 = tune_gen.generate_measure(1, &mut rng);
         let pos = m1.position.unwrap();
         assert!(pos.is_intro(), "la mesure 1 devrait être une intro");
         assert_eq!(pos.section, Section::Intro);
@@ -2033,7 +2043,7 @@ mod tests {
         // 1. Sans intro : générer les 32 mesures du tune 0
         let mut rng_flat = ChaCha8Rng::seed_from_u64(seed);
         let params = make_reel_params();
-        let mut flat_gen = TradGenerator::new(params.clone(), make_reel_tuning_flat());
+        let mut flat_gen = TuneGenerator::new(params.clone(), make_reel_tuning_flat());
         let flat_notes: Vec<Vec<u8>> = (1..=32)
             .map(|bar| {
                 let m = flat_gen.generate_measure(bar, &mut rng_flat);
@@ -2043,7 +2053,7 @@ mod tests {
 
         // 2. Avec intro : générer intro + 32 mesures, puis comparer les 32 mesures après l'intro
         let mut rng_intro = ChaCha8Rng::seed_from_u64(seed);
-        let mut intro_gen = TradGenerator::new(params, TuningParams::default());
+        let mut intro_gen = TuneGenerator::new(params, TuningParams::default());
 
         // Générer assez pour passer l'intro et couvrir 32 mesures d'air
         for bar in 1..=100 {
@@ -2054,7 +2064,7 @@ mod tests {
 
         // Régénérer depuis le début (même seed) pour la comparaison
         let mut rng_intro2 = ChaCha8Rng::seed_from_u64(seed);
-        let mut intro_gen2 = TradGenerator::new(make_reel_params(), TuningParams::default());
+        let mut intro_gen2 = TuneGenerator::new(make_reel_params(), TuningParams::default());
 
         for tune_bar in 1..=32 {
             let bar = tune_bar + intro_bars;
@@ -2076,18 +2086,18 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let params = make_reel_params();
         let tuning = TuningParams::default(); // each_tune = false par défaut
-        let mut trad_gen = TradGenerator::new(params, tuning);
+        let mut tune_gen = TuneGenerator::new(params, tuning);
 
         // Générer jusqu'au 2ᵉ tune
         for bar in 1..=200 {
-            let m = trad_gen.generate_measure(bar, &mut rng);
+            let m = tune_gen.generate_measure(bar, &mut rng);
             let pos = m.position.unwrap();
             if pos.tune_index == 1 && pos.section == Section::Tour && pos.bar_in_strain == 1 {
                 // La première mesure du 2ᵉ air ne devrait PAS être précédée d'une intro
                 // (seulement une levée si pickup_eighths > 0)
                 // Vérifions que la mesure juste avant est soit la dernière du tune 0,
                 // soit une mesure de levée
-                let prev = trad_gen.generate_measure(bar - 1, &mut ChaCha8Rng::seed_from_u64(7));
+                let prev = tune_gen.generate_measure(bar - 1, &mut ChaCha8Rng::seed_from_u64(7));
                 let prev_pos = prev.position.unwrap();
                 // Soit c'est la dernière mesure du tune 0 (sans end_after_tour)
                 // Soit c'est une mesure d'intro (levée seule)
@@ -2106,21 +2116,21 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(3);
         let params = make_reel_params();
         let tuning = TuningParams::default();
-        let mut trad_gen = TradGenerator::new(params, tuning);
+        let mut tune_gen = TuneGenerator::new(params, tuning);
 
         // Générer assez pour avoir l'intro
         for bar in 1..=50 {
-            let _ = trad_gen.generate_measure(bar, &mut rng);
+            let _ = tune_gen.generate_measure(bar, &mut rng);
         }
 
-        let tune = trad_gen.tunes.get(&0).unwrap();
+        let tune = tune_gen.tunes.get(&0).unwrap();
         let intro = &tune.intro_info;
 
         if !intro.pickup_notes.is_empty() {
             let target = first_melody_note_midi(
                 &tune.fiddle,
                 &tune.plan,
-                &trad_gen.tuning.profile.melody.params,
+                &tune_gen.tuning.profile.melody.params,
             );
             let last_pickup = *intro.pickup_notes.last().unwrap();
 
@@ -2160,8 +2170,8 @@ mod tests {
         let params = make_reel_params();
         let tuning = TuningParams::default();
 
-        let mut gen1 = TradGenerator::new(params.clone(), tuning.clone());
-        let mut gen2 = TradGenerator::new(params, tuning);
+        let mut gen1 = TuneGenerator::new(params.clone(), tuning.clone());
+        let mut gen2 = TuneGenerator::new(params, tuning);
 
         let _ = gen1.generate_measure(1, &mut rng1);
         let _ = gen2.generate_measure(1, &mut rng2);
@@ -2217,10 +2227,10 @@ mod tests {
             let mut rng = ChaCha8Rng::seed_from_u64(seed);
             let params = make_reel_params();
             let tuning = TuningParams::default();
-            let mut trad_gen = TradGenerator::new(params, tuning);
+            let mut tune_gen = TuneGenerator::new(params, tuning);
 
-            let m1 = trad_gen.generate_measure(1, &mut rng);
-            let tune = trad_gen.tunes.get(&0).unwrap();
+            let m1 = tune_gen.generate_measure(1, &mut rng);
+            let tune = tune_gen.tunes.get(&0).unwrap();
             let intro = &tune.intro_info;
 
             match intro.form {

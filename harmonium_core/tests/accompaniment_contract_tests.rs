@@ -1,13 +1,13 @@
 //! Contrats d'accompagnement observés au chargement et sur les mesures publiées.
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, timeline::Measure, compose::TradGenerator,
+    StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams, timeline::Measure,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn stream(profile: &StyleProfile, seed: u64, bars: usize) -> Vec<Measure> {
     profile.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: profile.meter.default_bpm, ..Default::default() },
         TuningParams { profile: profile.clone() },
     );
@@ -55,7 +55,7 @@ fn invalid_voice_fields_are_rejected_at_loading_with_their_path() {
 fn arranged() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.arrangement =
-        harmonium_core::compose::ReelArrangement::from_start(2, harmonium_core::compose::Part(0));
+        harmonium_core::compose::Arrangement::from_start(2, harmonium_core::compose::Part(0));
     p.arrangement.intro = harmonium_core::compose::IntroConfig::none();
     p.set = Default::default();
     p
@@ -155,7 +155,7 @@ fn passing_keeps_neighbour_tracks_and_strong_bass_unchanged() {
 
 #[test]
 fn every_passing_motion_stays_in_window_approaches_target_and_vetoes_melody() {
-    use harmonium_core::{timeline::TrackId, compose::accomp_profile::PassingMotion};
+    use harmonium_core::{compose::accomp_profile::PassingMotion, timeline::TrackId};
     for motion in [PassingMotion::ScaleStep, PassingMotion::ScaleWalk, PassingMotion::Chromatic] {
         let mut p = arranged();
         let bass = &mut p.accompaniment.as_mut().unwrap().bass;
@@ -225,7 +225,7 @@ fn passing_is_deterministic_after_emotional_invalidation() {
     use harmonium_core::{report::MeasureSnapshot, timeline::TrackId};
     let p = arranged();
     let params = MusicalParams { bpm: p.meter.default_bpm, ..Default::default() };
-    let mut g = TradGenerator::new(params, TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params, TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     let before: Vec<_> = (1..=40).map(|bar| g.generate_measure(bar, &mut rng)).collect();
     g.invalidate_future(4);
@@ -250,7 +250,7 @@ fn passing_curves_and_arousal_modulate_the_realized_density() {
     let counts = |density: f32, arousal: f32| -> usize {
         (1..=30)
             .map(|seed| {
-                let mut g = TradGenerator::new(
+                let mut g = TuneGenerator::new(
                     MusicalParams {
                         rhythm_density: density,
                         arousal,
@@ -333,13 +333,13 @@ fn invalid_passing_rules_are_rejected_with_field_paths() {
 }
 
 fn strummed() -> StyleProfile {
-    use harmonium_core::compose::{accomp_profile::Stroke, dynamics::Curve};
+    use harmonium_core::compose::{accomp_profile::AttackDirection, dynamics::Curve};
     let mut p = arranged();
     p.dynamics.chop_intensity = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
     p.dynamics.density_chop = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
     let c = &mut p.accompaniment.as_mut().unwrap().chords;
     c.strings = 6;
-    c.patterns[c.default_pattern].hits[1].stroke = Stroke::Up;
+    c.patterns[c.default_pattern].hits[1].stroke = AttackDirection::Up;
     p
 }
 
@@ -479,12 +479,12 @@ fn strum_composes_with_atomic_v2_attack_and_configurable_anchor() {
 
 #[test]
 fn strum_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
-    use harmonium_core::{performance::TrackPerformance, compose::accomp_profile::Stroke};
+    use harmonium_core::{compose::accomp_profile::AttackDirection, performance::TrackPerformance};
     let mut p = strummed();
     let c = &mut p.accompaniment.as_mut().unwrap().chords;
     c.patterns[c.default_pattern].hits[1].step = 5;
     for hit in &mut c.patterns[c.default_pattern].hits {
-        hit.stroke = Stroke::Down;
+        hit.stroke = AttackDirection::Down;
     }
     let s = c.strum.as_mut().unwrap();
     s.down_gap_ms = 40.0;
@@ -503,7 +503,7 @@ fn strum_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
     );
     let params =
         MusicalParams { bpm: p.meter.default_bpm, harmony_tension: 1.0, ..Default::default() };
-    let mut g = TradGenerator::new(params, TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params, TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     for bar in 1..=200 {
         let m = g.generate_measure(bar, &mut rng);

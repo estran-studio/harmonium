@@ -5,10 +5,10 @@
 use std::collections::BTreeSet;
 
 use harmonium_core::{
+    compose::{Arrangement, TuneGenerator, same_cell_up_to_octave},
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    compose::{ReelArrangement, TradGenerator, same_cell_up_to_octave},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -24,7 +24,7 @@ fn flat_tuning() -> TuningParams {
     TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p.arrangement = Arrangement::from_start(1, Default::default());
             p
         },
         ..TuningParams::default()
@@ -43,15 +43,15 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     params
 }
 
-fn generate_32_snapshots(seed: u64, feet_density: u8) -> (TradGenerator, Vec<MeasureSnapshot>) {
+fn generate_32_snapshots(seed: u64, feet_density: u8) -> (TuneGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(reel_params(feet_density), flat_tuning());
+    let mut tune_gen = TuneGenerator::new(reel_params(feet_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_32);
     for bar in 1..=BARS_32 {
-        let m = trad_gen.generate_measure(bar, &mut rng);
+        let m = tune_gen.generate_measure(bar, &mut rng);
         snapshots.push(MeasureSnapshot::from_measure(&m));
     }
-    (trad_gen, snapshots)
+    (tune_gen, snapshots)
 }
 
 fn notes_on_track(snapshot: &MeasureSnapshot, track: TrackId) -> Vec<&NoteSnapshot> {
@@ -138,12 +138,12 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
     for seed_u32 in 1..=NUM_SEEDS {
         let seed = u64::from(seed_u32);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut trad_gen = TradGenerator::new(reel_params(1), flat_tuning());
+        let mut tune_gen = TuneGenerator::new(reel_params(1), flat_tuning());
         for bar in 1..=64 {
-            let _ = trad_gen.generate_measure(bar, &mut rng);
+            let _ = tune_gen.generate_measure(bar, &mut rng);
         }
-        let tune1 = trad_gen.tune_for_bar(1).ok_or("tune 1 absent".to_string())?;
-        let tune2 = trad_gen.tune_for_bar(33).ok_or("tune 2 absent".to_string())?;
+        let tune1 = tune_gen.tune_for_bar(1).ok_or("tune 1 absent".to_string())?;
+        let tune2 = tune_gen.tune_for_bar(33).ok_or("tune 2 absent".to_string())?;
         assert!(
             !same_cell_up_to_octave(
                 &tune1.fiddle.cells_for_part(harmonium_core::compose::Part(0))[0],

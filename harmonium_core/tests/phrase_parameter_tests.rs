@@ -1,15 +1,13 @@
 //! Paramètres de structure : effets audibles et frontières sur le contrat public.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, Cell, CellBank, CellRole, ImposedRole, TuneGenerator, dynamics::Curve},
     ornaments::{OrnamentKind, OrnamentRule},
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::{
         PositionRhythm, ProfileRole, RhythmPattern, RoleResolution, VariationOperation,
         WeightedRole,
-    },
-    compose::{
-        Cell, CellBank, CellRole, ImposedRole, ReelArrangement, TradGenerator, dynamics::Curve,
     },
 };
 use rand::SeedableRng;
@@ -25,7 +23,7 @@ fn melody(s: &MeasureSnapshot) -> Melody {
 }
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
     p.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: p.meter.default_bpm, ..Default::default() },
         TuningParams { profile: p.clone() },
     );
@@ -36,7 +34,7 @@ fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
     p.ornaments = Default::default();
-    p.arrangement = ReelArrangement::from_start(2, Default::default());
+    p.arrangement = Arrangement::from_start(2, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
     p.form.parts[0].second_ending = None;
@@ -188,7 +186,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
     for &(name, change) in controls {
         let mut p = StyleProfile::default();
         p.performance = Default::default();
-        p.arrangement = ReelArrangement::from_start(1, Default::default());
+        p.arrangement = Arrangement::from_start(1, Default::default());
         let mut modified = p.clone();
         change(&mut modified);
         assert!(
@@ -204,7 +202,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
 fn phrase_grouping_controls_percussion_boundaries_and_arbitrary_lengths() {
     let mut p = StyleProfile::named("marche_britannique_coloniale").unwrap();
     p.performance = Default::default();
-    p.arrangement = ReelArrangement::from_start(1, Default::default());
+    p.arrangement = Arrangement::from_start(1, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
     p.form.parts[0].roles.truncate(6);
@@ -338,7 +336,7 @@ fn distributed_rhythmic_entropy_recovers_the_pre_phrase_form() {
     assert!(!with_rhythm.is_empty(), "aucun profil à tables rhythm");
     for profile in with_rhythm {
         let mut current = profile.clone();
-        current.arrangement = ReelArrangement::from_start(1, Default::default());
+        current.arrangement = Arrangement::from_start(1, Default::default());
         current.ornaments = Default::default();
         let mut before = current.clone();
         for part in &mut before.form.parts {

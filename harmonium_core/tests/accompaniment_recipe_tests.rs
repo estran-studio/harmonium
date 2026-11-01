@@ -1,9 +1,9 @@
 //! Les recettes publiées sont chargées sans noms de recettes dans le moteur.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, IntroConfig, Part, TuneGenerator, accomp_profile::BassDoubling},
     params::MusicalParams,
     timeline::{Measure, TrackId},
-    compose::{IntroConfig, Part, ReelArrangement, TradGenerator, accomp_profile::BassDoubling},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -22,7 +22,7 @@ fn recipe(name: &str) -> StyleProfile {
         profile["instruments"][key] = value.clone();
     }
     let mut profile = StyleProfile::from_toml(&toml::to_string(&profile).unwrap()).unwrap();
-    profile.arrangement = ReelArrangement::from_start(2, Part(0));
+    profile.arrangement = Arrangement::from_start(2, Part(0));
     profile.arrangement.intro = IntroConfig::none();
     profile.set = Default::default();
     profile
@@ -30,7 +30,7 @@ fn recipe(name: &str) -> StyleProfile {
 
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<Measure> {
     p.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: p.meter.default_bpm, ..Default::default() },
         TuningParams { profile: p.clone() },
     );

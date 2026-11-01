@@ -2,13 +2,13 @@
 //! tours d'un air, entrées progressives des pistes, plafonds `enable_*`, position exposée.
 
 use harmonium_core::{
+    compose::{
+        Arrangement, ArrangementError, DEFAULT_ARRANGEMENT_TOML, IntroConfig, Part, TuneGenerator,
+        TunePosition, set::SetLength,
+    },
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    compose::{
-        ArrangementError, IntroConfig, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator,
-        TunePosition, set::SetLength,
-    },
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -33,9 +33,9 @@ fn stream_with(
     tuning: TuningParams,
 ) -> Vec<MeasureSnapshot> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(params, tuning);
+    let mut tune_gen = TuneGenerator::new(params, tuning);
     (1..=bars)
-        .map(|bar| MeasureSnapshot::from_measure(&trad_gen.generate_measure(bar, &mut rng)))
+        .map(|bar| MeasureSnapshot::from_measure(&tune_gen.generate_measure(bar, &mut rng)))
         .collect()
 }
 
@@ -112,7 +112,7 @@ fn later_tours_do_not_consume_the_rng() {
     for seed in SEEDS {
         let linear = stream(seed, 100);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut sought = TradGenerator::new(reel_params(), flat_tuning());
+        let mut sought = TuneGenerator::new(reel_params(), flat_tuning());
         sought.reset_to_initial();
         sought.silent_advance(97, &mut rng);
         for b in 97..=100 {
@@ -129,8 +129,8 @@ fn later_tours_do_not_consume_the_rng() {
 #[test]
 fn invalid_arrangement_tables_are_rejected_with_explicit_errors() {
     let with = |from: &str, to: &str| {
-        assert!(REEL_ARRANGEMENT_TOML.contains(from), "table embarquée sans « {from} »");
-        ReelArrangement::from_toml(&REEL_ARRANGEMENT_TOML.replace(from, to))
+        assert!(DEFAULT_ARRANGEMENT_TOML.contains(from), "table embarquée sans « {from} »");
+        Arrangement::from_toml(&DEFAULT_ARRANGEMENT_TOML.replace(from, to))
     };
     assert_eq!(
         with("Heel = { tour = 2", "Heel = { tour = 0"),
@@ -190,8 +190,8 @@ fn exposed_position_matches_bar_numbers() -> Result<(), String> {
         assert_eq!(pos.is_last_tour(), pos.tour == 3, "m.{b}");
     }
     // Repères lisibles par le gameplay : les pieds entrent à la mesure 33 (tour 2, A, passe 1).
-    let first_feet = snaps.iter().position(|s| has(s, TrackId::Heel)).map(|i| i + 1);
-    assert_eq!(first_feet, Some(33));
+    let first_percussion = snaps.iter().position(|s| has(s, TrackId::Heel)).map(|i| i + 1);
+    assert_eq!(first_percussion, Some(33));
     let pos = position(&snaps, 33)?;
     assert_eq!((pos.tour, pos.part, pos.pass, pos.bar_in_strain), (2, Part(0), 1, 1));
     assert!(position(&snaps, 65)?.is_last_tour());

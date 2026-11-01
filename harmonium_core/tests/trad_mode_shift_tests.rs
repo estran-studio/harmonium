@@ -1,13 +1,13 @@
 //! Contrat : la même ligne change de mode parallèle aux frontières musicales.
 use harmonium_core::{
+    compose::{
+        Arrangement, Mode, TuneGenerator,
+        dynamics::{ColorChoice, Curve},
+    },
     ornaments::OrnamentKind,
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::TrackId,
-    compose::{
-        Mode, ReelArrangement, TradGenerator,
-        dynamics::{ColorChoice, Curve},
-    },
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -15,7 +15,7 @@ use rand_chacha::ChaCha8Rng;
 
 fn tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
-    tuning.profile.arrangement = ReelArrangement::from_start(3, Default::default());
+    tuning.profile.arrangement = Arrangement::from_start(3, Default::default());
     tuning.profile.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
     tuning.profile.accompaniment.as_mut().unwrap().bass.passing = None;
     tuning.profile.dynamics.color = vec![ColorChoice {
@@ -34,7 +34,7 @@ fn tuning() -> TuningParams {
 fn render(changes: &[(usize, f32)]) -> Vec<MeasureSnapshot> {
     let mut params = MusicalParams::default();
     params.harmony_valence = 0.4;
-    let mut generator = TradGenerator::new(params.clone(), tuning());
+    let mut generator = TuneGenerator::new(params.clone(), tuning());
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     (1..=16)
         .map(|bar| {
@@ -108,7 +108,7 @@ fn accompaniment_and_dense_ornaments_stay_in_the_active_mode() {
     params.harmony_valence = 0.4;
     params.harmony_tension = 1.0;
     params.rhythm_density = 1.0;
-    let mut generator = TradGenerator::new(params.clone(), tuning());
+    let mut generator = TuneGenerator::new(params.clone(), tuning());
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     for bar in 1..=32 {
         if bar == 3 {
@@ -136,7 +136,7 @@ fn part_boundary_waits_eight_bars_and_speculative_shift_can_be_cancelled() {
     let mut table = tuning();
     table.profile.dynamics.mode_shift_boundary =
         harmonium_core::compose::dynamics::ModeShiftBoundary::Part;
-    let mut generator = TradGenerator::new(params.clone(), table);
+    let mut generator = TuneGenerator::new(params.clone(), table);
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     for bar in 1..=16 {
         if bar == 3 {
@@ -196,7 +196,7 @@ fn parallel_mode_keeps_valid_diatonic_notes_at_the_midi_floor() {
         table.profile.melody.params.tonic_midi_min = 1;
         table.profile.melody.params.tonic_midi_max = 1;
         table.profile.melody.params.melody_center_midi = 6;
-        let mut generator = TradGenerator::new(params.clone(), table);
+        let mut generator = TuneGenerator::new(params.clone(), table);
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         for bar in 1..=32 {
             if bar == 17 {

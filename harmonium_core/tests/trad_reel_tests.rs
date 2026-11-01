@@ -1,10 +1,10 @@
-//! Tests d'acceptation de `TradGenerator` sur 20 seeds × 64 mesures (D1, D3, D4, D6–D9).
+//! Tests d'acceptation de `TuneGenerator` sur 20 seeds × 64 mesures (D1, D3, D4, D6–D9).
 
 use harmonium_core::{
+    compose::{Arrangement, TuneGenerator, TunePlan},
     params::{MusicalParams, PulseSpec},
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    compose::{ReelArrangement, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -20,7 +20,7 @@ fn flat_tuning() -> TuningParams {
     TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(1, Default::default());
+            p.arrangement = Arrangement::from_start(1, Default::default());
             p.performance = Default::default();
             p.ornaments = Default::default();
             p.heterophony = None;
@@ -54,15 +54,15 @@ fn reel_params(feet_density: u8) -> MusicalParams {
     params
 }
 
-fn generate_64_snapshots(seed: u64, feet_density: u8) -> (TradGenerator, Vec<MeasureSnapshot>) {
+fn generate_64_snapshots(seed: u64, feet_density: u8) -> (TuneGenerator, Vec<MeasureSnapshot>) {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(reel_params(feet_density), flat_tuning());
+    let mut tune_gen = TuneGenerator::new(reel_params(feet_density), flat_tuning());
     let mut snapshots = Vec::with_capacity(BARS_64);
     for bar in 1..=BARS_64 {
-        let m = trad_gen.generate_measure(bar, &mut rng);
+        let m = tune_gen.generate_measure(bar, &mut rng);
         snapshots.push(MeasureSnapshot::from_measure(&m));
     }
-    (trad_gen, snapshots)
+    (tune_gen, snapshots)
 }
 
 fn notes_on_track(snapshot: &MeasureSnapshot, track: TrackId) -> Vec<&NoteSnapshot> {
@@ -95,7 +95,7 @@ fn cadence_degree_bar8(plan: &TunePlan, melody: &[&NoteSnapshot]) -> Option<u8> 
 #[test]
 fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
     for seed in 0..NUM_SEEDS {
-        let (trad_gen, snapshots) = generate_64_snapshots(seed, 1);
+        let (tune_gen, snapshots) = generate_64_snapshots(seed, 1);
         assert_eq!(snapshots.len(), BARS_64);
 
         for (i, snap) in snapshots.iter().enumerate() {
@@ -109,7 +109,7 @@ fn reel_form_aabb_and_cadences_20_seeds_64_bars() {
 
         // Vérifie chacun des deux tunes de 32 mesures (0..32 et 32..64)
         for tune_offset in [0usize, 32] {
-            let info = trad_gen.bar_info(tune_offset + 1);
+            let info = tune_gen.bar_info(tune_offset + 1);
             assert!(info.is_some(), "seed {seed}: tune absent à {}", tune_offset + 1);
             let Some((plan, _)) = info else { continue };
             // Reprises identiques (A1 == A2 et B1 == B2) sur toutes les pistes et accords
@@ -231,7 +231,7 @@ fn trad_generator_silent_advance_matches_linear() {
     let (_, linear) = generate_64_snapshots(seed, 1);
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut sought = TradGenerator::new(reel_params(1), flat_tuning());
+    let mut sought = TuneGenerator::new(reel_params(1), flat_tuning());
     sought.reset_to_initial();
     sought.silent_advance(40, &mut rng);
 

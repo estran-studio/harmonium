@@ -15,7 +15,7 @@ use harmonium_core::events::RecordFormat;
 
 use crate::{
     automation::Automation,
-    parser::{FeetOpt, SWING_MAX, SWING_MIN},
+    parser::{PercussionOpt, SWING_MAX, SWING_MIN},
 };
 
 const SAMPLE_RATE: f64 = 44100.0;
@@ -33,7 +33,7 @@ pub fn run(
     solo_track: Option<String>,
     style: Option<Box<harmonium_core::StyleProfile>>,
     seed: Option<u64>,
-    feet: Option<FeetOpt>,
+    feet: Option<PercussionOpt>,
     swing: Option<f32>,
     tours: Option<usize>,
     automation_path: Option<String>,
@@ -72,8 +72,8 @@ pub fn run(
         composer.set_swing_ratio(clamped);
     }
     match feet {
-        Some(FeetOpt::Density(fd)) => composer.set_feet_density(fd),
-        Some(FeetOpt::Off) => composer.enable_rhythm(false),
+        Some(PercussionOpt::Density(fd)) => composer.set_feet_density(fd),
+        Some(PercussionOpt::Off) => composer.enable_rhythm(false),
         None => {}
     }
     if let Some(n) = tours {

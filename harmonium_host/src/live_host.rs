@@ -6,9 +6,9 @@ use std::sync::{
 use harmonium_audio::backend::recorder::RecorderWorker;
 use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot, MusicalParams,
+    compose::{BarRole, TunePlan},
     events::RecordFormat,
     params::SessionConfig,
-    compose::{BarRole, TunePlan},
 };
 use web_time::Instant;
 

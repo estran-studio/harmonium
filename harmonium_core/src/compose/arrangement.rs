@@ -5,7 +5,7 @@
 //! - [`TunePosition`] : la position structurée `(section, tune_index, tour, …)` d'une
 //!   mesure, calculée en un seul endroit ([`TunePosition::at_bar`]) et exposée au jeu dans
 //!   [`crate::report::MeasureSnapshot`] ;
-//! - [`ReelArrangement`] : la table `reel_arrangement.toml` (constitution V) qui
+//! - [`Arrangement`] : la table `reel_arrangement.toml` (constitution V) qui
 //!   dit, pour chaque piste, la première position où elle joue ;
 //! - [`IntroConfig`] / [`IntroForm`] / [`IntroRole`] : la section `[intro]` de la
 //!   table, avec les rôles d'intro idiomatiques décrits en données (P1-T11).
@@ -17,7 +17,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::{style_profile::ProfileForm, timeline::TrackId};
 
 /// Contenu brut de la table TOML embarquée d'arrangement du reel (D11 + P1-T11).
-pub const REEL_ARRANGEMENT_TOML: &str =
+pub const DEFAULT_ARRANGEMENT_TOML: &str =
     include_str!("../../../profiles/reel_quebecois/arrangement.toml");
 
 /// Nombre maximal de tours par air et borne haute du `tour` d'une entrée.
@@ -351,7 +351,7 @@ impl TrackEntries {
 // ArrangementError
 // ---------------------------------------------------------------------------
 
-/// Erreur de chargement ou de validation d'une [`ReelArrangement`].
+/// Erreur de chargement ou de validation d'une [`Arrangement`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ArrangementError {
     /// Erreur de syntaxe TOML.
@@ -415,12 +415,12 @@ impl fmt::Display for ArrangementError {
 impl std::error::Error for ArrangementError {}
 
 // ---------------------------------------------------------------------------
-// ReelArrangement
+// Arrangement
 // ---------------------------------------------------------------------------
 
 /// Table d'arrangement du reel, portée en données (D11, P1-T11, constitution V).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct ReelArrangement {
+pub struct Arrangement {
     /// Nombre de tours AABB joués avant de tirer un nouvel air (`1..=`[`MAX_TOURS`]).
     pub tours_per_tune: usize,
     /// Point d'entrée de chaque piste.
@@ -430,7 +430,7 @@ pub struct ReelArrangement {
     pub intro: IntroConfig,
 }
 
-impl<'de> Deserialize<'de> for ReelArrangement {
+impl<'de> Deserialize<'de> for Arrangement {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawArrangement::deserialize(deserializer)?;
         Self::try_from(raw).map_err(serde::de::Error::custom)
@@ -458,7 +458,7 @@ struct RawArrangement {
     intro: IntroConfig,
 }
 
-impl TryFrom<RawArrangement> for ReelArrangement {
+impl TryFrom<RawArrangement> for Arrangement {
     type Error = ArrangementError;
 
     fn try_from(mut raw: RawArrangement) -> Result<Self, Self::Error> {
@@ -506,18 +506,18 @@ impl TryFrom<RawArrangement> for ReelArrangement {
     }
 }
 
-impl Default for ReelArrangement {
+impl Default for Arrangement {
     /// Charge la table embarquée `reel_arrangement.toml` sans jamais paniquer
     /// (sa validité est garantie par les tests et par
     /// [`crate::tuning::TuningParams::validate`]) ; en cas d'erreur de données,
     /// repli sur trois tours avec toutes les pistes dès le début et sans intro.
     fn default() -> Self {
-        Self::from_toml(REEL_ARRANGEMENT_TOML)
+        Self::from_toml(DEFAULT_ARRANGEMENT_TOML)
             .unwrap_or_else(|error| unreachable!("embedded arrangement: {error}"))
     }
 }
 
-impl ReelArrangement {
+impl Arrangement {
     /// Arrangement plat : `tours_per_tune` tours, toutes les pistes dès le début, sans intro.
     #[must_use]
     pub const fn from_start(tours_per_tune: usize, first_part: Part) -> Self {
@@ -829,7 +829,7 @@ mod tests {
 
     #[test]
     fn entries_beyond_last_tour_are_clamped() {
-        let mut table = ReelArrangement::default();
+        let mut table = Arrangement::default();
         assert!(!table.allows(
             TrackId::Heel,
             &TunePosition::at_bar(
@@ -872,29 +872,26 @@ mod tests {
     #[test]
     fn invalid_tables_yield_explicit_errors() {
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with(("Heel = { tour = 2", "Heel = { tour = 0"))),
+            Arrangement::from_toml(&toml_with(("Heel = { tour = 2", "Heel = { tour = 0"))),
             Err(ArrangementError::TourOutOfRange { track: TrackId::Heel, tour: 0 })
         );
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with(("Toe = {", "Cymbale = {"))),
+            Arrangement::from_toml(&toml_with(("Toe = {", "Cymbale = {"))),
             Err(ArrangementError::UnknownTrack("Cymbale".to_owned()))
         );
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with((
-                "Toe = { tour = 2, part = 0, pass = 1 }\n",
-                ""
-            ))),
+            Arrangement::from_toml(&toml_with(("Toe = { tour = 2, part = 0, pass = 1 }\n", ""))),
             Err(ArrangementError::MissingTrack(TrackId::Toe))
         );
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with((
+            Arrangement::from_toml(&toml_with((
                 "Toe = { tour = 2, part = 0, pass = 1",
                 "Toe = { tour = 2, part = 0, pass = 0"
             ))),
             Err(ArrangementError::PassOutOfRange { track: TrackId::Toe, pass: 0 })
         );
         assert_eq!(
-            ReelArrangement::from_toml(&toml_with(("tours_per_tune = 3", "tours_per_tune = 0"))),
+            Arrangement::from_toml(&toml_with(("tours_per_tune = 3", "tours_per_tune = 0"))),
             Err(ArrangementError::ToursPerTuneOutOfRange(0))
         );
         let msg = ArrangementError::UnknownTrack("Cymbale".to_owned()).to_string();
@@ -921,9 +918,9 @@ mod tests {
 
     #[test]
     fn table_roundtrips_through_serde() -> Result<(), String> {
-        let table = ReelArrangement::default();
+        let table = Arrangement::default();
         let text = toml::to_string(&table).map_err(|e| e.to_string())?;
-        assert_eq!(ReelArrangement::from_toml(&text), Ok(table));
+        assert_eq!(Arrangement::from_toml(&text), Ok(table));
         Ok(())
     }
 }

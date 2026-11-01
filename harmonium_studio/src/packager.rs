@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::manifest::{
-    FEET_BANK_ID, MAIN_BANK_ID, MANIFEST_FILE, Manifest, ODIN_ID_PREFIX, Resource,
+    MAIN_BANK_ID, MANIFEST_FILE, Manifest, ODIN_ID_PREFIX, PERCUSSION_BANK_ID, Resource,
     hashed_file_name, sha256_hex,
 };
 
@@ -33,7 +33,7 @@ pub struct PackSpec {
 pub fn pack(spec: &PackSpec, out: &Path) -> Result<Manifest, String> {
     let mut sources = vec![(MAIN_BANK_ID.to_owned(), spec.main_bank.clone())];
     if let Some(feet) = &spec.feet_bank {
-        sources.push((FEET_BANK_ID.to_owned(), feet.clone()));
+        sources.push((PERCUSSION_BANK_ID.to_owned(), feet.clone()));
     }
     if let Some(dir) = &spec.odin_dir {
         sources.extend(odin_sources(dir)?);

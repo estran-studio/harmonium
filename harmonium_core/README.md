@@ -8,7 +8,7 @@ par défaut est `reel_quebecois` (230 BPM à la noire, 2/2, pulse à la blanche)
 
 ```mermaid
 graph TD
-    Profile[StyleProfile TOML validé] --> Gen[TradGenerator]
+    Profile[StyleProfile TOML validé] --> Gen[TuneGenerator]
     Emotions[EngineParams] --> Mapper[EmotionMapper + dynamics du profil]
     Mapper --> Params[MusicalParams]
     Params --> Gen
@@ -57,7 +57,7 @@ EmotionMapper::new().apply_dynamics(
 );
 ```
 
-Le host instancie `TradGenerator` directement : aucun sélecteur de générateur.
+Le host instancie `TuneGenerator` directement : aucun sélecteur de générateur.
 Pour changer de style, installer un profil avec `MusicComposer::set_profile`
 ou `set_profile_id`. Voir `profiles/README.md` pour le format des données.
 La fixture `tests/fixtures/profiles/jazz_test` est synthétique, hors distribution,

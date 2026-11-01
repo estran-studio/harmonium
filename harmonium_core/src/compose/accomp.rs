@@ -6,7 +6,7 @@ use super::{
         BassDegree, BassDoubling, BassMotif, BassMotifNote, BassReference, BassVoice, ChordHit,
         ChordVoicing,
     },
-    harmony::TradChord,
+    harmony::DegreeChord,
     mode::Mode,
     plan::{ImposedRole, TunePlan},
 };
@@ -14,7 +14,7 @@ use crate::{
     algo::RngCore,
     theory::PitchClass,
     timeline::{Articulation, NoteId, TimelineNote, TrackId},
-    tuning::TradHarmonyParams,
+    tuning::AccompanimentParams,
 };
 
 /// Place la classe de hauteur `pc` dans `low..=high` (voir le doc du module
@@ -35,10 +35,10 @@ pub(crate) fn place_in_range(pc: PitchClass, low: u8, high: u8) -> u8 {
 }
 
 pub(crate) fn bass_hit_pitch(
-    chords: &[TradChord],
+    chords: &[DegreeChord],
     key: PitchClass,
     mode: Mode,
-    params: &TradHarmonyParams,
+    params: &AccompanimentParams,
     hit: &super::accomp_profile::BassHit,
     steps_per_chord: usize,
 ) -> u8 {
@@ -94,10 +94,10 @@ fn push_with_doublings(
 /// Basse d'une mesure : un coup par entrée du motif du profil.
 #[must_use]
 pub fn bass_bar(
-    chords: &[TradChord],
+    chords: &[DegreeChord],
     key: PitchClass,
     mode: Mode,
-    params: &TradHarmonyParams,
+    params: &AccompanimentParams,
     steps_per_chord: usize,
     next_id: &mut impl FnMut() -> NoteId,
 ) -> Vec<TimelineNote> {
@@ -282,7 +282,7 @@ fn bass_motif_note_pitch(
     note: &BassMotifNote,
     local_step: usize,
     reference: BassReference,
-    chords: &[TradChord],
+    chords: &[DegreeChord],
     key: PitchClass,
     mode: Mode,
     bass: &BassVoice,
@@ -318,10 +318,10 @@ fn bass_motif_note_pitch(
 #[must_use]
 pub(crate) fn bass_motif_bar(
     slice: BassMotifSlice,
-    chords: &[TradChord],
+    chords: &[DegreeChord],
     key: PitchClass,
     mode: Mode,
-    params: &TradHarmonyParams,
+    params: &AccompanimentParams,
     steps_per_bar: usize,
     steps_per_chord: usize,
     next_id: &mut impl FnMut() -> NoteId,
@@ -378,8 +378,8 @@ pub(crate) fn first_bass_target(
     bass_plan: &BassMotifPlan,
     plan: &TunePlan,
     bar_in_tour: usize,
-    chords: &[TradChord],
-    params: &TradHarmonyParams,
+    chords: &[DegreeChord],
+    params: &AccompanimentParams,
     steps_per_bar: usize,
     steps_per_chord: usize,
 ) -> Option<(usize, u8)> {
@@ -409,7 +409,7 @@ pub(crate) fn first_bass_target(
 
 /// Les triades s'inversent ; une pédale garde son voisin au-dessus d'elle.
 fn close_voicings(
-    chord: TradChord,
+    chord: DegreeChord,
     key: PitchClass,
     mode: Mode,
 ) -> impl Iterator<Item = arrayvec::ArrayVec<u8, 3>> {
@@ -434,13 +434,13 @@ fn close_voicings(
 
 /// Guitare d'accompagnement : enchaîne les voicings d'une mesure à l'autre.
 ///
-/// Un `Guitarist` neuf démarre sans voicing précédent ; en créer un par tune.
+/// Un `ChordPlayer` neuf démarre sans voicing précédent ; en créer un par tune.
 #[derive(Clone, Debug, Default)]
-pub struct Guitarist {
+pub struct ChordPlayer {
     previous: Option<arrayvec::ArrayVec<u8, 3>>,
 }
 
-impl Guitarist {
+impl ChordPlayer {
     #[must_use]
     pub const fn new() -> Self {
         Self { previous: None }
@@ -450,10 +450,10 @@ impl Guitarist {
     /// accord), dans la limite de dérive autorisée.
     fn voice(
         &mut self,
-        chord: TradChord,
+        chord: DegreeChord,
         key: PitchClass,
         mode: Mode,
-        params: &TradHarmonyParams,
+        params: &AccompanimentParams,
     ) -> Option<arrayvec::ArrayVec<u8, 3>> {
         let candidates = close_voicings(chord, key, mode).filter(|v| {
             v.len() < 3
@@ -483,17 +483,17 @@ impl Guitarist {
 
     /// Accords d'une mesure : un coup par entrée du motif par défaut.
     #[allow(clippy::too_many_arguments)]
-    pub fn chop_bar(
+    pub fn chord_bar(
         &mut self,
-        chords: &[TradChord],
+        chords: &[DegreeChord],
         key: PitchClass,
         mode: Mode,
-        params: &TradHarmonyParams,
+        params: &AccompanimentParams,
         steps_per_chord: usize,
         seed: u64,
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
-        self.chop_bar_on_hits(
+        self.chord_bar_on_hits(
             chords,
             key,
             mode,
@@ -507,12 +507,12 @@ impl Guitarist {
 
     /// Variante pilotée par un motif emprunté au profil, sans copier le tuning.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn chop_bar_on_hits(
+    pub(crate) fn chord_bar_on_hits(
         &mut self,
-        chords: &[TradChord],
+        chords: &[DegreeChord],
         key: PitchClass,
         mode: Mode,
-        params: &TradHarmonyParams,
+        params: &AccompanimentParams,
         hits: &[ChordHit],
         steps_per_chord: usize,
         seed: u64,
@@ -520,7 +520,7 @@ impl Guitarist {
     ) -> Vec<TimelineNote> {
         let voice = &params.chords;
         let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.strings));
-        for hit in hits.iter().filter(|hit| super::strum::selected(hit, seed)) {
+        for hit in hits.iter().filter(|hit| super::chord_spread::selected(hit, seed)) {
             let step = hit.step;
             let Some(voicing) = self.voice(chords[step / steps_per_chord], key, mode, params)
             else {
@@ -535,7 +535,7 @@ impl Guitarist {
             for i in voicing.len()..strings {
                 pitches[i] = pitches[i - voicing.len()] + 12;
             }
-            let (first, count) = if hit.stroke == super::accomp_profile::Stroke::Up {
+            let (first, count) = if hit.stroke == super::accomp_profile::AttackDirection::Up {
                 let count = voice
                     .strum
                     .as_ref()
@@ -545,10 +545,10 @@ impl Guitarist {
                 (0, strings)
             };
             let pitches = &mut pitches[first..first + count];
-            if hit.stroke == super::accomp_profile::Stroke::Up {
+            if hit.stroke == super::accomp_profile::AttackDirection::Up {
                 pitches.reverse();
             }
-            let velocities = super::strum::velocities(voice, hit, count, seed);
+            let velocities = super::chord_spread::velocities(voice, hit, count, seed);
             notes.extend(pitches.iter().zip(velocities).map(|(&pitch, velocity)| TimelineNote {
                 id: next_id(),
                 pitch,
@@ -566,15 +566,15 @@ impl Guitarist {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn advance_bar(
         &mut self,
-        chords: &[TradChord],
+        chords: &[DegreeChord],
         key: PitchClass,
         mode: Mode,
-        params: &TradHarmonyParams,
+        params: &AccompanimentParams,
         hits: &[ChordHit],
         steps_per_chord: usize,
         seed: u64,
     ) {
-        for hit in hits.iter().filter(|h| super::strum::selected(h, seed)) {
+        for hit in hits.iter().filter(|h| super::chord_spread::selected(h, seed)) {
             let _ = self.voice(chords[hit.step / steps_per_chord], key, mode, params);
         }
     }
@@ -600,30 +600,30 @@ mod tests {
         }
     }
 
-    fn major(degree: ChordDegree) -> TradChord {
-        TradChord::new(degree, ChordQuality::Major)
+    fn major(degree: ChordDegree) -> DegreeChord {
+        DegreeChord::new(degree, ChordQuality::Major)
     }
 
-    fn mechanical() -> TradHarmonyParams {
-        let mut p = TradHarmonyParams::default();
+    fn mechanical() -> AccompanimentParams {
+        let mut p = AccompanimentParams::default();
         p.chords.strings = 3;
         p.chords.strum = None;
         p
     }
 
-    fn chop(guitarist: &mut Guitarist, chords: [TradChord; 2]) -> Vec<TimelineNote> {
-        guitarist.chop_bar(&chords, D, Mode::Ionian, &mechanical(), 8, 0, &mut ids())
+    fn chop(chord_player: &mut ChordPlayer, chords: [DegreeChord; 2]) -> Vec<TimelineNote> {
+        chord_player.chord_bar(&chords, D, Mode::Ionian, &mechanical(), 8, 0, &mut ids())
     }
 
     #[test]
     fn bass_plays_root_then_fifth_on_steps_0_and_8() {
         let one = [major(ChordDegree::I); 2];
-        let notes = bass_bar(&one, D, Mode::Ionian, &TradHarmonyParams::default(), 8, &mut ids());
+        let notes = bass_bar(&one, D, Mode::Ionian, &AccompanimentParams::default(), 8, &mut ids());
         let layout: Vec<_> =
             notes.iter().map(|n| (n.start_step, n.duration_steps, n.pitch)).collect();
         // Ré2 = 38 est sous la fenêtre : fondamentale Ré3 (50), quinte La2 (45).
         assert_eq!(layout, [(0, 4, 50), (8, 4, 45)]);
-        let params = TradHarmonyParams::default();
+        let params = AccompanimentParams::default();
         assert!(notes.iter().all(|n| n.velocity == params.bass.hits[0].velocity));
     }
 
@@ -631,7 +631,7 @@ mod tests {
     fn bass_plays_root_when_chord_changes_at_half_bar() {
         let chords = [major(ChordDegree::I), major(ChordDegree::IV)];
         let notes =
-            bass_bar(&chords, D, Mode::Ionian, &TradHarmonyParams::default(), 8, &mut ids());
+            bass_bar(&chords, D, Mode::Ionian, &AccompanimentParams::default(), 8, &mut ids());
         // Sol2 = 43.
         assert_eq!(
             notes.iter().map(|n| (n.start_step, n.pitch)).collect::<Vec<_>>(),
@@ -641,7 +641,7 @@ mod tests {
 
     #[test]
     fn bass_stays_in_e2_to_d3_for_every_key_mode_and_chord() {
-        let params = TradHarmonyParams::default();
+        let params = AccompanimentParams::default();
         for key in 0..12 {
             for mode in Mode::ALL {
                 for &a in candidate_chords(mode, profile()) {
@@ -660,21 +660,21 @@ mod tests {
     #[test]
     fn bass_flat_two_falls_one_semitone_below_the_window() {
         // Sol éolien : bVI = Mi♭, seule classe absente de E2–D3.
-        let a = TradChord::new(ChordDegree::VI, ChordQuality::Major);
+        let a = DegreeChord::new(ChordDegree::VI, ChordQuality::Major);
         let notes =
-            bass_bar(&[a, a], 7, Mode::Aeolian, &TradHarmonyParams::default(), 8, &mut ids());
+            bass_bar(&[a, a], 7, Mode::Aeolian, &AccompanimentParams::default(), 8, &mut ids());
         assert_eq!(notes[0].pitch, 39);
     }
 
     #[test]
     fn guitar_chops_on_steps_4_and_12_with_three_chord_tones() {
         let chords = [major(ChordDegree::I), major(ChordDegree::IV)];
-        let notes = chop(&mut Guitarist::new(), chords);
+        let notes = chop(&mut ChordPlayer::new(), chords);
         assert_eq!(notes.len(), 6);
         for (i, step) in [4, 12].into_iter().enumerate() {
             let group: Vec<_> = notes.iter().filter(|n| n.start_step == step).collect();
             assert_eq!(group.len(), 3, "step {step}");
-            let chop_velocity = TradHarmonyParams::default().chords.patterns[1].hits[0].velocity;
+            let chop_velocity = AccompanimentParams::default().chords.patterns[1].hits[0].velocity;
             assert!(group.iter().all(|n| n.duration_steps == 1 && n.velocity == chop_velocity));
             let mut pitches: Vec<u8> = group.iter().map(|n| n.pitch).collect();
             pitches.sort_unstable();
@@ -692,7 +692,7 @@ mod tests {
 
     #[test]
     fn first_voicing_is_closest_to_c4() {
-        let notes = chop(&mut Guitarist::new(), [major(ChordDegree::I); 2]);
+        let notes = chop(&mut ChordPlayer::new(), [major(ChordDegree::I); 2]);
         let mut pitches: Vec<u8> = notes.iter().take(3).map(|n| n.pitch).collect();
         pitches.sort_unstable();
         // Ré majeur : La3 Ré4 Fa♯4, centre 61,7 (C4 = 60).
@@ -701,9 +701,9 @@ mod tests {
 
     #[test]
     fn next_voicing_is_the_closest_to_the_previous_one() {
-        let mut guitarist = Guitarist::new();
-        let _ = chop(&mut guitarist, [major(ChordDegree::I); 2]);
-        let notes = chop(&mut guitarist, [major(ChordDegree::IV); 2]);
+        let mut chord_player = ChordPlayer::new();
+        let _ = chop(&mut chord_player, [major(ChordDegree::I); 2]);
+        let notes = chop(&mut chord_player, [major(ChordDegree::IV); 2]);
         let mut pitches: Vec<u8> = notes.iter().take(3).map(|n| n.pitch).collect();
         pitches.sort_unstable();
         // La3 Ré4 Fa♯4 → Si3 Ré4 Sol4 (mouvement total 1+0+1 = 2).
@@ -713,14 +713,14 @@ mod tests {
     #[test]
     fn voicings_never_drift_away_from_c4() {
         let params = mechanical();
-        let mut guitarist = Guitarist::new();
+        let mut chord_player = ChordPlayer::new();
         let mut next_id = ids();
         for bar in 0..64 {
             let mode = Mode::ALL[bar % Mode::ALL.len()];
             let candidates = candidate_chords(mode, profile());
             let chords =
                 [candidates[bar % candidates.len()], candidates[(bar * 3 + 1) % candidates.len()]];
-            let notes = guitarist.chop_bar(&chords, D, mode, &params, 8, 0, &mut next_id);
+            let notes = chord_player.chord_bar(&chords, D, mode, &params, 8, 0, &mut next_id);
             for group in notes.chunks(3) {
                 let sum: i32 = group.iter().map(|n| i32::from(n.pitch)).sum();
                 assert!((sum - 3 * 60).abs() <= 3 * 6, "bar {bar}: {group:?}");
@@ -731,10 +731,10 @@ mod tests {
     #[test]
     fn note_ids_are_unique_across_bass_and_guitar() {
         let mut next_id = ids();
-        let params = TradHarmonyParams::default();
+        let params = AccompanimentParams::default();
         let chords = [major(ChordDegree::I); 2];
         let mut all = bass_bar(&chords, D, Mode::Ionian, &params, 8, &mut next_id);
-        all.extend(Guitarist::new().chop_bar(
+        all.extend(ChordPlayer::new().chord_bar(
             &chords,
             D,
             Mode::Ionian,

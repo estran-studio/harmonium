@@ -3,10 +3,10 @@
 //! l'arrangement comme les autres pistes. Tout passe par `generate_measure`
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{ImposedRole, TuneGenerator},
     ornaments::{OrnamentKind, PhraseEnd},
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    compose::{ImposedRole, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -23,7 +23,7 @@ fn stream(profile: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot
     params.bpm = profile.meter.default_bpm;
     params.swing_ratio = profile.meter.default_swing_ratio;
     let mut generator =
-        TradGenerator::new(params, TuningParams { profile: profile.clone(), ..Default::default() });
+        TuneGenerator::new(params, TuningParams { profile: profile.clone(), ..Default::default() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))

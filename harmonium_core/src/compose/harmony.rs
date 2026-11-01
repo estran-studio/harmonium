@@ -12,7 +12,7 @@ use super::{
 };
 use crate::{
     style_profile::StyleProfile, theory::PitchClass, timeline::TimelineNote,
-    tuning::TradHarmonyParams,
+    tuning::AccompanimentParams,
 };
 
 /// Degré de la fondamentale d'un accord, relatif à la tonique du mode.
@@ -52,12 +52,12 @@ pub enum ChordQuality {
 
 /// Accord relatif à la tonique, partagé par les modèles et l'accompagnement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TradChord {
+pub struct DegreeChord {
     pub degree: ChordDegree,
     pub quality: ChordQuality,
 }
 
-impl TradChord {
+impl DegreeChord {
     #[must_use]
     pub const fn new(degree: ChordDegree, quality: ChordQuality) -> Self {
         Self { degree, quality }
@@ -111,34 +111,34 @@ impl TradChord {
 }
 
 #[cfg(test)]
-const fn major(degree: ChordDegree) -> TradChord {
-    TradChord::new(degree, ChordQuality::Major)
+const fn major(degree: ChordDegree) -> DegreeChord {
+    DegreeChord::new(degree, ChordQuality::Major)
 }
 
 #[cfg(test)]
-const fn minor(degree: ChordDegree) -> TradChord {
-    TradChord::new(degree, ChordQuality::Minor)
+const fn minor(degree: ChordDegree) -> DegreeChord {
+    DegreeChord::new(degree, ChordQuality::Minor)
 }
 
 /// Accords candidats décrits par le profil actif, dans l'ordre du corpus.
 #[must_use]
-pub fn candidate_chords(mode: Mode, profile: &StyleProfile) -> &[TradChord] {
+pub fn candidate_chords(mode: Mode, profile: &StyleProfile) -> &[DegreeChord] {
     profile.harmony.candidates.iter().find(|c| c.mode == mode).map_or(&[], |c| c.chords.as_slice())
 }
 
 /// Les cadences emploient les qualités I/V du profil, comme le vote libre.
-fn cadence_chord(mode: Mode, profile: &StyleProfile, degree: ChordDegree) -> TradChord {
+fn cadence_chord(mode: Mode, profile: &StyleProfile, degree: ChordDegree) -> DegreeChord {
     match candidate_chords(mode, profile).iter().find(|chord| chord.degree == degree) {
         Some(chord) => *chord,
         None => unreachable!("validated tonic and dominant candidates"),
     }
 }
 
-fn vote_weight(step: usize, params: &TradHarmonyParams) -> u32 {
+fn vote_weight(step: usize, params: &AccompanimentParams) -> u32 {
     if params.strong_steps.contains(&step) { params.strong_weight } else { params.weak_weight }
 }
 
-fn tie_rank(chord_index: usize, chord: TradChord, params: &TradHarmonyParams) -> usize {
+fn tie_rank(chord_index: usize, chord: DegreeChord, params: &AccompanimentParams) -> usize {
     params
         .tie_priority
         .iter()
@@ -152,9 +152,9 @@ fn vote_half(
     key: PitchClass,
     mode: Mode,
     half: usize,
-    params: &TradHarmonyParams,
+    params: &AccompanimentParams,
     profile: &StyleProfile,
-) -> TradChord {
+) -> DegreeChord {
     let width = profile.harmony.steps_per_chord;
     let steps = half * width..(half + 1) * width;
     let candidates = candidate_chords(mode, profile);
@@ -183,9 +183,9 @@ pub fn harmonize_bar(
     key: PitchClass,
     mode: Mode,
     bar_role: BarRole,
-    params: &TradHarmonyParams,
+    params: &AccompanimentParams,
     profile: &StyleProfile,
-) -> Vec<TradChord> {
+) -> Vec<DegreeChord> {
     let count = profile.meter.steps_per_bar / profile.harmony.steps_per_chord;
     let mut chords: Vec<_> =
         (0..count).map(|slot| vote_half(melody, key, mode, slot, params, profile)).collect();
@@ -225,7 +225,7 @@ impl std::error::Error for TuneHarmonyError {}
 #[derive(Clone, Debug, PartialEq)]
 pub struct TuneHarmony {
     plan: TunePlan,
-    bars: Vec<Vec<TradChord>>,
+    bars: Vec<Vec<DegreeChord>>,
 }
 
 impl TuneHarmony {
@@ -233,7 +233,7 @@ impl TuneHarmony {
     pub fn new<M: AsRef<[TimelineNote]>>(
         plan: TunePlan,
         melody: &[M],
-        params: &TradHarmonyParams,
+        params: &AccompanimentParams,
     ) -> Result<Self, TuneHarmonyError> {
         let expected = plan.material_bars();
         if melody.len() != expected {
@@ -262,7 +262,7 @@ impl TuneHarmony {
 
     /// Accords de la mesure `bar_in_tune` (0-based, replié sur le tune).
     #[must_use]
-    pub fn chords_for_bar(&self, bar_in_tune: usize) -> &[TradChord] {
+    pub fn chords_for_bar(&self, bar_in_tune: usize) -> &[DegreeChord] {
         &self.bars[self.plan.material_index(bar_in_tune)]
     }
 }
@@ -320,13 +320,13 @@ mod tests {
         role(1)
     }
 
-    fn harmonize(degrees: &str, mode: Mode, role: BarRole) -> Vec<TradChord> {
+    fn harmonize(degrees: &str, mode: Mode, role: BarRole) -> Vec<DegreeChord> {
         harmonize_bar(
             &melody(degrees, mode),
             D,
             mode,
             role,
-            &TradHarmonyParams::default(),
+            &AccompanimentParams::default(),
             &StyleProfile::default(),
         )
     }
@@ -398,7 +398,7 @@ mod tests {
             D,
             Mode::Ionian,
             free_role(),
-            &TradHarmonyParams::default(),
+            &AccompanimentParams::default(),
             &StyleProfile::default(),
         );
         assert_eq!(chords.iter().map(|c| c.degree).collect::<Vec<_>>(), [ChordDegree::I; 2]);
@@ -406,9 +406,9 @@ mod tests {
         let chords = harmonize("5 5 5 5 5 5 5 5", Mode::Ionian, free_role());
         assert_eq!(chords.iter().map(|c| c.degree).collect::<Vec<_>>(), [ChordDegree::I; 2]);
         // … et l'ordre de priorité vient des paramètres.
-        let params = TradHarmonyParams {
+        let params = AccompanimentParams {
             tie_priority: vec![ChordDegree::V, ChordDegree::I],
-            ..TradHarmonyParams::default()
+            ..AccompanimentParams::default()
         };
         let notes = melody("5 5 5 5 5 5 5 5", Mode::Ionian);
         let chords =
@@ -505,7 +505,7 @@ mod tests {
     fn repeats_return_identical_chords() -> Result<(), TuneHarmonyError> {
         let plan = fixed_plan(Mode::Ionian);
         let harmony =
-            TuneHarmony::new(plan.clone(), &two_strain_melody(), &TradHarmonyParams::default())?;
+            TuneHarmony::new(plan.clone(), &two_strain_melody(), &AccompanimentParams::default())?;
         for bar in 0..32 {
             let section = bar / 8;
             let first_pass = bar - if section % 2 == 1 { 8 } else { 0 };
@@ -545,7 +545,7 @@ mod tests {
         let plan = fixed_plan(Mode::Ionian);
         let few = vec![melody("1 3 5 3 1 3 5 3", Mode::Ionian); 15];
         assert_eq!(
-            TuneHarmony::new(plan.clone(), &few, &TradHarmonyParams::default()),
+            TuneHarmony::new(plan.clone(), &few, &AccompanimentParams::default()),
             Err(TuneHarmonyError::WrongBarCount { expected: 16, found: 15 })
         );
     }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::Mode;
 use crate::{algo::RngCore, timeline::TrackId};
 
-pub const REEL_INTENSITY_TOML: &str =
+pub const DEFAULT_DYNAMICS_TOML: &str =
     include_str!("../../../profiles/reel_quebecois/dynamics.toml");
 
 /// Courbe continue sur un axe normalisé, extrapolation constante aux extrémités.
@@ -129,7 +129,7 @@ pub struct TrackThreshold {
 impl Default for StyleDynamics {
     fn default() -> Self {
         static EMBEDDED: LazyLock<StyleDynamics> =
-            LazyLock::new(|| match StyleDynamics::from_toml(REEL_INTENSITY_TOML) {
+            LazyLock::new(|| match StyleDynamics::from_toml(DEFAULT_DYNAMICS_TOML) {
                 Ok(data) => data,
                 // Même contrat que les autres tables embarquées : un défaut
                 // illisible reste INVALIDE, détecté par TuningParams::validate,

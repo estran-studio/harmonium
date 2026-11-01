@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Mode, TuneGenerator},
     events::AudioEvent,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    compose::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -27,7 +27,7 @@ fn params(p: &StyleProfile) -> MusicalParams {
 
 fn measures(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<Measure>> {
     p.validate()?;
-    let mut g = TradGenerator::new(params(p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars).map(|bar| g.generate_measure(bar, &mut rng)).collect())
 }
@@ -308,7 +308,7 @@ fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResul
     }
     let mut gated = p.clone();
     gated.dynamics.density_tracks.push(TrackThreshold { track: TrackId::Bass, minimum: 0.8 });
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { rhythm_density: 0.0, ..params(&gated) },
         TuningParams { profile: gated },
     );
@@ -318,7 +318,7 @@ fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResul
             bass(&MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng))).is_empty()
         );
     }
-    let mut off = TradGenerator::new(
+    let mut off = TuneGenerator::new(
         MusicalParams { enable_harmony: false, ..params(&p) },
         TuningParams { profile: p },
     );
@@ -364,7 +364,7 @@ fn passing_preserve_les_cibles_et_chromatismes_ecrits() -> TestResult {
 fn invalidation_et_rejeu_conservent_les_snapshots_et_les_choix_ponderes() -> TestResult {
     for id in ["nt_basse_motivique", "valse_basse_motivique"] {
         let p = load(id)?;
-        let mut g = TradGenerator::new(params(&p), TuningParams { profile: p.clone() });
+        let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p.clone() });
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let before: Vec<_> = (1..=48)
             .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))

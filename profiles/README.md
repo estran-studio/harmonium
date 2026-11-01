@@ -1184,7 +1184,7 @@ sont examinées, puis filtrées par le poids de tonalité/mode à la valence cou
 (strictement positif). Un matériel déjà joué dans le set courant est exclu aussi.
 L'index vient de `floor((u / return_rate) × nombre_éligible)`, sans nouveau tirage.
 
-Le moteur réutilise le `TunePlan` résolu et la `FiddleLine` écrite, **pas une graine** :
+Le moteur réutilise le `TunePlan` résolu et la `MelodyLine` écrite, **pas une graine** :
 un changement d'intensité ou de registre émotionnel ne réécrit pas la mélodie.
 La couleur parallèle et la dynamique restent pilotées par le jeu ; harmonie,
 accompagnement, intro et interprétation sont recalculés pour l'état courant.

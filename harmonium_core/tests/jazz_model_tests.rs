@@ -1,12 +1,12 @@
 //! Rythme harmonique, sélection des règles et réalisation mélodique sur le contrat public.
 use harmonium_core::{
     StyleProfile, TuningParams,
-    models::jazz::{RewriteRule, RomanNumeral, RuleCategory},
+    compose::{Arrangement, IntroConfig, Mode, Part, TuneGenerator},
+    models::rewrite::{RewriteRule, RomanNumeral, RuleCategory},
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::KeyModeWeight,
     theory::chord::Chord,
-    compose::{IntroConfig, Mode, Part, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -41,17 +41,17 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
         a.chords.strum = None;
         a.chords.strings = 3;
         for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
-            hit.stroke = harmonium_core::compose::accomp_profile::Stroke::Block;
+            hit.stroke = harmonium_core::compose::accomp_profile::AttackDirection::Block;
             hit.probability = 1.0;
         }
     }
-    p.arrangement = ReelArrangement::from_start(1, Part(0));
+    p.arrangement = Arrangement::from_start(1, Part(0));
     p.arrangement.intro = IntroConfig::none();
     p
 }
 fn stream(p: StyleProfile, seed: u64) -> Result<Vec<MeasureSnapshot>, Box<dyn std::error::Error>> {
     let p = StyleProfile::from_toml(&p.to_toml()?)?;
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams::default(),
         TuningParams { profile: p, ..Default::default() },
     );

@@ -2,11 +2,11 @@
 //! arousal, neutralité et validation. Tout passe par `generate_measure` (principe VI).
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{ImposedRole, TuneGenerator, dynamics::Curve},
     ornaments::{IntervalClass, OrnamentKind, OrnamentRule, PhraseEnd},
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::{Measure, TimelineNote, TrackId},
-    compose::{ImposedRole, TradGenerator, dynamics::Curve},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -46,7 +46,7 @@ fn with(p: &StyleProfile, kind: OrnamentKind, mut rule: OrnamentRule) -> StylePr
 }
 fn stream_with(p: &StyleProfile, seed: u64, bars: usize, arousal: f32) -> Vec<Measure> {
     p.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: p.meter.default_bpm, arousal, ..Default::default() },
         TuningParams { profile: p.clone() },
     );

@@ -44,7 +44,7 @@ fn whole_callback_with_wav_and_midi_recording_is_allocation_free() -> Result<(),
     let mut composer =
         MusicComposer::new_with_seed(SAMPLE_RATE, measure_tx, return_rx, transport.clone(), 7);
     let mut profile = harmonium_core::StyleProfile::builtin().clone();
-    profile.arrangement = harmonium_core::compose::ReelArrangement::from_start(2, Default::default());
+    profile.arrangement = harmonium_core::compose::Arrangement::from_start(2, Default::default());
     profile.instruments.countermelody_program = Some(0);
     composer.set_profile(profile)?;
     composer.set_writehead_lookahead(12);

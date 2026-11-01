@@ -2,11 +2,11 @@
 //! formes d'intro, levée (anacrouse), déterminisme, premier air d'un set, validation.
 
 use harmonium_core::{
+    compose::{
+        Arrangement, IntroConfig, IntroForm, IntroRole, Section, TuneGenerator, TunePosition,
+    },
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    compose::{
-        IntroConfig, IntroForm, IntroRole, ReelArrangement, Section, TradGenerator, TunePosition,
-    },
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -24,9 +24,9 @@ fn reel_params() -> MusicalParams {
 
 fn stream_with(seed: u64, bars: usize, tuning: TuningParams) -> Vec<MeasureSnapshot> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut trad_gen = TradGenerator::new(reel_params(), tuning);
+    let mut tune_gen = TuneGenerator::new(reel_params(), tuning);
     (1..=bars)
-        .map(|bar| MeasureSnapshot::from_measure(&trad_gen.generate_measure(bar, &mut rng)))
+        .map(|bar| MeasureSnapshot::from_measure(&tune_gen.generate_measure(bar, &mut rng)))
         .collect()
 }
 
@@ -74,7 +74,10 @@ fn percussion_intro_has_heel_only() {
     // L'air commence à la mesure 2 (A1)
     let p = position(&snaps, 2);
     assert_eq!(p.section, Section::Tour);
-    assert_eq!((p.tour, p.part, p.pass, p.bar_in_strain), (1, harmonium_core::compose::Part(0), 1, 1));
+    assert_eq!(
+        (p.tour, p.part, p.pass, p.bar_in_strain),
+        (1, harmonium_core::compose::Part(0), 1, 1)
+    );
 }
 
 #[test]
@@ -143,7 +146,7 @@ fn melody_after_intro_identical_to_no_intro() {
     let flat_tuning = TuningParams {
         profile: {
             let mut p = TuningParams::default().profile;
-            p.arrangement = ReelArrangement::from_start(3, Default::default());
+            p.arrangement = Arrangement::from_start(3, Default::default());
             p
         },
         ..TuningParams::default()
@@ -153,14 +156,14 @@ fn melody_after_intro_identical_to_no_intro() {
     let flat = stream_with(7, 32, flat_tuning);
     // Générer intro + 32 mesures, puis lire intro_bars via la première mesure Tour
     let mut rng = ChaCha8Rng::seed_from_u64(7);
-    let mut trad_gen = TradGenerator::new(reel_params(), intro_tuning.clone());
+    let mut tune_gen = TuneGenerator::new(reel_params(), intro_tuning.clone());
     for b in 1..=40 {
-        let _ = trad_gen.generate_measure(b, &mut rng);
+        let _ = tune_gen.generate_measure(b, &mut rng);
     }
     // Trouver la première mesure Tour (fin de l'intro)
     let intro_bars = {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
-        let mut g = TradGenerator::new(reel_params(), intro_tuning);
+        let mut g = TuneGenerator::new(reel_params(), intro_tuning);
         let mut n = 0usize;
         for b in 1..=8 {
             let m = g.generate_measure(b, &mut rng);
@@ -173,9 +176,9 @@ fn melody_after_intro_identical_to_no_intro() {
     };
 
     let mut rng2 = ChaCha8Rng::seed_from_u64(7);
-    let mut trad_gen2 = TradGenerator::new(reel_params(), TuningParams::default());
+    let mut tune_gen2 = TuneGenerator::new(reel_params(), TuningParams::default());
     for tune_bar in 1..=32 {
-        let m = trad_gen2.generate_measure(tune_bar + intro_bars, &mut rng2);
+        let m = tune_gen2.generate_measure(tune_bar + intro_bars, &mut rng2);
         let mel: Vec<u8> = m.notes_for_track(TrackId::Melody).iter().map(|n| n.pitch).collect();
         let flat_mel: Vec<u8> =
             track(&flat[tune_bar - 1], TrackId::Melody).iter().map(|n| n.pitch).collect();
@@ -277,7 +280,7 @@ fn end_after_tour_ends_last_measure_with_tonic() {
     params.end_after_tour = true;
 
     let mut rng = ChaCha8Rng::seed_from_u64(1);
-    let mut g = TradGenerator::new(params, tuning);
+    let mut g = TuneGenerator::new(params, tuning);
     let snaps: Vec<MeasureSnapshot> =
         (1..=97).map(|b| MeasureSnapshot::from_measure(&g.generate_measure(b, &mut rng))).collect();
 
@@ -301,8 +304,8 @@ fn end_after_tour_ends_last_measure_with_tonic() {
 #[test]
 fn tail_pickup_is_ordered_and_present_after_later_tail_attacks() {
     use harmonium_core::{
-        style_profile::{PositionRhythm, RhythmPattern},
         compose::ImposedRole,
+        style_profile::{PositionRhythm, RhythmPattern},
     };
     let mut tuning = tuning_single_form(IntroRole::Tail, 2, 2);
     tuning.profile.form.parts[1].second_ending = None;

@@ -1,10 +1,10 @@
 //! Fixture synthétique, pas un style distribué ni un substitut de corpus jazz.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     params::MusicalParams,
     report::MeasureSnapshot,
     theory::chord::{Chord, ChordType},
-    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -20,7 +20,7 @@ fn stream(seed: u64) -> Result<Vec<MeasureSnapshot>, Box<dyn std::error::Error>>
     let mut params = MusicalParams::default();
     params.bpm = p.meter.default_bpm;
     params.swing_ratio = p.meter.default_swing_ratio;
-    let mut g = TradGenerator::new(params, TuningParams { profile: p, ..Default::default() });
+    let mut g = TuneGenerator::new(params, TuningParams { profile: p, ..Default::default() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=64)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))

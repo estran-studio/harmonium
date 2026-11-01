@@ -14,9 +14,9 @@
 
 use harmonium_core::{
     StyleProfile,
+    compose::{Part, TuneGenerator},
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    compose::{Part, TradGenerator},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -47,7 +47,7 @@ fn profile_params(p: &StyleProfile) -> MusicalParams {
 
 fn generate_snapshots(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
     let tuning = TuningParams { profile: p.clone() };
-    let mut generator = TradGenerator::new(profile_params(p), tuning);
+    let mut generator = TuneGenerator::new(profile_params(p), tuning);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))

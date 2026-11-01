@@ -58,7 +58,7 @@ pub(crate) struct PassingContext<'a> {
     pub density: f32,
     pub arousal: f32,
     pub strong_steps: &'a [usize],
-    pub chords: &'a [super::TradChord],
+    pub chords: &'a [super::DegreeChord],
     pub steps_per_chord: usize,
     /// Première basse de la mesure suivante, dans sa couleur harmonique active.
     pub next_target: Option<(usize, u8)>,

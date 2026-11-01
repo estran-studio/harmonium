@@ -11,42 +11,42 @@ use crate::{
     algo::RngCore,
     theory::PitchClass,
     timeline::{Articulation, TimelineNote},
-    tuning::{ReelFiddleParams, TuningParams},
+    tuning::{MelodyParams, TuningParams},
 };
 
 /// État d'une ligne de violon pour un tune en cours (D4, D6).
 #[derive(Clone, Debug, PartialEq)]
-pub struct FiddleLine {
+pub struct MelodyLine {
     plan: TunePlan,
     parts: Vec<Vec<Cell>>,
     second_endings: Vec<Option<Cell>>,
     performed: Vec<Cell>,
-    params: ReelFiddleParams,
+    params: MelodyParams,
     tonic_midi: u8,
     render_mode: super::Mode,
 }
 
-impl FiddleLine {
+impl MelodyLine {
     /// Choisit le matériel des parties et variantes configurées avec les
     /// paramètres mélodiques par défaut.
     #[must_use]
     pub fn new(plan: TunePlan, bank: &CellBank, rng: &mut dyn RngCore) -> Self {
-        Self::with_params(plan, bank, &ReelFiddleParams::default(), rng)
+        Self::with_params(plan, bank, &MelodyParams::default(), rng)
     }
 
-    /// Construit une [`FiddleLine`] à partir d'un [`TuningParams`] complet
+    /// Construit une [`MelodyLine`] à partir d'un [`TuningParams`] complet
     /// (utilise `tuning.reel_cells` et `tuning.reel_fiddle`).
     #[must_use]
     pub fn from_tuning(plan: TunePlan, tuning: &TuningParams, rng: &mut dyn RngCore) -> Self {
         Self::with_params(plan, &tuning.profile.melody.cells, &tuning.profile.melody.params, rng)
     }
 
-    /// Construit une [`FiddleLine`] avec des paramètres explicites [`ReelFiddleParams`].
+    /// Construit une [`MelodyLine`] avec des paramètres explicites [`MelodyParams`].
     #[must_use]
     pub fn with_params(
         mut plan: TunePlan,
         bank: &CellBank,
-        params: &ReelFiddleParams,
+        params: &MelodyParams,
         rng: &mut dyn RngCore,
     ) -> Self {
         plan.resolve_roles(rng);
@@ -63,7 +63,7 @@ impl FiddleLine {
         let mut prev_last_step: Option<i8> = None;
         let mut parts = Vec::with_capacity(plan.profile.form.parts.len());
         while parts.len() < plan.profile.form.parts.len() {
-            parts.push(select_strain_cells(
+            parts.push(select_part_cells(
                 &plan,
                 Part(parts.len()),
                 tonic_midi,
@@ -190,7 +190,7 @@ impl FiddleLine {
     }
 }
 
-impl FiddleLine {
+impl MelodyLine {
     fn build_performed(&mut self, bank: &CellBank, rng: &mut dyn RngCore) {
         let bars = self.plan.total_bars();
         let mut played = Vec::with_capacity(self.plan.material_bars());
@@ -208,7 +208,7 @@ impl FiddleLine {
                 } else {
                     None
                 };
-                select_strain_cells(
+                select_part_cells(
                     &selection,
                     Part(part),
                     self.tonic_midi,
@@ -256,7 +256,7 @@ fn vary_cell(
     bank: &CellBank,
     plan: &TunePlan,
     tonic: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     rng: &mut dyn RngCore,
 ) {
     use crate::style_profile::VariationOperation;
@@ -391,7 +391,7 @@ pub const fn fold_midi_to_tessitura(mut raw_midi: i16, min_midi: u8, max_midi: u
 #[must_use]
 pub fn unit_velocity(
     eighth_index: usize,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     melody: &crate::style_profile::ProfileMelody,
 ) -> u8 {
     let base = params.base_velocity as i16;
@@ -434,7 +434,7 @@ fn render_cell_notes(
     cell: &Cell,
     plan: &TunePlan,
     tonic_midi: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
 ) -> Vec<TimelineNote> {
     let mut notes: Vec<TimelineNote> = Vec::with_capacity(cell.notes.len());
 
@@ -470,12 +470,12 @@ fn render_cell_notes(
 
 /// Choisit une partie après les parties déjà construites (références validées).
 #[allow(clippy::too_many_arguments)]
-fn select_strain_cells(
+fn select_part_cells(
     plan: &TunePlan,
     strain: Part,
     tonic_midi: u8,
     bank: &CellBank,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     prev_last_step: &mut Option<i8>,
     previous_parts: &[Vec<Cell>],
     rng: &mut dyn RngCore,
@@ -523,7 +523,7 @@ fn select_bar_cell(
     plan: &TunePlan,
     tonic_midi: u8,
     bank: &CellBank,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     chosen: &[Cell],
     previous_parts: &[Vec<Cell>],
     prev_last_step: Option<i8>,
@@ -635,7 +635,7 @@ fn sequence_cell(
     shift: i8,
     plan: &TunePlan,
     tonic: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
 ) -> Cell {
     let octave = fitting_octave(source, shift, plan, tonic, params);
     let mut cell = source.clone();
@@ -656,7 +656,7 @@ fn fitting_octave(
     shift: i8,
     plan: &TunePlan,
     tonic: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
 ) -> i8 {
     (-4i8..=4)
         .min_by_key(|&octave| {
@@ -689,7 +689,7 @@ fn varied_end_cell(
     bank: &CellBank,
     plan: &TunePlan,
     tonic: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     rng: &mut dyn RngCore,
 ) -> Cell {
     let split = plan.profile.form.varied_end_split(source.notes.len());
@@ -810,13 +810,13 @@ fn pick_cell_for_bar(
     plan: &TunePlan,
     tonic_midi: u8,
     bank: &CellBank,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     prev_last_step: Option<i8>,
     bar1_first_step: Option<i8>,
     excluded_cell: Option<&Cell>,
     rng: &mut dyn RngCore,
 ) -> Cell {
-    let target_midi = strain_target_midi(strain, plan, params);
+    let target_midi = part_target_midi(strain, plan, params);
     let split_midi = register_split_midi(plan, params);
     let max_retries = params.continuity_max_retries.max(1);
 
@@ -921,8 +921,8 @@ fn pick_cell_for_bar(
     bank.cells[0].clone()
 }
 
-/// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`ReelFiddleParams`].
-fn draw_free_cell_role(params: &ReelFiddleParams, rng: &mut dyn RngCore) -> CellRole {
+/// Tire un rôle libre parmi `Run`, `Arp`, `Turn` selon les poids de [`MelodyParams`].
+fn draw_free_cell_role(params: &MelodyParams, rng: &mut dyn RngCore) -> CellRole {
     let candidates = params.free_role_weights();
     let total: u32 = candidates.iter().map(|&(_, w)| w).sum();
     if total == 0 {
@@ -1026,14 +1026,14 @@ fn draw_weighted<'a>(
 
 /// Centre cible en hauteurs MIDI pour une strain (A : `melody_center_midi`,
 /// B : `melody_center_midi + strain_b_lift_semitones`, P1-T7).
-fn strain_target_midi(strain: Part, plan: &TunePlan, params: &ReelFiddleParams) -> f32 {
+fn part_target_midi(strain: Part, plan: &TunePlan, params: &MelodyParams) -> f32 {
     f32::from(params.melody_center_midi)
         + f32::from(plan.profile.form.parts[strain.0].melody_center_offset)
 }
 
 /// Frontière médiane en hauteurs MIDI séparant le registre de la strain A et
 /// celui de la strain B (`melody_center_midi + lift / 2`, P1-T7).
-fn register_split_midi(plan: &TunePlan, params: &ReelFiddleParams) -> f32 {
+fn register_split_midi(plan: &TunePlan, params: &MelodyParams) -> f32 {
     let offsets = plan.profile.form.parts.iter().map(|p| p.melody_center_offset);
     let lo = offsets.clone().min().unwrap_or(0);
     let hi = offsets.max().unwrap_or(0);
@@ -1080,7 +1080,7 @@ fn evaluate_candidate(
     split_midi: f32,
     plan: &TunePlan,
     tonic_midi: u8,
-    params: &ReelFiddleParams,
+    params: &MelodyParams,
     prev_last_step: Option<i8>,
     bar1_first_step: Option<i8>,
 ) -> EvaluatedCandidate {
@@ -1205,7 +1205,7 @@ mod tests {
 
     #[test]
     fn default_tonic_octaves_sit_in_upper_register() {
-        let params = ReelFiddleParams::default();
+        let params = MelodyParams::default();
         // D -> D5 = 74, G -> G4 = 67, A -> A4 = 69 (P1-T7 : toniques à hauteur de chant).
         assert_eq!(tonic_midi_for_key(2, params.tonic_midi_min, params.tonic_midi_max), 74);
         assert_eq!(tonic_midi_for_key(7, params.tonic_midi_min, params.tonic_midi_max), 67);
@@ -1218,7 +1218,7 @@ mod tests {
         assert!(parsed.is_ok());
         if let Ok(cell) = parsed {
             let plan = TunePlan::new(2, Mode::Ionian);
-            let params = ReelFiddleParams::default();
+            let params = MelodyParams::default();
             let notes = render_cell_notes(&cell, &plan, 62, &params);
 
             assert_eq!(notes.len(), 6);
@@ -1238,7 +1238,7 @@ mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let empty_bank = CellBank { cells: Vec::new() };
         let plan = TunePlan::with_profile(2, Mode::Ionian, std::sync::Arc::new(Default::default()));
-        let line = FiddleLine::new(plan.clone(), &empty_bank, &mut rng);
+        let line = MelodyLine::new(plan.clone(), &empty_bank, &mut rng);
         let tune = line.render_tune();
         assert_eq!(tune.len(), 32);
         assert!(tune.iter().all(|bar| !bar.is_empty()));

@@ -34,7 +34,7 @@ pub const DEFAULT_CELL_WEIGHT: u32 = 1;
 const CADENCE_HALF_CLASSES: [i8; 3] = [1, 4, 6];
 
 /// Contenu brut de la banque TOML embarquée du reel.
-pub const REEL_CELLS_TOML: &str = include_str!("../../../profiles/reel_quebecois/cells.toml");
+pub const DEFAULT_CELLS_TOML: &str = include_str!("../../../profiles/reel_quebecois/cells.toml");
 
 /// Rôle fonctionnel d'une cellule mélodique dans une strain de 8 mesures (D5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -421,10 +421,10 @@ pub struct CellBank {
 impl Default for CellBank {
     /// Charge la banque embarquée `reel_cells.toml` sans jamais paniquer à
     /// l'exécution (en cas d'erreur de données, retourne une banque vide ; la
-    /// validité de `REEL_CELLS_TOML` est garantie par les tests unitaires et
+    /// validité de `DEFAULT_CELLS_TOML` est garantie par les tests unitaires et
     /// [`crate::tuning::TuningParams::validate`]).
     fn default() -> Self {
-        Self::from_toml(REEL_CELLS_TOML).unwrap_or_else(|_| Self { cells: Vec::new() })
+        Self::from_toml(DEFAULT_CELLS_TOML).unwrap_or_else(|_| Self { cells: Vec::new() })
     }
 }
 
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn embedded_reel_cell_bank_loads_and_validates() -> Result<(), CellBankError> {
-        let bank = CellBank::from_toml(REEL_CELLS_TOML)?;
+        let bank = CellBank::from_toml(DEFAULT_CELLS_TOML)?;
         bank.validate()?;
 
         assert_eq!(bank.cells.len(), 180);

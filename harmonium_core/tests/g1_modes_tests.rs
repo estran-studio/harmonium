@@ -7,9 +7,9 @@
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Mode, TuneGenerator},
     params::MusicalParams,
     report::MeasureSnapshot,
-    compose::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -34,7 +34,7 @@ fn stream(
     // À la valence neutre, la couleur vient de `key_modes` : un seul candidat.
     params.harmony_valence = p.dynamics.neutral_valence;
     let mut generator =
-        TradGenerator::new(params, TuningParams { profile: p, ..Default::default() });
+        TuneGenerator::new(params, TuningParams { profile: p, ..Default::default() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -108,7 +108,7 @@ fn valence_switches_phrygian_with_mixolydian_and_harmonic_minor_with_ionian()
         params.set_swing_ratio(p.meter.default_swing_ratio);
         params.harmony_valence = p.dynamics.neutral_valence;
         let mut generator =
-            TradGenerator::new(params.clone(), TuningParams { profile: p, ..Default::default() });
+            TuneGenerator::new(params.clone(), TuningParams { profile: p, ..Default::default() });
         let mut rng = ChaCha8Rng::seed_from_u64(1);
         let mut saw_dark = false;
         let mut saw_bright = false;

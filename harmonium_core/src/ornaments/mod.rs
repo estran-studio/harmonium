@@ -11,9 +11,9 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    compose::{Mode, dynamics::Curve},
     style_profile::ProfileError,
     theory::PitchClass,
-    compose::{Mode, dynamics::Curve},
 };
 
 /// Mélange de 64 bits (SplitMix64) pour dériver des graines sans état.
