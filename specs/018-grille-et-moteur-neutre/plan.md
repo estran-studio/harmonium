@@ -96,7 +96,8 @@ au-delà de six (à décider après N1, sur un besoin réel).
 - Migrer **tous** les profils (`profiles/*`, `tests/fixtures/profiles/*`), le studio, Bevy, le
   CLI, le labo, les docs (`profiles/README.md`, READMEs) ; aucun alias de schéma (principe IV).
 - Acceptation : dumps `harmonium_determinism` identiques avant / après (profils distribués,
-  graines 1–3, émotions `mid` et `hi`, 64 mesures), goldens et `TUNING_VERSION` inchangés,
+  graines 1–3, émotions `mid` et `hi`, 64 mesures), notes inchangées ; seule la clé de snapshot
+  `bar_in_strain` → `bar_in_part` change, d'où `TUNING_VERSION` 21 → 22 et goldens régénérés,
   rendus `--features odin` identiques octet pour octet ; suites vertes avec et sans `odin`,
   `harmonium_bevy`, `harmonium_studio`, wasm.
 - Risque : diff très large ; aucun autre agent sur `harmonium_core` pendant N1.
@@ -157,5 +158,5 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 | E0, E2, E9 | fusionnées (`d5e5db8`), suite workspace verte | [Compte rendu](e0-e2-e9.md) |
 | E4 | fusionnée (`14eb55a`), oxisynth du fork estran-studio | [Compte rendu](e4-notes-jouees.md) |
 | L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
-| N1 | faite sur la branche `wquintal/n1-moteur-neutre` (à relire et fusionner) : dumps, WAV et MIDI identiques, goldens et `TUNING_VERSION` inchangés | [Compte rendu](n1-moteur-neutre.md) |
+| N1 | fusionnée : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 | [Compte rendu](n1-moteur-neutre.md) |
 | E1, E3, E5, E6, E7, P1, P2 | en attente | — |

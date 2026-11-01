@@ -45,7 +45,8 @@ séparé n'a été nécessaire.
   `heel` / `toe` l'étaient (comparaison insensible à la casse, comme avant) ; ce n'est pas un alias de l'ancien
   schéma, ces noms-là sont rejetés.
 - **Snapshot** : `bar_in_strain` → `bar_in_part` change une clé JSON du flux de snapshots. Les goldens
-  contiennent cette clé : ils changent **de ce seul nom** (23 lignes, aucune valeur). `TUNING_VERSION` reste à 21.
+  contiennent cette clé : ils changent **de ce seul nom** (23 lignes, aucune valeur). Rupture de contrat
+  (principe I) : l'orchestrateur a porté `TUNING_VERSION` de 21 à 22 dans la même branche, goldens régénérés.
 
 ## Table ancien → nouveau
 
@@ -172,7 +173,7 @@ CLI lancé depuis le checkout principal (pour `assets/`), binaire du worktree.
 | `harmonium_determinism/scripts/run.sh` (natif = wasm) | 92 / 92 identiques (wasm-bindgen-cli 0.2.108 installé dans `/tmp`, hors `~/.cargo`) |
 | Rendus `--export --seed 1 --bars 32 --record-wav --record-midi` de `reel_quebecois`, `isaac_cellar`, `nt_desert`, sans `odin` | 6 fichiers (3 WAV + 3 MIDI) identiques à `main` |
 | Mêmes rendus avec `--features odin --odin-presets ~/Project/bascanada/odin-presets` | 6 fichiers identiques à `main` |
-| `TUNING_VERSION` | 21 avant et après |
+| `TUNING_VERSION` | 21 → 22 (clé de snapshot renommée, principe I) |
 | Goldens `harmonium_host/tests/golden_measures` | seul le nom de la clé `bar_in_strain` → `bar_in_part` ; fichier renommé `snapshot_stream_seed42_8bars.json` |
 | `cargo test --workspace -q --no-fail-fast` | 96 suites vertes, 0 échec |
 | `cargo test -p harmonium --features odin` | 118 tests verts |

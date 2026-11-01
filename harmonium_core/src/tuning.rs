@@ -10,8 +10,8 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : seconde voix mélodique hétérophonique (V4).
-pub const TUNING_VERSION: u32 = 21;
+/// Version du contrat : clé de snapshot `bar_in_part` (ex-`bar_in_strain`, moteur neutre N1).
+pub const TUNING_VERSION: u32 = 22;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
