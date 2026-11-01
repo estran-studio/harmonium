@@ -1,5 +1,6 @@
 //! Modèles sélectionnés par les données du profil, indépendants du driver Legacy.
 pub mod chord_loop;
+pub(crate) mod loop_generation;
 pub mod rewrite;
 
 use crate::{compose::TuneHarmony, theory::chord::Chord};

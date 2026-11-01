@@ -87,9 +87,104 @@ pub struct BassMotif {
     pub notes: Vec<BassMotifNote>,
 }
 
+/// Gabarit de basse : un rythme d'une mesure et une règle de hauteur, réalisés sur l'accord
+/// courant au pas près. Alternative pondérée à côté des `motifs` écrits (même pool de tirage,
+/// même portée `part`). Exclusif de `hits`.
+///
+/// - `cycle` : hauteurs jouées tour à tour par les attaques de `rhythm` d'une mesure à l'autre
+///   (fondamentale/quinte, octaves) ; omis : la basse de l'accord.
+/// - `ramp` : décalage ajouté par mesure du cycle (montée ou descente).
+/// - `pickup` : relance, note courte de la basse de l'accord suivant avant le changement.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BassTemplate {
+    #[serde(default = "default_motif_weight")]
+    pub weight: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub part: Option<String>,
+    /// Mesures du cycle de `ramp` (`1..=16`) ; la montée repart au début du cycle.
+    #[serde(default = "default_one_bar")]
+    pub bars: usize,
+    pub rhythm: Vec<TemplateHit>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cycle: Vec<TemplateNote>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ramp: Option<TemplateRamp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pickup: Option<TemplatePickup>,
+}
+
+/// Attaque d'un gabarit : pas de la mesure, durée, vélocité.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemplateHit {
+    pub step: usize,
+    pub duration: usize,
+    pub velocity: u8,
+}
+
+/// Hauteur d'une attaque : degré de l'accord courant et octave relative.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemplateNote {
+    pub degree: BassDegree,
+    #[serde(default)]
+    pub octave: i8,
+}
+
+/// Montée ou descente : `stride` unités de `motion` ajoutées à chaque mesure du cycle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemplateRamp {
+    /// Pas par mesure, signé et non nul : positif monte, négatif descend.
+    pub stride: i8,
+    #[serde(default)]
+    pub motion: RampMotion,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RampMotion {
+    /// Demi-tons.
+    #[default]
+    Semitone,
+    /// Notes de la gamme du mode actif.
+    ScaleStep,
+}
+
+/// Relance : note de la basse de l'accord suivant (`degree`) jouée `lead` pas avant le
+/// changement ; les attaques du rythme qu'elle recouvre sont retirées ou raccourcies.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TemplatePickup {
+    pub lead: usize,
+    pub duration: usize,
+    pub velocity: u8,
+    #[serde(default = "default_pickup_degree")]
+    pub degree: BassDegree,
+    #[serde(default)]
+    pub when: PickupWhen,
+}
+
+const fn default_pickup_degree() -> BassDegree {
+    BassDegree::Root
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PickupWhen {
+    /// Avant chaque changement d'accord, y compris au passage à la mesure suivante.
+    #[default]
+    ChordChange,
+    /// Avant chaque barre de mesure, même si l'accord ne change pas ; aucun changement
+    /// interne à la mesure.
+    BarEnd,
+}
+
 /// Marche de basse : une attaque par pulsation, arrivée sur la basse de l'accord à chaque
 /// changement d'accord et au premier temps, approche de la cible suivante, notes de passage
-/// tirées par poids. Source exclusive des coups (`hits`) et des motifs (`motifs`).
+/// tirées par poids. Source exclusive des coups (`hits`), des motifs (`motifs`) et des gabarits
+/// (`templates`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BassWalking {
@@ -156,6 +251,8 @@ pub struct BassVoice {
     pub hits: Vec<BassHit>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub motifs: Vec<BassMotif>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub templates: Vec<BassTemplate>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub walk_low: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -528,9 +625,12 @@ impl BassWalking {
     ) -> Result<(), ProfileError> {
         let field = "accompaniment.bass.walking";
         require(
-            bass.hits.is_empty() && bass.motifs.is_empty() && bass.passing.is_none(),
+            bass.hits.is_empty()
+                && bass.motifs.is_empty()
+                && bass.templates.is_empty()
+                && bass.passing.is_none(),
             field,
-            "la marche est exclusive de hits, motifs et passing (trois sources de la même voix)",
+            "la marche est exclusive de hits, motifs, gabarits et passing (sources de la même voix)",
         )?;
         require(
             steps_per_pulse > 0
@@ -614,6 +714,175 @@ fn validate_doubling(
     )
 }
 
+/// Origine d'une mesure de basse tirée par plan : motif écrit ou gabarit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum BassSource {
+    Motif(usize),
+    Template(usize),
+}
+
+/// Candidat du tirage pondéré : motifs écrits, puis gabarits.
+pub(crate) struct BassCandidate<'a> {
+    pub source: BassSource,
+    pub part: Option<&'a str>,
+    pub weight: u32,
+    pub bars: usize,
+}
+
+impl BassVoice {
+    /// Vrai si la voix tire ses mesures d'un plan (motifs ou gabarits) au lieu de `hits`.
+    pub(crate) fn uses_plan(&self) -> bool {
+        !self.motifs.is_empty() || !self.templates.is_empty()
+    }
+
+    /// Pool de tirage : les motifs dans l'ordre du profil, puis les gabarits. Sans gabarit,
+    /// c'est exactement la liste des motifs, donc le même flux de tirages.
+    pub(crate) fn sources(&self) -> impl Iterator<Item = BassCandidate<'_>> {
+        let motifs = self.motifs.iter().enumerate().map(|(i, m)| BassCandidate {
+            source: BassSource::Motif(i),
+            part: m.part.as_deref(),
+            weight: m.weight,
+            bars: m.bars,
+        });
+        let templates = self.templates.iter().enumerate().map(|(i, t)| BassCandidate {
+            source: BassSource::Template(i),
+            part: t.part.as_deref(),
+            weight: t.weight,
+            bars: t.bars,
+        });
+        motifs.chain(templates)
+    }
+
+    /// Mesures d'une source.
+    pub(crate) fn source_bars(&self, source: BassSource) -> usize {
+        match source {
+            BassSource::Motif(i) => self.motifs[i].bars,
+            BassSource::Template(i) => self.templates[i].bars,
+        }
+    }
+}
+
+/// Décalages extrêmes (demi-tons) que la montée d'un gabarit ajoute à ses notes.
+fn ramp_extremes(template: &BassTemplate) -> (i16, i16) {
+    let Some(ramp) = template.ramp else {
+        return (0, 0);
+    };
+    let cycles = i16::try_from(template.bars - 1).unwrap_or(0) * i16::from(ramp.stride);
+    let (low, high) = match ramp.motion {
+        RampMotion::Semitone => (cycles, cycles),
+        // Un pas de gamme couvre 1 à 3 demi-tons (seconde augmentée comprise).
+        RampMotion::ScaleStep if cycles >= 0 => (cycles, 3 * cycles),
+        RampMotion::ScaleStep => (3 * cycles, cycles),
+    };
+    (low.min(0), high.max(0))
+}
+
+fn validate_templates(
+    b: &BassVoice,
+    steps: usize,
+    steps_per_chord: usize,
+    parts: &[crate::style_profile::ProfilePart],
+    total_weight: &mut u32,
+) -> Result<(), ProfileError> {
+    require(
+        b.templates.len() <= 256,
+        "accompaniment.bass.templates",
+        "au plus 256 gabarits de basse",
+    )?;
+    for (i, template) in b.templates.iter().enumerate() {
+        let tf = format!("accompaniment.bass.templates[{i}]");
+        *total_weight = total_weight
+            .checked_add(template.weight)
+            .ok_or_else(|| ProfileError::new(format!("{tf}.weight"), "somme des poids hors u32"))?;
+        require(
+            (1..=16).contains(&template.bars),
+            format!("{tf}.bars"),
+            "1..16 mesures par cycle requises",
+        )?;
+        if let Some(part_name) = &template.part {
+            require(
+                parts.iter().any(|p| &p.name == part_name),
+                format!("{tf}.part"),
+                "partie inconnue dans form.parts",
+            )?;
+            require(
+                parts
+                    .iter()
+                    .all(|p| &p.name != part_name || !p.tracks_off.contains(&TrackId::Bass)),
+                format!("{tf}.part"),
+                "gabarit sans emploi : la partie tait la basse (tracks_off)",
+            )?;
+        }
+        let rhythm = format!("{tf}.rhythm");
+        require(!template.rhythm.is_empty(), &rhythm, "rythme non vide requis")?;
+        validate_hits(
+            template.rhythm.iter().map(|h| (h.step, h.duration, h.velocity)),
+            steps,
+            &rhythm,
+        )?;
+        for (j, pair) in template.rhythm.windows(2).enumerate() {
+            require(
+                pair[1].step >= pair[0].step + pair[0].duration,
+                format!("{rhythm}[{}].step", j + 1),
+                "les attaques du rythme ne doivent pas se chevaucher",
+            )?;
+        }
+        require(template.cycle.len() <= 16, format!("{tf}.cycle"), "au plus 16 hauteurs")?;
+        for (j, note) in template.cycle.iter().enumerate() {
+            require(
+                (-2..=2).contains(&note.octave),
+                format!("{tf}.cycle[{j}].octave"),
+                "octave relative dans -2..2 requise",
+            )?;
+        }
+        if let Some(ramp) = template.ramp {
+            require(
+                ramp.stride != 0 && ramp.stride.unsigned_abs() <= 12,
+                format!("{tf}.ramp.stride"),
+                "pas par mesure non nul dans -12..12 requis",
+            )?;
+        }
+        let (ramp_low, ramp_high) = ramp_extremes(template);
+        let (octave_low, octave_high) = template
+            .cycle
+            .iter()
+            .map(|n| i16::from(n.octave))
+            .fold((0, 0), |(low, high), octave| (low.min(octave), high.max(octave)));
+        require(
+            (0..12).all(|pc| {
+                let base = i16::from(super::accomp::place_in_range(pc, b.low, b.high));
+                base + 12 * octave_low + ramp_low >= 0 && base + 12 * octave_high + ramp_high <= 127
+            }),
+            &tf,
+            "hauteur résultante hors du domaine MIDI 0..127",
+        )?;
+        if let Some(pickup) = template.pickup {
+            let field = format!("{tf}.pickup");
+            require(
+                (1..steps_per_chord).contains(&pickup.lead),
+                format!("{field}.lead"),
+                "1..harmony.steps_per_chord-1 pas requis",
+            )?;
+            require(
+                (1..=pickup.lead).contains(&pickup.duration),
+                format!("{field}.duration"),
+                "durée de 1 pas à lead requise",
+            )?;
+            require(
+                (1..=127).contains(&pickup.velocity),
+                format!("{field}.velocity"),
+                "vélocité dans 1..127 requise",
+            )?;
+            require(
+                pickup.degree != BassDegree::FifthIfHeld,
+                format!("{field}.degree"),
+                "root ou fifth requis",
+            )?;
+        }
+    }
+    Ok(())
+}
+
 impl AccompanimentParams {
     pub(crate) fn validate_accompaniment(
         &self,
@@ -660,7 +929,7 @@ impl AccompanimentParams {
             let field = format!("accompaniment.bass.hits[{i}].doubling");
             validate_doubling(&hit.doubling, b.low, b.high, 0, &field)?;
         }
-        if !b.motifs.is_empty() {
+        if b.uses_plan() {
             require(
                 b.hits.is_empty(),
                 "accompaniment.bass.hits",
@@ -781,21 +1050,23 @@ impl AccompanimentParams {
                     previous_end = note.step + note.duration;
                 }
             }
-            require(
-                total_weight > 0,
-                "accompaniment.bass.motifs",
-                "somme des poids positive requise",
-            )?;
+            validate_templates(b, steps, steps_per_chord, parts, &mut total_weight)?;
+            let pool = if b.motifs.is_empty() {
+                "accompaniment.bass.templates"
+            } else {
+                "accompaniment.bass.motifs"
+            };
+            require(total_weight > 0, pool, "somme des poids positive requise")?;
             for part in parts {
                 if part.tracks_off.contains(&TrackId::Bass) {
                     continue;
                 }
                 require(
-                    b.motifs.iter().any(|m| {
-                        m.weight > 0
-                            && (m.part.as_deref() == Some(part.name.as_str()) || m.part.is_none())
+                    b.sources().any(|source| {
+                        source.weight > 0
+                            && (source.part == Some(part.name.as_str()) || source.part.is_none())
                     }),
-                    "accompaniment.bass.motifs",
+                    pool,
                     format!("aucun motif de poids positif pour la partie {}", part.name).as_str(),
                 )?;
             }

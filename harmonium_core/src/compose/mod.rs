@@ -3,6 +3,7 @@ pub mod accomp;
 pub mod accomp_profile;
 pub mod arrangement;
 mod bass_passing;
+mod bass_template;
 pub mod cells;
 mod chord_spread;
 pub mod dynamics;

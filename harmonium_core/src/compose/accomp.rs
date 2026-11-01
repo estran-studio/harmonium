@@ -5,8 +5,8 @@
 
 use super::{
     accomp_profile::{
-        BassDegree, BassDoubling, BassMotif, BassMotifNote, BassReference, BassVoice, ChordHit,
-        ChordVoicing,
+        BassCandidate, BassDegree, BassDoubling, BassMotifNote, BassReference, BassSource,
+        BassVoice, ChordHit, ChordVoicing,
     },
     harmony::DegreeChord,
     mode::Mode,
@@ -130,15 +130,30 @@ pub fn bass_bar(
     notes
 }
 
-/// Tranche d'une mesure issue d'un motif de basse (potentiellement multi-mesures).
+/// Tranche d'une mesure issue d'un motif ou d'un gabarit de basse (potentiellement multi-mesures).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct BassMotifSlice {
-    motif_index: usize,
+    source: BassSource,
     bar_in_motif: usize,
 }
 
+impl BassMotifSlice {
+    /// Indice du gabarit réalisé par cette tranche, `None` pour un motif écrit.
+    pub(crate) fn template_index(self) -> Option<usize> {
+        match self.source {
+            BassSource::Template(index) => Some(index),
+            BassSource::Motif(_) => None,
+        }
+    }
+
+    /// Mesure de la tranche dans son cycle.
+    pub(crate) fn bar_in_cycle(self) -> usize {
+        self.bar_in_motif
+    }
+}
+
 /// Plan fixé une fois par air : les reprises et tours rejouent les mêmes tranches.
-/// Vide lorsque `bass.motifs` est vide.
+/// Vide lorsque ni `bass.motifs` ni `bass.templates` n'est renseigné.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct BassMotifPlan {
     parts: Vec<Vec<BassMotifSlice>>,
@@ -146,35 +161,35 @@ pub(crate) struct BassMotifPlan {
 }
 
 fn draw_bass_motif(
-    motifs: &[BassMotif],
+    bass: &BassVoice,
     part_name: &str,
     remaining_bars: usize,
     rng: &mut dyn RngCore,
-) -> Option<usize> {
-    let eligible = |m: &BassMotif, specific: bool| {
-        m.weight > 0
-            && m.bars <= remaining_bars
-            && if specific { m.part.as_deref() == Some(part_name) } else { m.part.is_none() }
+) -> Option<BassSource> {
+    let eligible = |c: &BassCandidate<'_>, specific: bool| {
+        c.weight > 0
+            && c.bars <= remaining_bars
+            && if specific { c.part == Some(part_name) } else { c.part.is_none() }
     };
-    let specific_total: u32 = motifs.iter().filter(|m| eligible(m, true)).map(|m| m.weight).sum();
+    let specific_total: u32 = bass.sources().filter(|c| eligible(c, true)).map(|c| c.weight).sum();
     let use_specific = specific_total > 0;
     let total: u32 = if use_specific {
         specific_total
     } else {
-        motifs.iter().filter(|m| eligible(m, false)).map(|m| m.weight).sum()
+        bass.sources().filter(|c| eligible(c, false)).map(|c| c.weight).sum()
     };
     if total == 0 {
         return None;
     }
     let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
-    for (index, motif) in motifs.iter().enumerate() {
-        if !eligible(motif, use_specific) {
+    for candidate in bass.sources() {
+        if !eligible(&candidate, use_specific) {
             continue;
         }
-        if pick < motif.weight {
-            return Some(index);
+        if pick < candidate.weight {
+            return Some(candidate.source);
         }
-        pick -= motif.weight;
+        pick -= candidate.weight;
     }
     None
 }
@@ -188,7 +203,7 @@ impl BassMotifPlan {
     /// Aucun tirage si `bass.motifs` est vide.
     #[must_use]
     pub(crate) fn new(plan: &TunePlan, bass: &BassVoice, rng: &mut dyn RngCore) -> Self {
-        if bass.motifs.is_empty() {
+        if !bass.uses_plan() {
             return Self::default();
         }
         let form = &plan.profile.form;
@@ -219,15 +234,13 @@ impl BassMotifPlan {
                     None => {
                         // Préférer un motif entier ; faute de candidat assez court,
                         // tronquer un motif éligible plutôt que laisser une fin vide.
-                        let Some(motif_index) =
-                            draw_bass_motif(&bass.motifs, &part.name, roles.len() - bar, rng)
-                                .or_else(|| {
-                                    draw_bass_motif(&bass.motifs, &part.name, usize::MAX, rng)
-                                })
+                        let Some(source) =
+                            draw_bass_motif(bass, &part.name, roles.len() - bar, rng)
+                                .or_else(|| draw_bass_motif(bass, &part.name, usize::MAX, rng))
                         else {
                             unreachable!("chaque partie validée dispose d'un motif de basse");
                         };
-                        let slice = BassMotifSlice { motif_index, bar_in_motif: 0 };
+                        let slice = BassMotifSlice { source, bar_in_motif: 0 };
                         ongoing = Some(slice);
                         slice
                     }
@@ -235,7 +248,7 @@ impl BassMotifPlan {
                 chosen.push(slice);
                 ongoing = ongoing.and_then(|mut next| {
                     next.bar_in_motif += 1;
-                    (next.bar_in_motif < bass.motifs[next.motif_index].bars).then_some(next)
+                    (next.bar_in_motif < bass.source_bars(next.source)).then_some(next)
                 });
             }
             parts.push(chosen);
@@ -255,8 +268,8 @@ impl BassMotifPlan {
                     }
                     // Une seconde fin ne démarre jamais un motif multi-mesures :
                     // tirer une mesure entière ou rejouer la tranche finale d'origine.
-                    _ => draw_bass_motif(&bass.motifs, &part.name, 1, rng)
-                        .map(|motif_index| BassMotifSlice { motif_index, bar_in_motif: 0 })
+                    _ => draw_bass_motif(bass, &part.name, 1, rng)
+                        .map(|source| BassMotifSlice { source, bar_in_motif: 0 })
                         .or_else(|| chosen.last().copied()),
                 }
             })
@@ -335,7 +348,10 @@ pub(crate) fn bass_motif_bar(
     steps_per_chord: usize,
     next_id: &mut impl FnMut() -> NoteId,
 ) -> Vec<TimelineNote> {
-    let motif = &params.bass.motifs[slice.motif_index];
+    let BassSource::Motif(motif_index) = slice.source else {
+        unreachable!("un gabarit est réalisé par bass_template_bar");
+    };
+    let motif = &params.bass.motifs[motif_index];
     let bar_start = slice.bar_in_motif * steps_per_bar;
     let bar_end = bar_start + steps_per_bar;
     let mut notes = Vec::new();
@@ -393,7 +409,21 @@ pub(crate) fn first_bass_target(
     steps_per_chord: usize,
 ) -> Option<(usize, u8)> {
     if let Some(slice) = bass_plan.slice_for_bar(plan, bar_in_tour) {
-        let motif = &params.bass.motifs[slice.motif_index];
+        if let Some(index) = slice.template_index() {
+            return super::bass_template::first_attack(
+                &params.bass,
+                index,
+                slice.bar_in_motif,
+                chords,
+                plan.key,
+                plan.mode,
+                steps_per_chord,
+            );
+        }
+        let BassSource::Motif(motif_index) = slice.source else {
+            unreachable!("gabarit traité plus haut");
+        };
+        let motif = &params.bass.motifs[motif_index];
         let bar_start = slice.bar_in_motif * steps_per_bar;
         let bar_end = bar_start + steps_per_bar;
         let note =
