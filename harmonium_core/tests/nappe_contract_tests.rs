@@ -236,7 +236,8 @@ fn seuls_les_profils_a_nappes_lient() {
     // Garde-fou : les 10 profils à airs distribués n'emploient pas `tie`, donc
     // leurs notes publiées sont inchangées. Les profils de jeu (harmonie en
     // boucle : `nt_desert`, `isaac_*`) lient leurs nappes en données, sans
-    // toucher au moteur.
+    // toucher au moteur ; un profil en boucle qui joue une banque de rythmes de
+    // comping (`wjazzd_swing`) n'a pas de nappe et ne lie rien.
     let distributed = StyleProfile::distributed();
     let compose = distributed.iter().filter(|p| p.harmony.model != "loop").count();
     assert_eq!(compose, 10, "dix profils à airs distribués");
@@ -245,7 +246,8 @@ fn seuls_les_profils_a_nappes_lient() {
             .accompaniment
             .as_ref()
             .is_some_and(|a| a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie));
-        if p.harmony.model == "loop" {
+        let comping = p.accompaniment.as_ref().is_some_and(|a| !a.chords.comping.is_empty());
+        if p.harmony.model == "loop" && !comping {
             assert!(tied, "{} : nappe liée attendue", p.meta.id);
             continue;
         }

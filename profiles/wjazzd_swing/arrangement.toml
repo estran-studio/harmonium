@@ -1,0 +1,14 @@
+# Deux tours de la séquence (Blues A A B A, 44 mesures) : accords, basse et batterie
+# jouent dès la première mesure (accompagnement sous une grille, pas de montée en couches).
+# Pas de piste Melody : absente des entrées.
+tours_per_tune = 2
+
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0
