@@ -37,7 +37,8 @@ extensions, notes de l'accord) ; les notes ne changent pas. Contrat décrit dans
   embarqués (fichiers d'origine inclus par `build.rs`), les dossiers (`load`) et la mémoire
   (`from_files`) ; erreurs situées par fichier et ligne.
 - `compose` : réalisation des cellules et des reprises, harmonisation,
-  accompagnement, percussions, arrangement, intros et dynamique.
+  accompagnement (basse : coups, motifs, marche ; accords : voicings serrés, notes guides, sans
+  fondamentale, drop 2, comping), percussions, arrangement, intros et dynamique.
 - `models` : sélection du modèle harmonique depuis `[harmony]` ;
   `melody_functional` et `rewrite_functional` (grammaire Steedman à état local).
 - `theory` : accords, `PitchClass`, conduite des voix et Lydian Chromatic Concept.
