@@ -11,6 +11,7 @@ use rand_chacha::ChaCha8Rng;
 use super::{
     accomp::{BassMotifPlan, ChordPlayer, bass_bar, bass_motif_bar, first_bass_target},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
+    bass_template::{TemplateBar, bass_template_bar},
     cells::Cell,
     harmony::{ChordDegree, ChordQuality, DegreeChord, TuneHarmony},
     melody::{MelodyLine, same_cell_up_to_octave, tonic_midi_for_key},
@@ -756,6 +757,7 @@ impl TuneGenerator {
                     let pattern = tune.percussion_plan.pattern(
                         &tuning.profile.percussion,
                         plan.profile.form.sequence[0],
+                        0,
                         self.percussion_density(self.effective_intensity(position.tune_index)),
                         false,
                     );
@@ -942,16 +944,33 @@ impl TuneGenerator {
                         &mut next_id,
                     )
                 } else if let Some(slice) = tune.bass_plan.slice_for_bar(plan, bar_in_tour) {
-                    bass_motif_bar(
-                        slice,
-                        &chords,
-                        plan.key,
-                        plan.mode,
-                        accompaniment,
-                        self.profile.meter.steps_per_bar,
-                        self.profile.harmony.steps_per_chord,
-                        &mut next_id,
-                    )
+                    if let Some(index) = slice.template_index() {
+                        bass_template_bar(
+                            &accompaniment.bass.templates[index],
+                            &TemplateBar {
+                                chords: &chords,
+                                next_first,
+                                key: plan.key,
+                                mode: plan.mode,
+                                steps_per_chord: self.profile.harmony.steps_per_chord,
+                                steps_per_bar: self.profile.meter.steps_per_bar,
+                                bar_in_cycle: slice.bar_in_cycle(),
+                            },
+                            &accompaniment.bass,
+                            &mut next_id,
+                        )
+                    } else {
+                        bass_motif_bar(
+                            slice,
+                            &chords,
+                            plan.key,
+                            plan.mode,
+                            accompaniment,
+                            self.profile.meter.steps_per_bar,
+                            self.profile.harmony.steps_per_chord,
+                            &mut next_id,
+                        )
+                    }
                 } else {
                     bass_bar(
                         &chords,
@@ -1135,6 +1154,7 @@ impl TuneGenerator {
             let pattern = tune.percussion_plan.pattern(
                 &self.tuning.profile.percussion,
                 position.part.0,
+                position.tour,
                 self.percussion_density(self.effective_intensity(position.tune_index)),
                 is_cadence,
             );
@@ -1687,7 +1707,7 @@ impl TuneGenerator {
         let bass_plan = if let Some(source) = source {
             source.bass_plan.clone()
         } else if let Some(a) = &self.profile.accompaniment
-            && !a.bass.motifs.is_empty()
+            && a.bass.uses_plan()
         {
             let mut bass_rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
                 crate::ornaments::tune_seed(

@@ -1,11 +1,15 @@
-//! Boucles et pédales explicites par partie, résolues dans le mode actif.
+//! Boucles et pédales explicites par partie, résolues dans le mode actif ; boucles générées par
+//! contraintes (voir `loop_generation`).
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
+use super::loop_generation::{self, Unsatisfiable};
 use crate::{
     algo::RngCore,
     compose::{ChordDegree, ChordQuality, DegreeChord, Mode, TunePlan},
-    style_profile::{HarmonyPart, LoopChord, ProfileError, StyleProfile},
+    style_profile::{
+        GeneratedLoop, HarmonyPart, KeyFit, LoopChord, ProfileError, RootMotion, StyleProfile,
+    },
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -26,31 +30,51 @@ impl LoopHarmony {
             .iter()
             .enumerate()
             .map(|(part, configured)| match &plan.profile.harmony.parts[&configured.name] {
-                HarmonyPart::Pedal { .. } => 0,
-                HarmonyPart::ChordLoop { loops } => {
-                    if loops.len() == 1 {
-                        return 0;
-                    }
-                    let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
-                        crate::ornaments::mix(seed, 0x4841_524D),
-                        part as u64,
-                    ));
-                    let total: u64 =
-                        loops.iter().map(|alternative| u64::from(alternative.weight)).sum();
-                    let mut pick = rng.next_range_u64(0..total);
+                HarmonyPart::Pedal { weight, alternatives, .. } => draw_alternative(
+                    seed,
+                    part,
+                    std::iter::once(*weight).chain(alternatives.iter().map(|a| a.weight)),
+                ),
+                HarmonyPart::ChordLoop { loops, generated } => draw_alternative(
+                    seed,
+                    part,
                     loops
                         .iter()
-                        .position(|alternative| {
-                            let weight = u64::from(alternative.weight);
-                            if pick < weight {
-                                true
-                            } else {
-                                pick -= weight;
-                                false
-                            }
-                        })
-                        .unwrap_or_else(|| unreachable!("validated positive loop weights"))
-                }
+                        .map(|alternative| alternative.weight)
+                        .chain(generated.iter().map(|alternative| alternative.weight)),
+                ),
+            })
+            .collect();
+        // Boucles générées : tirées une fois par partie (graine, partie, alternative), puis
+        // répétées jusqu'à la fin de la partie ; la forme reste lisible d'une reprise à l'autre.
+        let generated: Vec<Option<Vec<LoopChord>>> = plan
+            .profile
+            .form
+            .parts
+            .iter()
+            .enumerate()
+            .map(|(part, configured)| {
+                let HarmonyPart::ChordLoop { loops, generated } =
+                    &plan.profile.harmony.parts[&configured.name]
+                else {
+                    return None;
+                };
+                let index = selected[part].checked_sub(loops.len())?;
+                let spec = &generated[index];
+                let part_bars = configured.roles.len();
+                let bars = spec.bars.unwrap_or(part_bars);
+                let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
+                    crate::ornaments::mix(crate::ornaments::mix(seed, 0x4745_4E4C), part as u64),
+                    index as u64,
+                ));
+                let one = loop_generation::generate(
+                    spec,
+                    bars * steps_per_bar / period,
+                    period,
+                    plan.mode,
+                    &mut rng,
+                );
+                Some(one.iter().cycle().take(one.len() * (part_bars / bars)).cloned().collect())
             })
             .collect();
         let chords = (0..plan.material_bars())
@@ -58,16 +82,34 @@ impl LoopHarmony {
                 let (part, _, offset, _) = plan.position(plan.representative_bar(material));
                 let name = &plan.profile.form.parts[part].name;
                 match &plan.profile.harmony.parts[name] {
-                    HarmonyPart::Pedal { degree, semitones, neighbor_semitones } => {
+                    HarmonyPart::Pedal {
+                        degree,
+                        semitones,
+                        neighbor_semitones,
+                        alternatives,
+                        ..
+                    } => {
+                        let (degree, semitones, neighbor) = match selected[part].checked_sub(1) {
+                            None => (*degree, *semitones, *neighbor_semitones),
+                            Some(index) => {
+                                let alternative = &alternatives[index];
+                                (
+                                    alternative.degree,
+                                    alternative.semitones,
+                                    alternative.neighbor_semitones,
+                                )
+                            }
+                        };
                         let chord = DegreeChord::new(
-                            root(*degree, *semitones, plan.mode),
-                            neighbor_semitones
-                                .map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
+                            root(degree, semitones, plan.mode),
+                            neighbor.map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
                         );
                         vec![chord; slots]
                     }
-                    HarmonyPart::ChordLoop { loops } => {
-                        let chords = &loops[selected[part]].chords;
+                    HarmonyPart::ChordLoop { loops, .. } => {
+                        let chords = generated[part]
+                            .as_deref()
+                            .unwrap_or_else(|| loops[selected[part]].chords.as_slice());
                         (0..slots)
                             .map(|slot| {
                                 let mut remaining = offset * steps_per_bar + slot * period;
@@ -97,6 +139,30 @@ impl LoopHarmony {
     pub fn chords_for_bar(&self, bar: usize) -> &[DegreeChord] {
         &self.chords[self.plan.material_index(bar)]
     }
+}
+/// Alternative tirée parmi `weights` avec le flux de la partie ; un candidat unique n'entraîne
+/// aucun tirage.
+fn draw_alternative(seed: u64, part: usize, weights: impl Iterator<Item = u32> + Clone) -> usize {
+    if weights.clone().nth(1).is_none() {
+        return 0;
+    }
+    let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
+        crate::ornaments::mix(seed, 0x4841_524D),
+        part as u64,
+    ));
+    let total: u64 = weights.clone().map(u64::from).sum();
+    let mut pick = rng.next_range_u64(0..total);
+    weights
+        .map(u64::from)
+        .position(|weight| {
+            if pick < weight {
+                true
+            } else {
+                pick -= weight;
+                false
+            }
+        })
+        .unwrap_or_else(|| unreachable!("validated positive alternative weights"))
 }
 /// Durée en pas : explicite, sinon un créneau de la grille harmonique.
 fn chord_steps(chord: &LoopChord, steps_per_chord: usize) -> usize {
@@ -162,32 +228,39 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
             .get(&part.name)
             .ok_or_else(|| ProfileError::new(&path, "harmonie requise pour chaque partie"))?;
         match configured {
-            HarmonyPart::Pedal { degree, semitones, neighbor_semitones } => {
-                validate_root(*degree, *semitones, &path)?;
-                if neighbor_semitones.is_some_and(|neighbor| !(1..=11).contains(&neighbor)) {
+            HarmonyPart::Pedal { degree, semitones, neighbor_semitones, weight, alternatives } => {
+                validate_pedal(profile, *degree, *semitones, *neighbor_semitones, &path)?;
+                if alternatives.is_empty() {
+                    continue;
+                }
+                if *weight == 0 {
                     return Err(ProfileError::new(
-                        format!("{path}.neighbor_semitones"),
-                        "attendu 1..11",
+                        format!("{path}.weight"),
+                        "poids strictement positif requis",
                     ));
                 }
-                if let Some(neighbor) = neighbor_semitones
-                    && let Some(accompaniment) = &profile.accompaniment
-                    && accompaniment.chords.voicing
-                        == crate::compose::accomp_profile::ChordVoicing::FixedTriad
-                    && accompaniment.chords.high.saturating_sub(accompaniment.chords.low)
-                        < 11 + neighbor
-                {
-                    return Err(ProfileError::new(
-                        "accompaniment.chords.high",
-                        "la fenêtre fixe doit couvrir douze fondamentales et le voisin supérieur",
-                    ));
+                for (index, alternative) in alternatives.iter().enumerate() {
+                    let path = format!("{path}.alternatives[{index}]");
+                    if alternative.weight == 0 {
+                        return Err(ProfileError::new(
+                            format!("{path}.weight"),
+                            "poids strictement positif requis",
+                        ));
+                    }
+                    validate_pedal(
+                        profile,
+                        alternative.degree,
+                        alternative.semitones,
+                        alternative.neighbor_semitones,
+                        &path,
+                    )?;
                 }
             }
-            HarmonyPart::ChordLoop { loops } => {
-                if loops.is_empty() {
+            HarmonyPart::ChordLoop { loops, generated } => {
+                if loops.is_empty() && generated.is_empty() {
                     return Err(ProfileError::new(
                         format!("{path}.loops"),
-                        "au moins une alternative harmonique requise",
+                        "au moins une alternative harmonique requise (loops ou generated)",
                     ));
                 }
                 for (loop_index, alternative) in loops.iter().enumerate() {
@@ -221,11 +294,7 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                                     ChordQuality::Major | ChordQuality::Minor
                                 ))
                         {
-                            return Err(ProfileError::new(
-                                "accompaniment.chords.voicing",
-                                "fixed_triad ne joue que des triades majeures et mineures \
-                                 sans basse : qualités typées et accords slash demandent close_triad",
-                            ));
+                            return Err(fixed_triad_error());
                         }
                         let steps = chord_steps(chord, harmony.steps_per_chord);
                         if steps == 0 || !steps.is_multiple_of(harmony.steps_per_chord) {
@@ -249,6 +318,141 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                         ));
                     }
                 }
+                for (index, spec) in generated.iter().enumerate() {
+                    validate_generated(
+                        profile,
+                        spec,
+                        part.roles.len(),
+                        fixed_triad,
+                        &format!("{path}.generated[{index}]"),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+fn fixed_triad_error() -> ProfileError {
+    ProfileError::new(
+        "accompaniment.chords.voicing",
+        "fixed_triad ne joue que des triades majeures et mineures sans basse : qualités typées \
+         et accords slash demandent close_triad",
+    )
+}
+/// Une pédale (écrite ou alternative) : racine, voisin et fenêtre d'une triade fixe.
+fn validate_pedal(
+    profile: &StyleProfile,
+    degree: Option<u8>,
+    semitones: Option<u8>,
+    neighbor_semitones: Option<u8>,
+    path: &str,
+) -> Result<(), ProfileError> {
+    validate_root(degree, semitones, path)?;
+    if neighbor_semitones.is_some_and(|neighbor| !(1..=11).contains(&neighbor)) {
+        return Err(ProfileError::new(format!("{path}.neighbor_semitones"), "attendu 1..11"));
+    }
+    if let Some(neighbor) = neighbor_semitones
+        && let Some(accompaniment) = &profile.accompaniment
+        && accompaniment.chords.voicing == crate::compose::accomp_profile::ChordVoicing::FixedTriad
+        && accompaniment.chords.high.saturating_sub(accompaniment.chords.low) < 11 + neighbor
+    {
+        return Err(ProfileError::new(
+            "accompaniment.chords.high",
+            "la fenêtre fixe doit couvrir douze fondamentales et le voisin supérieur",
+        ));
+    }
+    Ok(())
+}
+/// Une boucle générée : bornes des champs, puis faisabilité dans chaque mode atteignable.
+fn validate_generated(
+    profile: &StyleProfile,
+    spec: &GeneratedLoop,
+    part_bars: usize,
+    fixed_triad: bool,
+    path: &str,
+) -> Result<(), ProfileError> {
+    let harmony = &profile.harmony;
+    let field = |name: &str| format!("{path}.{name}");
+    if spec.weight == 0 {
+        return Err(ProfileError::new(field("weight"), "poids strictement positif requis"));
+    }
+    let bars = spec.bars.unwrap_or(part_bars);
+    if bars == 0 || !part_bars.is_multiple_of(bars) {
+        return Err(ProfileError::new(
+            field("bars"),
+            format!("diviseur de la longueur de la partie ({part_bars} mesures) requis"),
+        ));
+    }
+    let slots = bars * profile.meter.steps_per_bar / harmony.steps_per_chord;
+    if spec.count == 0 || spec.count > slots {
+        return Err(ProfileError::new(
+            field("count"),
+            format!(
+                "1..{slots} accords requis : un créneau de harmony.steps_per_chord par accord \
+                 dans {bars} mesure(s)"
+            ),
+        ));
+    }
+    if spec.qualities.is_empty() || spec.qualities.len() > 64 {
+        return Err(ProfileError::new(field("qualities"), "1..64 qualités requises"));
+    }
+    if spec.start.is_some_and(|start| start > 11) {
+        return Err(ProfileError::new(field("start"), "attendu 0..11"));
+    }
+    if spec.pedal.is_some_and(|pedal| pedal > 11) {
+        return Err(ProfileError::new(field("pedal"), "attendu 0..11"));
+    }
+    if let RootMotion::Intervals { intervals } = &spec.motion {
+        let range = -11..=11;
+        if intervals.is_empty()
+            || intervals.iter().any(|i| i.weight == 0 || !range.contains(&i.semitones))
+        {
+            return Err(ProfileError::new(
+                field("motion.intervals"),
+                "au moins un intervalle, demi-tons dans -11..11, poids strictement positifs",
+            ));
+        }
+    }
+    if fixed_triad
+        && (spec.pedal.is_some()
+            || spec.qualities.iter().any(|&quality| {
+                !matches!(
+                    ChordQuality::from_quality(quality),
+                    ChordQuality::Major | ChordQuality::Minor
+                )
+            }))
+    {
+        return Err(fixed_triad_error());
+    }
+    let depends_on_mode =
+        spec.key_fit != KeyFit::Free || matches!(spec.motion, RootMotion::ScaleSteps { .. });
+    let reachable = profile.reachable_modes();
+    let modes: Vec<Mode> = if depends_on_mode {
+        Mode::ALL.into_iter().filter(|mode| reachable.contains(mode)).collect()
+    } else {
+        vec![Mode::Ionian]
+    };
+    for mode in modes {
+        match loop_generation::check(spec, mode) {
+            Ok(()) => {}
+            Err(Unsatisfiable::Start) => {
+                return Err(ProfileError::new(
+                    field("key_fit"),
+                    format!(
+                        "aucune qualité de qualities ne respecte key_fit sur la fondamentale de \
+                         départ (start) en mode {mode:?}"
+                    ),
+                ));
+            }
+            Err(Unsatisfiable::Motion) => {
+                return Err(ProfileError::new(
+                    field("motion"),
+                    format!(
+                        "aucune suite de {} accords ne respecte motion, start et key_fit en mode \
+                         {mode:?}",
+                        spec.count
+                    ),
+                ));
             }
         }
     }

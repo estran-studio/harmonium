@@ -426,6 +426,8 @@ pub struct ModeChords {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum HarmonyPart {
+    /// Fondamentale tenue. `weight` et `alternatives` : autres pédales tirées une fois par
+    /// partie et par air (la pédale écrite ici est la première alternative).
     Pedal {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         degree: Option<u8>,
@@ -433,10 +435,32 @@ pub enum HarmonyPart {
         semitones: Option<u8>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         neighbor_semitones: Option<u8>,
+        #[serde(default = "default_loop_weight", skip_serializing_if = "is_unit_weight")]
+        weight: u32,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        alternatives: Vec<PedalAlternative>,
     },
+    /// Boucles d'accords écrites (`loops`) et/ou générées par contraintes (`generated`) : une
+    /// seule alternative est tirée par partie et par air, puis répétée.
     ChordLoop {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
         loops: Vec<ChordLoop>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        generated: Vec<GeneratedLoop>,
     },
+}
+/// Pédale alternative d'une partie `pedal`, pondérée comme une boucle.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PedalAlternative {
+    #[serde(default = "default_loop_weight")]
+    pub weight: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub degree: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semitones: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub neighbor_semitones: Option<u8>,
 }
 /// Alternative harmonique pondérée couvrant exactement une partie.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -448,6 +472,101 @@ pub struct ChordLoop {
 }
 fn default_loop_weight() -> u32 {
     1
+}
+fn is_unit_weight(weight: &u32) -> bool {
+    *weight == 1
+}
+/// Boucle d'accords générée par contraintes : tirée une fois par partie et par graine, puis
+/// répétée jusqu'à la fin de la partie. Les accords sont relatifs à la tonique.
+///
+/// ```toml
+/// { count = 4, qualities = ["m"], motion = { kind = "chromatic" }, pedal = 0 }
+/// ```
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GeneratedLoop {
+    #[serde(default = "default_loop_weight")]
+    pub weight: u32,
+    /// Longueur de la boucle en mesures, diviseur de la longueur de la partie (omise : la
+    /// partie entière, sans répétition).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bars: Option<usize>,
+    /// Nombre d'accords de la boucle ; les créneaux de `steps_per_chord` sont répartis aussi
+    /// également que possible (les premiers accords reçoivent le reste).
+    pub count: usize,
+    /// Qualités permises (texte de suffixe), tirées uniformément pour chaque accord.
+    pub qualities: Vec<crate::theory::quality::Quality>,
+    /// Mouvement de la fondamentale d'un accord au suivant.
+    pub motion: RootMotion,
+    /// Fondamentale du premier accord, demi-tons au-dessus de la tonique (omise : la tonique).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<u8>,
+    /// Pédale de basse : demi-tons au-dessus de la tonique, basse de tous les accords.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pedal: Option<u8>,
+    /// Rapport des notes des accords (basse comprise) à la gamme du mode actif.
+    #[serde(default, skip_serializing_if = "KeyFit::is_free")]
+    pub key_fit: KeyFit,
+}
+/// Mouvement permis de la fondamentale entre deux accords consécutifs.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum RootMotion {
+    /// Un demi-ton.
+    Chromatic {
+        #[serde(default, skip_serializing_if = "MotionDirection::is_either")]
+        direction: MotionDirection,
+    },
+    /// Une quinte juste (montante : +7 demi-tons, descendante : −7).
+    Fifths {
+        #[serde(default, skip_serializing_if = "MotionDirection::is_either")]
+        direction: MotionDirection,
+    },
+    /// Une note de la gamme du mode actif (la fondamentale est ramenée dans la gamme si elle
+    /// n'y est pas).
+    ScaleSteps {
+        #[serde(default, skip_serializing_if = "MotionDirection::is_either")]
+        direction: MotionDirection,
+    },
+    /// Intervalles permis, pondérés (demi-tons signés, `-11..=11` ; 0 répète la fondamentale).
+    Intervals { intervals: Vec<WeightedInterval> },
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MotionDirection {
+    #[default]
+    Either,
+    Up,
+    Down,
+}
+impl MotionDirection {
+    fn is_either(&self) -> bool {
+        *self == Self::Either
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WeightedInterval {
+    pub semitones: i8,
+    #[serde(default = "default_loop_weight")]
+    pub weight: u32,
+}
+/// Accords communs avec la tonalité ou non.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum KeyFit {
+    /// Aucune contrainte.
+    #[default]
+    Free,
+    /// Toutes les notes de l'accord (basse comprise) appartiennent à la gamme du mode.
+    Within,
+    /// Au moins une note de l'accord (basse comprise) sort de la gamme du mode.
+    Outside,
+}
+impl KeyFit {
+    fn is_free(&self) -> bool {
+        *self == Self::Free
+    }
 }
 /// Accord d'une boucle, relatif à la tonique : `{ semitones = 7, quality = "7b9", bass = 11 }`.
 ///
@@ -489,9 +608,10 @@ impl ProfileHarmony {
     /// Une alternative unique ne requiert aucune graine ni aucun tirage.
     #[must_use]
     pub fn has_alternatives(&self) -> bool {
-        self.parts
-            .values()
-            .any(|part| matches!(part, HarmonyPart::ChordLoop { loops } if loops.len() > 1))
+        self.parts.values().any(|part| match part {
+            HarmonyPart::ChordLoop { loops, generated } => loops.len() + generated.len() > 1,
+            HarmonyPart::Pedal { alternatives, .. } => !alternatives.is_empty(),
+        })
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -809,6 +929,34 @@ impl StyleProfile {
             .map_err(|e| ProfileError::new(e.path().to_string(), one_line(e.inner().message())))?;
         profile.validate()?;
         Ok(profile)
+    }
+    /// Modes atteignables : seul le mode fixé avec verrou ; sans verrou, les modes de
+    /// `melody.key_modes` et `dynamics.color`, fermés par les bascules parallèles.
+    #[must_use]
+    pub fn reachable_modes(&self) -> std::collections::HashSet<Mode> {
+        let mut reachable = std::collections::HashSet::new();
+        if let Some(fixed) = self.fixed_tonality {
+            reachable.insert(fixed.mode);
+        } else {
+            reachable.extend(self.melody.key_modes.iter().map(|k| k.mode));
+            reachable.extend(self.dynamics.color.iter().map(|c| c.mode));
+            loop {
+                let mut fringe = Vec::new();
+                for row in &self.dynamics.parallel_modes {
+                    if reachable.contains(&row.bright) {
+                        fringe.push(row.dark);
+                    }
+                    if reachable.contains(&row.dark) {
+                        fringe.push(row.bright);
+                    }
+                }
+                if fringe.iter().all(|mode| reachable.contains(mode)) {
+                    break;
+                }
+                reachable.extend(fringe);
+            }
+        }
+        reachable
     }
     pub fn validate(&self) -> Result<(), ProfileError> {
         if let Some(fixed) = self.fixed_tonality {
@@ -1235,30 +1383,7 @@ impl StyleProfile {
                 "tonique I et dominante V requises",
             )?;
         }
-        // Avec verrou, seul le mode fixé est atteignable. Sans verrou, conserver
-        // la fermeture des distributions par les bascules parallèles.
-        let mut reachable = std::collections::HashSet::new();
-        if let Some(fixed) = self.fixed_tonality {
-            reachable.insert(fixed.mode);
-        } else {
-            reachable.extend(self.melody.key_modes.iter().map(|k| k.mode));
-            reachable.extend(self.dynamics.color.iter().map(|c| c.mode));
-            loop {
-                let mut fringe = Vec::new();
-                for row in &self.dynamics.parallel_modes {
-                    if reachable.contains(&row.bright) {
-                        fringe.push(row.dark);
-                    }
-                    if reachable.contains(&row.dark) {
-                        fringe.push(row.bright);
-                    }
-                }
-                if fringe.iter().all(|mode| reachable.contains(mode)) {
-                    break;
-                }
-                reachable.extend(fringe);
-            }
-        }
+        let reachable = self.reachable_modes();
         check(
             self.harmony.model != "melody_functional"
                 || reachable.iter().all(|mode| modes.contains(mode)),
@@ -1285,6 +1410,11 @@ impl StyleProfile {
                 self.harmony.model != "none" || a.bass.motifs.is_empty(),
                 "accompaniment.bass.motifs",
                 "les motifs de basse demandent une harmonie qui joue des accords",
+            )?;
+            check(
+                self.harmony.model != "none" || a.bass.templates.is_empty(),
+                "accompaniment.bass.templates",
+                "les gabarits de basse demandent une harmonie qui joue des accords",
             )?;
             check(
                 self.harmony.model != "none" || a.bass.walking.is_none(),
@@ -1321,6 +1451,14 @@ impl StyleProfile {
                 pattern.hits.iter().all(|h| h.step < m.steps_per_bar),
                 &format!("percussion.patterns[{i}].hits"),
                 "pas hors mesure",
+            )?;
+            check(
+                pattern
+                    .part
+                    .as_ref()
+                    .is_none_or(|name| self.form.parts.iter().any(|p| &p.name == name)),
+                &format!("percussion.patterns[{i}].part"),
+                "partie inconnue dans form.parts",
             )?;
         }
         check(

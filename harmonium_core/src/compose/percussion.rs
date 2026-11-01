@@ -214,6 +214,10 @@ pub struct PercussionPattern {
     pub density: u8,
     /// Poids strictement positif lors du choix parmi les alternatives de même densité.
     pub weight: u32,
+    /// Portée optionnelle : le pattern ne concourt que pour cette partie (`form.parts[].name`).
+    pub part: Option<String>,
+    /// Portée optionnelle : le pattern ne concourt que pour ce tour de l'air (1-based).
+    pub tour: Option<usize>,
     /// Liste des coups composant la mesure.
     pub hits: Vec<PercussionHit>,
     euclid: Option<(EuclideanPattern, TrackId)>,
@@ -223,7 +227,7 @@ impl PercussionPattern {
     /// Crée un nouveau [`PercussionPattern`].
     #[must_use]
     pub const fn new(density: u8, hits: Vec<PercussionHit>) -> Self {
-        Self { density, weight: 1, hits, euclid: None }
+        Self { density, weight: 1, part: None, tour: None, hits, euclid: None }
     }
 
     pub(crate) fn euclidean_steps(&self) -> Option<usize> {
@@ -257,6 +261,10 @@ impl<'de> Deserialize<'de> for PercussionPattern {
             euclid: Option<EuclideanPattern>,
             #[serde(default)]
             track: Option<String>,
+            #[serde(default)]
+            part: Option<String>,
+            #[serde(default)]
+            tour: Option<usize>,
         }
         let raw = Raw::deserialize(deserializer)?;
         let mut euclid = None;
@@ -290,17 +298,34 @@ impl<'de> Deserialize<'de> for PercussionPattern {
             (None, None) if raw.track.is_none() => Vec::new(),
             _ => return Err(serde::de::Error::custom("choisir hits ou euclid, pas les deux")),
         };
-        Ok(Self { density: raw.density, weight: raw.weight, hits, euclid })
+        Ok(Self {
+            density: raw.density,
+            weight: raw.weight,
+            part: raw.part,
+            tour: raw.tour,
+            hits,
+            euclid,
+        })
     }
 }
 
 impl Serialize for PercussionPattern {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut state = serializer
-            .serialize_struct("PercussionPattern", if self.euclid.is_some() { 4 } else { 3 })?;
+        let mut state = serializer.serialize_struct(
+            "PercussionPattern",
+            3 + usize::from(self.euclid.is_some())
+                + usize::from(self.part.is_some())
+                + usize::from(self.tour.is_some()),
+        )?;
         state.serialize_field("density", &self.density)?;
         state.serialize_field("weight", &self.weight)?;
+        if let Some(part) = &self.part {
+            state.serialize_field("part", part)?;
+        }
+        if let Some(tour) = self.tour {
+            state.serialize_field("tour", &tour)?;
+        }
         if let Some((pattern, track)) = self.euclid {
             state.serialize_field("euclid", &pattern)?;
             state.serialize_field(
@@ -447,6 +472,12 @@ pub enum PercussionTableError {
     DuplicateCadenceDensity(u8),
     /// Le poids d'un pattern est nul.
     ZeroWeight { density: u8 },
+    /// La portée `tour` d'un pattern vaut 0 (les tours se comptent depuis 1).
+    ZeroTour { density: u8 },
+    /// Un pattern de cadence porte une portée (`part` ou `tour`), réservée aux patterns ordinaires.
+    ScopedCadence { density: u8 },
+    /// Une densité n'a aucun pattern sans portée : aucun repli pour les parties et tours non nommés.
+    MissingUnscoped(u8),
     /// Piste invalide (seules `TrackId::PercussionLow` et `TrackId::PercussionHigh` sont permises).
     InvalidTrack { density: u8, step: usize, track: TrackId },
     /// La vélocité effective (`base + delta`) dépasse la plage MIDI `0..=127`.
@@ -478,6 +509,24 @@ impl fmt::Display for PercussionTableError {
             }
             Self::ZeroWeight { density } => {
                 write!(f, "poids nul pour un pattern de percussion à la densité {density}")
+            }
+            Self::ZeroTour { density } => {
+                write!(
+                    f,
+                    "tour 0 pour un pattern de percussion à la densité {density} (tours 1-based)"
+                )
+            }
+            Self::ScopedCadence { density } => {
+                write!(
+                    f,
+                    "portée (part, tour) refusée pour le pattern de cadence de la densité {density}"
+                )
+            }
+            Self::MissingUnscoped(density) => {
+                write!(
+                    f,
+                    "aucun pattern sans portée (part, tour) à la densité {density} : un repli est requis"
+                )
             }
             Self::InvalidTrack { density, step, track } => {
                 write!(
@@ -634,11 +683,18 @@ impl PercussionTable {
         };
 
         let mut seen_densities = HashSet::new();
+        let mut seen_unscoped = HashSet::new();
 
         for pattern in &self.patterns {
             seen_densities.insert(pattern.density);
+            if pattern.part.is_none() && pattern.tour.is_none() {
+                seen_unscoped.insert(pattern.density);
+            }
             if pattern.weight == 0 {
                 return Err(PercussionTableError::ZeroWeight { density: pattern.density });
+            }
+            if pattern.tour == Some(0) {
+                return Err(PercussionTableError::ZeroTour { density: pattern.density });
             }
 
             for hit in &pattern.hits {
@@ -654,6 +710,9 @@ impl PercussionTable {
             if pattern.weight == 0 {
                 return Err(PercussionTableError::ZeroWeight { density: pattern.density });
             }
+            if pattern.part.is_some() || pattern.tour.is_some() {
+                return Err(PercussionTableError::ScopedCadence { density: pattern.density });
+            }
             for hit in &pattern.hits {
                 validate_hit(pattern.density, hit)?;
             }
@@ -662,6 +721,9 @@ impl PercussionTable {
         for required in 0..=2u8 {
             if !seen_densities.contains(&required) {
                 return Err(PercussionTableError::MissingDensity(required));
+            }
+            if !seen_unscoped.contains(&required) {
+                return Err(PercussionTableError::MissingUnscoped(required));
             }
         }
 
@@ -687,61 +749,103 @@ impl PercussionTable {
 /// densité, remplacent ce choix au rendu sans participer au tirage.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PercussionPatternPlan {
-    parts: Vec<[usize; 3]>,
+    /// `[partie][emplacement de tour][densité]` : indice dans `table.patterns`.
+    parts: Vec<Vec<[usize; 3]>>,
+    /// Plus grand tour nommé par un pattern : les tours `1..=max_tour` ont leur emplacement,
+    /// les autres (intro comprise) partagent l'emplacement 0.
+    max_tour: usize,
 }
 
 impl PercussionPatternPlan {
     /// Construit le plan depuis une table validée, sans tirage pour un candidat unique.
+    ///
+    /// Pour une partie, un tour et une densité, les candidats sont les patterns de la densité
+    /// dont la portée convient (`part` égale à la partie, `tour` égal au tour) ; seuls les plus
+    /// spécifiques (les deux portées, puis une seule, puis aucune) concourent, par poids. Sans
+    /// aucune portée dans la table, le choix est celui de toujours : un tirage par partie et
+    /// par densité.
     #[must_use]
     pub fn new(plan: &TunePlan, table: &PercussionTable, seed: u64) -> Self {
         let seed = crate::ornaments::mix(seed, 0x4645_4554);
-        let parts = (0..plan.profile.form.parts.len())
-            .map(|part| {
-                std::array::from_fn(|density| {
-                    let mut candidates = table
-                        .patterns
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, pattern)| usize::from(pattern.density) == density);
-                    let Some((first, pattern)) = candidates.next() else {
-                        unreachable!("densité requise dans une table validée");
-                    };
-                    let Some((_, alternative)) = candidates.next() else {
-                        return first;
-                    };
-                    let total = u64::from(pattern.weight)
-                        + u64::from(alternative.weight)
-                        + candidates.map(|(_, p)| u64::from(p.weight)).sum::<u64>();
-                    let mut rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
-                        crate::ornaments::mix(seed, part as u64),
-                        density as u64,
-                    ));
-                    let mut draw = rng.next_range_u64(0..total);
-                    for (index, candidate) in table
-                        .patterns
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, p)| usize::from(p.density) == density)
-                    {
-                        let weight = u64::from(candidate.weight);
-                        if draw < weight {
-                            return index;
-                        }
-                        draw -= weight;
-                    }
-                    unreachable!("poids cumulés cohérents dans une table validée")
-                })
+        let max_tour = table.patterns.iter().filter_map(|pattern| pattern.tour).max().unwrap_or(0);
+        let parts = plan
+            .profile
+            .form
+            .parts
+            .iter()
+            .enumerate()
+            .map(|(part, configured)| {
+                (0..=max_tour)
+                    .map(|slot| {
+                        std::array::from_fn(|density| {
+                            let eligible = |pattern: &PercussionPattern| {
+                                usize::from(pattern.density) == density
+                                    && pattern.part.as_deref().is_none_or(|p| p == configured.name)
+                                    && pattern.tour.is_none_or(|tour| tour == slot)
+                            };
+                            let specificity = |pattern: &PercussionPattern| {
+                                usize::from(pattern.part.is_some())
+                                    + usize::from(pattern.tour.is_some())
+                            };
+                            let best = table
+                                .patterns
+                                .iter()
+                                .filter(|pattern| eligible(pattern))
+                                .map(specificity)
+                                .max()
+                                .unwrap_or_else(|| unreachable!("pattern de repli requis"));
+                            let mut candidates =
+                                table.patterns.iter().enumerate().filter(|(_, pattern)| {
+                                    eligible(pattern) && specificity(pattern) == best
+                                });
+                            let Some((first, pattern)) = candidates.next() else {
+                                unreachable!("densité requise dans une table validée");
+                            };
+                            let Some((_, alternative)) = candidates.next() else {
+                                return first;
+                            };
+                            let total = u64::from(pattern.weight)
+                                + u64::from(alternative.weight)
+                                + candidates.map(|(_, p)| u64::from(p.weight)).sum::<u64>();
+                            let stream = crate::ornaments::mix(
+                                crate::ornaments::mix(seed, part as u64),
+                                density as u64,
+                            );
+                            let mut rng = ChaCha8Rng::seed_from_u64(if slot == 0 {
+                                stream
+                            } else {
+                                crate::ornaments::mix(stream, slot as u64)
+                            });
+                            let mut draw = rng.next_range_u64(0..total);
+                            for (index, candidate) in table
+                                .patterns
+                                .iter()
+                                .enumerate()
+                                .filter(|(_, p)| eligible(p) && specificity(p) == best)
+                            {
+                                let weight = u64::from(candidate.weight);
+                                if draw < weight {
+                                    return index;
+                                }
+                                draw -= weight;
+                            }
+                            unreachable!("poids cumulés cohérents dans une table validée")
+                        })
+                    })
+                    .collect()
             })
             .collect();
-        Self { parts }
+        Self { parts, max_tour }
     }
 
-    /// Retourne le pattern choisi, ou son remplacement cadentiel s'il existe.
+    /// Retourne le pattern choisi, ou son remplacement cadentiel s'il existe. `tour` : tour
+    /// 1-based de l'air, 0 pour l'intro.
     #[must_use]
     pub fn pattern<'a>(
         &self,
         table: &'a PercussionTable,
         part: usize,
+        tour: usize,
         density: u8,
         is_cadence: bool,
     ) -> &'a PercussionPattern {
@@ -751,7 +855,8 @@ impl PercussionPatternPlan {
         {
             return pattern;
         }
-        &table.patterns[self.parts[part][usize::from(density)]]
+        let slot = if (1..=self.max_tour).contains(&tour) { tour } else { 0 };
+        &table.patterns[self.parts[part][slot][usize::from(density)]]
     }
 }
 
@@ -868,7 +973,7 @@ mod tests {
         humanize: &[i8],
     ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
         let plan = PercussionPatternPlan::new(&TunePlan::default(), table, 0);
-        percussion_notes(table, plan.pattern(table, 0, density, false), humanize.len(), humanize)
+        percussion_notes(table, plan.pattern(table, 0, 1, density, false), humanize.len(), humanize)
     }
 
     #[test]
@@ -1219,7 +1324,12 @@ patterns = [
             let plan = PercussionPatternPlan::new(&tune, &table, seed);
             let repeated = PercussionPatternPlan::new(&tune, &table, seed);
             let render = |plan: &PercussionPatternPlan, part, density| {
-                percussion_notes(&table, plan.pattern(&table, part, density, false), 16, &[0; 16])
+                percussion_notes(
+                    &table,
+                    plan.pattern(&table, part, 1, density, false),
+                    16,
+                    &[0; 16],
+                )
             };
             let first = render(&plan, 0, 1);
             let second = render(&plan, 1, 1);
@@ -1249,7 +1359,7 @@ patterns = [
         for seed in 0..128 {
             let plan = PercussionPatternPlan::new(&tune, &table, seed);
             let (_, notes) =
-                percussion_notes(&table, plan.pattern(&table, 0, 1, false), 16, &[0; 16]);
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16]);
             observed[usize::from(notes[0].start_step == 7)] = true;
         }
         assert_eq!(observed, [true, true]);
@@ -1290,23 +1400,24 @@ cadence_patterns = [{density = 1, hits = [{step = 15, track = "PercussionHigh"}]
             let plan = PercussionPatternPlan::new(&tune, &table, seed);
             let restored_plan = PercussionPatternPlan::new(&tune, &restored, seed);
             let ordinary =
-                percussion_notes(&table, plan.pattern(&table, 0, 1, false), 16, &[0; 16]);
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16]);
             assert!([3, 5].contains(&ordinary.1.len()));
             assert_eq!(
                 ordinary,
                 percussion_notes(
                     &restored,
-                    restored_plan.pattern(&restored, 0, 1, false),
+                    restored_plan.pattern(&restored, 0, 1, 1, false),
                     16,
                     &[0; 16],
                 )
             );
-            let cadence = percussion_notes(&table, plan.pattern(&table, 0, 1, true), 16, &[0; 16]);
+            let cadence =
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, true), 16, &[0; 16]);
             assert_eq!(cadence.1.len(), 1);
             assert_eq!(cadence.1[0].start_step, 15);
             assert_eq!(
-                percussion_notes(&table, plan.pattern(&table, 0, 2, true), 16, &[0; 16]),
-                percussion_notes(&table, plan.pattern(&table, 0, 2, false), 16, &[0; 16]),
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, true), 16, &[0; 16]),
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, false), 16, &[0; 16]),
             );
         }
         let mut unique = PercussionTable::default();
