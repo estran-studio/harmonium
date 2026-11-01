@@ -1,0 +1,192 @@
+# Fixture technique synthétique de contrat (P1), sans validation d'écoute : harmonie générée par
+# contraintes (tonalité verrouillée en do ionien), pédale à alternatives, basse par gabarits et
+# batterie à portée de partie et de tour. Chaque mécanisme est optionnel dans le schéma ; ce
+# profil les active tous, les profils distribués aucun.
+[files]
+cells = "cells.toml"
+dynamics = "dynamics.toml"
+
+[meta]
+id = "regles_procedurales"
+name = "Fixture technique règles procédurales"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test"]
+corpus = "Aucune transcription : contraintes écrites pour le contrat"
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.5
+default_bpm = 120.0
+min_bpm = 100.0
+max_bpm = 160.0
+
+[fixed_tonality]
+key = 0
+mode = "ionian"
+
+[form]
+sequence = [0, 1, 2]
+[[form.parts]]
+name = "Chroma"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[[form.parts]]
+name = "Quintes"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[[form.parts]]
+name = "Pedale"
+melody_center_offset = 0
+roles = ["Open", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 0, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 8
+
+# Quatre accords mineurs, mouvement chromatique, sur pédale de tonique ; la boucle de quatre
+# mesures est tirée une fois puis répétée sur les huit mesures de la partie. Une seconde
+# alternative, écrite, partage le tirage par poids.
+[harmony.parts.Chroma]
+kind = "chord_loop"
+generated = [
+  { weight = 3, bars = 4, count = 4, qualities = ["m"], motion = { kind = "chromatic" }, pedal = 0 },
+]
+loops = [
+  { weight = 1, chords = [
+    { semitones = 0, quality = "m", steps = 64 },
+    { semitones = 5, quality = "m", steps = 64 },
+  ] },
+]
+
+# Quintes montantes sur deux mesures (un accord par demi-mesure), toutes les notes dans la
+# gamme ; répétées quatre fois.
+[harmony.parts.Quintes]
+kind = "chord_loop"
+generated = [
+  { bars = 2, count = 4, qualities = ["", "m", "7", "m7", "maj7"], motion = { kind = "fifths", direction = "up" }, key_fit = "within" },
+]
+
+# Pédale : tonique (poids 2), quinte, ou quarte avec voisin.
+[harmony.parts.Pedale]
+kind = "pedal"
+degree = 1
+weight = 2
+alternatives = [
+  { weight = 1, semitones = 7 },
+  { weight = 1, semitones = 5, neighbor_semitones = 1 },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Gabarits de basse : quinte-fondamentale avec relance (Chroma), octaves avec relance (Quintes),
+# montée d'un demi-ton par mesure sur quatre mesures (Pedale).
+[accompaniment.bass]
+low = 36
+high = 47
+
+[[accompaniment.bass.templates]]
+part = "Chroma"
+rhythm = [
+  { step = 0, duration = 4, velocity = 80 },
+  { step = 4, duration = 4, velocity = 70 },
+  { step = 8, duration = 4, velocity = 76 },
+  { step = 12, duration = 4, velocity = 70 },
+]
+cycle = [{ degree = "root" }, { degree = "fifth" }]
+
+[[accompaniment.bass.templates]]
+part = "Quintes"
+rhythm = [
+  { step = 0, duration = 3, velocity = 80 },
+  { step = 4, duration = 3, velocity = 70 },
+  { step = 8, duration = 3, velocity = 76 },
+  { step = 12, duration = 3, velocity = 70 },
+]
+cycle = [{ degree = "root" }, { degree = "root", octave = 1 }]
+pickup = { lead = 2, duration = 2, velocity = 74 }
+
+[[accompaniment.bass.templates]]
+part = "Pedale"
+bars = 4
+rhythm = [
+  { step = 0, duration = 8, velocity = 80 },
+  { step = 8, duration = 8, velocity = 70 },
+]
+ramp = { stride = 1, motion = "semitone" }
+
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "close_triad"
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 16, velocity = 62 }] }]
+
+# Batterie : motifs de repli, puis portée de partie (Chroma), de tour (2) et des deux
+# (Pedale au tour 2). Densité 1 par défaut.
+[percussion]
+low_note = 36
+high_note = 38
+low_velocity = 55
+high_velocity = 45
+percussion_gain = 1.0
+velocity_humanize = 0
+patterns = [
+  { density = 0, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }] },
+  { density = 1, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 8, track = "PercussionHigh", delta_velocity = 0 }] },
+  { density = 2, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 4, track = "PercussionHigh", delta_velocity = 0 }] },
+  { density = 1, part = "Chroma", hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 6, track = "PercussionLow", delta_velocity = 0 }, { step = 10, track = "PercussionHigh", delta_velocity = 0 }] },
+  { density = 1, tour = 2, hits = [{ step = 4, track = "PercussionLow", delta_velocity = 0 }, { step = 12, track = "PercussionHigh", delta_velocity = 0 }] },
+  { density = 1, part = "Pedale", tour = 2, hits = [{ step = 2, track = "PercussionLow", delta_velocity = 0 }] },
+]
+
+[instruments]
+melody_program = 65
+chords_program = 4
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[arrangement]
+tours_per_tune = 2
+[arrangement.entries]
+Melody = { tour = 1, part = 0, pass = 1 }
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
+[arrangement.intro]
+forms = []
+pickup_eighths = 0
+
+[ornaments]
+rate_scale = 0.0
