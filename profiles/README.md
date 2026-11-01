@@ -235,7 +235,8 @@ chaque pas où l'accord change, plus au pas 0 de chaque mesure. Avec
 `steps_per_chord` égal à la mesure (cas des profils distribués), chaque mesure
 porte un seul accord comme avant.
 
-`loops` est une liste non vide d'alternatives. Chaque `weight` est un entier
+`loops` et `generated` (voir « Procédural par règles ») forment la liste, non vide, des
+alternatives de la partie. Chaque `weight` est un entier
 strictement positif (défaut 1) ; chaque `chords` est non vide. L'ancien
 `chords` directement dans `harmony.parts.<nom>` est refusé, sans alias, comme
 l'ancienne durée en mesures (`bars`, `default_bars_per_chord`).
@@ -276,6 +277,142 @@ sa seule classe de hauteur ; ses ornements restent ceux du mode actif.
 La tension ne substitue pas de dominante aux accords déclarés. Les intros
 vamp et l'outro tonique restent les raccords explicites de l'arrangement ;
 la boucle décrit les mesures du corps de l'air.
+
+## Procédural par règles (option, phase 018 P1)
+
+Quatre mécanismes **optionnels** s'ajoutent aux données écrites sans les remplacer. Un profil
+qui n'en active aucun garde ses notes octet pour octet (les profils distribués n'en activent
+aucun). Tous sont nommés par le rôle musical, tirent par le `ChaCha8Rng` injecté (entiers
+`u64`, principe II) et sont refusés au chargement avec le champ en cause s'ils sont
+insatisfaisables. Compte rendu, preuves et recommandations par profil :
+`specs/018-grille-et-moteur-neutre/p1-procedural-regles.md`.
+
+### Boucles d'accords générées par contraintes (`generated`)
+
+Dans une partie `kind = "chord_loop"`, `generated` s'écrit **à côté** de `loops` (l'une des deux
+au moins est non vide) et partage le même tirage pondéré : **une** alternative par partie et
+par air, selon la graine et les poids, qui se rejoue à l'identique aux reprises et aux tours.
+Une boucle générée est tirée **une fois**, puis **répétée** jusqu'à la fin de la partie : la
+forme reste lisible.
+
+```toml
+[harmony.parts.A2]
+kind = "chord_loop"
+# Quatre accords mineurs, mouvement chromatique, sur pédale de ré (tonique + 6) :
+generated = [{ weight = 1, bars = 4, count = 4, qualities = ["m"],
+               motion = { kind = "chromatic" }, start = 6, pedal = 6 }]
+```
+
+| Champ | Sens |
+|---|---|
+| `weight` | poids du tirage (défaut 1, strictement positif) |
+| `bars` | longueur de la boucle en mesures, **diviseur** de la longueur de la partie (omis : la partie entière, aucune répétition) |
+| `count` | nombre d'accords, de 1 au nombre de créneaux `steps_per_chord` de la boucle ; les créneaux se répartissent aussi également que possible, les `créneaux mod count` premiers accords en recevant un de plus |
+| `qualities` | qualités permises (texte de suffixe F1 : `""`, `m`, `7`, `m7`, `7b9`…) ; une qualité est tirée uniformément pour chaque accord (répéter une qualité la pondère) |
+| `motion` | mouvement de la **fondamentale** d'un accord au suivant, voir ci-dessous |
+| `start` | fondamentale du premier accord, demi-tons au-dessus de la tonique (omis : la tonique) |
+| `pedal` | pédale de basse : demi-tons au-dessus de la tonique, basse de **tous** les accords (accords slash quand la fondamentale s'écarte de la pédale) |
+| `key_fit` | accords communs avec la tonalité : `free` (défaut), `within` (toutes les notes de l'accord, basse comprise, dans la gamme du mode actif), `outside` (au moins une note hors gamme) |
+
+`motion` (champ `kind`) :
+
+| `kind` | Intervalle de fondamentale | Options |
+|---|---|---|
+| `chromatic` | un demi-ton | `direction = "up" \| "down" \| "either"` (défaut) |
+| `fifths` | une quinte juste (+7 ou −7) | `direction` |
+| `scale_steps` | une note de la gamme du mode actif (depuis une fondamentale hors gamme : la note de gamme voisine) | `direction` |
+| `intervals` | intervalles permis et pondérés : `intervals = [{ semitones = 5, weight = 3 }, { semitones = -3 }]` (demi-tons signés `-11..=11`, 0 répète la fondamentale ; poids défaut 1) | |
+
+**Algorithme.** Une table de faisabilité est calculée à rebours (quelles fondamentales laissent
+une suite complète possible à chaque position, compte tenu de `motion` et de `key_fit`) ; le tirage
+avance ensuite sans rejet : qualité uniforme parmi celles que `key_fit` permet sur la
+fondamentale, puis fondamentale suivante pondérée parmi les successeurs faisables. Aucune
+boucle partielle, aucune boucle impossible. Le mode actif est celui de la tonalité ; une bascule
+de couleur (`dynamics.color`, `parallel_modes`) régénère la boucle avec la même graine dans le
+nouveau mode, comme les degrés d'une boucle écrite se recalculent. Avec `fixed_tonality`, le mode
+est fixe.
+
+**Validation** (champ nommé dans l'erreur) : `weight`, `bars` (diviseur de la partie), `count`
+(1..créneaux), `qualities` (1..64), `start`, `pedal` (0..11), `motion.intervals` (non vide, poids
+> 0), `fixed_triad` (qualités majeures et mineures nues, sans pédale), puis la **faisabilité dans
+chaque mode atteignable** : `key_fit` si aucune qualité permise ne convient à la fondamentale de
+départ, `motion` si aucune suite de `count` accords ne respecte le mouvement et `key_fit`.
+
+### Pédale à alternatives
+
+Une partie `kind = "pedal"` accepte `weight` (défaut 1) et `alternatives` : d'autres pédales
+(`degree` ou `semitones`, `neighbor_semitones`, `weight`), tirées **une fois par partie et par
+air**. La pédale écrite directement dans la partie est la première alternative.
+
+```toml
+[harmony.parts.R]
+kind = "pedal"
+degree = 1
+weight = 3
+alternatives = [{ weight = 1, semitones = 7 }]
+```
+
+Sans `alternatives`, aucun tirage. La voix de basse d'une partie lit la pédale tirée.
+
+### Basse par gabarits (`accompaniment.bass.templates`)
+
+Option **à côté** des `motifs` écrits : les gabarits entrent dans le même pool pondéré (mêmes
+poids, même portée `part`, mêmes règles de longueur multi-mesures, copies et secondes fins). Sans
+gabarit, le pool est exactement la liste des motifs et le flux de tirages est inchangé. Un
+gabarit est un **rythme d'une mesure** réalisé sur l'accord du pas, hauteur par hauteur, sans
+tirage à la réalisation : une mesure se rejoue à l'identique. Exclusif de `hits` et de `walking`.
+
+```toml
+[[accompaniment.bass.templates]]
+part = "C"          # optionnel, comme `motifs[].part`
+weight = 3
+bars = 1            # mesures du cycle de `ramp`, 1..=16
+rhythm = [          # attaques de la mesure : pas, durée, vélocité (sans chevauchement)
+  { step = 0, duration = 2, velocity = 96 },
+  { step = 8, duration = 2, velocity = 96 },
+]
+cycle = [{ degree = "root", octave = 1 }, { degree = "fifth", octave = 1 }]
+pickup = { lead = 2, duration = 2, velocity = 90 }
+```
+
+| Champ | Sens |
+|---|---|
+| `rhythm` | attaques d'une mesure ; la hauteur de chacune vient de l'accord du **créneau** qui contient son pas (plusieurs accords par mesure possibles) |
+| `cycle` | hauteurs jouées tour à tour par les attaques : l'attaque `n` de la mesure `b` du cycle joue `cycle[(b × attaques + n) mod longueur]`. `degree` : `root` (basse de l'accord, accord slash compris), `fifth` (quinte de la **fondamentale**), `fifth_if_held` (quinte si l'accord n'a pas changé depuis le créneau précédent, ou au premier créneau de la mesure) ; `octave` : −2..2. Omis : la basse de l'accord. Octaves : `[{root}, {root, octave = 1}]` ; quinte-fondamentale : `[{root}, {fifth}]` |
+| `ramp` | montée ou descente : `stride` (signé, non nul, ≤ 12) × rang de la mesure dans le cycle, en `motion = "semitone"` (défaut) ou `"scale_step"` (notes de la gamme du mode actif). Le rang repart à 0 tous les `bars` mesures |
+| `pickup` | **relance vers la fondamentale** : une note courte (`duration` ≤ `lead`, `velocity`) jouant la basse de l'accord **suivant** (`degree` : `root` ou `fifth`) `lead` pas avant le changement ; les attaques qu'elle recouvre sont retirées ou raccourcies. `when = "chord_change"` (défaut) : avant chaque changement d'accord, y compris au passage à la mesure suivante ; `"bar_end"` : avant chaque barre, même si l'accord est tenu, sans relance interne. Aucune relance après la dernière mesure. `lead` < `harmony.steps_per_chord` |
+
+Une montée d'un demi-ton par mesure sur une tenue : `bars = 4`, `rhythm = [{ step = 0, duration = 22,
+velocity = 92 }]`, `ramp = { stride = 1 }`. La hauteur résultante doit rester dans 0..127 pour
+toutes les classes de hauteur du registre `low..high` (validation, champ du gabarit).
+
+### Batterie par partie ou par tour (`percussion.patterns[].part` / `.tour`)
+
+Un pattern ordinaire accepte une **portée** optionnelle : `part = "<nom de form.parts>"` et/ou
+`tour = n` (tour 1-based de l'air). Pour une partie, un tour et une densité, ne concourent que
+les patterns de la densité dont la portée convient ; parmi eux, **seuls les plus spécifiques**
+(deux portées, puis une, puis aucune) sont tirés par poids, une fois par partie, tour et densité
+et par air. Deux portées de même rang (une `part` et un `tour` concernant la même mesure) se
+partagent donc le tirage. Chaque densité 0, 1, 2 requiert au moins un pattern **sans portée** (le
+repli) ; l'intro et les tours sans pattern dédié l'utilisent. Les `[[cadence_patterns]]` n'ont pas
+de portée. Sans portée dans la table, le choix est celui de `Batterie par graine`.
+
+```toml
+[[patterns]]            # repli
+density = 1
+hits = [{ step = 0, track = "PercussionLow" }, { step = 8, track = "PercussionHigh" }]
+[[patterns]]            # seulement dans la partie C2
+density = 1
+part = "C2"
+hits = [{ step = 0, track = "PercussionLow" }, { step = 6, track = "PercussionLow" }, { step = 8, track = "PercussionHigh" }]
+[[patterns]]            # seulement au tour 2
+density = 1
+tour = 2
+hits = [{ step = 4, track = "PercussionLow" }, { step = 12, track = "PercussionHigh" }]
+```
+
+Fixture de contrat : `tests/fixtures/profiles/regles_procedurales/` (les quatre mécanismes ;
+tests : `harmonium_core/tests/procedural_rules_tests.rs`).
 
 ## Identité d'accord publiée dans le snapshot
 
