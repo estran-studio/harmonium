@@ -38,7 +38,7 @@ Trois besoins, validés par le propriétaire le 2026-10-30 (« oui, oui, oui »)
   ```
   Transposable comme tous les profils ; un seul analyseur de qualités ; pas de symbole absolu
   dans les profils. Training convertit iReal (absolu) en relatif grâce à la tonalité verrouillée
-  (E2). Durées en pas (ou fraction de mesure) : forme exacte décidée dans E1.
+  (E2). Durées en pas, multiples de `steps_per_chord` (décidé dans E1, voir [le compte rendu](e1-grille-riche.md)).
 - **F2 — Notes jouées en direct (E4)** : **une voie dédiée** : une poignée `Send` (comme
   `ClockReader`) qui pousse dans une file SPSC lue par le callback ; `EngineCommand::NoteOn/Off`
   passe par cette même file (studio, jeux). Un seul mécanisme, deux points d'entrée. Raison :
@@ -162,5 +162,5 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 | E4 | fusionnée (`14eb55a`), oxisynth du fork estran-studio | [Compte rendu](e4-notes-jouees.md) |
 | L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
 | N1 | fusionnée (`f1b2036`) : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 ; consommateurs du labo migrés (`5e52703`) | [Compte rendu](n1-moteur-neutre.md) |
-| E1 | lancée (vague 3) : worktree `e1-grille-riche`, Codex → Sonnet | — |
+| E1 | prête à fusionner (branche `wquintal/e1-grille-riche`) : qualités typées, basse, durées en pas, voicer 4–5 hauteurs ; dumps (92), WAV et MIDI identiques à `main`, `TUNING_VERSION` 22 inchangé | [Compte rendu](e1-grille-riche.md) |
 | E3, E5, E6, E7, P1, P2 | en attente | — |

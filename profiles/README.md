@@ -52,7 +52,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[fixed_tonality]` | Optionnel : `key` (classe MIDI 0..11, do = 0) et `mode` (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) obligatoires. Verrouille la tonalité de tous les airs : priorité sur `melody.key_modes`, `dynamics.color`, pondération du set et bascules parallèles. Absent : comportement émotionnel inchangé. Voir « Tonalité verrouillée ». |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "PercussionLow", "PercussionHigh"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
-| `[harmony]` | `model = "melody_functional"`, `"rewrite_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. `melody_functional` : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
+| `[harmony]` | `model = "melody_functional"`, `"rewrite_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. `melody_functional` : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, accords relatifs à la tonique avec qualité, basse et durée en pas, voir « Harmonie en boucle et pédale ». |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`percussion.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="PercussionLow"\|"PercussionHigh", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "PercussionLow"` ou `"PercussionHigh"` (défaut PercussionLow). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
@@ -141,7 +141,6 @@ une table `parts` non vide.
 [harmony]
 model = "loop"
 steps_per_chord = 8
-default_bars_per_chord = 1
 
 [harmony.parts.A]
 kind = "pedal"
@@ -152,39 +151,98 @@ degree = 1
 kind = "chord_loop"
 loops = [
   { weight = 2, chords = [
-    { degree = 1, quality = "Minor", bars = 2 },
-    { semitones = 1, quality = "Major", bars = 2 },
+    { degree = 1, quality = "m", steps = 32 },
+    { semitones = 1, quality = "", steps = 32 },
   ] },
   { weight = 1, chords = [
-    { degree = 1, quality = "Minor", bars = 2 },
-    { degree = 5, quality = "Major", bars = 2 },
+    { degree = 1, quality = "m", steps = 32 },
+    { degree = 5, quality = "7", steps = 32 },
   ] },
 ]
 ```
 
-Chaque racine indique **exactement un** champ : `degree` numérique modal
-`1..7` (1 = tonique), ou `semitones` chromatique `0..11` au-dessus de la
-tonique. Les degrés suivent les intervalles du mode actif : le degré 2 vaut
-un demi-ton en phrygien, deux en ionien ; les offsets chromatiques restent
-fixes. Lors d'une bascule de couleur par `dynamics.color` ou `parallel_modes`,
-les degrés sont recalculés dans le nouveau mode. Chaque accord exige une
-qualité explicite `"Major"` ou `"Minor"`, qui ne change pas avec le mode.
+### Un accord : racine, qualité, basse, durée
+
+Un accord s'écrit **relativement à la tonique** : aucun symbole absolu (`G7`)
+dans un profil. La tonique vient de la tonalité du profil ou de
+`[fixed_tonality]` ; changer l'une transpose toute la grille.
+
+```toml
+{ semitones = 2, quality = "m7",  steps = 8 }            # ii  : Dm7 en do
+{ semitones = 7, quality = "7b9", bass = 11, steps = 8 } # V7b9 sur la sensible (G7b9/B)
+{ semitones = 0, quality = "",    bass = 4,  steps = 16 } # I sur la tierce (C/E)
+```
+
+- **Racine** : **exactement un** champ, `degree` numérique modal `1..7` (1 =
+  tonique) ou `semitones` chromatique `0..11` au-dessus de la tonique. Les
+  degrés suivent les intervalles du mode actif : le degré 2 vaut un demi-ton
+  en phrygien, deux en ionien ; les offsets chromatiques restent fixes. Lors
+  d'une bascule de couleur par `dynamics.color` ou `parallel_modes`, les degrés
+  sont recalculés dans le nouveau mode ; la qualité et la basse ne changent pas.
+- **`quality`** : suffixe de symbole, texte requis (`""` = triade majeure).
+  C'est le même texte que `Chord::from_name` lit, parseur unique
+  (`theory/quality.rs`). Tout autre texte est refusé au chargement.
+- **`bass`** (optionnel) : basse d'un accord slash, en demi-tons `0..11` au-dessus
+  de la tonique.
+- **`steps`** : durée **en pas**, positive et **multiple de
+  `harmony.steps_per_chord`** ; omission : un créneau (`steps_per_chord`). La somme
+  des durées de **chaque alternative** doit être exactement la longueur de la
+  partie en pas (`nombre de rôles × meter.steps_per_bar`).
+
+**Qualités.** Tête, puis altérations facultatives :
+
+| Famille | Suffixes |
+|---|---|
+| Triades | `""` (majeure), `m`, `dim`, `+`, `sus2`, `sus4`, `add9` |
+| Sixtes | `6`, `m6`, `6/9`, `m6/9` |
+| Septièmes | `7`, `maj7`, `m7`, `m7b5`, `dim7`, `mMaj7`, `7#5`, `7b5`, `7sus4`, `7sus2` |
+| Tensions naturelles | `9`, `11`, `13`, `maj9`, `maj13`, `m9`, `m11`, `mMaj9`, `m(add9)`, `9sus4`, `13sus4` |
+| Altérations d'une tête dominante `7`, `9`, `11`, `13` | `b9`, `#9`, `#11`, `b13`, suivies de `b5` ou `#5` après `7` seul : `7b9`, `7#9#11`, `9#11`, `7b9b5`, `7#9#5` |
+| Altéré | `7alt` (fondamentale, tierce, septième et les altérations b9, #9, #11, b13) |
+| Synonymes lus, jamais écrits | `maj`, `aug`, `add2`, `m(b5)`, `sus` |
+
+`9`, `11` et `13` sous-entendent la pile naturelle (`13` = 7ᵉ, 9ᵉ, 13ᵉ ; `11` =
+7ᵉ, 9ᵉ, 11ᵉ). Sont refusés : une altération qui double la pile ou la quinte
+(`9b9`, `13b13`, `7b5#5`, `7#5b13`), une altération sur une tête non dominante
+(`m7b9`, `maj7#11`), `b5`/`#5` sur une pile (`9b5`) et tout texte inconnu
+(`Major`, `69`, `7 b9`). L'écriture `Major` / `Minor` des anciennes boucles est
+retirée sans alias : `""` et `m`.
+
+**Voicing.** Une triade garde exactement ses trois notes et la conduite de voix
+serrée existante. Une septième ou une qualité à tensions se joue à **quatre ou
+cinq hauteurs** (au plus 5, sur la pile) : les tensions s'empilent au-dessus de
+l'octave (9 = 14 demi-tons, 13 = 21) ; au-delà de cinq notes la quinte tombe
+d'abord, puis les tensions les plus hautes. L'accord altéré se joue fondamentale,
+tierce, septième, b9, #9. Pas de doublure d'octave pour ces voicings :
+`chords.note_count` ne double que les triades.
+
+**Basse.** `Bass` joue la **basse** de l'accord : la fondamentale, ou `bass`
+pour un accord slash. Un coup `degree = "fifth"` reste la quinte de la
+**fondamentale**. Un motif `reference = "chord_root"` prend la basse de l'accord
+comme référence (les décalages en demi-tons ou en degrés s'y ajoutent tels
+quels). `Chords` joue un accord slash **sur sa basse** : si la basse est une note
+du voicing, seules les inversions qui la mettent au grave sont retenues ; sinon la
+basse s'ajoute sous un voicing limité à quatre notes. Les accords non slash
+choisissent librement leur renversement. `voicing = "fixed_triad"` refuse les
+qualités autres que `""` et `m` nues et les accords slash : il demande
+`close_triad`.
+
+**Plusieurs accords par mesure.** La grille harmonique est celle de
+`steps_per_chord` : un créneau par `steps_per_chord` pas. Un ii–V dans une seule
+mesure de 16 pas demande `steps_per_chord = 8` (ou 4) et deux accords de
+`steps = 8`. Les changements d'accord sont publiés dans `chord_changes` à
+chaque pas où l'accord change, plus au pas 0 de chaque mesure. Avec
+`steps_per_chord` égal à la mesure (cas des profils distribués), chaque mesure
+porte un seul accord comme avant.
 
 `loops` est une liste non vide d'alternatives. Chaque `weight` est un entier
 strictement positif (défaut 1) ; chaque `chords` est non vide. L'ancien
-`chords` directement dans `harmony.parts.<nom>` est refusé, sans alias.
+`chords` directement dans `harmony.parts.<nom>` est refusé, sans alias, comme
+l'ancienne durée en mesures (`bars`, `default_bars_per_chord`).
 Une boucle est tirée par partie et par air, selon la graine et les poids ;
 les reprises de la partie gardent ce choix. Une seule alternative ne
-consomme aucun tirage.
-
-`bars` est une durée positive en **mesures entières** ; omission :
-`default_bars_per_chord` (défaut 1). La longueur totale de **chaque alternative**
-doit être exactement celle de la partie ; développer explicitement les
-répétitions d'une ancienne boucle courte. `steps_per_chord` reste requis et
-divise la mesure : tous les créneaux d'une mesure portent le même accord.
-Les reprises, secondes fins et variations de forme utilisent la même
-position dans la boucle.
-Pas de changement intra-mesure, d'accord slash ni de turnaround implicite :
+consomme aucun tirage. Les reprises, secondes fins et variations de forme
+utilisent la même position dans la boucle. Pas de turnaround implicite :
 une section distincte porte un éventuel raccord explicite.
 
 `kind = "pedal"` n'accepte ni `quality` ni liste d'accords : c'est une vraie
@@ -210,7 +268,7 @@ Avec `voicing = "fixed_triad"`, la fenêtre `low..high` doit couvrir les
 douze fondamentales et ce voisin (`high - low >= 11 + neighbor_semitones`).
 
 Le contexte du premier accord est publié dans les champs habituels du
-snapshot et dans `chord_changes` au pas 0. Les cellules mélodiques fournissent
+snapshot ; `chord_changes` porte le pas 0 et chaque changement d'accord de la mesure. Les cellules mélodiques fournissent
 toujours rythme et contour ; comme pour `rewrite_functional` sans `scale_guidance`, leurs
 porteuses sont rapprochées des hauteurs de la sonorité courante avant
 interprétation et ornements. Une pédale pure contraint donc les porteuses à
@@ -441,7 +499,8 @@ la référence est une autre fondamentale. `octave` (−2..2, défaut 0) est
 Le chargeur refuse les dépassements MIDI ; pour les degrés, sa borne
 conservatrice couvre jusqu'à trois demi-tons par pas modal.
 
-`reference = "chord_root"` (défaut) suit la fondamentale au pas d'attaque ;
+`reference = "chord_root"` (défaut) suit la basse de l'accord au pas d'attaque
+(la fondamentale, ou `bass` d'un accord slash du modèle `loop`) ;
 `"tonic"` garde la tonique pour un bourdon. Une tenue franchissant une barre
 est découpée en segments publiés avec `Articulation::Tied` sur les suivants :
 le lecteur et l'export MIDI G5 prolongent la même hauteur sans nouvelle attaque.
