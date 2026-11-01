@@ -1,9 +1,11 @@
 //! Données et validation des deux voix d'accompagnement.
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    compose::dynamics::Curve, style_profile::ProfileError, timeline::TrackId,
-    tuning::AccompanimentParams,
+    algo::RngCore, compose::dynamics::Curve, ornaments::mix, style_profile::ProfileError,
+    timeline::TrackId, tuning::AccompanimentParams,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,6 +87,66 @@ pub struct BassMotif {
     pub notes: Vec<BassMotifNote>,
 }
 
+/// Marche de basse : une attaque par pulsation, arrivée sur la basse de l'accord à chaque
+/// changement d'accord et au premier temps, approche de la cible suivante, notes de passage
+/// tirées par poids. Source exclusive des coups (`hits`) et des motifs (`motifs`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BassWalking {
+    pub velocity: u8,
+    /// Surcroît de vélocité sur les arrivées (premier temps et changements d'accord).
+    #[serde(default)]
+    pub accent: u8,
+    /// Durée de chaque note en pas, au plus une pulsation.
+    pub duration: usize,
+    /// Écart maximal en demi-tons entre deux notes de passage consécutives.
+    pub max_leap: u8,
+    /// Poids ajouté (à 1) à une note de passage qui se rapproche de la cible.
+    #[serde(default = "default_toward_target_weight")]
+    pub toward_target_weight: u32,
+    /// Poids ajouté (à 1) à une note de passage qui poursuit le sens du mouvement précédent.
+    #[serde(default = "default_keep_direction_weight")]
+    pub keep_direction_weight: u32,
+    pub approach: WalkingApproach,
+    pub passing: WalkingPassing,
+}
+
+const fn default_toward_target_weight() -> u32 {
+    3
+}
+
+const fn default_keep_direction_weight() -> u32 {
+    2
+}
+
+/// Poids de l'approche de la pulsation qui précède une arrivée. L'approche se pose du côté de
+/// la note d'arrivée précédente : au-dessus de la cible si la ligne part plus haut, sinon dessous.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingApproach {
+    /// Aucune approche : la pulsation est une note de passage ordinaire.
+    #[serde(default)]
+    pub none_weight: u32,
+    /// Un demi-ton sous ou sur la cible.
+    #[serde(default)]
+    pub chromatic_weight: u32,
+    /// La note de la gamme du mode voisine de la cible.
+    #[serde(default)]
+    pub diatonic_weight: u32,
+}
+
+/// Poids des notes de passage entre l'arrivée et l'approche.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingPassing {
+    /// Note de l'accord en cours (tensions comprises).
+    #[serde(default)]
+    pub chord_tone_weight: u32,
+    /// Note de la gamme du mode, à un pas diatonique de la note précédente.
+    #[serde(default)]
+    pub scale_step_weight: u32,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BassVoice {
@@ -100,6 +162,8 @@ pub struct BassVoice {
     pub walk_high: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub passing: Option<BassPassing>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub walking: Option<BassWalking>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -116,6 +180,24 @@ pub struct ChordHit {
     /// l'arrivée (nappe). Sans coïncidence exacte, attaque normale.
     #[serde(default)]
     pub tie: bool,
+    /// Attaque anticipée : joue l'accord en vigueur à la fin de sa durée (`step + duration`),
+    /// donc le prochain accord quand un changement tombe à cette fin.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub anticipate: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
+}
+
+/// Rythme de comping d'une mesure, tiré par poids. Sans attaque : la mesure est silencieuse.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompingMotif {
+    #[serde(default = "default_motif_weight")]
+    pub weight: u32,
+    #[serde(default)]
+    pub hits: Vec<ChordHit>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -131,6 +213,9 @@ pub struct ChordVoice {
     pub max_drift: u8,
     pub default_pattern: usize,
     pub patterns: Vec<ChordPattern>,
+    /// Rythmes tirés par mesure (poids) ; remplacent le choix du motif par intensité.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comping: Vec<CompingMotif>,
     #[serde(default = "triad_note_count")]
     pub note_count: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -160,6 +245,24 @@ pub enum ChordVoicing {
     #[default]
     CloseTriad,
     FixedTriad,
+    /// Notes guides : tierce et septième (ou sixte), plus une tension de la qualité si elle en a.
+    GuideTones,
+    /// Quatre sons sans fondamentale, types A (tierce en bas) et B (septième en bas) ;
+    /// la conduite de voix choisit celui qui bouge le moins.
+    Rootless,
+    /// Type A seulement : tierce en bas.
+    RootlessA,
+    /// Type B seulement : septième en bas.
+    RootlessB,
+    /// Quatre sons en position serrée dont la deuxième voix depuis l'aigu descend d'une octave.
+    Drop2,
+}
+
+impl ChordVoicing {
+    /// Voicings de triade : doublures `note_count` et fenêtre fixe possibles.
+    pub(crate) const fn is_triad_kind(self) -> bool {
+        matches!(self, Self::CloseTriad | Self::FixedTriad)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -196,15 +299,33 @@ impl ChordVoice {
         &self.patterns[index]
     }
     pub(crate) fn needs_seed(&self) -> bool {
-        self.patterns.iter().flat_map(|p| &p.hits).any(|h| {
-            (h.probability > 0.0 && h.probability < 1.0)
-                || (h.probability > 0.0
-                    && h.direction != AttackDirection::Block
-                    && self
-                        .spread
-                        .as_ref()
-                        .is_some_and(|s| s.gap_jitter > 0.0 || s.velocity_jitter > 0))
-        })
+        !self.comping.is_empty()
+            || self.patterns.iter().flat_map(|p| &p.hits).any(|h| {
+                (h.probability > 0.0 && h.probability < 1.0)
+                    || (h.probability > 0.0
+                        && h.direction != AttackDirection::Block
+                        && self
+                            .spread
+                            .as_ref()
+                            .is_some_and(|s| s.gap_jitter > 0.0 || s.velocity_jitter > 0))
+            })
+    }
+
+    /// Attaques de la mesure : un motif de comping tiré par poids avec `seed` (une mesure
+    /// se rejoue à l'identique), sinon le motif choisi par l'intensité (`offset`).
+    pub(crate) fn bar_hits(&self, offset: f32, seed: u64) -> &[ChordHit] {
+        let total: u64 = self.comping.iter().map(|m| u64::from(m.weight)).sum();
+        if total == 0 {
+            return &self.pattern(offset).hits;
+        }
+        let mut pick = ChaCha8Rng::seed_from_u64(mix(seed, 0x434F_4D50)).next_range_u64(0..total);
+        for motif in &self.comping {
+            if pick < u64::from(motif.weight) {
+                return &motif.hits;
+            }
+            pick -= u64::from(motif.weight);
+        }
+        unreachable!("le tirage reste sous la somme des poids")
     }
 }
 
@@ -384,19 +505,93 @@ fn validate_hits(
     Ok(())
 }
 
+/// Attaques d'accord : pas, durées et vélocités de la mesure, probabilités finies dans 0..1.
+fn validate_chord_hits(hits: &[ChordHit], steps: usize, field: &str) -> Result<(), ProfileError> {
+    validate_hits(hits.iter().map(|h| (h.step, h.duration, h.velocity)), steps, field)?;
+    for (j, hit) in hits.iter().enumerate() {
+        require(
+            hit.probability.is_finite() && (0.0..=1.0).contains(&hit.probability),
+            format!("{field}[{j}].probability"),
+            "probabilité finie dans 0..1 requise",
+        )?;
+    }
+    Ok(())
+}
+
+impl BassWalking {
+    fn validate(
+        &self,
+        bass: &BassVoice,
+        steps: usize,
+        steps_per_pulse: usize,
+        steps_per_chord: usize,
+    ) -> Result<(), ProfileError> {
+        let field = "accompaniment.bass.walking";
+        require(
+            bass.hits.is_empty() && bass.motifs.is_empty() && bass.passing.is_none(),
+            field,
+            "la marche est exclusive de hits, motifs et passing (trois sources de la même voix)",
+        )?;
+        require(
+            steps_per_pulse > 0
+                && steps.is_multiple_of(steps_per_pulse)
+                && steps_per_chord.is_multiple_of(steps_per_pulse),
+            field,
+            "un changement d'accord doit tomber sur une pulsation : \
+             harmony.steps_per_chord multiple de meter.steps_per_pulse",
+        )?;
+        require(
+            bass.high - bass.low >= 11,
+            "accompaniment.bass.high",
+            "la marche demande un registre qui couvre les douze classes de hauteur",
+        )?;
+        require(
+            (1..=127).contains(&self.velocity)
+                && u16::from(self.velocity) + u16::from(self.accent) <= 127,
+            format!("{field}.velocity"),
+            "vélocité dans 1..127, accent compris, requise",
+        )?;
+        require(
+            (1..=steps_per_pulse).contains(&self.duration),
+            format!("{field}.duration"),
+            "durée de 1 pas à une pulsation requise",
+        )?;
+        require(
+            (1..=12).contains(&self.max_leap),
+            format!("{field}.max_leap"),
+            "écart maximal dans 1..12 demi-tons requis",
+        )?;
+        for (name, weight) in [
+            ("toward_target_weight", self.toward_target_weight),
+            ("keep_direction_weight", self.keep_direction_weight),
+        ] {
+            require(weight <= 100, format!("{field}.{name}"), "poids dans 0..100 requis")?;
+        }
+        let approach = &self.approach;
+        require(
+            u64::from(approach.none_weight)
+                + u64::from(approach.chromatic_weight)
+                + u64::from(approach.diatonic_weight)
+                > 0,
+            format!("{field}.approach"),
+            "somme des poids positive requise",
+        )?;
+        let passing = &self.passing;
+        require(
+            u64::from(passing.chord_tone_weight) + u64::from(passing.scale_step_weight) > 0,
+            format!("{field}.passing"),
+            "somme des poids positive requise",
+        )
+    }
+}
+
 fn validate_doubling(
     doubling: &[BassDoubling],
-    rewrite: bool,
     low: u8,
     high: u8,
     max_offset: i16,
     field: &str,
 ) -> Result<(), ProfileError> {
-    require(
-        !rewrite || doubling.is_empty(),
-        field,
-        "les doublures modales demandent l'harmonie melody_functional",
-    )?;
     require(
         doubling.len() <= 2 && doubling.iter().enumerate().all(|(i, d)| !doubling[..i].contains(d)),
         field,
@@ -423,7 +618,8 @@ impl AccompanimentParams {
     pub(crate) fn validate_accompaniment(
         &self,
         steps: usize,
-        rewrite: bool,
+        steps_per_pulse: usize,
+        steps_per_chord: usize,
         parts: &[crate::style_profile::ProfilePart],
     ) -> Result<(), ProfileError> {
         require(
@@ -443,11 +639,6 @@ impl AccompanimentParams {
             "registre MIDI ordonné requis",
         )?;
         require(
-            !rewrite || b.high - b.low >= 11,
-            "accompaniment.bass.high",
-            "le registre du modèle rewrite_functional doit couvrir les douze classes de hauteur",
-        )?;
-        require(
             b.walk_low.unwrap_or(b.low) <= b.low,
             "accompaniment.bass.walk_low",
             "doit être inférieur ou égal à low",
@@ -458,11 +649,6 @@ impl AccompanimentParams {
             "doit être supérieur ou égal à high, dans MIDI",
         )?;
         if let Some(passing) = &b.passing {
-            require(
-                !rewrite || passing.is_inert(),
-                "accompaniment.bass.passing",
-                "les approches modales demandent l'harmonie melody_functional",
-            )?;
             passing.validate(steps)?;
         }
         validate_hits(
@@ -472,18 +658,13 @@ impl AccompanimentParams {
         )?;
         for (i, hit) in b.hits.iter().enumerate() {
             let field = format!("accompaniment.bass.hits[{i}].doubling");
-            validate_doubling(&hit.doubling, rewrite, b.low, b.high, 0, &field)?;
+            validate_doubling(&hit.doubling, b.low, b.high, 0, &field)?;
         }
         if !b.motifs.is_empty() {
             require(
                 b.hits.is_empty(),
                 "accompaniment.bass.hits",
                 "hits et motifs sont deux sources exclusives de la même voix",
-            )?;
-            require(
-                !rewrite,
-                "accompaniment.bass.motifs",
-                "les motifs de basse demandent l'harmonie melody_functional",
             )?;
             require(
                 b.motifs.len() <= 256,
@@ -591,7 +772,6 @@ impl AccompanimentParams {
                     )?;
                     validate_doubling(
                         &note.doubling,
-                        rewrite,
                         b.low,
                         b.high,
                         max_offset,
@@ -620,18 +800,32 @@ impl AccompanimentParams {
                 )?;
             }
         }
+        if let Some(walking) = &b.walking {
+            walking.validate(b, steps, steps_per_pulse, steps_per_chord)?;
+        }
         let c = &self.chords;
         require(
-            !rewrite
-                || (c.spread.is_none()
-                    && c.note_count == 3
-                    && c.voicing == ChordVoicing::CloseTriad
-                    && c.patterns
-                        .iter()
-                        .flat_map(|p| &p.hits)
-                        .all(|h| h.probability == 1.0 && h.direction == AttackDirection::Block)),
-            "accompaniment.chords",
-            "les gestes d'attaque demandent l'harmonie melody_functional",
+            c.voicing.is_triad_kind() || c.high.saturating_sub(c.low) >= 12,
+            "accompaniment.chords.high",
+            "les voicings jazz demandent une fenêtre low..high d'au moins une octave",
+        )?;
+        require(
+            c.comping.len() <= 256,
+            "accompaniment.chords.comping",
+            "au plus 256 motifs de comping",
+        )?;
+        let mut comping_weight = 0u32;
+        for (i, motif) in c.comping.iter().enumerate() {
+            let field = format!("accompaniment.chords.comping[{i}]");
+            comping_weight = comping_weight.checked_add(motif.weight).ok_or_else(|| {
+                ProfileError::new(format!("{field}.weight"), "somme des poids hors u32")
+            })?;
+            validate_chord_hits(&motif.hits, steps, &format!("{field}.hits"))?;
+        }
+        require(
+            c.comping.is_empty() || comping_weight > 0,
+            "accompaniment.chords.comping",
+            "somme des poids positive requise",
         )?;
         require(c.center <= 127, "accompaniment.chords.center", "registre MIDI requis")?;
         require(c.max_drift <= 127, "accompaniment.chords.max_drift", "registre MIDI requis")?;
@@ -661,18 +855,7 @@ impl AccompanimentParams {
         for (i, pattern) in c.patterns.iter().enumerate() {
             let field = format!("accompaniment.chords.patterns[{i}].hits");
             require(!pattern.hits.is_empty(), &field, "motif non vide requis")?;
-            validate_hits(
-                pattern.hits.iter().map(|h| (h.step, h.duration, h.velocity)),
-                steps,
-                &field,
-            )?;
-            for (j, hit) in pattern.hits.iter().enumerate() {
-                require(
-                    hit.probability.is_finite() && (0.0..=1.0).contains(&hit.probability),
-                    format!("{field}[{j}].probability"),
-                    "probabilité finie dans 0..1 requise",
-                )?;
-            }
+            validate_chord_hits(&pattern.hits, steps, &field)?;
         }
         Ok(())
     }

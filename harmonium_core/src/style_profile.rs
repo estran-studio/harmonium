@@ -1282,14 +1282,19 @@ impl StyleProfile {
         }
         if let Some(a) = &self.accompaniment {
             check(
-                a.bass.motifs.is_empty()
-                    || matches!(self.harmony.model.as_str(), "melody_functional" | "loop"),
+                self.harmony.model != "none" || a.bass.motifs.is_empty(),
                 "accompaniment.bass.motifs",
-                "les motifs de basse demandent une harmonie melody_functional ou loop",
+                "les motifs de basse demandent une harmonie qui joue des accords",
+            )?;
+            check(
+                self.harmony.model != "none" || a.bass.walking.is_none(),
+                "accompaniment.bass.walking",
+                "la marche de basse demande une harmonie qui joue des accords",
             )?;
             a.validate_accompaniment(
                 m.steps_per_bar,
-                self.harmony.model == "rewrite_functional",
+                m.steps_per_pulse,
+                self.harmony.steps_per_chord,
                 &self.form.parts,
             )?;
         } else {

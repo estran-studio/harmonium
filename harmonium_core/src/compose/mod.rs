@@ -13,6 +13,8 @@ pub mod mode;
 pub mod percussion;
 pub mod plan;
 pub mod set;
+mod voicing;
+mod walking;
 pub use accomp::{ChordPlayer, bass_bar};
 pub use arrangement::{
     Arrangement, ArrangementError, DEFAULT_ARRANGEMENT_TOML, EntryPoint, IntroConfig, IntroForm,
