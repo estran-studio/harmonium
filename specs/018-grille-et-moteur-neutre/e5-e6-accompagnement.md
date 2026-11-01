@@ -2,7 +2,10 @@
 
 Date : 2026-11-01. Branche : `wquintal/e5-e6-accompagnement-jazz`, partie de `main` à `150b04f`
 (N1, E1, E3 fusionnées, `TUNING_VERSION` 23). **Les notes des profils distribués ne changent
-pas, `TUNING_VERSION` reste 23, aucun golden n'est régénéré** (preuves plus bas). Aucun nom de
+pas, aucun golden n'est régénéré** (preuves plus bas). Les notes de `rewrite_functional`
+(fixture `jazz_test`) changent pour un même seed : rupture de contrat (principe I),
+l'orchestrateur a porté `TUNING_VERSION` de 23 à 24 et le tampon de la référence D2 du CLI.
+Aucun nom de
 genre dans le code ni le schéma : tout est nommé par le rôle (`rootless`, `guide_tones`, `drop2`,
 `walking`, `approach`, `comping`, `anticipate`).
 

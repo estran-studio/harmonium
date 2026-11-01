@@ -30,6 +30,8 @@ air) pris avant l'air 1 de chaque set (`set.toml`, module `compose::set`).
 `chord_changes` (fondamentale et basse absolues, qualité typée en texte de suffixe,
 extensions, notes de l'accord) ; les notes ne changent pas. Contrat décrit dans
 `profiles/README.md`, « Identité d'accord publiée dans le snapshot ».
+`TUNING_VERSION = 24` : `rewrite_functional` rend basse et accords par les mêmes voix que
+`loop` et `melody_functional` (E5/E6) ; ses notes changent, celles des autres modèles non.
 
 ## Modules
 
