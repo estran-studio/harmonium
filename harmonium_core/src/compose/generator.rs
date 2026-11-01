@@ -28,7 +28,11 @@ use crate::{
     },
     ornaments::BarContext,
     params::MusicalParams,
-    theory::{PitchClass, chord::Chord, lydian_chromatic::LydianChromaticConcept},
+    theory::{
+        PitchClass,
+        chord::Chord,
+        lydian_chromatic::{LydianChromaticConcept, ScaleGuidance},
+    },
     timeline::{
         Articulation, ChordChange, ChordContext, Measure, NoteId, StateSnapshot, TimelineNote,
         TrackId,
@@ -719,12 +723,7 @@ impl TuneGenerator {
         let tuning = &self.tuning;
         let steps = measure.steps;
 
-        measure.chord_context = ChordContext {
-            root_offset: 0,
-            is_minor: plan.mode.is_minor(),
-            chord_name: pitch_class_name(plan.key).to_string(),
-            scale_guidance: None,
-        };
+        measure.chord_context = key_context(plan.key, plan.mode);
 
         // Indice (0-based) de la mesure d'intro dans cette intro : les mesures
         // d'intro sont générées séquentiellement, la position ne stockant pas
@@ -893,12 +892,7 @@ impl TuneGenerator {
         if let HarmonyPlan::None = &tune.harmony {
             let bar_in_tour = self.performed_bar(position);
             let plan = &tune.plan;
-            measure.chord_context = ChordContext {
-                root_offset: 0,
-                is_minor: plan.mode.is_minor(),
-                chord_name: pitch_class_name(plan.key).to_string(),
-                scale_guidance: None,
-            };
+            measure.chord_context = key_context(plan.key, plan.mode);
             if self.track_active(TrackId::Melody, position) {
                 for mut note in tune.melody.notes_for_bar(bar_in_tour) {
                     note.id = self.alloc_note_id();
@@ -911,7 +905,7 @@ impl TuneGenerator {
         let bar_in_tour = self.performed_bar(position);
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
-        measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
+        measure.chord_context = self.modal_chord_context(chords[0], plan.key, plan.mode);
         if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
             // Un changement par accord distinct de la mesure, plus l'attaque de la mesure.
             for (slot, chord) in chords.iter().enumerate() {
@@ -921,7 +915,7 @@ impl TuneGenerator {
                         context: if slot == 0 {
                             measure.chord_context.clone()
                         } else {
-                            build_chord_context(*chord, plan.key, plan.mode)
+                            self.modal_chord_context(*chord, plan.key, plan.mode)
                         },
                     });
                 }
@@ -979,6 +973,29 @@ impl TuneGenerator {
         self.fill_percussion(tune, position, measure);
     }
 
+    /// Gammes d'improvisation d'un accord typé (Lydian Chromatic, tension harmonique de la
+    /// mesure) : le même calcul pour tous les modèles, seulement si le profil le demande.
+    fn chord_guidance(&self, chord: &Chord, symbol: &str) -> Option<ScaleGuidance> {
+        self.profile.harmony.scale_guidance.then(|| {
+            LydianChromaticConcept::new().scale_guidance(
+                chord,
+                symbol.to_string(),
+                self.musical_params.harmony_tension,
+            )
+        })
+    }
+
+    /// Contexte d'un accord relatif à la tonique (modèles `loop` et `melody_functional`),
+    /// avec ses gammes si le profil les demande. Une pédale n'a pas d'accord typé : pas de
+    /// gammes.
+    fn modal_chord_context(&self, chord: DegreeChord, key: PitchClass, mode: Mode) -> ChordContext {
+        let mut context = build_chord_context(chord, key, mode);
+        if let Some(typed) = chord.to_chord(key, mode) {
+            context.scale_guidance = self.chord_guidance(&typed, &context.chord_name);
+        }
+        context
+    }
+
     fn fill_rewrite_measure(
         &mut self,
         tune: &ActiveTune,
@@ -988,23 +1005,9 @@ impl TuneGenerator {
     ) {
         let period = self.profile.harmony.steps_per_chord;
         for (slot, chord) in chords.iter().enumerate() {
-            let name = chord.name();
-            let guidance = self.profile.harmony.scale_guidance.then(|| {
-                LydianChromaticConcept::new().scale_guidance(
-                    chord,
-                    name.clone(),
-                    self.musical_params.harmony_tension,
-                )
-            });
-            measure.chord_changes.push(ChordChange {
-                start_step: slot * period,
-                context: ChordContext {
-                    root_offset: (i32::from(chord.root) - i32::from(tune.plan.key)).rem_euclid(12),
-                    is_minor: chord.chord_type.is_minor(),
-                    chord_name: name,
-                    scale_guidance: guidance,
-                },
-            });
+            let mut context = ChordContext::from_chord(chord, tune.plan.key, chord.name());
+            context.scale_guidance = self.chord_guidance(chord, &context.chord_name);
+            measure.chord_changes.push(ChordChange { start_step: slot * period, context });
         }
         measure.chord_context = measure.chord_changes[0].context.clone();
         if self.track_active(TrackId::Melody, position) {
@@ -1187,12 +1190,7 @@ impl TuneGenerator {
             self.tuning.profile.melody.params.tonic_midi_max,
         );
 
-        measure.chord_context = ChordContext {
-            root_offset: 0,
-            is_minor: plan.mode.is_minor(),
-            chord_name: pitch_class_name(plan.key).to_string(),
-            scale_guidance: None,
-        };
+        measure.chord_context = key_context(plan.key, plan.mode);
 
         // Tonique accentuée sur le pas 0 (temps 1), durée 8 pas (blanche)
         if self.musical_params.enable_melody && self.tuning.profile.has_track(TrackId::Melody) {
@@ -1965,14 +1963,37 @@ pub fn degree_chord_name(chord: DegreeChord, key: PitchClass, mode: Mode) -> Str
     }
 }
 
-/// Construit le [`ChordContext`] d'une mesure à partir de l'accord de sa première demi-mesure.
+/// Construit le [`ChordContext`] d'un accord relatif à la tonique : l'identité d'un accord
+/// typé vient de [`ChordContext::from_chord`], celle d'une pédale (sans qualité) de ses
+/// hauteurs. Le nom reste celui de [`degree_chord_name`].
 #[must_use]
 pub fn build_chord_context(chord: DegreeChord, key: PitchClass, mode: Mode) -> ChordContext {
+    let name = degree_chord_name(chord, key, mode);
+    if let Some(typed) = chord.to_chord(key, mode) {
+        return ChordContext::from_chord(&typed, key, name);
+    }
     ChordContext {
         root_offset: i32::from(chord.root_semitones(mode)),
         is_minor: chord.quality.is_minor(),
-        chord_name: degree_chord_name(chord, key, mode),
+        chord_name: name,
+        root_pc: chord.root_pc(key, mode),
+        bass_pc: chord.bass_pc(key, mode),
+        quality: None,
+        extensions: Vec::new(),
+        pitch_classes: chord.pitch_classes(key, mode).to_vec(),
         scale_guidance: None,
+    }
+}
+
+/// Contexte d'une mesure sans accord joué (intro, outro, harmonie `none`) : la tonique de
+/// l'air comme fondamentale et basse, aucune qualité ni note d'accord.
+fn key_context(key: PitchClass, mode: Mode) -> ChordContext {
+    ChordContext {
+        is_minor: mode.is_minor(),
+        chord_name: pitch_class_name(key).to_string(),
+        root_pc: key % 12,
+        bass_pc: key % 12,
+        ..ChordContext::default()
     }
 }
 

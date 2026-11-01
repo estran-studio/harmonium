@@ -163,5 +163,5 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 | L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
 | N1 | fusionnée (`f1b2036`) : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 ; consommateurs du labo migrés (`5e52703`) | [Compte rendu](n1-moteur-neutre.md) |
 | E1 | fusionnée (`4d560f5`) : qualités typées, basse, durées en pas, voicer 4–5 hauteurs ; dumps (92) et WAV identiques à `main` (vérifié par l'orchestrateur), `TUNING_VERSION` 22 ; suites vertes (745 workspace, 118 odin, 11 Bevy) | [Compte rendu](e1-grille-riche.md) |
-| E3 | lancée (vague 3) : worktree `e3-identite-accord`, Sonnet (Codex bloqué ~3 jours, limite hebdomadaire) | — |
+| E3 | terminée sur la branche `wquintal/e3-identite-accord`, à relire et fusionner : cinq clés d'identité (fondamentale, basse, qualité typée, extensions, notes) dans le snapshot et `chord_changes`, `ScaleGuidance` avec `loop` ; `TUNING_VERSION` 23, goldens régénérés ; dumps (92) et WAV/MIDI identiques à `main` hors nouvelles clés | [Compte rendu](e3-identite-accord.md) |
 | E5, E6, E7, P1, P2 | en attente | — |

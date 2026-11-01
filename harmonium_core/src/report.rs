@@ -61,6 +61,22 @@ pub struct MeasureSnapshot {
     pub chord_root_offset: i32,
     /// Whether the chord is minor
     pub chord_is_minor: bool,
+    /// Fondamentale absolue du premier accord (classe de hauteur `0..=11`, `0` = do).
+    #[serde(default)]
+    pub chord_root_pc: u8,
+    /// Basse absolue du premier accord ; la fondamentale hors accord slash.
+    #[serde(default)]
+    pub chord_bass_pc: u8,
+    /// Qualité typée du premier accord, en texte de suffixe (`""`, `m7`, `7b9`, `7alt`…) ;
+    /// `null` sans qualité (pédale, mesure sans accord joué).
+    #[serde(default)]
+    pub chord_quality: Option<crate::theory::quality::Quality>,
+    /// Intervalles des extensions de la qualité (`G7b9` → `[1]`), croissants.
+    #[serde(default)]
+    pub chord_extensions: Vec<u8>,
+    /// Notes du premier accord (classes de hauteur), tensions comprises, fondamentale en tête.
+    #[serde(default)]
+    pub chord_pitch_classes: Vec<u8>,
     /// All notes in this measure (flattened across tracks)
     pub notes: Vec<NoteSnapshot>,
     /// Emotion-mapped BPM (composition tempo, ignoring user override).
@@ -118,6 +134,11 @@ impl MeasureSnapshot {
             chord_name: measure.chord_context.chord_name.clone(),
             chord_root_offset: measure.chord_context.root_offset,
             chord_is_minor: measure.chord_context.is_minor,
+            chord_root_pc: measure.chord_context.root_pc,
+            chord_bass_pc: measure.chord_context.bass_pc,
+            chord_quality: measure.chord_context.quality,
+            chord_extensions: measure.chord_context.extensions.clone(),
+            chord_pitch_classes: measure.chord_context.pitch_classes.clone(),
             notes,
             // Default to measure tempo; overridden by composer with emotion-mapped BPM
             composition_bpm: measure.tempo,

@@ -26,6 +26,10 @@ régénérés. Les rôles fixes d'origine, sans `second_ending`, reproduisent le
 contrat de notes antérieur sans second chemin, à la version courante des tirages.
 `TUNING_VERSION = 19` ajoute les sets : un bloc de tirages (longueur du set, tonalité de chaque
 air) pris avant l'air 1 de chaque set (`set.toml`, module `compose::set`).
+`TUNING_VERSION = 23` ajoute l'identité complète de l'accord au `MeasureSnapshot` et à
+`chord_changes` (fondamentale et basse absolues, qualité typée en texte de suffixe,
+extensions, notes de l'accord) ; les notes ne changent pas. Contrat décrit dans
+`profiles/README.md`, « Identité d'accord publiée dans le snapshot ».
 
 ## Modules
 

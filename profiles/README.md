@@ -277,6 +277,44 @@ La tension ne substitue pas de dominante aux accords déclarés. Les intros
 vamp et l'outro tonique restent les raccords explicites de l'arrangement ;
 la boucle décrit les mesures du corps de l'air.
 
+## Identité d'accord publiée dans le snapshot
+
+Tous les modèles d'harmonie (`loop`, `melody_functional`, `rewrite_functional`, `none`)
+publient l'identité complète de l'accord en vigueur, en classes de hauteur **absolues**
+(`0..=11`, `0` = do, tonalité verrouillée comprise). Les champs de la mesure décrivent le
+premier accord ; chaque entrée de `chord_changes[].context` porte les mêmes valeurs sous les
+noms sans préfixe :
+
+| `MeasureSnapshot` | `chord_changes[].context` | Contenu |
+|---|---|---|
+| `chord_root_pc` | `root_pc` | fondamentale |
+| `chord_bass_pc` | `bass_pc` | basse ; la fondamentale hors accord slash |
+| `chord_quality` | `quality` | qualité typée, en texte de suffixe (`""`, `m7`, `7b9`, `7alt`…), celui de `chord_name` ; `null` sans qualité |
+| `chord_extensions` | `extensions` | intervalles des tensions au-dessus de la fondamentale (`G7b9` → `[1]`, `C13` → `[2, 9]`), croissants |
+| `chord_pitch_classes` | `pitch_classes` | notes de l'accord, **tensions comprises**, fondamentale en tête puis intervalles croissants |
+
+`chord_name`, `chord_root_offset` et `chord_is_minor` restent publiés, inchangés.
+
+- `pitch_classes` contient les tensions : `G7b9` donne `[7, 8, 11, 2, 5]`. Un joueur qui
+  tombe sur le b9 joue une note de l'accord tel qu'il est écrit, et c'est ce que le
+  générateur considère dans l'accord pour la mélodie. Le noyau sans tension se retrouve en
+  retirant les `extensions` (`(root_pc + intervalle) % 12`).
+- La basse d'un accord slash n'est dans `pitch_classes` que si elle appartient à l'accord
+  (`C/E` : `[0, 4, 7]` ; `D/C` : `[2, 6, 9]`, la basse `0` est seulement dans `bass_pc`).
+- `quality = null` : pédale (`pitch_classes` = la hauteur tenue, plus son voisin
+  éventuel) et mesures sans accord joué (intro, outro, harmonie `none` : `root_pc` et
+  `bass_pc` = la tonique de l'air, `pitch_classes` vide).
+- `quality = ""` est la triade majeure ; `"m"` la mineure.
+
+`scale_guidance = true` publie les gammes (`ScaleGuidance`, Lydian Chromatic) pour `loop` et
+`melody_functional` comme pour `rewrite_functional` : même calcul, à partir de l'accord typé
+et de la tension harmonique de la mesure. `chord_tones` y reste le **type seul**
+(`G7b9` → `[7, 11, 2, 5]`), sans les tensions. Absent ou `false` : `null`. Les gammes d'un
+accord de boucle ne modifient pas les notes ; une pédale n'a pas de gammes.
+
+Les clients lisent les nouveaux champs ; un snapshot sans eux se relit (valeurs par défaut).
+Rupture de contrat : `TUNING_VERSION` 23.
+
 
 ## Instrument Odin par piste (option `odin`)
 

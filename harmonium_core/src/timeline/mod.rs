@@ -17,7 +17,10 @@ pub use midi_export::{timeline_to_midi, write_midi};
 pub use pointers::{Playhead, Writehead};
 use serde::{Deserialize, Serialize};
 
-use crate::params::{PulseSpec, TimeSignature};
+use crate::{
+    params::{PulseSpec, TimeSignature},
+    theory::{PitchClass, chord::Chord, quality::Quality},
+};
 
 /// Unique identifier for each note in the timeline
 pub type NoteId = u64;
@@ -181,7 +184,21 @@ pub struct StateSnapshot {
     pub arousal: f32,
 }
 
-/// Chord context captured at generation time
+/// Chord context captured at generation time.
+///
+/// `root_offset`, `is_minor` et `chord_name` sont l'identité historique. Les champs
+/// suivants donnent l'identité complète, en classes de hauteur **absolues** (`0..=11`,
+/// `0` = do), tonalité fixe ou transposée comprise :
+///
+/// - `root_pc`, `bass_pc` : fondamentale et basse (égales hors accord slash) ;
+/// - `quality` : qualité typée, publiée en texte de suffixe (`""`, `m7`, `7b9`, `7alt`…),
+///   le même que celui de `chord_name` ; `None` quand la sonorité n'a pas de qualité
+///   (pédale, contexte de tonalité sans accord) ;
+/// - `extensions` : intervalles des tensions de la qualité au-dessus de la fondamentale
+///   (`G7b9` → `[1]`, `C13` → `[2, 9]`), croissants, vides sans tension ;
+/// - `pitch_classes` : les notes de l'accord, **tensions comprises** (`G7b9` → `[7, 8, 11, 2,
+///   5]`), fondamentale en tête puis intervalles croissants ; la basse d'un accord slash
+///   n'y figure que si elle appartient à l'accord. Vide hors accord.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChordContext {
     /// Root offset from key (semitones)
@@ -190,11 +207,51 @@ pub struct ChordContext {
     pub is_minor: bool,
     /// Chord name for display
     pub chord_name: String,
+    /// Fondamentale absolue (classe de hauteur).
+    #[serde(default)]
+    pub root_pc: u8,
+    /// Basse absolue (classe de hauteur) ; la fondamentale hors accord slash.
+    #[serde(default)]
+    pub bass_pc: u8,
+    /// Qualité typée ; `None` sans qualité (pédale, tonalité seule).
+    #[serde(default)]
+    pub quality: Option<Quality>,
+    /// Intervalles des extensions de la qualité, croissants.
+    #[serde(default)]
+    pub extensions: Vec<u8>,
+    /// Notes de l'accord (classes de hauteur), tensions comprises.
+    #[serde(default)]
+    pub pitch_classes: Vec<u8>,
     /// Improv scale guidance (LCC-derived) for this measure's chord.
     /// `None` for measures generated before this field existed or when the
     /// chord/key context is unavailable.
     #[serde(default)]
     pub scale_guidance: Option<crate::theory::lydian_chromatic::ScaleGuidance>,
+}
+
+impl ChordContext {
+    /// Contexte d'un accord typé : le seul constructeur de l'identité d'un [`Chord`]
+    /// (principe IV). `chord_name` est le texte déjà choisi par le modèle ; la tonique `key`
+    /// ne sert qu'à `root_offset`. Les gammes (`scale_guidance`) sont ajoutées par l'appelant.
+    #[must_use]
+    pub fn from_chord(chord: &Chord, key: PitchClass, chord_name: String) -> Self {
+        let root = chord.root % 12;
+        let mut pitch_classes = chord.all_pitch_classes();
+        pitch_classes.sort_by_key(|pc| (pc + 12 - root) % 12);
+        let mut extensions = chord.extensions.clone();
+        extensions.sort_unstable();
+        Self {
+            root_offset: (i32::from(root) - i32::from(key % 12)).rem_euclid(12),
+            is_minor: chord.chord_type.is_minor(),
+            chord_name,
+            root_pc: root,
+            bass_pc: chord.bass.unwrap_or(root) % 12,
+            quality: chord.quality(),
+            extensions,
+            pitch_classes,
+            scale_guidance: None,
+        }
+    }
 }
 
 /// Accord publié à son pas exact, notamment pour les changements intra-mesure.
