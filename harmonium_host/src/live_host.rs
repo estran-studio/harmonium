@@ -8,7 +8,7 @@ use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot, MusicalParams,
     events::RecordFormat,
     params::SessionConfig,
-    trad::{BarRole, TunePlan},
+    compose::{BarRole, TunePlan},
 };
 use web_time::Instant;
 

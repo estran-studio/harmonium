@@ -8,7 +8,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{ReelArrangement, TradGenerator, same_cell_up_to_octave},
+    compose::{ReelArrangement, TradGenerator, same_cell_up_to_octave},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -146,8 +146,8 @@ fn p1t7_consecutive_tunes_start_differently() -> Result<(), String> {
         let tune2 = trad_gen.tune_for_bar(33).ok_or("tune 2 absent".to_string())?;
         assert!(
             !same_cell_up_to_octave(
-                &tune1.fiddle.cells_for_part(harmonium_core::trad::Part(0))[0],
-                &tune2.fiddle.cells_for_part(harmonium_core::trad::Part(0))[0]
+                &tune1.fiddle.cells_for_part(harmonium_core::compose::Part(0))[0],
+                &tune2.fiddle.cells_for_part(harmonium_core::compose::Part(0))[0]
             ),
             "seed {seed}: tunes 1 et 2 commencent par la même cellule"
         );

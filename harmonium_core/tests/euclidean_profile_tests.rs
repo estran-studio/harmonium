@@ -3,7 +3,7 @@ use harmonium_core::{
     StyleProfile, TuningParams,
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{FeetTable, IntroConfig, Part, ReelArrangement, TradGenerator},
+    compose::{FeetTable, IntroConfig, Part, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

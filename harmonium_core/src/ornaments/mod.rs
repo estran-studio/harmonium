@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     style_profile::ProfileError,
     theory::PitchClass,
-    trad::{Mode, dynamics::Curve},
+    compose::{Mode, dynamics::Curve},
 };
 
 /// Mélange de 64 bits (SplitMix64) pour dériver des graines sans état.

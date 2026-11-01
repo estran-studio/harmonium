@@ -43,7 +43,7 @@ fn render_reel(
         let mut profile = composer.profile().clone();
         profile.performance = Default::default();
         profile.ornaments = Default::default();
-        profile.arrangement.intro = harmonium_core::trad::IntroConfig::none();
+        profile.arrangement.intro = harmonium_core::compose::IntroConfig::none();
         composer.set_profile(profile)?;
     }
 

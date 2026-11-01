@@ -12,7 +12,7 @@ use crate::{
     params::{PulseSpec, TimeSignature},
     profile_source::{Mount, locate, one_line, parse},
     timeline::TrackId,
-    trad::{
+    compose::{
         Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
         feet::FeetTable, plan::ImposedRole,
     },
@@ -110,8 +110,8 @@ impl ProfileRole {
     /// poids positif (`free` : [`crate::ReelFiddleParams::free_role_weights`]).
     fn needs_cell_role(
         &self,
-        role: crate::trad::CellRole,
-        free: &[(crate::trad::CellRole, u32)],
+        role: crate::compose::CellRole,
+        free: &[(crate::compose::CellRole, u32)],
     ) -> bool {
         match self {
             Self::Fixed(fixed) => {
@@ -456,7 +456,7 @@ pub struct LoopChord {
     pub degree: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub semitones: Option<u8>,
-    pub quality: crate::trad::ChordQuality,
+    pub quality: crate::compose::ChordQuality,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bars: Option<usize>,
 }
@@ -560,7 +560,7 @@ pub struct StyleProfile {
     pub heterophony: Option<crate::heterophony::Heterophony>,
     /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
-    pub set: crate::trad::set::ProfileSet,
+    pub set: crate::compose::set::ProfileSet,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -1084,12 +1084,12 @@ impl StyleProfile {
                 .cells
                 .cells
                 .iter()
-                .filter(|cell| matches!(cell.notes[split], crate::trad::CellNote::Degree(_)));
+                .filter(|cell| matches!(cell.notes[split], crate::compose::CellNote::Degree(_)));
             check(
                 split > 0
                     && endings.clone().any(|a| {
                         endings.clone().any(|b| {
-                            !crate::trad::fiddle::same_degree_classes(
+                            !crate::compose::fiddle::same_degree_classes(
                                 &a.notes[split..],
                                 &b.notes[split..],
                             )
@@ -1102,7 +1102,7 @@ impl StyleProfile {
         // Banques exigées par les seuls rôles employés ; un rôle libre ne compte que
         // pour un poids positif.
         let free = self.melody.params.free_role_weights();
-        for role in crate::trad::CellRole::ALL {
+        for role in crate::compose::CellRole::ALL {
             check(
                 !roles().any(|r| r.needs_cell_role(role, &free))
                     || self
@@ -1231,8 +1231,8 @@ impl StyleProfile {
                 "mode unique et accords non vides requis",
             )?;
             check(
-                entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::I)
-                    && entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::V),
+                entry.chords.iter().any(|c| c.degree == crate::compose::ChordDegree::I)
+                    && entry.chords.iter().any(|c| c.degree == crate::compose::ChordDegree::V),
                 &format!("harmony.candidates[{i}].chords"),
                 "tonique I et dominante V requises",
             )?;
@@ -1439,7 +1439,7 @@ impl StyleProfile {
             }
         }
         self.arrangement.validate().map_err(|error| {
-            use crate::trad::ArrangementError as E;
+            use crate::compose::ArrangementError as E;
             let field = match &error {
                 E::ToursPerTuneOutOfRange(_) => "arrangement.tours_per_tune".into(),
                 E::TourOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.tour"),

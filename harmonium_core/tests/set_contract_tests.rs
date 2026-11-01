@@ -1,7 +1,7 @@
 //! Contrat de la forme longue (sets) observé sur le profil et le flux de snapshots.
 use harmonium_core::{
     StyleProfile,
-    trad::set::{MAX_SET_TUNES, SetLength},
+    compose::set::{MAX_SET_TUNES, SetLength},
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -26,7 +26,7 @@ fn invalid_set_is_refused_with_the_field_path() {
         ("set.signature.return_rate", |p| p.set.signature.return_rate = f32::NAN),
         ("set.signature.memory", |p| p.set.signature.memory = 17),
         ("set.key", |p| {
-            p.set.key = harmonium_core::trad::set::SetKey {
+            p.set.key = harmonium_core::compose::set::SetKey {
                 same: 0.0,
                 parallel: 0.0,
                 relative: 0.0,
@@ -97,7 +97,7 @@ fn distributed_profiles_load_their_set_file() {
 use harmonium_core::{
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{Mode, TradGenerator, set::SetKey},
+    compose::{Mode, TradGenerator, set::SetKey},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -182,13 +182,13 @@ fn published_colors_belong_to_the_candidates_of_the_valence() {
     }
 }
 
-fn class_of(prev: (u8, Mode), next: (u8, Mode)) -> harmonium_core::trad::set::KeyClass {
-    harmonium_core::trad::set::KeyClass::of(prev, next)
+fn class_of(prev: (u8, Mode), next: (u8, Mode)) -> harmonium_core::compose::set::KeyClass {
+    harmonium_core::compose::set::KeyClass::of(prev, next)
 }
 
 #[test]
 fn class_factors_drive_the_chaining() {
-    use harmonium_core::trad::set::KeyClass;
+    use harmonium_core::compose::set::KeyClass;
     let long_set = |key: SetKey| {
         tuning(|p| {
             p.set.length = vec![SetLength { tunes: MAX_SET_TUNES, weight: 1 }];
@@ -284,7 +284,7 @@ fn last_dark_keeps_the_last_tune_of_a_set_bright() {
 // Position publiée : set_index, tune_in_set, tunes_in_set
 // ---------------------------------------------------------------------------
 
-use harmonium_core::{timeline::TrackId, trad::TunePosition};
+use harmonium_core::{timeline::TrackId, compose::TunePosition};
 
 fn positions(snapshots: &[MeasureSnapshot]) -> Vec<TunePosition> {
     snapshots.iter().filter_map(|s| s.position).collect()

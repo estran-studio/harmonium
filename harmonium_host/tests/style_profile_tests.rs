@@ -2,7 +2,7 @@
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
     StyleProfile,
-    trad::{IntroConfig, Part, ReelArrangement},
+    compose::{IntroConfig, Part, ReelArrangement},
 };
 
 #[test]

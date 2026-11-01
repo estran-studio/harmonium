@@ -3,7 +3,7 @@ use harmonium_core::{
     StyleProfile, TuningParams,
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{
+    compose::{
         TradGenerator,
         dynamics::Curve,
         set::{SetLength, SetRamp},

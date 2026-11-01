@@ -4,7 +4,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{
+    compose::{
         ReelArrangement, TradGenerator,
         dynamics::{Curve, REEL_INTENSITY_TOML, StyleDynamics},
     },

@@ -85,7 +85,7 @@ pub struct MeasureSnapshot {
     /// caler le gameplay sur « les pieds entrent » ou « dernier tour ».
     /// `None` hors style trad.
     #[serde(default)]
-    pub position: Option<crate::trad::TunePosition>,
+    pub position: Option<crate::compose::TunePosition>,
 }
 
 impl MeasureSnapshot {

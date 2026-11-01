@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
-    report::MeasureSnapshot, timeline::TrackId, trad::ReelArrangement, tuning::TuningParams,
+    report::MeasureSnapshot, timeline::TrackId, compose::ReelArrangement, tuning::TuningParams,
 };
 
 fn melody(snapshot: &MeasureSnapshot) -> Vec<(usize, u8)> {

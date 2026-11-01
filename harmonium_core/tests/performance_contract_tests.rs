@@ -1,7 +1,7 @@
 //! V2 : décisions observables dans les snapshots, sans inspecter le générateur.
 use harmonium_core::{
     StyleProfile, TuningParams, params::MusicalParams, performance::Performance,
-    report::MeasureSnapshot, timeline::TrackId, trad::TradGenerator,
+    report::MeasureSnapshot, timeline::TrackId, compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

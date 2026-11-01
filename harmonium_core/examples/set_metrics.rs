@@ -4,7 +4,7 @@ use harmonium_core::{
     StyleProfile, TuningParams,
     params::MusicalParams,
     timeline::TrackId,
-    trad::{ActiveTune, TradGenerator},
+    compose::{ActiveTune, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -20,7 +20,7 @@ struct TuneMetrics {
     intro_tracks: Vec<u8>,
     tempo_min: f32,
     tempo_max: f32,
-    last_mode: harmonium_core::trad::Mode,
+    last_mode: harmonium_core::compose::Mode,
     tail_is_outro: bool,
     /// Par piste : nombre de notes et somme des vélocités, corps seulement.
     energy: [[u64; 2]; TrackId::ALL.len()],

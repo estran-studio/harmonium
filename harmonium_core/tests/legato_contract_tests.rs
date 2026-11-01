@@ -15,7 +15,7 @@ use harmonium_core::{
     events::AudioEvent,
     params::MusicalParams,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::TradGenerator,
+    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

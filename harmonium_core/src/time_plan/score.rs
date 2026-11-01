@@ -14,7 +14,7 @@ use rand_chacha::ChaCha8Rng;
 
 use super::{BarTiming, Flicks, Tempo, TimePlan};
 use crate::{
-    mapper::GameControls, params::MusicalParams, trad::TradGenerator, tuning::TuningParams,
+    mapper::GameControls, params::MusicalParams, compose::TradGenerator, tuning::TuningParams,
 };
 
 /// Écart entre deux points de reprise du générateur, en mesures.

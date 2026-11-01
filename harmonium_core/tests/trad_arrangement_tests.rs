@@ -5,7 +5,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{
+    compose::{
         ArrangementError, IntroConfig, Part, REEL_ARRANGEMENT_TOML, ReelArrangement, TradGenerator,
         TunePosition, set::SetLength,
     },

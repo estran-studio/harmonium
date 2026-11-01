@@ -10,7 +10,7 @@ use harmonium_core::{
     events::RecordFormat,
     report::NoteSnapshot,
     timeline::{Articulation, TrackId},
-    trad::pitch_class_name,
+    compose::pitch_class_name,
 };
 use harmonium_studio::{
     live::{Intent, LiveView, Score, Session, TRACKS, score_view},

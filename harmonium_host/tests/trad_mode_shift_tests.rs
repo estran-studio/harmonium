@@ -5,7 +5,7 @@ use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
     ornaments::OrnamentKind,
     timeline::TrackId,
-    trad::{Mode, ReelArrangement},
+    compose::{Mode, ReelArrangement},
     tuning::TuningParams,
 };
 

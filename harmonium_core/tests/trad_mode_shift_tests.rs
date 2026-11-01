@@ -4,7 +4,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::TrackId,
-    trad::{
+    compose::{
         Mode, ReelArrangement, TradGenerator,
         dynamics::{ColorChoice, Curve},
     },
@@ -135,7 +135,7 @@ fn part_boundary_waits_eight_bars_and_speculative_shift_can_be_cancelled() {
     params.harmony_valence = 0.4;
     let mut table = tuning();
     table.profile.dynamics.mode_shift_boundary =
-        harmonium_core::trad::dynamics::ModeShiftBoundary::Part;
+        harmonium_core::compose::dynamics::ModeShiftBoundary::Part;
     let mut generator = TradGenerator::new(params.clone(), table);
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     for bar in 1..=16 {
@@ -169,11 +169,11 @@ fn identical_automation_replays_identical_snapshots() {
 fn invalid_mode_tables_are_rejected() {
     let valid = tuning();
     for mutate in [
-        |d: &mut harmonium_core::trad::dynamics::StyleDynamics| d.dark_below = d.bright_above,
-        |d: &mut harmonium_core::trad::dynamics::StyleDynamics| d.bright_above = f32::NAN,
-        |d: &mut harmonium_core::trad::dynamics::StyleDynamics| d.parallel_modes[0].weight = 0,
-        |d: &mut harmonium_core::trad::dynamics::StyleDynamics| d.parallel_modes.clear(),
-        |d: &mut harmonium_core::trad::dynamics::StyleDynamics| {
+        |d: &mut harmonium_core::compose::dynamics::StyleDynamics| d.dark_below = d.bright_above,
+        |d: &mut harmonium_core::compose::dynamics::StyleDynamics| d.bright_above = f32::NAN,
+        |d: &mut harmonium_core::compose::dynamics::StyleDynamics| d.parallel_modes[0].weight = 0,
+        |d: &mut harmonium_core::compose::dynamics::StyleDynamics| d.parallel_modes.clear(),
+        |d: &mut harmonium_core::compose::dynamics::StyleDynamics| {
             d.parallel_modes[0].dark = Mode::Ionian
         },
     ] {

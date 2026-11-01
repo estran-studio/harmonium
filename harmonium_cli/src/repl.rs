@@ -561,8 +561,8 @@ fn create_prompt(state: &ReplState) -> Result<String> {
 /// Position dans la forme décrite par le profil.
 #[must_use]
 pub fn format_profile_form_position(
-    role: harmonium_core::trad::BarRole,
-    plan: &harmonium_core::trad::TunePlan,
+    role: harmonium_core::compose::BarRole,
+    plan: &harmonium_core::compose::TunePlan,
 ) -> String {
     let part = &plan.profile.form.parts[role.strain.0];
     format!("{}{} m.{}/{}", part.name, role.pass, role.bar_in_strain, part.roles.len())
@@ -570,8 +570,8 @@ pub fn format_profile_form_position(
 
 /// Formate la tonalité et le mode d'un [`harmonium_core::trad::TunePlan`] (ex. `"D Ionian"`).
 #[must_use]
-pub fn format_profile_tune_key_mode(plan: &harmonium_core::trad::TunePlan) -> String {
-    format!("{} {:?}", harmonium_core::trad::pitch_class_name(plan.key), plan.mode)
+pub fn format_profile_tune_key_mode(plan: &harmonium_core::compose::TunePlan) -> String {
+    format!("{} {:?}", harmonium_core::compose::pitch_class_name(plan.key), plan.mode)
 }
 
 /// Print current engine state

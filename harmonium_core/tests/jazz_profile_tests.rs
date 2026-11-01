@@ -4,7 +4,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::MeasureSnapshot,
     theory::chord::{Chord, ChordType},
-    trad::TradGenerator,
+    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

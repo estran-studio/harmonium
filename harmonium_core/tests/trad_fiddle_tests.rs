@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use harmonium_core::{
     timeline::{Measure, ScoreTimeline, TimelineNote, TrackId, write_midi},
-    trad::{
+    compose::{
         CellBank, FIFTH_SEMITONES, FiddleLine, ImposedRole, TunePlan, same_cell_up_to_octave, set,
     },
 };

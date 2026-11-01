@@ -6,7 +6,7 @@ use harmonium_core::{
     ornaments::{OrnamentKind, PhraseEnd},
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    trad::{ImposedRole, TradGenerator},
+    compose::{ImposedRole, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

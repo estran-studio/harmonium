@@ -583,7 +583,7 @@ impl Guitarist {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::trad::harmony::{ChordDegree, ChordQuality, candidate_chords};
+    use crate::compose::harmony::{ChordDegree, ChordQuality, candidate_chords};
 
     fn profile() -> &'static crate::StyleProfile {
         static P: std::sync::LazyLock<crate::StyleProfile> =

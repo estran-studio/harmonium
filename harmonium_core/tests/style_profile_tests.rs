@@ -3,7 +3,7 @@ use harmonium_core::{
     StyleProfile,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    trad::{
+    compose::{
         Cell, CellBank, CellRole, EntryPoint, FootHit, ImposedRole, Part, ReelArrangement,
         TradGenerator,
     },
@@ -66,7 +66,7 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
         let prototype = a.chords.patterns[0].hits[0].clone();
         a.chords.patterns = [vec![3], vec![3, 9], vec![0, 3, 6, 9]]
             .into_iter()
-            .map(|steps| harmonium_core::trad::accomp_profile::ChordPattern {
+            .map(|steps| harmonium_core::compose::accomp_profile::ChordPattern {
                 hits: steps
                     .into_iter()
                     .map(|step| {

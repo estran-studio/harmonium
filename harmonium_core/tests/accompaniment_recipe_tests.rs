@@ -3,7 +3,7 @@ use harmonium_core::{
     StyleProfile, TuningParams,
     params::MusicalParams,
     timeline::{Measure, TrackId},
-    trad::{IntroConfig, Part, ReelArrangement, TradGenerator, accomp_profile::BassDoubling},
+    compose::{IntroConfig, Part, ReelArrangement, TradGenerator, accomp_profile::BassDoubling},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -153,7 +153,7 @@ fn recipe_registers_and_doublings_are_checked_before_publication() {
         }),
         ("chords.high", |p| {
             let c = &mut p.accompaniment.as_mut().unwrap().chords;
-            c.voicing = harmonium_core::trad::accomp_profile::ChordVoicing::FixedTriad;
+            c.voicing = harmonium_core::compose::accomp_profile::ChordVoicing::FixedTriad;
             c.high = c.low + 5;
         }),
     ] {

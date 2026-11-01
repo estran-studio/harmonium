@@ -6,7 +6,7 @@ use harmonium_core::{
     params::PulseSpec,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::TrackId,
-    trad::{ReelArrangement, TunePlan},
+    compose::{ReelArrangement, TunePlan},
     tuning::TuningParams,
 };
 
@@ -31,7 +31,7 @@ fn flat_tuning() -> TuningParams {
             a.chords.strings = 3;
             for part in &mut p.form.parts {
                 part.second_ending = None;
-                use harmonium_core::trad::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
+                use harmonium_core::compose::ImposedRole::{CadFull, CadHalf, CopyOf, Free, Open};
                 part.roles = [Open, Free, Free, CadHalf, CopyOf(1), CopyOf(2), Free, CadFull]
                     .map(Into::into)
                     .to_vec();

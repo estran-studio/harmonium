@@ -7,7 +7,7 @@ use harmonium_core::{
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::{Mode, TradGenerator},
+    compose::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -296,7 +296,7 @@ fn liaisons_explicites_hors_temps_fort_reste_observable() -> TestResult {
 
 #[test]
 fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResult {
-    use harmonium_core::trad::dynamics::TrackThreshold;
+    use harmonium_core::compose::dynamics::TrackThreshold;
     let p = exact_nt()?;
     let mut soft = p.clone();
     soft.dynamics.bass_velocity.0 = vec![[0.0, 0.5], [1.0, 0.5]];

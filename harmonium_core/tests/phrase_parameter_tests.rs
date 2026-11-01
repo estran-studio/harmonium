@@ -8,7 +8,7 @@ use harmonium_core::{
         PositionRhythm, ProfileRole, RhythmPattern, RoleResolution, VariationOperation,
         WeightedRole,
     },
-    trad::{
+    compose::{
         Cell, CellBank, CellRole, ImposedRole, ReelArrangement, TradGenerator, dynamics::Curve,
     },
 };
@@ -382,7 +382,7 @@ fn cadence_hold_and_search_window_control_the_published_rest() {
 
 #[test]
 fn cadence_chord_qualities_come_from_profile_candidates() {
-    use harmonium_core::trad::{ChordDegree, ChordQuality, Mode};
+    use harmonium_core::compose::{ChordDegree, ChordQuality, Mode};
     let mut p = fixture();
     p.melody.key_modes = vec![harmonium_core::style_profile::KeyModeWeight {
         key: 2,
@@ -407,7 +407,7 @@ fn cadence_chord_qualities_come_from_profile_candidates() {
 
 #[test]
 fn odd_cell_default_varied_end_keeps_the_historical_floor_half() {
-    use harmonium_core::trad::CellNote;
+    use harmonium_core::compose::CellNote;
     let mut p = fixture();
     p.melody.cell_units = 7;
     p.meter.steps_per_bar = 14;

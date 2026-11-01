@@ -9,7 +9,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{Measure, Playhead},
-    trad::TradGenerator,
+    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

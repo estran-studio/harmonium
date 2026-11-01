@@ -16,7 +16,7 @@ use harmonium_core::{
     StyleProfile,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    trad::{Part, TradGenerator},
+    compose::{Part, TradGenerator},
     tuning::TuningParams,
 };
 use rand::SeedableRng;

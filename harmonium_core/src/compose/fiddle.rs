@@ -1151,7 +1151,7 @@ mod tests {
     use rand_chacha::ChaCha8Rng;
 
     use super::*;
-    use crate::trad::mode::Mode;
+    use crate::compose::mode::Mode;
 
     #[test]
     fn weighted_draw_favors_heavier_cells_in_proportion() {

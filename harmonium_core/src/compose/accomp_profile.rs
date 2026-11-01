@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    style_profile::ProfileError, timeline::TrackId, trad::dynamics::Curve,
+    style_profile::ProfileError, timeline::TrackId, compose::dynamics::Curve,
     tuning::TradHarmonyParams,
 };
 

@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 
 use harmonium_core::{
-    MeasureSnapshot, StyleProfile, TuningParams, params::MusicalParams, trad::TradGenerator,
+    MeasureSnapshot, StyleProfile, TuningParams, params::MusicalParams, compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

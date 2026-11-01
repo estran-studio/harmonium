@@ -2,7 +2,7 @@
 pub mod chord_loop;
 pub mod jazz;
 
-use crate::{theory::chord::Chord, trad::TuneHarmony};
+use crate::{theory::chord::Chord, compose::TuneHarmony};
 
 /// Plan harmonique précalculé sur le thread de génération.
 #[derive(Clone, Debug, PartialEq)]

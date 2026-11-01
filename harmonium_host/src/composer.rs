@@ -19,7 +19,7 @@ use harmonium_core::{
     params::{MusicalParams, SessionConfig, TimeSignature},
     time_plan::score::session_rng,
     timeline::Writehead,
-    trad::{BarRole, TradGenerator, TunePlan},
+    compose::{BarRole, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;

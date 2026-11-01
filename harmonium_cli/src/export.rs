@@ -147,7 +147,7 @@ pub fn run(
         );
         // La génération initiale est bornée par la timeline : ne lister que les
         // airs dont la première mesure existe, avec les positions publiées (intro comprise).
-        let mut tunes: Vec<(harmonium_core::trad::TunePosition, usize, usize)> = Vec::new();
+        let mut tunes: Vec<(harmonium_core::compose::TunePosition, usize, usize)> = Vec::new();
         for snapshot in &initial_snapshots {
             let Some(position) = snapshot.position else { continue };
             match tunes.last_mut() {
@@ -172,7 +172,7 @@ pub fn run(
                 position.tune_index + 1,
                 first_bar,
                 last_bar,
-                harmonium_core::trad::pitch_class_name(position.key),
+                harmonium_core::compose::pitch_class_name(position.key),
                 position.mode,
                 position.set_index + 1,
                 rank

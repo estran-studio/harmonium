@@ -1,6 +1,6 @@
 //! Contrats d'accompagnement observés au chargement et sur les mesures publiées.
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, timeline::Measure, trad::TradGenerator,
+    StyleProfile, TuningParams, params::MusicalParams, timeline::Measure, compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -55,8 +55,8 @@ fn invalid_voice_fields_are_rejected_at_loading_with_their_path() {
 fn arranged() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.arrangement =
-        harmonium_core::trad::ReelArrangement::from_start(2, harmonium_core::trad::Part(0));
-    p.arrangement.intro = harmonium_core::trad::IntroConfig::none();
+        harmonium_core::compose::ReelArrangement::from_start(2, harmonium_core::compose::Part(0));
+    p.arrangement.intro = harmonium_core::compose::IntroConfig::none();
     p.set = Default::default();
     p
 }
@@ -155,7 +155,7 @@ fn passing_keeps_neighbour_tracks_and_strong_bass_unchanged() {
 
 #[test]
 fn every_passing_motion_stays_in_window_approaches_target_and_vetoes_melody() {
-    use harmonium_core::{timeline::TrackId, trad::accomp_profile::PassingMotion};
+    use harmonium_core::{timeline::TrackId, compose::accomp_profile::PassingMotion};
     for motion in [PassingMotion::ScaleStep, PassingMotion::ScaleWalk, PassingMotion::Chromatic] {
         let mut p = arranged();
         let bass = &mut p.accompaniment.as_mut().unwrap().bass;
@@ -333,7 +333,7 @@ fn invalid_passing_rules_are_rejected_with_field_paths() {
 }
 
 fn strummed() -> StyleProfile {
-    use harmonium_core::trad::{accomp_profile::Stroke, dynamics::Curve};
+    use harmonium_core::compose::{accomp_profile::Stroke, dynamics::Curve};
     let mut p = arranged();
     p.dynamics.chop_intensity = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
     p.dynamics.density_chop = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
@@ -479,7 +479,7 @@ fn strum_composes_with_atomic_v2_attack_and_configurable_anchor() {
 
 #[test]
 fn strum_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
-    use harmonium_core::{performance::TrackPerformance, trad::accomp_profile::Stroke};
+    use harmonium_core::{performance::TrackPerformance, compose::accomp_profile::Stroke};
     let mut p = strummed();
     let c = &mut p.accompaniment.as_mut().unwrap().chords;
     c.patterns[c.default_pattern].hits[1].step = 5;

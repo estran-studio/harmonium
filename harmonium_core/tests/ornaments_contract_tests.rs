@@ -6,7 +6,7 @@ use harmonium_core::{
     params::MusicalParams,
     report::MeasureSnapshot,
     timeline::{Measure, TimelineNote, TrackId},
-    trad::{ImposedRole, TradGenerator, dynamics::Curve},
+    compose::{ImposedRole, TradGenerator, dynamics::Curve},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

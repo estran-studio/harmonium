@@ -6,7 +6,7 @@ use harmonium_core::{
     style_profile::{
         DegreeShift, KeyModeWeight, PartReference, ProfileRole, SequenceRole, WeightedRole,
     },
-    trad::{Cell, CellBank, CellRole, ImposedRole, Mode, ReelArrangement, TradGenerator},
+    compose::{Cell, CellBank, CellRole, ImposedRole, Mode, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -268,7 +268,7 @@ fn invalid_choices_and_forward_references_are_rejected() {
     assert_eq!(p.validate().unwrap_err().field, "form.parts[1].roles[6]");
     let mut p = fixture();
     for cell in &mut p.melody.cells.cells {
-        cell.notes[4..].fill(harmonium_core::trad::CellNote::Hold);
+        cell.notes[4..].fill(harmonium_core::compose::CellNote::Hold);
     }
     assert_eq!(p.validate().unwrap_err().field, "melody.cells");
 }

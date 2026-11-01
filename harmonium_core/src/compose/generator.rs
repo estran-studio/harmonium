@@ -1969,7 +1969,7 @@ mod tests {
     use super::*;
     use crate::{
         params::{PulseSpec, TimeSignature},
-        trad::{ReelArrangement, Section},
+        compose::{ReelArrangement, Section},
     };
 
     fn make_reel_params() -> MusicalParams {
@@ -2254,7 +2254,7 @@ mod tests {
 
     #[test]
     fn invalid_intro_config_fails_validation() {
-        use crate::trad::ArrangementError;
+        use crate::compose::ArrangementError;
 
         let mut config = IntroConfig::default();
         config.forms[0].bars = 10;

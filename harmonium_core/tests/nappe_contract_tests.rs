@@ -10,7 +10,7 @@ use harmonium_core::{
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::TradGenerator,
+    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -238,8 +238,8 @@ fn seuls_les_profils_a_nappes_lient() {
     // boucle : `nt_desert`, `isaac_*`) lient leurs nappes en données, sans
     // toucher au moteur.
     let distributed = StyleProfile::distributed();
-    let trad = distributed.iter().filter(|p| p.harmony.model != "loop").count();
-    assert_eq!(trad, 10, "dix profils trad distribués");
+    let compose = distributed.iter().filter(|p| p.harmony.model != "loop").count();
+    assert_eq!(compose, 10, "dix profils trad distribués");
     for p in distributed {
         let tied = p
             .accompaniment

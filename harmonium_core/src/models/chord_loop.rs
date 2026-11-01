@@ -5,7 +5,7 @@ use rand_chacha::ChaCha8Rng;
 use crate::{
     algo::RngCore,
     style_profile::{HarmonyPart, ProfileError, StyleProfile},
-    trad::{ChordDegree, ChordQuality, Mode, TradChord, TunePlan},
+    compose::{ChordDegree, ChordQuality, Mode, TradChord, TunePlan},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -158,7 +158,7 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                 if let Some(neighbor) = neighbor_semitones
                     && let Some(accompaniment) = &profile.accompaniment
                     && accompaniment.chords.voicing
-                        == crate::trad::accomp_profile::ChordVoicing::FixedTriad
+                        == crate::compose::accomp_profile::ChordVoicing::FixedTriad
                     && accompaniment.chords.high.saturating_sub(accompaniment.chords.low)
                         < 11 + neighbor
                 {

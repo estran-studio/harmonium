@@ -10,7 +10,7 @@ use harmonium_core::{
     report::MeasureSnapshot,
     style_profile::ProfilePart,
     timeline::{Measure, Playhead, TrackId},
-    trad::{
+    compose::{
         TradGenerator,
         accomp_profile::{BassMotif, BassMotifNote},
     },

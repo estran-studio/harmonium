@@ -4,7 +4,7 @@ use std::time::Instant;
 use harmonium::{audio::create_offline_engine, playback::PlaybackCommand};
 use harmonium_core::{
     StyleProfile,
-    trad::set::{SetGap, SetLength, SetTransition, TransitionKind},
+    compose::set::{SetGap, SetLength, SetTransition, TransitionKind},
 };
 
 #[test]

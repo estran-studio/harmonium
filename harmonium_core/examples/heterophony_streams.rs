@@ -3,7 +3,7 @@ use std::{error::Error, io::Write};
 
 use harmonium_core::{
     StyleProfile, TuningParams, params::MusicalParams, report::MeasureSnapshot, timeline::Measure,
-    trad::TradGenerator,
+    compose::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;

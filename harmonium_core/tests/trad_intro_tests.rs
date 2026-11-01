@@ -4,7 +4,7 @@
 use harmonium_core::{
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    trad::{
+    compose::{
         IntroConfig, IntroForm, IntroRole, ReelArrangement, Section, TradGenerator, TunePosition,
     },
     tuning::TuningParams,
@@ -74,7 +74,7 @@ fn percussion_intro_has_heel_only() {
     // L'air commence à la mesure 2 (A1)
     let p = position(&snaps, 2);
     assert_eq!(p.section, Section::Tour);
-    assert_eq!((p.tour, p.part, p.pass, p.bar_in_strain), (1, harmonium_core::trad::Part(0), 1, 1));
+    assert_eq!((p.tour, p.part, p.pass, p.bar_in_strain), (1, harmonium_core::compose::Part(0), 1, 1));
 }
 
 #[test]
@@ -302,7 +302,7 @@ fn end_after_tour_ends_last_measure_with_tonic() {
 fn tail_pickup_is_ordered_and_present_after_later_tail_attacks() {
     use harmonium_core::{
         style_profile::{PositionRhythm, RhythmPattern},
-        trad::ImposedRole,
+        compose::ImposedRole,
     };
     let mut tuning = tuning_single_form(IntroRole::Tail, 2, 2);
     tuning.profile.form.parts[1].second_ending = None;

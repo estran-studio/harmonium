@@ -217,7 +217,7 @@ pub struct Measure {
     /// Dance pulse captured at generation time (see `MusicalParams::pulse`)
     pub pulse: PulseSpec,
     /// Position de la mesure dans l'air (tour, partie, passe) ; `None` hors style trad.
-    pub position: Option<crate::trad::TunePosition>,
+    pub position: Option<crate::compose::TunePosition>,
     /// Chord context for this measure
     pub chord_context: ChordContext,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     style_profile::StyleProfile,
-    trad::{
+    compose::{
         CellRole,
         accomp_profile::{BassVoice, ChordVoice},
         harmony::ChordDegree,

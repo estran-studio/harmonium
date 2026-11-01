@@ -22,7 +22,7 @@ use harmonium_core::{
     odin::{OdinMorphParam, OdinMorphRule, OdinZone, OdinZoneWhen},
     report::MeasureSnapshot,
     timeline::TrackId,
-    trad::accomp_profile::{BassMotif, BassMotifNote, BassReference},
+    compose::accomp_profile::{BassMotif, BassMotifNote, BassReference},
 };
 use midly::{MidiMessage, Smf, TrackEventKind};
 

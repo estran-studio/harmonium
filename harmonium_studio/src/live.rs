@@ -24,7 +24,7 @@ use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot,
     events::RecordFormat,
     timeline::{Articulation, TrackId},
-    trad::{Section, TunePosition, pitch_class_name},
+    compose::{Section, TunePosition, pitch_class_name},
 };
 use web_time::Instant;
 

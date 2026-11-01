@@ -6,7 +6,7 @@ use harmonium_core::{
     report::MeasureSnapshot,
     style_profile::KeyModeWeight,
     theory::chord::Chord,
-    trad::{IntroConfig, Mode, Part, ReelArrangement, TradGenerator},
+    compose::{IntroConfig, Mode, Part, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -41,7 +41,7 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
         a.chords.strum = None;
         a.chords.strings = 3;
         for hit in a.chords.patterns.iter_mut().flat_map(|p| &mut p.hits) {
-            hit.stroke = harmonium_core::trad::accomp_profile::Stroke::Block;
+            hit.stroke = harmonium_core::compose::accomp_profile::Stroke::Block;
             hit.probability = 1.0;
         }
     }
