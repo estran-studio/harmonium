@@ -53,7 +53,7 @@ Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mé
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "PercussionLow", "PercussionHigh"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
 | `[harmony]` | `model = "melody_functional"`, `"rewrite_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. `melody_functional` : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, accords relatifs à la tonique avec qualité, basse et durée en pas, voir « Harmonie en boucle et pédale ». |
-| `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
+| `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` (`hits`, `motifs`, `passing` ou `walking`) et `[accompaniment.chords]` (`patterns` ou `comping`, `voicing`, `spread`) décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`percussion.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="PercussionLow"\|"PercussionHigh", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "PercussionLow"` ou `"PercussionHigh"` (défaut PercussionLow). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms`, `transpose` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
@@ -498,8 +498,8 @@ patterns = [
 changé depuis le créneau précédent, ou au premier créneau de la mesure).
 Les coups sont ordonnés par `step`, uniques dans chaque voix/motif, dans la
 mesure ; durée positive entièrement dans la mesure, vélocité 1..127.
-Le registre basse est MIDI ordonné ; le modèle `rewrite_functional` exige douze hauteurs
-consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
+Le registre basse est MIDI ordonné ; la marche exige douze hauteurs consécutives (les douze
+classes de hauteur). `center` et `max_drift` pilotent la conduite de voix des triades.
 `default_pattern` est utilisé lorsque les courbes `chords_intensity + density_chords`
 valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
@@ -507,8 +507,8 @@ valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
 `bass.motifs` remplace `bass.hits` : les deux sources sont exclusives, puis
 passent par la même réalisation de notes et de doublures. Aucun changement
-pour un profil sans banque de motifs. Modèles compatibles :
-`melody_functional` et `loop` ; les motifs suivent aussi les accords et pédales G2.
+pour un profil sans banque de motifs. Modèles compatibles : tous ceux qui jouent des
+accords (`melody_functional`, `loop`, `rewrite_functional`) ; les motifs suivent aussi les accords et pédales G2.
 
 ```toml
 [accompaniment.bass]
@@ -623,6 +623,46 @@ Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille*
 marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
 hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
 
+### Marche de basse
+
+`[accompaniment.bass.walking]` est une troisième source de la voix de basse, **exclusive** de
+`hits`, `motifs` et `passing` (le chargeur refuse la combinaison : deux sources d'approches
+se piétineraient). Une note par pulsation (`meter.steps_per_pulse` : quatre noires en 4/4),
+référée à l'accord courant **au pas près** : un changement d'accord à une pulsation donnée
+est lu à cette pulsation. Valable pour tous les modèles qui jouent des accords, dont
+`loop` et `rewrite_functional` (même mécanisme que les coups et les motifs).
+
+```toml
+[harmony]
+steps_per_chord = 4          # multiple de meter.steps_per_pulse : un changement tombe sur une pulsation
+[accompaniment.bass]
+low = 36                     # registre des arrivées ; high - low >= 11
+high = 47
+walk_low = 33                # fenêtre des notes de passage et d'approche (défaut : low / high)
+walk_high = 55
+[accompaniment.bass.walking]
+velocity = 76
+accent = 8                   # ajouté à la vélocité des arrivées (défaut 0)
+duration = 4                 # en pas, de 1 à une pulsation
+max_leap = 5                 # demi-tons au plus entre deux notes de passage (1..12)
+toward_target_weight = 3     # défaut 3 : poids ajouté (à 1) aux notes qui se rapprochent de la cible
+keep_direction_weight = 2    # défaut 2 : poids ajouté aux notes qui poursuivent le sens précédent
+approach = { none_weight = 1, chromatic_weight = 4, diatonic_weight = 2 }
+passing = { chord_tone_weight = 3, scale_step_weight = 3 }
+```
+
+| Pulsation | Note |
+|---|---|
+| **Arrivée** : le premier temps de la mesure et chaque pulsation où l'accord change | la basse de l'accord (`bass` d'un accord slash, sinon la fondamentale), placée dans `low..high` ; vélocité + `accent` |
+| **Approche** : la pulsation qui précède une arrivée, si elle n'en est pas une | tirage `none` / `chromatic` / `diatonic` par poids. Chromatique : un demi-ton sous ou sur la cible. Diatonique : la première note de la gamme du mode (un, deux ou trois demi-tons). Côté de l'arrivée précédente de la ligne (au-dessus si elle part plus haut), sinon de l'autre côté si la fenêtre l'impose. `none` : note de passage |
+| **Passage** : les pulsations entre les deux | tirage `chord_tone` (note de l'accord du pas, tensions comprises) ou `scale_step` (voisin de la gamme de la note précédente), parmi les notes à `max_leap` de la précédente qui laissent la cible atteignable ; jamais un retour sur l'avant-dernière note tant qu'un autre choix existe |
+
+La cible de la dernière pulsation de la mesure est l'arrivée du premier temps de la mesure
+suivante : après la dernière mesure du dernier tour il n'y a pas de cible, donc pas
+d'approche. Une mesure se joue à l'identique d'une génération à l'autre : ses tirages
+dépendent de la graine de matériel de l'air et de la mesure, jamais de la note de la mesure
+précédente. Poids `u32` ; une somme nulle (`approach`, `passing`) est refusée.
+
 ### Accords grattés
 
 `chords.note_count` (3..6, défaut 3) complète la triade par octaves en montant.
@@ -671,8 +711,7 @@ probabilités 1, mêmes vélocités/motifs. V2 tire désormais articulation et j
 **par attaque** sur chaque piste (contexte = hauteur la plus grave de l'attaque
 précédente) ; gate/respiration communs, vélocités individuelles conservées.
 La validation croisée jitter/écart de V5a est donc inutile : un jitter V2 commun
-ne peut pas inverser les cordes. Les approches modales et gestes de cordes
-sont refusés avec `rewrite_functional`, dont le chemin conserve ses accords absolus.
+ne peut pas inverser les cordes.
 
 Les ms sont converties avec le tempo nominal de la mesure ; swing et rampes
 du lecteur réutilisent ensuite ce décalage dans la durée gelée de chaque pas,
@@ -681,6 +720,60 @@ Les six ensembles harmoniques gardent guitare nylon et basse acoustique :
 écarts descendants 6/7/8/9/10 ms selon le profil, valeurs de départ de l'étude.
 Reels : montées douces optionnelles à haute densité ; gigues : bas-haut-bas ;
 valse et hornpipe : montée rare. La marche reste sans accompagnement tonal.
+
+### Voicings et comping
+
+`chords.voicing` choisit la façon de jouer l'accord ; tous respectent les notes de l'accord
+**publié** (`chord_pitch_classes`, tensions comprises) et ne jouent jamais la basse d'un
+accord slash (la piste de basse la joue). Une pédale (sans qualité typée) garde ses voicings
+serrés.
+
+| `voicing` | Notes |
+|---|---|
+| `close_triad` (défaut), `fixed_triad` | inchangés : triade ou voicing serré, inversions libres ; `note_count` double la triade |
+| `guide_tones` | tierce et septième (sixte, quinte d'une triade) ; plus une tension de la qualité (9, 13, #11, b9, #9, b13, 11 par priorité) si elle en a une : deux ou trois sons |
+| `rootless` | quatre sons sans la fondamentale, **type A** (tierce en bas : tierce, quinte, septième, tension) ou **type B** (septième en bas : septième, tension, tierce, quinte), la conduite de voix choisit celui qui bouge le moins. Sans tension dans la qualité, la pile se prolonge à l'octave supérieure (tierce, quinte, septième, tierce). Triades : type A seulement |
+| `rootless_a`, `rootless_b` | un seul type (B retombe sur A pour une triade) |
+| `drop2` | quatre sons en position serrée dont la deuxième voix depuis l'aigu descend d'une octave ; une triade double sa fondamentale |
+
+Les voicings jazz se placent dans la fenêtre `low..high` (au moins douze demi-tons) :
+de tous les renversements et de toutes les octaves, le voicing retenu est, dans l'ordre,
+celui qui sort le moins de la fenêtre, dont la hauteur moyenne dérive le moins de `center`
+(au plus `max_drift`), qui **bouge le moins** depuis le voicing précédent
+(`theory::voice_leading::voicing_movement`, voix appariées par rang depuis le grave), puis
+le plus proche de `center` et le plus grave. Au premier accord il n'y a pas de précédent :
+le voicing le plus proche de `center`. Le choix est déterministe.
+
+```toml
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 76
+patterns = [{ hits = [{ step = 0, duration = 8, velocity = 62 }, { step = 8, duration = 8, velocity = 62 }] }]
+comping = [
+  { weight = 3, hits = [{ step = 0, duration = 6, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
+  { weight = 2, hits = [{ step = 4, duration = 3, velocity = 60 }, { step = 10, duration = 3, velocity = 56 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 1, hits = [] },
+]
+```
+
+`comping` est une banque de rythmes d'**une mesure**, tirés par poids (`u32`, défaut 1, somme
+positive, au plus 256 motifs) avec la graine de matériel et le numéro de mesure : une mesure se
+rejoue à l'identique. Elle remplace le choix du motif d'intensité (`patterns`, toujours requis,
+joué aussi par l'intro). Un motif sans attaque est un silence. Les attaques ont les mêmes
+champs que celles de `patterns` (`direction`, `probability`, `tie`) plus `anticipate = true` :
+l'attaque joue l'accord en vigueur à la **fin** de sa durée (`step + duration`), donc l'accord
+qui commence à cette fin ; sans changement, l'accord du pas. Une attaque qui finit sur la barre
+joue le premier accord de la mesure suivante et, après la dernière mesure du dernier tour,
+l'accord du pas. Un profil sans `comping` ni `anticipate` garde son flux.
+
+La fixture technique `../tests/fixtures/profiles/grille_accompagnee/` active la marche et le
+comping sans fondamentale sur un blues de douze mesures en fa (ii-V dans la mesure 9) puis un
+ii-V-I de quatre mesures aux changements à la noire. Elle n'est pas distribuée : aucune
+validation à l'écoute ; le profil jazz distribué viendra de WJazzD (E7).
 
 ### Recettes piano et accordéon
 
@@ -1599,3 +1692,8 @@ Le dossier `../tests/fixtures/profiles/jazz_test/` illustre un profil complet
 **de test**, en 4/4 swing et AABA 32 mesures. Il n'est pas embarqué avec les
 profils distribués ; un style jazz destiné à l'écoute demandera un corpus
 et une phase de validation musicale.
+
+L'accompagnement de ce modèle (basse et accords) passe par les mêmes voix que les autres
+modèles : `hits`, `motifs`, `passing`, `walking` côté basse ; `voicing`, `comping`,
+`spread` côté accords. Aucun second chemin pour les accords absolus : le moteur les lit
+relatifs à la tonique.

@@ -206,6 +206,24 @@ impl DegreeChord {
         chord.extensions = extensions;
         Some(if self.is_slash(mode) { chord.with_bass(self.bass_pc(key, mode)) } else { chord })
     }
+
+    /// Accord relatif à la tonique d'un accord absolu (modèle `rewrite_functional`) : la
+    /// fondamentale en demi-tons chromatiques au-dessus de `key`, la qualité typée du
+    /// type et des extensions, la basse d'un accord slash. Les voix d'accompagnement ne
+    /// lisent que des `DegreeChord`.
+    #[must_use]
+    pub fn from_chord(chord: &Chord, key: PitchClass) -> Self {
+        let above_key = |pc: PitchClass| (pc + 12 - key % 12) % 12;
+        let quality = chord.quality().unwrap_or_else(|| Quality::plain(chord.chord_type));
+        let degree = Self::new(
+            ChordDegree::Semitones(above_key(chord.root)),
+            ChordQuality::from_quality(quality),
+        );
+        match chord.bass {
+            Some(bass) if bass != chord.root => degree.with_bass(above_key(bass)),
+            _ => degree,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -13,8 +13,14 @@ pub enum HarmonyPlan {
     None,
 }
 impl HarmonyPlan {
-    /// Accords relatifs au mode, partagés par les voix d'accompagnement.
+    /// Accords relatifs au mode dont les contextes publiés se calculent depuis un
+    /// `DegreeChord` (`rewrite_functional` publie les siens, absolus).
     pub(crate) const fn uses_modal_chords(&self) -> bool {
         matches!(self, Self::MelodyFunctional(_) | Self::Loop(_))
+    }
+
+    /// Les voix d'accompagnement jouent des accords sous ce plan (tout sauf `none`).
+    pub(crate) const fn has_chords(&self) -> bool {
+        !matches!(self, Self::None)
     }
 }

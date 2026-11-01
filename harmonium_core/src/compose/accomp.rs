@@ -1,5 +1,7 @@
-//! Basse et accords d'accompagnement : motifs en pas du profil, triades
-//! en conduite de voix serrée et alternance fondamentale/quinte de la basse.
+//! Basse et accords d'accompagnement : motifs en pas du profil, voicings serrés ou de comping
+//! (notes guides, sans fondamentale, drop 2) enchaînés par la conduite de voix, attaques
+//! anticipées et alternance fondamentale/quinte de la basse. La marche de basse est dans
+//! `walking`.
 
 use super::{
     accomp_profile::{
@@ -9,10 +11,11 @@ use super::{
     harmony::DegreeChord,
     mode::Mode,
     plan::{ImposedRole, TunePlan},
+    voicing::{self, Voicing},
 };
 use crate::{
     algo::RngCore,
-    theory::PitchClass,
+    theory::{PitchClass, voice_leading},
     timeline::{Articulation, NoteId, TimelineNote, TrackId},
     tuning::AccompanimentParams,
 };
@@ -413,9 +416,6 @@ pub(crate) fn first_bass_target(
     }
 }
 
-/// Voicing d'un accord : au plus 5 hauteurs, sur la pile.
-type Voicing = arrayvec::ArrayVec<u8, 5>;
-
 /// Les accords s'inversent ; une pédale garde son voisin au-dessus d'elle. Les tensions
 /// (9, 11, 13) restent au-dessus de l'octave de la fondamentale avant renversement.
 ///
@@ -480,7 +480,8 @@ impl ChordPlayer {
     }
 
     /// Voicing le plus proche du précédent (ou du centre du profil au premier
-    /// accord), dans la limite de dérive autorisée.
+    /// accord), dans la limite de dérive autorisée. Un voicing jazz reste dans la fenêtre
+    /// `low..=high` quand un candidat y tient, sinon sort le moins possible.
     fn voice(
         &mut self,
         chord: DegreeChord,
@@ -488,12 +489,16 @@ impl ChordPlayer {
         mode: Mode,
         params: &AccompanimentParams,
     ) -> Option<Voicing> {
-        let candidates = close_voicings(chord, key, mode).filter(|v| {
-            // Le doublage des voix supplémentaires ne concerne que les triades.
-            v.len() != 3
-                || params.chords.note_count <= 3
-                || v[usize::from(params.chords.note_count - 4)] <= 115
-        });
+        let candidates = match voicing::candidates(chord, key, mode, params.chords.voicing) {
+            Some(comping) => Candidates::Comping(comping),
+            None => Candidates::Close(close_voicings(chord, key, mode).filter(|v| {
+                // Le doublage des voix supplémentaires ne concerne que les triades.
+                v.len() != 3
+                    || params.chords.note_count <= 3
+                    || v[usize::from(params.chords.note_count - 4)] <= 115
+            })),
+        };
+        let windowed = matches!(candidates, Candidates::Comping(_));
         let best = if params.chords.voicing == ChordVoicing::FixedTriad {
             candidates
                 .filter(|v| v[0] >= params.chords.low && v[v.len() - 1] <= params.chords.high)
@@ -505,10 +510,16 @@ impl ChordPlayer {
                 let max_drift_sum = count * i32::from(params.chords.max_drift);
                 let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
                 let center_dist = (sum - center_sum).abs();
-                let movement: i32 = self.previous.as_ref().map_or(0, |p| {
-                    v.iter().zip(p).map(|(&a, &b)| (i32::from(a) - i32::from(b)).abs()).sum()
+                let outside = if windowed {
+                    i32::from(params.chords.low.saturating_sub(v[0]))
+                        + i32::from(v[v.len() - 1].saturating_sub(params.chords.high))
+                } else {
+                    0
+                };
+                let movement = self.previous.as_ref().map_or(0, |p| {
+                    i32::try_from(voice_leading::voicing_movement(v, p)).unwrap_or(i32::MAX)
                 });
-                (center_dist > max_drift_sum, movement, center_dist, v[0])
+                (outside, center_dist > max_drift_sum, movement, center_dist, v[0])
             })
         }?;
         self.previous = Some(best.clone());
@@ -529,6 +540,7 @@ impl ChordPlayer {
     ) -> Vec<TimelineNote> {
         self.chord_bar_on_hits(
             chords,
+            None,
             key,
             mode,
             params,
@@ -539,11 +551,14 @@ impl ChordPlayer {
         )
     }
 
-    /// Variante pilotée par un motif emprunté au profil, sans copier le tuning.
+    /// Variante pilotée par des attaques empruntées au profil, sans copier le tuning.
+    /// `next_first` : premier accord de la mesure suivante, que jouent les attaques anticipées
+    /// dont la fin tombe sur la barre.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn chord_bar_on_hits(
         &mut self,
         chords: &[DegreeChord],
+        next_first: Option<DegreeChord>,
         key: PitchClass,
         mode: Mode,
         params: &AccompanimentParams,
@@ -556,14 +571,18 @@ impl ChordPlayer {
         let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.note_count));
         for hit in hits.iter().filter(|hit| super::chord_spread::selected(hit, seed)) {
             let step = hit.step;
-            let Some(voicing) = self.voice(chords[step / steps_per_chord], key, mode, params)
+            let Some(voicing) =
+                self.voice(hit_chord(hit, chords, next_first, steps_per_chord), key, mode, params)
             else {
                 continue;
             };
             // Les voix supplémentaires doublent les triades seulement :
             // une pédale écrite reste une note, un voisin reste une dyade.
-            let note_count =
-                if voicing.len() == 3 { usize::from(voice.note_count) } else { voicing.len() };
+            let note_count = if voice.voicing.is_triad_kind() && voicing.len() == 3 {
+                usize::from(voice.note_count)
+            } else {
+                voicing.len()
+            };
             let mut pitches = [0u8; 6];
             pitches[..voicing.len()].copy_from_slice(&voicing);
             for i in voicing.len()..note_count {
@@ -601,6 +620,7 @@ impl ChordPlayer {
     pub(crate) fn advance_bar(
         &mut self,
         chords: &[DegreeChord],
+        next_first: Option<DegreeChord>,
         key: PitchClass,
         mode: Mode,
         params: &AccompanimentParams,
@@ -609,7 +629,42 @@ impl ChordPlayer {
         seed: u64,
     ) {
         for hit in hits.iter().filter(|h| super::chord_spread::selected(h, seed)) {
-            let _ = self.voice(chords[hit.step / steps_per_chord], key, mode, params);
+            let _ =
+                self.voice(hit_chord(hit, chords, next_first, steps_per_chord), key, mode, params);
+        }
+    }
+}
+
+/// Accord d'une attaque : celui du pas, ou, pour une attaque anticipée, celui en vigueur à la
+/// fin de sa durée (le premier accord de la mesure suivante si elle y tombe, à défaut l'accord
+/// du pas).
+fn hit_chord(
+    hit: &ChordHit,
+    chords: &[DegreeChord],
+    next_first: Option<DegreeChord>,
+    steps_per_chord: usize,
+) -> DegreeChord {
+    let at = if hit.anticipate { hit.step + hit.duration } else { hit.step };
+    chords
+        .get(at / steps_per_chord)
+        .copied()
+        .or(next_first)
+        .unwrap_or(chords[hit.step / steps_per_chord])
+}
+
+/// Candidats d'un voicing : serrés (triades, pédales) ou de comping.
+enum Candidates<A, B> {
+    Close(A),
+    Comping(B),
+}
+
+impl<A: Iterator<Item = Voicing>, B: Iterator<Item = Voicing>> Iterator for Candidates<A, B> {
+    type Item = Voicing;
+
+    fn next(&mut self) -> Option<Voicing> {
+        match self {
+            Self::Close(iter) => iter.next(),
+            Self::Comping(iter) => iter.next(),
         }
     }
 }

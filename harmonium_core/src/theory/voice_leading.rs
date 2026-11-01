@@ -13,6 +13,17 @@ pub fn pitch_class_distance(a: PitchClass, b: PitchClass) -> u8 {
     d1.min(d2)
 }
 
+/// Mouvement total entre deux voicings MIDI : somme des écarts en demi-tons des voix
+/// appariées par rang depuis le grave (les deux listes sont croissantes). Les voix en
+/// surplus d'un voicing plus long ne comptent pas.
+///
+/// Pour deux voicings de même taille, l'appariement par rang est le meilleur possible
+/// (deux listes triées ne se croisent jamais dans l'assignation de coût minimal).
+#[must_use]
+pub fn voicing_movement(from: &[u8], to: &[u8]) -> u32 {
+    from.iter().zip(to).map(|(&a, &b)| u32::from(a.abs_diff(b))).sum()
+}
+
 /// Calcule la distance totale de voice-leading entre deux accords
 /// (somme des mouvements minimaux pour chaque voix)
 #[must_use]
@@ -142,6 +153,16 @@ mod tests {
 
         // F à B = 6 demi-tons (triton)
         assert_eq!(pitch_class_distance(5, 11), 6);
+    }
+
+    #[test]
+    fn voicing_movement_sums_rank_matched_voices_and_ignores_extra_ones() {
+        // C majeur serré -> F majeur serré : voix par rang depuis le grave (0 + 1 + 2).
+        assert_eq!(voicing_movement(&[60, 64, 67], &[60, 65, 69]), 3);
+        assert_eq!(voicing_movement(&[60, 64, 67], &[60, 64, 67]), 0);
+        // La voix en surplus du voicing le plus long ne compte pas, dans les deux sens.
+        assert_eq!(voicing_movement(&[60, 64], &[62, 65, 72]), 3);
+        assert_eq!(voicing_movement(&[62, 65, 72], &[60, 64]), 3);
     }
 
     #[test]

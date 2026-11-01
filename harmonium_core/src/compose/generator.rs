@@ -18,6 +18,7 @@ use super::{
     percussion::{PercussionPatternPlan, draw_percussion_humanize, percussion_notes},
     plan::{BarRole, ImposedRole, TunePlan},
     set::{KEY_DRAW_RANGE, SetPlan, TransitionKind, candidates},
+    walking::{WalkingBar, walking_bar},
 };
 use crate::{
     algo::RngCore,
@@ -508,12 +509,14 @@ impl TuneGenerator {
             };
             let seed =
                 crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
-            super::chord_spread::apply(
-                &mut measure,
-                &a.chords,
-                &a.chords.pattern(offset).hits,
-                seed,
-            );
+            // L'intro joue le motif par défaut (voir `fill_intro_measure`) ; les tours, celui
+            // de la mesure.
+            let hits = if is_intro {
+                &a.chords.pattern(0.0).hits
+            } else {
+                a.chords.bar_hits(offset, seed)
+            };
+            super::chord_spread::apply(&mut measure, &a.chords, hits, seed);
         }
         if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
@@ -571,8 +574,7 @@ impl TuneGenerator {
         let Some(a) = &self.profile.accompaniment else {
             return;
         };
-        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert()) || !tune.harmony.uses_modal_chords()
-        {
+        if a.bass.passing.as_ref().is_none_or(|p| p.is_inert()) || !tune.harmony.has_chords() {
             return;
         }
         let bar = self.performed_bar(position);
@@ -883,12 +885,6 @@ impl TuneGenerator {
         position: &TunePosition,
         measure: &mut Measure,
     ) {
-        if let HarmonyPlan::RewriteFunctional(bars) = &tune.harmony {
-            let slot = tune.plan.material_index(self.performed_bar(position));
-            self.fill_rewrite_measure(tune, position, &bars[slot], measure);
-            self.fill_percussion(tune, position, measure);
-            return;
-        }
         if let HarmonyPlan::None = &tune.harmony {
             let bar_in_tour = self.performed_bar(position);
             let plan = &tune.plan;
@@ -905,22 +901,7 @@ impl TuneGenerator {
         let bar_in_tour = self.performed_bar(position);
         let plan = &tune.plan;
         let chords = self.chords_for_bar(tune, bar_in_tour);
-        measure.chord_context = self.modal_chord_context(chords[0], plan.key, plan.mode);
-        if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
-            // Un changement par accord distinct de la mesure, plus l'attaque de la mesure.
-            for (slot, chord) in chords.iter().enumerate() {
-                if slot == 0 || *chord != chords[slot - 1] {
-                    measure.chord_changes.push(ChordChange {
-                        start_step: slot * self.profile.harmony.steps_per_chord,
-                        context: if slot == 0 {
-                            measure.chord_context.clone()
-                        } else {
-                            self.modal_chord_context(*chord, plan.key, plan.mode)
-                        },
-                    });
-                }
-            }
-        }
+        self.publish_chords(tune, bar_in_tour, &chords, measure);
 
         // 1. Mélodie (D6)
         if self.track_active(TrackId::Melody, position) {
@@ -937,6 +918,7 @@ impl TuneGenerator {
             }
         }
         if self.track_active(TrackId::Bass, position) {
+            let next_first = self.next_bar_first_chord(tune, bar_in_tour);
             let next_note_id = &mut self.next_note_id;
             let mut next_id = || {
                 let id = *next_note_id;
@@ -944,7 +926,22 @@ impl TuneGenerator {
                 id
             };
             if let Some(accompaniment) = &self.tuning.profile.accompaniment {
-                let notes = if let Some(slice) = tune.bass_plan.slice_for_bar(plan, bar_in_tour) {
+                let notes = if let Some(walking) = &accompaniment.bass.walking {
+                    walking_bar(
+                        &WalkingBar {
+                            chords: &chords,
+                            next_first,
+                            key: plan.key,
+                            mode: plan.mode,
+                            steps_per_chord: self.profile.harmony.steps_per_chord,
+                            steps_per_pulse: self.profile.meter.steps_per_pulse,
+                            seed: crate::ornaments::mix(tune.material_seed, bar_in_tour as u64),
+                        },
+                        &accompaniment.bass,
+                        walking,
+                        &mut next_id,
+                    )
+                } else if let Some(slice) = tune.bass_plan.slice_for_bar(plan, bar_in_tour) {
                     bass_motif_bar(
                         slice,
                         &chords,
@@ -973,6 +970,52 @@ impl TuneGenerator {
         self.fill_percussion(tune, position, measure);
     }
 
+    /// Premier accord de la mesure suivante du tour joué ; `None` après la dernière.
+    fn next_bar_first_chord(&self, tune: &ActiveTune, bar_in_tour: usize) -> Option<DegreeChord> {
+        let bars =
+            self.profile.form.bars_per_tour() * self.tuning.profile.arrangement.tours_per_tune;
+        (bar_in_tour + 1 < bars).then(|| self.chords_for_bar(tune, bar_in_tour + 1)[0])
+    }
+
+    /// Contexte d'accord de la mesure et changements d'accord publiés, d'après le modèle
+    /// d'harmonie : `loop` et `rewrite_functional` publient chaque changement, la
+    /// fonctionnelle par mélodie un accord par mesure.
+    fn publish_chords(
+        &self,
+        tune: &ActiveTune,
+        bar_in_tour: usize,
+        chords: &[DegreeChord],
+        measure: &mut Measure,
+    ) {
+        let plan = &tune.plan;
+        let period = self.profile.harmony.steps_per_chord;
+        if let HarmonyPlan::RewriteFunctional(bars) = &tune.harmony {
+            for (slot, chord) in bars[plan.material_index(bar_in_tour)].iter().enumerate() {
+                let mut context = ChordContext::from_chord(chord, plan.key, chord.name());
+                context.scale_guidance = self.chord_guidance(chord, &context.chord_name);
+                measure.chord_changes.push(ChordChange { start_step: slot * period, context });
+            }
+            measure.chord_context = measure.chord_changes[0].context.clone();
+            return;
+        }
+        measure.chord_context = self.modal_chord_context(chords[0], plan.key, plan.mode);
+        if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
+            // Un changement par accord distinct de la mesure, plus l'attaque de la mesure.
+            for (slot, chord) in chords.iter().enumerate() {
+                if slot == 0 || *chord != chords[slot - 1] {
+                    measure.chord_changes.push(ChordChange {
+                        start_step: slot * period,
+                        context: if slot == 0 {
+                            measure.chord_context.clone()
+                        } else {
+                            self.modal_chord_context(*chord, plan.key, plan.mode)
+                        },
+                    });
+                }
+            }
+        }
+    }
+
     /// Gammes d'improvisation d'un accord typé (Lydian Chromatic, tension harmonique de la
     /// mesure) : le même calcul pour tous les modèles, seulement si le profil le demande.
     fn chord_guidance(&self, chord: &Chord, symbol: &str) -> Option<ScaleGuidance> {
@@ -994,70 +1037,6 @@ impl TuneGenerator {
             context.scale_guidance = self.chord_guidance(&typed, &context.chord_name);
         }
         context
-    }
-
-    fn fill_rewrite_measure(
-        &mut self,
-        tune: &ActiveTune,
-        position: &TunePosition,
-        chords: &[Chord],
-        measure: &mut Measure,
-    ) {
-        let period = self.profile.harmony.steps_per_chord;
-        for (slot, chord) in chords.iter().enumerate() {
-            let mut context = ChordContext::from_chord(chord, tune.plan.key, chord.name());
-            context.scale_guidance = self.chord_guidance(chord, &context.chord_name);
-            measure.chord_changes.push(ChordChange { start_step: slot * period, context });
-        }
-        measure.chord_context = measure.chord_changes[0].context.clone();
-        if self.track_active(TrackId::Melody, position) {
-            for mut note in tune.melody.notes_for_bar(self.performed_bar(position)) {
-                note.id = self.alloc_note_id();
-                measure.add_note(TrackId::Melody, note);
-            }
-        }
-        let Some(accompaniment) = &self.tuning.profile.accompaniment else { return };
-        for track in [TrackId::Chords, TrackId::Bass] {
-            if !self.track_active(track, position) {
-                continue;
-            }
-            let bass_hits = &accompaniment.bass.hits;
-            let chord_hits =
-                &accompaniment.chords.patterns[accompaniment.chords.default_pattern].hits;
-            let count = if track == TrackId::Chords { chord_hits.len() } else { bass_hits.len() };
-            for index in 0..count {
-                let (step, duration, velocity) = if track == TrackId::Chords {
-                    let h = &chord_hits[index];
-                    (h.step, h.duration, h.velocity)
-                } else {
-                    let h = &bass_hits[index];
-                    (h.step, h.duration, h.velocity)
-                };
-                let chord = &chords[step / period];
-                let intervals =
-                    if track == TrackId::Chords { chord.chord_type.intervals() } else { &[0] };
-                for &interval in intervals {
-                    let pc = (chord.root + interval) % 12;
-                    let (center, low, high) = if track == TrackId::Chords {
-                        (accompaniment.chords.center, 0, 127)
-                    } else {
-                        (accompaniment.bass.low, accompaniment.bass.low, accompaniment.bass.high)
-                    };
-                    let pitch = nearest_pitch([pc], center, low, high);
-                    let note = TimelineNote {
-                        id: self.next_note_id,
-                        pitch,
-                        velocity,
-                        start_step: step,
-                        duration_steps: duration.min(period - step % period),
-                        articulation: Articulation::Normal,
-                        performance: Default::default(),
-                    };
-                    self.next_note_id += 1;
-                    measure.add_note(track, note);
-                }
-            }
-        }
     }
 
     /// Les cellules restent la source du rythme et du contour ; seules les
@@ -1274,11 +1253,20 @@ impl TuneGenerator {
     /// Variation harmonique de l'accompagnement uniquement : cadences et
     /// squelette mélodique restent ceux de l'air.
     fn chords_for_bar<'a>(&self, tune: &'a ActiveTune, bar: usize) -> Cow<'a, [DegreeChord]> {
-        if let HarmonyPlan::Loop(harmony) = &tune.harmony {
-            return Cow::Borrowed(harmony.chords_for_bar(bar));
+        match &tune.harmony {
+            HarmonyPlan::Loop(harmony) => return Cow::Borrowed(harmony.chords_for_bar(bar)),
+            HarmonyPlan::RewriteFunctional(bars) => {
+                return Cow::Owned(
+                    bars[tune.plan.material_index(bar)]
+                        .iter()
+                        .map(|chord| DegreeChord::from_chord(chord, tune.plan.key))
+                        .collect(),
+                );
+            }
+            HarmonyPlan::MelodyFunctional(_) | HarmonyPlan::None => {}
         }
         let HarmonyPlan::MelodyFunctional(harmony) = &tune.harmony else {
-            unreachable!("traditional voicing requires traditional harmony")
+            unreachable!("l'accompagnement demande une harmonie qui joue des accords")
         };
         let mut chords = Cow::Borrowed(harmony.chords_for_bar(bar));
         let threshold =
@@ -1435,21 +1423,24 @@ impl TuneGenerator {
         let d = &self.tuning.profile.dynamics;
         let chord_offset = d.chords_intensity.eval(self.effective_intensity(tune.tune_index))
             + d.density_chords.eval(self.musical_params.rhythm_density);
-        let hits = &harmony.chords.pattern(chord_offset).hits;
         let mut chord_player = ChordPlayer::new();
         for b in part_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
+            let seed = crate::ornaments::mix(tune.material_seed, b as u64);
             chord_player.advance_bar(
                 &c,
+                self.next_bar_first_chord(tune, b),
                 tune.plan.key,
                 tune.plan.mode,
                 harmony,
-                hits,
+                harmony.chords.bar_hits(chord_offset, seed),
                 self.profile.harmony.steps_per_chord,
-                crate::ornaments::mix(tune.material_seed, b as u64),
+                seed,
             );
         }
         let chords = self.chords_for_bar(tune, bar_in_tour);
+        let next_first = self.next_bar_first_chord(tune, bar_in_tour);
+        let seed = crate::ornaments::mix(tune.material_seed, bar_in_tour as u64);
         let next_note_id = &mut self.next_note_id;
         let mut next_id = || {
             let id = *next_note_id;
@@ -1458,12 +1449,13 @@ impl TuneGenerator {
         };
         chord_player.chord_bar_on_hits(
             &chords,
+            next_first,
             tune.plan.key,
             tune.plan.mode,
             harmony,
-            hits,
+            harmony.chords.bar_hits(chord_offset, seed),
             self.profile.harmony.steps_per_chord,
-            crate::ornaments::mix(tune.material_seed, bar_in_tour as u64),
+            seed,
             &mut next_id,
         )
     }
@@ -1676,7 +1668,9 @@ impl TuneGenerator {
         let material_seed = if self.profile.heterophony.is_some()
             || self.profile.ornaments.needs_seed()
             || self.profile.accompaniment.as_ref().is_some_and(|a| {
-                a.bass.passing.as_ref().is_some_and(|p| !p.is_inert()) || a.chords.needs_seed()
+                a.bass.passing.as_ref().is_some_and(|p| !p.is_inert())
+                    || a.bass.walking.is_some()
+                    || a.chords.needs_seed()
             }) {
             crate::ornaments::tune_seed(
                 tune_index,
