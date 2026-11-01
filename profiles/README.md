@@ -36,6 +36,7 @@ porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError`
 | `isaac_cellar` (essai) | The Binding of Isaac, Cellar (Ridiculon) ; Periculum | 4/4, 140 | voix 53 (A' et pont), nappe chœur 91, synth bass 38 en croches, kit rock sec | oui (stomp de `isaac_basement`) | non |
 | `isaac_burning` (essai) | The Binding of Isaac, Burning Basement (Ridiculon) ; Fundamentum | 4/4, 140 | chœur 52 (sections d'accords), orgue rock 18, basse médiator 34 | oui (backbeat en demi-temps, 42 aux temps 2 et 4) | non |
 | `isaac_downpour` (essai) | The Binding of Isaac, Downpour (Ridiculon) ; River of Despair | 4/4, 144 | chœur 52 (dès B), nappe chaude 89, basse doigts 33 tenue | oui (clairsemé, caisse au temps 3) | non |
+| `wjazzd_swing` (E7) | Weimar Jazz Database v2.1, sous-ensemble `rhythmfeel = SWING` (361 solos) ; batterie du Groove MIDI Dataset, timing de la Jazz Trio Database | 4/4, 150 (swing 0,71) | piano 0 (voicings sans fondamentale), basse acoustique 32 (marche), kit jazz 128/32 | oui (ride 51, pédale 44, caisse claire 38, grosse caisse 36) | non (pas de mélodie) |
 
 Les « sept profils » cités plus bas désignent les sept premiers, réglés pendant les phases 009–012. Les trois
 derniers (phase 013, R1) sont construits par le même chemin — références du labo, `mine-cells`, formules de
@@ -773,7 +774,7 @@ l'accord du pas. Un profil sans `comping` ni `anticipate` garde son flux.
 La fixture technique `../tests/fixtures/profiles/grille_accompagnee/` active la marche et le
 comping sans fondamentale sur un blues de douze mesures en fa (ii-V dans la mesure 9) puis un
 ii-V-I de quatre mesures aux changements à la noire. Elle n'est pas distribuée : aucune
-validation à l'écoute ; le profil jazz distribué viendra de WJazzD (E7).
+validation à l'écoute ; le profil distribué qui les emploie est `wjazzd_swing` (E7).
 
 ### Recettes piano et accordéon
 

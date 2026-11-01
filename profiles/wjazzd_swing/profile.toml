@@ -1,0 +1,258 @@
+# Profil `wjazzd_swing` (phase 018, E7) : accompagnement sous une grille d'accords.
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le sous-ensemble
+# `rhythmfeel = SWING` de la Weimar Jazz Database v2.1 (361 solos, parutions de 1937 à 2007,
+# styles SWING, BEBOP, COOL, HARDBOP, POSTBOP, FREE). Il ne dit rien des couches d'appoint :
+# la batterie vient du Groove MIDI Dataset (jazz, jazz/swing), le rapport de swing et le
+# placement des instruments de la Jazz Trio Database. Les valeurs sont fixées par les mesures
+# du labo (`references/wjazzd-swing/`, commande `python -m harmonium_lab.backing.engine_values`) ;
+# la table « mesure → paramètre » est dans `README.md`.
+#
+# Ce profil est fait pour jouer sous une grille fournie par l'utilisateur : la basse (marche),
+# les accords (voicings sans fondamentale, rythmes de comping) et la batterie ne dépendent que
+# de l'accord publié. Les deux grilles par défaut, quand l'utilisateur n'en fournit pas, sont des
+# formes communes écrites ici (pas des partitions) : un blues de douze mesures et une forme AABA
+# sur la progression dite « rhythm changes » (voir README, provenance et droits).
+# Tonique fa pour les deux grilles : la tonalité est verrouillée, la grille s'écrit relative.
+#
+# Aucune mélodie : les solos de la base sont sous droits et ne sont jamais copiés. Le profil
+# n'a pas de piste `Melody` (absente de l'arrangement).
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "wjazzd_swing"
+name = "Accompagnement swing (Weimar Jazz Database, sous-ensemble swing)"
+tradition = "Weimar Jazz Database v2.1, sous-ensemble rhythmfeel = SWING : 361 solos, parutions de 1937 à 2007 ; batterie du Groove MIDI Dataset (jazz) ; timing de la Jazz Trio Database"
+tags = ["jazz", "swing", "accompagnement", "grille"]
+corpus = """\
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL) 1.0, https://opendatacommons.org/licenses/odbl/1-0/ ; individual contents under the Database Contents License (DbCL) 1.0, https://opendatacommons.org/licenses/dbcl/1-0/. \
+Statistiques agrégées seulement (basse par temps, rythme harmonique, tempos, formes) ; aucune note de solo ni de ligne de basse copiée. \
+Groove MIDI Dataset v1.0.0 (Google LLC), CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ : Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman, « Learning to Groove with Inverse Sequence Transformations », ICML 2019 ; probabilités par pas agrégées de la batterie jazz, jamais un enregistrement. \
+Jazz Trio Database v0.2, MIT License, Copyright (c) Huw Cheston et al. : H. Cheston, J. L. Schlichting, I. Cross, P. M. C. Harrison, TISMIR 2024, https://doi.org/10.5334/tismir.186 ; rapport de swing et placement relatif des instruments, agrégés. \
+Manifestes et mesures : harmonium_lab corpus/wjazzd, corpus/gmd, corpus/jtd, references/wjazzd-swing/. Grilles par défaut : formes communes écrites pour ce profil (voir README)."""
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+# JTD, rapport de swing de la batterie au tempo par défaut (tranches 125-150 : 0,718 ; 150-175 : 0,700).
+default_swing_ratio = 0.71
+# WJazzD, tempo moyen par solo (swing) : médiane 177,5, blues 147,4 ; centiles 10 et 90 : 93 et 284.
+default_bpm = 150.0
+min_bpm = 90.0
+max_bpm = 285.0
+
+[fixed_tonality]
+key = 5
+mode = "ionian"
+
+# Un tour : le blues de douze mesures, puis la forme AABA de trente-deux mesures (44 mesures) ;
+# une écoute de 44 mesures donne les deux formes.
+[form]
+sequence = [0, 1, 1, 2, 1]
+[[form.parts]]
+name = "Blues"
+melody_center_offset = 0
+phrase_ends = [12]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[[form.parts]]
+name = "B"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que la fixture d'accompagnement.
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 5, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles relatives à la tonique (fa) ; un créneau de quatre pas (une noire) : chaque changement
+# d'accord tombe sur une pulsation de la marche.
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+# Blues de douze mesures, forme commune du blues en fa : I7 IV7 I7 I7 | IV7 IV7 I7 I7 |
+# ii7 V7 I7 | I7 V7 à la blanche. Un accord par mesure sauf la dernière (turnaround) : un
+# changement de mesure sur douze à mi-mesure, comme les 8 % de mesures à deux accords des
+# solos swing sur blues de WJazzD (measures-bass.json, groupe blues).
+[harmony.parts.Blues]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 0, quality = "7", steps = 16 },
+  { semitones = 5, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 32 },
+  { semitones = 5, quality = "7", steps = 32 },
+  { semitones = 0, quality = "7", steps = 32 },
+  { semitones = 2, quality = "m7", steps = 16 },
+  { semitones = 7, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 8 },
+  { semitones = 7, quality = "7", steps = 8 },
+] }]
+
+# Forme AABA sur la progression dite « rhythm changes », écrite en fa (la tonique du profil).
+# A (huit mesures) : I6 VI7 | ii7 V7 | iii7 VI7 | ii7 V7 | v7 I7 (sous-dominante) | IV6 IVm |
+# I6/V VI7 | ii7 V7 (retour sur I6). B : cycle des dominantes, deux mesures par accord.
+[harmony.parts.A]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 0, quality = "6", steps = 8 },
+  { semitones = 9, quality = "7", steps = 8 },
+  { semitones = 2, quality = "m7", steps = 8 },
+  { semitones = 7, quality = "7", steps = 8 },
+  { semitones = 4, quality = "m7", steps = 8 },
+  { semitones = 9, quality = "7", steps = 8 },
+  { semitones = 2, quality = "m7", steps = 8 },
+  { semitones = 7, quality = "7", steps = 8 },
+  { semitones = 7, quality = "m7", steps = 8 },
+  { semitones = 0, quality = "7", steps = 8 },
+  { semitones = 5, quality = "6", steps = 8 },
+  { semitones = 5, quality = "m6", steps = 8 },
+  { semitones = 0, quality = "6", bass = 7, steps = 8 },
+  { semitones = 9, quality = "7", steps = 8 },
+  { semitones = 2, quality = "m7", steps = 8 },
+  { semitones = 7, quality = "7", steps = 8 },
+] }]
+[harmony.parts.B]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 4, quality = "7", steps = 32 },
+  { semitones = 9, quality = "7", steps = 32 },
+  { semitones = 2, quality = "7", steps = 32 },
+  { semitones = 7, quality = "7", steps = 32 },
+] }]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Marche de basse (E6). Fenêtre : WJazzD swing, hauteur de basse (centiles 1 à 99) 33..52, arrivées
+# (centiles 10 à 90) 36..46, meilleure fenêtre de 12 demi-tons 36..47.
+# Poids : les parts mesurées sont celles de la NOTE jouée (approche chromatique, diatonique ou
+# aucune ; note d'accord ou de gamme au passage), pas celles du tirage du moteur : une note de
+# passage tirée « sans approche » tombe souvent à un demi-ton ou un ton de la cible. Les poids sont
+# donc ajustés pour que les parts de notes générées retrouvent les parts mesurées (descente par
+# coordonnée sur 6 graines, critères approche, passage et intervalles de `bass_compare`, contrôle
+# sur 16 autres graines : README du profil). `max_leap` 11 = centile 95 des intervalles mesurés.
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 33
+walk_high = 50
+[accompaniment.bass.walking]
+velocity = 78
+accent = 6
+duration = 4
+max_leap = 11
+toward_target_weight = 2
+keep_direction_weight = 1
+approach = { none_weight = 60, chromatic_weight = 8, diatonic_weight = 8 }
+passing = { chord_tone_weight = 35, scale_step_weight = 65 }
+
+# Comping (E5) : voicings sans fondamentale conduits par les voix communes, rythmes d'une mesure
+# tirés par poids. Aucun corpus distribuable de voicings ni de rythmes de comping (décision F3) :
+# règles de métier, jugées à l'écoute (README du profil).
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 76
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 62 }, { step = 8, direction = "block", duration = 8, velocity = 62 }] }]
+comping = [
+  { weight = 4, hits = [{ step = 0, duration = 6, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
+  { weight = 3, hits = [{ step = 4, duration = 3, velocity = 60 }, { step = 10, duration = 3, velocity = 56 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 3, hits = [{ step = 0, duration = 4, velocity = 62 }, { step = 8, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 2, hits = [{ step = 6, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 1, hits = [{ step = 8, duration = 8, velocity = 60 }] },
+  { weight = 1, hits = [] },
+]
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 32
+
+[ornaments]
+rate_scale = 0.0
+
+# Placement relatif (JTD, 976 pistes, médianes) : la batterie est la référence, la basse tombe
+# avec elle (médiane 0,000 pas), le piano est en retard de 0,226 pas (+20 ms). Jitter borné à
+# 0,1 pas par le moteur (écart-type mesuré 0,22 pas pour la basse, 0,33 pour le piano, dont le
+# bruit de détection à 10 ms).
+[performance.tracks.Bass]
+jitter = 0.1
+[performance.tracks.Chords]
+offsets = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+jitter = 0.1
+
+# Mixage de service (rien de mesuré sur un corpus) : niveaux calés sur le rendu hors ligne
+# (RMS par piste en solo), batterie à 0 dB car le ride du kit jazz est la piste la plus faible.
+[mix]
+master_db = 23.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.0
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -16.0
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = 0.0
+pan = 0.1
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = 0.0
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8
