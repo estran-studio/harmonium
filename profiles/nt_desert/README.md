@@ -22,7 +22,7 @@ introduction. Les entrées se réappliquent au prochain air.
 |---|---|---|---|
 | A1 | 1–8 | Pédale **G♯**, relance chromatique de basse toutes les quatre mesures | Basse 81 et nappe 89 seules |
 | A2 | 9–16 | Riff **D/D♯**, harmonie D mineur | Entrée batterie et motif de dessus lead 81 |
-| Pont | 17–32 | C C E E F B C C / F C E E F B C♯ C♯ | Nappes seules ; `Bass`, `Heel`, `Toe`, `Melody`, `Countermelody` coupées |
+| Pont | 17–32 | C C E E F B C C / F C E E F B C♯ C♯ | Nappes seules ; `Bass`, `PercussionLow`, `PercussionHigh`, `Melody`, `Countermelody` coupées |
 | B | 33–40 | G/G♯ par blocs de deux mesures, basse ponctuelle | Retour du motif dans un registre abaissé de cinq demi-tons avant réalisation harmonique |
 | A1' | 41–48 | Retour de la pédale et de sa relance | Dessus et batterie restent présents ; doublure seulement aux mesures 89–96 |
 
@@ -42,7 +42,7 @@ aux pas 2/10/14 ; le charleston (seul son de bruit du kit employé) est
 réduit aux accents de temps — pas 0 et 12 à la densité neutre, pulsations
 6/18 seulement à la densité 2 — et sonne sous la caisse claire ; temps fort
 plein, autres temps ×0,8 dans les motifs, accent du temps fort et
-micro-timing ±0,02 pas en `[performance.tracks.Heel/Toe]`. Instruments :
+micro-timing ±0,02 pas en `[performance.tracks.PercussionLow/PercussionHigh]`. Instruments :
 nappe chaude 89 (vélocité ×0,8, tessiture médium, jamais sous MIDI 48),
 scie 81 sur la basse seule (pédale G♯1 tenue en ancre grave ; relance et riff
 montés d'une octave en D2–G♯2, figures ≥ 2 pas contigus, G7h), kit 128/0

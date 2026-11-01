@@ -29,7 +29,7 @@ Le type « gigue » existant dans les deux traditions, le tableau ci-dessous dé
 | **Tempo dansé** (`default_bpm`) | 172.5 BPM à la noire (115 BPM à la noire pointée, plage 160–185) | **156.0 BPM à la noire** (104 BPM à la noire pointée, plage 144–168) | Médiane observée à 104 BPM dans `tempo.json`. La gigue britannique de contredanse se joue à un tempo plus mesuré que la gigue québécoise très vive. |
 | **Accompagnement harmonique** (`accompaniment`) | **Chop québécois** : coups percussifs secs (durée 1 pas) sur les contretemps 4 et 10 | **Accompagnement classique léger** : accords tenus (durée 3 pas) posés sur les temps 0 et 6 avec la basse | Les garnisons et salons n'utilisent pas le chop percussif québécois : basse continue légère et accords d'harmonie posés sur les temps forts (0 et 6). |
 | **Vélocités d'accompagnement** | Basse 78, chop guitare 72 | **Basse 70, accords 60** | Accompagnement plus discret et aéré, laissant le violon en avant-plan sans saturation percussive. |
-| **Podorythmie** (`percussion`) | **Talon et pointe actifs** : 3 densités de podorythmie québécoise virtuose | **Aucune podorythmie** : table vide, pistes Heel/Toe désactivées dans l'arrangement | La podorythmie est une spécificité canadienne-française/acadienne absente de la danse d'officiers britannique. |
+| **Podorythmie** (`percussion`) | **Talon et pointe actifs** : 3 densités de podorythmie québécoise virtuose | **Aucune podorythmie** : table vide, pistes PercussionLow/PercussionHigh désactivées dans l'arrangement | La podorythmie est une spécificité canadienne-française/acadienne absente de la danse d'officiers britannique. |
 | **Tonalités reines** (`key_modes`) | Ré (D) 33 %, Sol (G) 33 %, La (A) 22 %, modes mixolydiens présents | **Ré (D) 32 %, Sol (G) 30 %**, La (A) 13 %, Do (C) 7 %, La mineur (Am) 5 % | Le corpus britannique compte une présence notable du ton de Do majeur (C) et du mineur éolien (Am, Em) absents de la gigue québécoise. |
 | **Décalage registre Partie B** (`melody_center_offset`) | `+2` demi-tons | **`+1` demi-ton** | `register__b_minus_a_mean_pitch` au corpus : moyenne de 1.33 demi-ton (médiane 0.60) en britannique, contre 2.0 en québécois. La strain B reste proche du registre de la strain A. |
 | **Poids des rôles mélodiques** (`melody.params`) | `run = 4`, `arp = 3`, `turn = 3` | **`run = 4`, `arp = 4`, `turn = 1`** | Minage des cellules : 2 384 arpèges et 2 363 traits de run (ratio 1:1), gruppettos (`turn`) très minoritaires (201 occurrences, ratio ~1:12). |
@@ -56,7 +56,7 @@ Le type « gigue » existant dans les deux traditions, le tableau ci-dessous dé
 - **Violon** (Melody, canal 0) : Programme GM 40 (Violin), tessiture 55–88 (Sol grave G3 à Mi aigu E6), centre mélodique à 71.
 - **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), accords légers posés sur les temps 0 et 6.
 - **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les pulsations 0 et 6.
-- **Percussion** : Pistes Heel et Toe désactivées dans l'arrangement (pas de podorythmie).
+- **Percussion** : Pistes PercussionLow et PercussionHigh désactivées dans l'arrangement (pas de podorythmie).
 
 ## Phrases probabilistes — DS-T9 / P3-T1
 

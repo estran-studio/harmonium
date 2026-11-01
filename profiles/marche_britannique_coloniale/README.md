@@ -16,9 +16,9 @@ Style de garnison militaire britannique (vers 1760–1840) joué au **fifre et t
 
 - **Fifre** : General MIDI 72 (Piccolo), tessiture 72–102 (D5 à F#7), centre mélodique à 84.
 - **Tambour militaire** (General MIDI kit canal 9) :
-  - Grosse caisse : note 36 sur piste Heel (temps forts, gauche-droite)
-  - Caisse claire : note 38 sur piste Toe (battements d'ordonnance et roulements en 16ᵉ)
-  - Caisse claire flam / coup accentué : note 40 sur piste Toe (conclusions cadentielles aux fins de phrase)
+  - Grosse caisse : note 36 sur piste PercussionLow (temps forts, gauche-droite)
+  - Caisse claire : note 38 sur piste PercussionHigh (battements d'ordonnance et roulements en 16ᵉ)
+  - Caisse claire flam / coup accentué : note 40 sur piste PercussionHigh (conclusions cadentielles aux fins de phrase)
 - **Harmonie** : Modèle `none` (aucune piste d'accords ni de basse). La mélodie reste tonale ; les cadences en m.4 et m.8 sont désormais pondérées plutôt qu'imposées.
 
 ## Banque de cellules mélodiques (`cells.toml`)
@@ -34,8 +34,8 @@ Style de garnison militaire britannique (vers 1760–1840) joué au **fifre et t
 
 ## Réaction aux 4 émotions (`dynamics.toml`)
 
-- **Arousal** : accélère le tempo de marche (décalage jusqu'à +15 BPM) et renforce la dynamique du tambour (`feet_velocity`).
-- **Density** : active le palier de roulements en doubles croches (16ᵉ) à la caisse claire (`density_feet`).
+- **Arousal** : accélère le tempo de marche (décalage jusqu'à +15 BPM) et renforce la dynamique du tambour (`percussion_velocity`).
+- **Density** : active le palier de roulements en doubles croches (16ᵉ) à la caisse claire (`density_percussion`).
 - **Tension** : renforce l'accentuation des frappes et des flams cadentiels (`strong_accent`, `tension_offbeat`).
 - **Valence** : pilote la brillance et fait basculer le mode entre majeur (Ionien) et mineur militaire (Éolien) au prochain air (`color`, `parallel_modes`).
 
@@ -78,7 +78,7 @@ l’ensemble de la tradition.
 ## Espace et mixage V1
 
 Plein air fifre-et-tambour : taille 0,12, amorti 0,80, niveau 0,10 et envoi 0,04 évitent une salle artificielle ; fifre et tambour près du centre.
-Tambour −6 dB de canal, bus +15 dB et présence +0,5 dB gardent le fifre lisible ; Chords/Bass/Toe restent absents, proposition de rendu et non mesure historique.
+Tambour −6 dB de canal, bus +15 dB et présence +0,5 dB gardent le fifre lisible ; Chords/Bass/PercussionHigh restent absents, proposition de rendu et non mesure historique.
 
 ## Interprétation V2
 

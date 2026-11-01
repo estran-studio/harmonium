@@ -19,7 +19,7 @@ porte la valeur fautive, la ligne celle de sa clé. Les champs de `ProfileError`
 | Section | Champs / sens |
 ## Profils distribués
 
-| Profil | Tradition et corpus | Mètre, tempo | Instruments | Pieds | 2ᵉ voix |
+| Profil | Tradition et corpus | Mètre, tempo | Instruments | Percussion | 2ᵉ voix |
 |---|---|---|---|---|---|
 | `reel_quebecois` | Québec ; 574 reels | 2/2, 230 | violon, guitare, basse | oui | violon |
 | `gigue_quebecoise` | Québec ; 88 gigues | 6/8, 172,5 | violon, guitare, basse | oui | violon |
@@ -42,22 +42,22 @@ derniers (phase 013, R1) sont construits par le même chemin — références du
 [Source des réglages distribués](#source-des-réglages-distribués-p3-t1-contrat-11) — par
 `specs/013-moteur-dans-le-jeu/r1_profils.py` (`selftest` rejoue les formules sur quatre profils existants) ;
 mesures et limites dans le plan 013, section R1.
-Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil non trad : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) ; G7e et G7h (legato, registre, longueurs et timbre lisibles) sont résumés dans le README du profil et le tableau d'état du plan 014.
+Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil de jeu vidéo : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) ; G7e et G7h (legato, registre, longueurs et timbre lisibles) sont résumés dans le README du profil et le tableau d'état du plan 014.
 Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mécanismes que `nt_desert`, aucun ajout moteur, voir `profiles/isaac_basement/README.md` (les trois autres suivent le même schéma ; leur en-tête de `profile.toml` résume l'écriture).
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
-| `[files]` | `cells`, `feet`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
+| `[files]` | `cells`, `percussion`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
 | `[fixed_tonality]` | Optionnel : `key` (classe MIDI 0..11, do = 0) et `mode` (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) obligatoires. Verrouille la tonalité de tous les airs : priorité sur `melody.key_modes`, `dynamics.color`, pondération du set et bascules parallèles. Absent : comportement émotionnel inchangé. Voir « Tonalité verrouillée ». |
-| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "Heel", "Toe"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
+| `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "PercussionLow", "PercussionHigh"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
-| `[harmony]` | `model = "trad_functional"`, `"jazz_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. Trad : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
+| `[harmony]` | `model = "melody_functional"`, `"rewrite_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. `melody_functional` : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, `default_bars_per_chord` (défaut 1), voir ci-dessous. |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` et `[accompaniment.chords]` décrites ci-dessous. |
-| `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`feet.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="Heel"\|"Toe", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "Heel"` ou `"Toe"` (défaut Heel). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
+| `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`percussion.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="PercussionLow"\|"PercussionHigh", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "PercussionLow"` ou `"PercussionHigh"` (défaut PercussionLow). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms`, `transpose` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
-| `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `Heel` et `Toe` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
+| `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `PercussionLow` et `PercussionHigh` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Sans `fixed_tonality`, chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois par piste et EQ stéréo ; schéma et bornes ci-dessous. |
@@ -81,14 +81,14 @@ mode = "ionian"
 Tous les airs restent ici en fa ionien, même quand la valence change. Le verrou ne
 demande pas de mélodie active et ne remplace pas les autres sections du profil.
 Ses deux champs sont requis ; une tonique hors de 0..11, un mode inconnu ou un
-champ supplémentaire sont refusés. En harmonie `trad_functional`, les candidats
+champ supplémentaire sont refusés. En harmonie `melody_functional`, les candidats
 d'accords du mode fixé restent requis ; aucune bascule parallèle de ce mode n'est
 nécessaire. Les banques et courbes déclarées restent validées.
 
 Le verrou fixe la **tonalité**, pas toutes les réactions émotionnelles : registre,
 vélocités, timbres et autres axes restent actifs. Une grille `loop` conserve ainsi
 ses accords relatifs, chromatiques ou par degrés ; le verrou ne transforme pas
-une grammaire `jazz_functional` sensible à la valence en grille écrite.
+une grammaire `rewrite_functional` sensible à la valence en grille écrite.
 
 Pour transposer, reconstruire le profil avec une autre valeur de
 `fixed_tonality.key` et l'envoyer par `EngineCommand::SetStyleProfile` : le host
@@ -97,7 +97,7 @@ Aucune nouvelle commande ; aucune modification des profils distribués.
 
 ## Batterie par graine
 
-Dans `feet.toml`, `[[patterns]]` correspond à `percussion.patterns` du profil
+Dans `percussion.toml`, `[[patterns]]` correspond à `percussion.patterns` du profil
 chargé. Chaque densité 0, 1, 2 doit être couverte ; plusieurs entrées d'une
 même densité constituent une banque, non une superposition :
 
@@ -106,17 +106,17 @@ même densité constituent une banque, non une superposition :
 density = 1
 weight = 2
 hits = [
-  { step = 0, track = "Heel" },
-  { step = 8, track = "Toe" },
+  { step = 0, track = "PercussionLow" },
+  { step = 8, track = "PercussionHigh" },
 ]
 
 [[patterns]]
 density = 1
 weight = 1
 hits = [
-  { step = 0, track = "Heel" },
-  { step = 6, track = "Heel", delta_velocity = -18 },
-  { step = 8, track = "Toe" },
+  { step = 0, track = "PercussionLow" },
+  { step = 6, track = "PercussionLow", delta_velocity = -18 },
+  { step = 8, track = "PercussionHigh" },
 ]
 ```
 
@@ -191,7 +191,7 @@ une section distincte porte un éventuel raccord explicite.
 fondamentale seule, sans tierce ni quinte, jouée sur `Chords` par les coups
 habituels. `neighbor_semitones = 1..11` ajoute facultativement une seule note,
 à cet intervalle chromatique au-dessus de la fondamentale. Pour une pédale
-tenue, employer un coup `stroke = "block"`, `step = 0`, une `duration` égale
+tenue, employer un coup `direction = "block"`, `step = 0`, une `duration` égale
 à `meter.steps_per_bar` et `tie = true` dans chaque motif sélectionnable de
 `accompaniment.chords` (voir « Accords grattés »). Les notes contiguës de même
 hauteur sont liées sans réattaque ; un changement de fondamentale ferme la
@@ -200,7 +200,7 @@ préserver cette coïncidence. Le registre vient de `accompaniment.chords.center
 et le timbre de `instruments.chords_program` ; par exemple Saw Lead GM 82
 s'écrit `chords_program = 81` (0-based), avec un registre grave.
 
-Les triades gardent la polyphonie `chords.strings` et la conduite de voix
+Les triades gardent la polyphonie `chords.note_count` et la conduite de voix
 existantes ; une pédale seule reste une note, son voisin une dyade, sans
 doublure automatique en octaves. `Bass` suit la fondamentale (ou la quinte
 selon ses coups), sans lui imposer une tenue : la scie continue est sur
@@ -211,7 +211,7 @@ douze fondamentales et ce voisin (`high - low >= 11 + neighbor_semitones`).
 
 Le contexte du premier accord est publié dans les champs habituels du
 snapshot et dans `chord_changes` au pas 0. Les cellules mélodiques fournissent
-toujours rythme et contour ; comme pour le jazz sans `scale_guidance`, leurs
+toujours rythme et contour ; comme pour `rewrite_functional` sans `scale_guidance`, leurs
 porteuses sont rapprochées des hauteurs de la sonorité courante avant
 interprétation et ornements. Une pédale pure contraint donc les porteuses à
 sa seule classe de hauteur ; ses ornements restent ceux du mode actif.
@@ -307,7 +307,7 @@ morph = [
 - **Choix à l'exécution.** Sans `odin` compilé, ou si l'hôte ne fournit pas le
   preset de la zone active, la piste joue son programme SoundFont. Avec `odin`
   et le preset présent, elle joue Odin. Aucun nom de style ni canal fixe : la clé est la
-  piste (`Melody`, `Chords`, `Bass`, `Countermelody`) ; `Heel` et `Toe` restent
+  piste (`Melody`, `Chords`, `Bass`, `Countermelody`) ; `PercussionLow` et `PercussionHigh` restent
   SoundFont.
 - **Presets fournis par l'hôte**, comme les octets SF2 : `create_offline_engine`
   / `LiveHost::start` reçoivent des `OdinPresetSource { name, bytes }`
@@ -340,7 +340,7 @@ morph = [
   routage du preset et n'alloue pas. Dans une zone, les notes `Tied`
   (nappes, pédales) n'émettent pas de nouvelle attaque.
   La sélection initiale est immédiate. Ensuite, les bascules de zone sont
-  installées à la prochaine frontière de partie (`bar_in_strain == 1`,
+  installées à la prochaine frontière de partie (`bar_in_part == 1`,
   reprises incluses), en fondu linéaire de **300 ms** entre deux instances,
   même si elles partagent le même preset ; le morphing continue dans la
   zone active entre ces frontières.
@@ -364,14 +364,14 @@ morph = [
 
 ## Percussion : routage par le profil
 
-Heel et Toe suivent `instruments.percussion_bank`, un seul chemin
+PercussionLow et PercussionHigh suivent `instruments.percussion_bank`, un seul chemin
 (`apply_profile_programs`) : banque `128` = kit GM sur le canal MIDI 9 (marche,
 `nt_desert`) ; toute autre banque = canaux propres 3 et 4 sur cette banque. La
-banque de pieds `harmonium_trad.sf2` est chargée en banque `1` : les profils
-trad à podorythmie déclarent `percussion_bank = 1`. Un profil à kit déclare 128 :
-charger la banque de pieds ne le détourne plus. Une banque désignée et non
-chargée par l'hôte (ni kit GM en 128, ni banque de pieds en 1) n'a aucun repli :
-les pieds sont silencieux et le chargement du profil journalise un avertissement
+banque de percussion `harmonium_trad.sf2` est chargée en banque `1` : les profils
+à percussion en banque dédiée déclarent `percussion_bank = 1`. Un profil à kit déclare 128 :
+charger la banque de percussion ne le détourne plus. Une banque désignée et non
+chargée par l'hôte (ni kit GM en 128, ni banque de percussion en 1) n'a aucun repli :
+la percussion est silencieuse et le chargement du profil journalise un avertissement
 (`MusicComposer::missing_resources`, `harmonium_core::host_resources`).
 
 ## Accompagnement
@@ -402,9 +402,9 @@ patterns = [
 changé depuis le créneau précédent, ou au premier créneau de la mesure).
 Les coups sont ordonnés par `step`, uniques dans chaque voix/motif, dans la
 mesure ; durée positive entièrement dans la mesure, vélocité 1..127.
-Le registre basse est MIDI ordonné ; le modèle jazz exige douze hauteurs
+Le registre basse est MIDI ordonné ; le modèle `rewrite_functional` exige douze hauteurs
 consécutives. `center` et `max_drift` pilotent la conduite de voix des triades.
-`default_pattern` est utilisé lorsque les courbes `chop_intensity + density_chop`
+`default_pattern` est utilisé lorsque les courbes `chords_intensity + density_chords`
 valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
 ### Motifs de basse
@@ -412,7 +412,7 @@ valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 `bass.motifs` remplace `bass.hits` : les deux sources sont exclusives, puis
 passent par la même réalisation de notes et de doublures. Aucun changement
 pour un profil sans banque de motifs. Modèles compatibles :
-`trad_functional` et `loop` ; les motifs suivent aussi les accords et pédales G2.
+`melody_functional` et `loop` ; les motifs suivent aussi les accords et pédales G2.
 
 ```toml
 [accompaniment.bass]
@@ -521,18 +521,18 @@ l'interprétation V2 de la piste Bass comme les autres notes.
 Poids entiers : somme positive dans u32, au plus 64 règles ; `duration > 0`,
 `velocity_delta` −127..127, `min_leap` 0..127. Règle impossible : abstention.
 Les tirages réutilisent la graine de matériel de V3b, dans un domaine basse
-distinct par mesure et attaque : ni mélodie, ni pieds, ni air suivant déplacé.
+distinct par mesure et attaque : ni mélodie, ni percussion, ni air suivant déplacé.
 Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille** :
 marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
 hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
 
 ### Accords grattés
 
-`chords.strings` (3..6, défaut 3) complète la triade par octaves en montant.
-Chaque coup porte `stroke = "block" | "down" | "up"` (défaut `block`),
+`chords.note_count` (3..6, défaut 3) complète la triade par octaves en montant.
+Chaque coup porte `direction = "block" | "down" | "up"` (défaut `block`),
 `probability` (0..1, défaut 1) et `tie = true | false` (défaut `false`). Zéro/1 :
 aucun tirage de présence ; entre les deux : un tirage dérivé par attaque. `down`
-va du grave à l'aigu ; `up` ne joue que les `up_strings` les plus aiguës, dans
+va du grave à l'aigu ; `up` ne joue que les `up_note_count` les plus aiguës, dans
 l'ordre inverse. Dans le snapshot, l'ordre du Vec et des identifiants est
 toujours l'ordre d'attaque. Un coup `tie = true` publie `articulation = "Tied"` :
 si une hauteur sonne encore au moment exact où l'attaque suivante commence
@@ -541,10 +541,10 @@ prolongent sans nouvelle attaque ; sinon, attaque normale. Une nappe s'écrit
 avec un coup `block` d'une mesure entière et `tie = true`.
 
 ```toml
-[accompaniment.chords.strum]
+[accompaniment.chords.spread]
 down_gap_ms = 6.0
 up_gap_ms = 4.0
-up_strings = 3
+up_note_count = 3
 gap_jitter = 0.3
 anchor = 0.5
 tempo_exponent = 0.0
@@ -558,7 +558,7 @@ velocity_jitter = 5
 |---|---|
 | `down_gap_ms`, `up_gap_ms` | 0..40 ms entre cordes ; 0 : plaqué. |
 | `gap_jitter` | 0..0,8, uniforme symétrique par écart, sur le RNG dérivé de l'attaque. |
-| `up_strings` | 2..`strings`. |
+| `up_note_count` | 2..`note_count`. |
 | `anchor` | 0..1 : première corde / centre de l'étalement / dernière corde sur l'attaque V2. |
 | `tempo_exponent` | 0..1 : écart × `(ref_bpm / tempo)^exposant` ; 0 : ms fixes, 1 : geste relatif au tempo. |
 | `ref_bpm` | 1..1000, fini. |
@@ -568,14 +568,14 @@ velocity_jitter = 5
 Le grattage est composé **après V2** en millièmes de pas. Pour conserver l'ordre,
 le geste entier est réduit si nécessaire pour tenir dans ±490 ou le plafond
 de voisinage ; aucune corde n'est clampée indépendamment des autres.
-`strum` absent ou coup `block` : aucun décalage ni jitter V5, mais `strings`
-reste la polyphonie écrite. Mécanique historique : trois sons, pas de `strum`,
+`spread` absent ou coup `block` : aucun décalage ni jitter V5, mais `note_count`
+reste la polyphonie écrite. Mécanique historique : trois sons, pas de `spread`,
 probabilités 1, mêmes vélocités/motifs. V2 tire désormais articulation et jitter
 **par attaque** sur chaque piste (contexte = hauteur la plus grave de l'attaque
 précédente) ; gate/respiration communs, vélocités individuelles conservées.
 La validation croisée jitter/écart de V5a est donc inutile : un jitter V2 commun
 ne peut pas inverser les cordes. Les approches modales et gestes de cordes
-sont refusés avec `jazz_functional`, dont le chemin conserve ses accords absolus.
+sont refusés avec `rewrite_functional`, dont le chemin conserve ses accords absolus.
 
 Les ms sont converties avec le tempo nominal de la mesure ; swing et rampes
 du lecteur réutilisent ensuite ce décalage dans la durée gelée de chaque pas,
@@ -624,11 +624,11 @@ rules = [
 voicing = "close_triad"
 center = 58
 max_drift = 5
-strings = 3
+note_count = 3
 default_pattern = 0
 patterns = [{ hits = [
-  { step = 4, stroke = "block", duration = 2, velocity = 62 },
-  { step = 12, stroke = "block", duration = 2, velocity = 58 },
+  { step = 4, direction = "block", duration = 2, velocity = 62 },
+  { step = 12, direction = "block", duration = 2, velocity = 58 },
 ] }]
 ```
 
@@ -663,11 +663,11 @@ center = 58
 max_drift = 0
 low = 52
 high = 64
-strings = 3
+note_count = 3
 default_pattern = 0
 patterns = [{ hits = [
-  { step = 4, stroke = "block", duration = 2, velocity = 56 },
-  { step = 12, stroke = "block", duration = 2, velocity = 56 },
+  { step = 4, direction = "block", duration = 2, velocity = 56 },
+  { step = 12, direction = "block", duration = 2, velocity = 56 },
 ] }]
 ```
 
@@ -801,8 +801,8 @@ level = 0.28
 Melody = { level_db = 0.0, pan = 0.04, reverb_send = 0.16 }
 Chords = { level_db = -5.0, pan = -0.35, reverb_send = 0.22 }
 Bass = { level_db = -8.0, pan = 0.0, reverb_send = 0.08 }
-Heel = { level_db = -6.0, pan = -0.06, reverb_send = 0.10 }
-Toe = { level_db = -6.0, pan = 0.06, reverb_send = 0.10 }
+PercussionLow = { level_db = -6.0, pan = -0.06, reverb_send = 0.10 }
+PercussionHigh = { level_db = -6.0, pan = 0.06, reverb_send = 0.10 }
 [mix.eq]
 highpass_hz = 40.0
 presence_hz = 2800.0
@@ -838,16 +838,16 @@ Un seul état par piste dans la lecture : le profil initialise niveau/pan/envoi,
 `set gain` modifie le niveau (amplitude 0..1), `mute` filtre les attaques.
 Un nouvel air restaure les niveaux du profil sans lever les mutes, donc
 `--solo-track Melody` reste une sélection de rendu et ne change pas la génération.
-En GM, Heel et Toe partagent le canal 9 : **les réglages de Toe gagnent**,
+En GM, PercussionLow et PercussionHigh partagent le canal 9 : **les réglages de PercussionHigh gagnent**,
 également dans le MIDI. La banque dédiée les sépare sur 3/4. Les profils ont
-les mêmes niveaux/envois aux deux pieds, mais leur léger écart de pan est
-réduit à celui de Toe dans le repli GM.
+les mêmes niveaux/envois aux deux voix de percussion, mais leur léger écart de pan est
+réduit à celui de PercussionHigh dans le repli GM.
 
 Choix d'espace proposés (pas des mesures historiques) : cuisine amortie pour
 le reel québécois, petite salle pour sa gigue, salle communautaire pour le reel
 acadien, salle paroissiale plus large pour la valse ; salles de danse courtes
 pour gigue/hornpipe britanniques, plein air quasi sec pour fifre-et-tambour.
-La guitare est écartée, la basse centrale, les pieds resserrés ; la mélodie
+La guitare est écartée, la basse centrale, la percussion resserrée ; la mélodie
 reste près du centre et au-dessus de chaque accompagnement mesuré.
 Les README individuels donnent les intentions ; les mesures avant/après et
 leurs limites sont dans [Mesures V1](../specs/012-vie-realisme/plan.md#mesures-v1).
@@ -855,10 +855,10 @@ leurs limites sont dans [Mesures V1](../specs/012-vie-realisme/plan.md#mesures-v
 ## Interprétation
 
 `[performance.tracks.<piste>]` fonctionne pour `Melody`, `Chords`, `Bass`,
-`Heel` et `Toe`. Les profils trad distribués n'ajoutent d'interprétation qu'à
-la mélodie ; `nt_desert` y ajoute le micro-timing et l'accent des pieds
-(jitter et règle `Accent` sur `Heel`/`Toe`, G7c) ; les durées écrites de
-basse/guitare et les samples de pieds restent ceux des banques. **Section absente
+`PercussionLow` et `PercussionHigh`. Les profils à airs distribués n'ajoutent d'interprétation qu'à
+la mélodie ; `nt_desert` y ajoute le micro-timing et l'accent de la percussion
+(jitter et règle `Accent` sur `PercussionLow`/`PercussionHigh`, G7c) ; les durées écrites de
+basse/guitare et les samples de percussion restent ceux des banques. **Section absente
 ou tous les réglages à zéro : aucun tirage supplémentaire**, mêmes hauteurs,
 vélocités et durées qu'avant V2.
 Les champs omis sont neutres ; `velocity_min = velocity_max = 0` désactive
@@ -1230,7 +1230,7 @@ la résolution `per_tune` et les contraintes de registre antérieures.
 | `parts.rhythm` | Distribution de durées aux positions choisies, voir ci-dessous | Un motif unique | Plusieurs motifs aux poids de corpus |
 | `parts.second_ending` | Variante de la dernière mesure à la dernière passe de la partie | Omettre, ou `"CadTonic"` | Distribution tonique/quinte/autre |
 | `parts.ornament_protected_bars` | Mesures sans aucun ornement (cadences), tous types de `[ornaments]` ; omission : dernière mesure si son rôle est cadentiel ; `[]` : aucune | `[4,8]` | `[]` |
-| `parts.tracks_off` | Pistes tues sur la partie, lues par la même porte que l'arrangement et la densité ; les tenues liées qui traversent la frontière se ferment à la barre et reprennent ensuite (repli sûr) ; la basse muette dispense de motif pour la partie | `["Heel", "Toe"]` en B | `["Bass", "Heel", "Toe"]` au pont de `nt_desert` |
+| `parts.tracks_off` | Pistes tues sur la partie, lues par la même porte que l'arrangement et la densité ; les tenues liées qui traversent la frontière se ferment à la barre et reprennent ensuite (repli sûr) ; la basse muette dispense de motif pour la partie | `["PercussionLow", "PercussionHigh"]` en B | `["Bass", "PercussionLow", "PercussionHigh"]` au pont de `nt_desert` |
 | `melody.params.max_continuity_step_distance`, `continuity_max_retries` | Distance diatonique préférée entre cellules et nombre d'essais ; contraintes souples, tessiture prioritaire | `2`, `16` | `7`, `4` |
 
 Une variation conserve le mode et la tessiture. `repeated_notes` remplace une
@@ -1338,8 +1338,8 @@ weight_role_turn = 0
 Melody = { tour = 2, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
-Heel = { tour = 1, part = 0, pass = 1 }
-Toe = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
 ```
 
 ### Opérations de motif et cadences
@@ -1458,13 +1458,13 @@ le bloc de tirages de set avant l'air 1 décale le flux de toute la session). R�
 explicite des deux références :
 `HARMONIUM_UPDATE_GOLDENS=1 cargo test -p harmonium-cli profile_d2_main_note_reference`.
 
-## Modèle fonctionnel jazz
+## Modèle fonctionnel par réécriture
 
 Les règles se lisent dans le profil, sans état partagé ni RNG caché :
 
 ```toml
 [harmony]
-model = "jazz_functional"
+model = "rewrite_functional"
 steps_per_chord = 8
 max_recursion = 2
 scale_guidance = true
@@ -1483,7 +1483,7 @@ Chaque règle remplace son symbole gauche par la séquence droite ; les symboles
 en attente sont consommés aux pas harmoniques suivants. Poids finis positifs
 ou nuls (au moins un positif), 1..64 symboles droits, valences ordonnées dans
 `-1..1`. `max_recursion > 0` soumet une règle à la limite globale de
-back-cycling. Catégories Steedman et multiplicateurs jazz : `Cadential` 0,8,
+back-cycling. Catégories Steedman et multiplicateurs `Extended` : `Cadential` 0,8,
 `Preparation` 1,5, `BackCycle` 1,3, `TritoneSubstitution` 1,2, `Deceptive` et
 `ModalInterchange` 1,0. Sans règle applicable : mouvement fonctionnel par
 quintes porté de Steedman.

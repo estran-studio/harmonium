@@ -46,14 +46,14 @@ make studio/web/serve STUDIO_ODIN=assets/odin   # web sur http://127.0.0.1:8787 
 Version publique : <https://harmonium-website.pages.dev/> (page d'accueil) et
 <https://harmonium-website.pages.dev/studio/> (le studio web) ; `make studio/site/deploy` la met à jour.
 
-- **Banques** : `assets/GeneralUser-GS.sf2` (`make soundfont`) et `assets/harmonium_trad.sf2` (pieds) ;
+- **Banques** : `assets/GeneralUser-GS.sf2` (`make soundfont`) et `assets/harmonium_trad.sf2` (percussion) ;
   `STUDIO_BANKS` change le dossier. **Presets Odin** : `STUDIO_ODIN` désigne un dossier de `*.odin` à plat
   (nom du preset = nom du fichier). Sans lui, les pistes Odin des profils (Isaac, `nt_desert`) jouent leur
   programme SoundFont, avec un avertissement au démarrage. `assets/odin/` est local et non versionné : des
   liens vers les presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`).
 - **Écran Live** :
   - en haut : style, graine, lecture, enregistrement ;
-  - à gauche : émotions (pavé valence × arousal, densité, tension), mode direct, pieds, tempo, swing,
+  - à gauche : émotions (pavé valence × arousal, densité, tension), mode direct, percussion, tempo, swing,
     signature, « Reset engine » ;
   - au centre : forme, accords, piano-roll par piste ;
   - à droite : horloge, état (équivalent de `state` du REPL), mixeur (gain, mute, solo).
@@ -94,7 +94,7 @@ immédiats.
 
 ## Intégration dans un jeu
 
-`harmonium::audio::create_offline_engine(sf2, feet_sf2, sample_rate)` rend un
+`harmonium::audio::create_offline_engine(sf2, percussion_sf2, sample_rate)` rend un
 `MusicComposer` et un `PlaybackEngine` sans ouvrir de périphérique : le jeu
 appelle `playback.process_buffer()` depuis son propre callback audio et
 `composer.generate_ahead()` depuis sa boucle principale.

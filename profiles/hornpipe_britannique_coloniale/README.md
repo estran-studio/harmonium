@@ -63,7 +63,7 @@ Le corpus de référence confirme sans ambiguïté la formule de conclusion trad
 - **Violon** (Melody, canal 0) : Programme GM 40 (Violin), tessiture 55–88 (Sol grave G3 à Mi aigu E6), centre mélodique à 72.
 - **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), accords tenus de noire (durée 4 pas) sur les temps 0 et 8.
 - **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les temps 0 et 8.
-- **Percussion** : Pistes Heel et Toe désactivées dans l'arrangement (pas de podorythmie).
+- **Percussion** : Pistes PercussionLow et PercussionHigh désactivées dans l'arrangement (pas de podorythmie).
 
 ## Phrases probabilistes — DS-T9 / P3-T1
 
