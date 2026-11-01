@@ -8,7 +8,7 @@ par défaut est `reel_quebecois` (230 BPM à la noire, 2/2, pulse à la blanche)
 
 ```mermaid
 graph TD
-    Profile[StyleProfile TOML validé] --> Gen[TradGenerator]
+    Profile[StyleProfile TOML validé] --> Gen[TuneGenerator]
     Emotions[EngineParams] --> Mapper[EmotionMapper + dynamics du profil]
     Mapper --> Params[MusicalParams]
     Params --> Gen
@@ -25,20 +25,20 @@ fins de reprise aux rôles de phrase et cadences probabilistes ; les goldens son
 régénérés. Les rôles fixes d'origine, sans `second_ending`, reproduisent le
 contrat de notes antérieur sans second chemin, à la version courante des tirages.
 `TUNING_VERSION = 19` ajoute les sets : un bloc de tirages (longueur du set, tonalité de chaque
-air) pris avant l'air 1 de chaque set (`set.toml`, module `trad::set`).
+air) pris avant l'air 1 de chaque set (`set.toml`, module `compose::set`).
 
 ## Modules
 
 - `style_profile` : chargeur TOML validé ; un seul décodeur multi-fichiers pour les profils
   embarqués (fichiers d'origine inclus par `build.rs`), les dossiers (`load`) et la mémoire
   (`from_files`) ; erreurs situées par fichier et ligne.
-- `trad` : réalisation des cellules et des reprises, harmonisation,
+- `compose` : réalisation des cellules et des reprises, harmonisation,
   accompagnement, percussions, arrangement, intros et dynamique.
 - `models` : sélection du modèle harmonique depuis `[harmony]` ;
-  `trad_functional` et `jazz_functional` (grammaire Steedman à état local).
+  `melody_functional` et `rewrite_functional` (grammaire Steedman à état local).
 - `theory` : accords, `PitchClass`, conduite des voix et Lydian Chromatic Concept.
 - `algo` : Bjorklund euclidien et interface d'aléa injecté.
-- `timeline` : mesures, notes et pistes `Melody`, `Chords`, `Bass`, `Heel`, `Toe`,
+- `timeline` : mesures, notes et pistes `Melody`, `Chords`, `Bass`, `PercussionLow`, `PercussionHigh`,
   writehead/playhead, exports MIDI et MusicXML depuis les mesures.
 - `mapper` : applique les quatre émotions aux courbes `[dynamics]` du profil actif.
 - `events`, `command`, `report`, `params` : contrats avec le host et le rendu.
@@ -57,7 +57,7 @@ EmotionMapper::new().apply_dynamics(
 );
 ```
 
-Le host instancie `TradGenerator` directement : aucun sélecteur de générateur.
+Le host instancie `TuneGenerator` directement : aucun sélecteur de générateur.
 Pour changer de style, installer un profil avec `MusicComposer::set_profile`
 ou `set_profile_id`. Voir `profiles/README.md` pour le format des données.
 La fixture `tests/fixtures/profiles/jazz_test` est synthétique, hors distribution,

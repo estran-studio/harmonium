@@ -14,10 +14,10 @@
 
 use harmonium_core::{
     StyleProfile,
+    compose::{Part, TuneGenerator},
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::TrackId,
-    trad::{Part, TradGenerator},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -46,7 +46,7 @@ fn march_params() -> MusicalParams {
     params
 }
 fn generate_snapshots(seed: u64, bars: usize, params: MusicalParams) -> Vec<MeasureSnapshot> {
-    let mut generator = TradGenerator::new(params, march_tuning());
+    let mut generator = TuneGenerator::new(params, march_tuning());
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -74,7 +74,7 @@ fn march_metadata_and_corpus_citation() {
             && p.meta.corpus.contains("Cahusac")
     );
     assert_eq!(p.instruments.melody_program, 72); // Piccolo GM 72 (fifre)
-    assert_eq!(p.instruments.chords_program, None); // Pas de guitare
+    assert_eq!(p.instruments.chords_program, None); // Pas d'accords
     assert_eq!(p.instruments.bass_program, None); // Pas de basse
     assert_eq!(p.harmony.model, "none");
 }
@@ -113,7 +113,7 @@ fn march_form_aabb_32_bars() {
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -187,7 +187,10 @@ fn march_drum_patterns_cadence_and_rolls() {
         let drum_notes: Vec<_> = snap
             .notes
             .iter()
-            .filter(|n| n.track == TrackId::Heel.channel() || n.track == TrackId::Toe.channel())
+            .filter(|n| {
+                n.track == TrackId::PercussionLow.channel()
+                    || n.track == TrackId::PercussionHigh.channel()
+            })
             .collect();
 
         for note in &drum_notes {
@@ -215,12 +218,13 @@ fn march_drum_patterns_cadence_and_rolls() {
         }
 
         // Vérifier la présence de roulements en 16ᵉ (frappes consécutives à chaque pas)
-        let toe_steps: Vec<usize> = drum_notes
+        let percussion_high_steps: Vec<usize> = drum_notes
             .iter()
-            .filter(|n| n.track == TrackId::Toe.channel())
+            .filter(|n| n.track == TrackId::PercussionHigh.channel())
             .map(|n| n.start_step)
             .collect();
-        let consecutive_16ths = toe_steps.windows(2).filter(|w| w[1] == w[0] + 1).count();
+        let consecutive_16ths =
+            percussion_high_steps.windows(2).filter(|w| w[1] == w[0] + 1).count();
         if consecutive_16ths >= 4 {
             found_roll_16th = true;
         }
@@ -247,7 +251,10 @@ fn march_intro_is_drum_count_in() {
     let drum_notes = intro_snap
         .notes
         .iter()
-        .filter(|n| n.track == TrackId::Heel.channel() || n.track == TrackId::Toe.channel())
+        .filter(|n| {
+            n.track == TrackId::PercussionLow.channel()
+                || n.track == TrackId::PercussionHigh.channel()
+        })
         .count();
 
     assert_eq!(melody_notes, 0, "aucun fifre pendant le décompte de tambour");
@@ -302,7 +309,10 @@ fn march_emotions_modulate_dynamics() {
         let vels: Vec<f32> = snaps
             .iter()
             .flat_map(|s| &s.notes)
-            .filter(|n| n.track == TrackId::Toe.channel() || n.track == TrackId::Heel.channel())
+            .filter(|n| {
+                n.track == TrackId::PercussionHigh.channel()
+                    || n.track == TrackId::PercussionLow.channel()
+            })
             .map(|n| f32::from(n.velocity))
             .collect();
         vels.iter().sum::<f32>() / vels.len().max(1) as f32

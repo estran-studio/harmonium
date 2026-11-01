@@ -1,0 +1,20 @@
+# Table percussive (désactivée : le corpus britannique colonial ne décrit aucune podorythmie ; reel britannique colonial sans pieds).
+
+low_note = 36
+high_note = 37
+low_velocity = 0
+high_velocity = 0
+percussion_gain = 0.0
+velocity_humanize = 0
+
+[[patterns]]
+density = 0
+hits = []
+
+[[patterns]]
+density = 1
+hits = []
+
+[[patterns]]
+density = 2
+hits = []

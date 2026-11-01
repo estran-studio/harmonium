@@ -22,17 +22,17 @@ impl ChannelRoute {
 
 /// Programme GM du violon (40, index 0-based).
 pub const GM_PROGRAM_VIOLIN: u8 = 40;
-/// Programme GM pour la guitare acoustique cordes acier (`Chords`, D10 : 25 1-based = 24 0-based).
+/// Programme GM de la guitare acoustique cordes acier (`Chords`, D10 : 25 1-based = 24 0-based).
 pub const GM_PROGRAM_STEEL_GUITAR: u8 = 24;
 /// Programme GM pour la basse acoustique (`Bass`, D10 : 33 1-based = 32 0-based).
 pub const GM_PROGRAM_ACOUSTIC_BASS: u8 = 32;
-/// Canal MIDI GM dédié aux percussions / podorythmie (`Heel` et `Toe`, D10).
+/// Canal MIDI GM dédié aux percussions / percussion (`PercussionLow` et `PercussionHigh`, D10).
 pub const GM_DRUM_CHANNEL: u8 = 9;
 
-/// Décalage de banque dédié à la SoundFont des pieds (`harmonium_trad.sf2`, SK2).
-/// Quand cette banque est chargée, Heel/Toe sélectionnent la banque
-/// `FEET_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
-pub const FEET_BANK_OFFSET: u32 = 1;
+/// Décalage de banque dédié à la SoundFont de la percussion (`harmonium_trad.sf2`, SK2).
+/// Quand cette banque est chargée, PercussionLow/PercussionHigh sélectionnent la banque
+/// `PERCUSSION_BANK_OFFSET` (programme 0) sur leurs canaux MIDI propres (3 et 4).
+pub const PERCUSSION_BANK_OFFSET: u32 = 1;
 
 /// Programmes des pistes à hauteur définie, résolus depuis la liste canonique.
 /// (sur la pile : utilisable dans le callback sans allouer).
@@ -43,7 +43,7 @@ pub fn gm_programs_for_profile(
     use harmonium_core::timeline::TrackId;
     let mut progs = arrayvec::ArrayVec::new();
     for track in TrackId::ALL {
-        if !matches!(track, TrackId::Heel | TrackId::Toe)
+        if !matches!(track, TrackId::PercussionLow | TrackId::PercussionHigh)
             && let Some(program) = instruments.program(track)
         {
             progs.push((track.channel(), program));
@@ -72,7 +72,7 @@ pub struct VoiceManager {
 }
 
 /// Default map: logical channel N → MIDI channel N. Le profil décide du
-/// routage des pieds via `apply_profile_programs` (un seul chemin).
+/// routage de la percussion via `apply_profile_programs` (un seul chemin).
 fn default_midi_channel_map() -> [u8; 16] {
     let mut map = [0u8; 16];
     for (i, slot) in map.iter_mut().enumerate() {
@@ -153,12 +153,12 @@ impl VoiceManager {
 
     /// Applique l'instrumentarium déjà résolu, sans allocation dans le callback.
     ///
-    /// Un seul chemin pour les pieds : la banque de percussion du profil
-    /// décide. Banque `128` (kit GM : marche, `nt_desert`) : Heel (3) et Toe
+    /// Un seul chemin pour la percussion : la banque de percussion du profil
+    /// décide. Banque `128` (kit GM : marche, `nt_desert`) : PercussionLow (3) et PercussionHigh
     /// (4) partagent le canal MIDI 9 avec cette banque. Toute autre banque
-    /// (pieds `harmonium_trad.sf2` en banque `1`) : canaux MIDI propres (3
+    /// (percussion `harmonium_trad.sf2` en banque `1`) : canaux MIDI propres (3
     /// et 4) avec la banque et le programme du profil. Sans la banque
-    /// demandée, les pieds sont silencieux (avertissement au chargement).
+    /// demandée, la percussion est silencieuse (avertissement au chargement).
     pub fn apply_profile_programs(
         &mut self,
         instruments: &harmonium_core::style_profile::ProfileInstruments,
@@ -449,22 +449,28 @@ mod tests {
         vm.apply_profile_programs(&instruments);
         assert_eq!(vm.midi_channel_map[3], GM_DRUM_CHANNEL, "kit GM sur canal 9");
         assert_eq!(vm.midi_channel_map[4], GM_DRUM_CHANNEL, "kit GM sur canal 9");
-        assert_eq!(vm.channel_routing[3].bank, 128, "Heel → banque du profil");
-        assert_eq!(vm.channel_routing[4].bank, 128, "Toe → banque du profil");
+        assert_eq!(vm.channel_routing[3].bank, 128, "PercussionLow → banque du profil");
+        assert_eq!(vm.channel_routing[4].bank, 128, "PercussionHigh → banque du profil");
     }
 
     #[test]
-    fn test_percussion_routing_follows_profile_feet_bank() {
+    fn test_percussion_routing_follows_profile_percussion_bank() {
         let mut vm = VoiceManager::new(None, 44100.0);
         let mut instruments = harmonium_core::StyleProfile::builtin().instruments;
         instruments.percussion_bank = 1;
         instruments.percussion_program = 0;
         vm.apply_profile_programs(&instruments);
-        assert_eq!(vm.midi_channel_map[3], 3, "pieds sur canaux propres");
-        assert_eq!(vm.midi_channel_map[4], 4, "pieds sur canaux propres");
-        assert_eq!(vm.channel_routing[3].bank, FEET_BANK_OFFSET, "Heel → banque du profil");
-        assert_eq!(vm.channel_routing[4].bank, FEET_BANK_OFFSET, "Toe → banque du profil");
-        assert_eq!(vm.channel_program(3), Some(0), "Heel programme du profil");
-        assert_eq!(vm.channel_program(4), Some(0), "Toe programme du profil");
+        assert_eq!(vm.midi_channel_map[3], 3, "percussion sur canaux propres");
+        assert_eq!(vm.midi_channel_map[4], 4, "percussion sur canaux propres");
+        assert_eq!(
+            vm.channel_routing[3].bank, PERCUSSION_BANK_OFFSET,
+            "PercussionLow → banque du profil"
+        );
+        assert_eq!(
+            vm.channel_routing[4].bank, PERCUSSION_BANK_OFFSET,
+            "PercussionHigh → banque du profil"
+        );
+        assert_eq!(vm.channel_program(3), Some(0), "PercussionLow programme du profil");
+        assert_eq!(vm.channel_program(4), Some(0), "PercussionHigh programme du profil");
     }
 }

@@ -39,11 +39,11 @@ Un tampon doit être compris entre 64 et 16 384 images.
 ```json
 { "resources": [
   { "id": "main-bank", "file": "GeneralUser-GS.9575028c7a1f.sf2", "bytes": 32319396, "sha256": "…" },
-  { "id": "feet-bank", "file": "harmonium_trad.4dc8159837b4.sf2", "bytes": 154186, "sha256": "…" }
+  { "id": "percussion-bank", "file": "harmonium_trad.4dc8159837b4.sf2", "bytes": 154186, "sha256": "…" }
 ] }
 ```
 
-Rôles (`id`) : `main-bank` (obligatoire), `feet-bank`, `odin:<nom court>` (un par preset `.odin`, zéro est normal). Le format de la banque n'est écrit nulle part : SF2 ou SF3, c'est le même rôle.
+Rôles (`id`) : `main-bank` (obligatoire), `percussion-bank`, `odin:<nom court>` (un par preset `.odin`, zéro est normal). Le format de la banque n'est écrit nulle part : SF2 ou SF3, c'est le même rôle.
 
 Sources, par variables du Makefile :
 
@@ -51,7 +51,7 @@ Sources, par variables du Makefile :
 - `STUDIO_ODIN` : dossier de presets `*.odin` ; vide par défaut (aucun preset n'est versionné).
 
 Autres sources : appeler directement
-`cargo run -p harmonium_studio --no-default-features --bin studio_assets -- --main-bank <fichier> [--feet-bank <fichier>] [--odin-dir <dossier>] --out <dossier>` ; le manifeste et le chargeur ne changent pas.
+`cargo run -p harmonium_studio --no-default-features --bin studio_assets -- --main-bank <fichier> [--percussion-bank <fichier>] [--odin-dir <dossier>] --out <dossier>` ; le manifeste et le chargeur ne changent pas.
 
 ## Ressources de la vitrine : une release fixée
 
@@ -60,7 +60,7 @@ Le site public ne prend pas les banques locales : `make studio/web/resources` (a
 | Rôle | Fichier | Source, licence |
 |---|---|---|
 | `main-bank` | `GeneralUser-GS.sf3` (7,6 Mo) | GeneralUser GS v2.0.3 (S. Christian Collins, licence fournie dans la release), convertie de SF2 par `scripts/sf2_to_sf3.py` (oggenc qualité 4 ; même entrée, même fichier) |
-| `feet-bank` | `harmonium_trad.sf2` | banque de pieds du labo, échantillons CC0 (Freesound) |
+| `percussion-bank` | `harmonium_trad.sf2` | banque de percussion du labo, échantillons CC0 (Freesound) |
 | `odin` | les presets nommés par `[[odin.<piste>.zones]] preset` dans `profiles/` | presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`, GPL-3.0) |
 | `license` | `GeneralUser-GS-LICENSE.txt` | licence de la banque (non servie par le site) |
 
@@ -95,9 +95,9 @@ Natif : mêmes ressources lues sur disque par un fil, même écran, pas de cache
 | Zone | Contenu |
 |---|---|
 | Barre du haut | onglets Live / Workbench, style (`StyleProfile::distributed()` ; le nom affiché est celui du profil installé, un brouillon de l'atelier compris), lecture / pause, tempo entendu (à la noire, tiré de la pulsation de `BeatInfo`) et signature de la mesure qui sonne, graine (affichée, saisie, « New seed »), enregistrement WAV / MIDI / MusicXML, « About » |
-| Gauche | contrôle émotion / direct ; pavé valence × arousal ; curseurs arousal, valence, densité, tension, intensité (valeurs affichées) ; pieds 0/1/2 ; tempo nominal et « Reset BPM » ; tempo audible et rampe (« Apply tempo », « Clear tempo ») ; swing 0,5–0,75 ; signature ; « Reset engine » ; repli « Engine » : modules rythme / harmonie / mélodie, anticipation, saut dur ou doux à une mesure, et en natif dossier de profil et écoute OSC |
-| Centre | 20 mesures : 4 jouées, la mesure en cours, celles composées d'avance (fond plus clair ; pas encore composées : fond sombre). Rangées : numéros, air (rang dans le set, tonalité et mode, de `TunePosition`), forme (partie et passe, « A·1 » : partie A, passe 1 ; couleur par partie), accords (`chord_changes` ; un nom à chaque changement, une pédale ne se répète pas), piano-roll par piste (Melody, Counter, Chords, Bass, Heel, Toe ; hauteurs relatives 3·2·3·2·1·1 ; piste sans note dans la fenêtre : nom grisé), tête de lecture. Une note se dessine selon son `Articulation` publiée : `Normal` barre pleine, `Accent` cerclée de blanc, `Detached` barre raccourcie, `Linked` bouts carrés, `Tied` bouts carrés raccrochée à la précédente par un trait (pas d'attaque), `Legato` attaque, arc depuis la note précédente et prolongement clair (le chevauchement), `Trigger` losange. Clic sur une mesure : saut (`Seek`) ; clic droit : saut, déplacement doux de la tête (`SeekPlayhead`), fin de boucle ; glisser : boucle (16 mesures au plus ; au-delà, refus affiché) |
-| Droite | horloge (mesure, pulsation, phase, temps fort, prochaine pulsation) ; état (l'équivalent de `state` du REPL : style, pieds, mode, graine, tonalité et forme de la mesure qui sonne, tempo entendu, swing, pulsation, signature, mesure / temps / pas, accord, modules) ; mixeur : gain, Mute, Solo par piste (solo = couper les autres ; une sourdine à la main survit à la fin du solo ; une piste écartée par la densité du profil, `density_tracks`, est grisée, avec « off: density < x » au survol et au bout de sa rangée du piano-roll), volume général, sourdine de la sortie, routage par piste |
+| Gauche | contrôle émotion / direct ; pavé valence × arousal ; curseurs arousal, valence, densité, tension, intensité (valeurs affichées) ; percussion 0/1/2 ; tempo nominal et « Reset BPM » ; tempo audible et rampe (« Apply tempo », « Clear tempo ») ; swing 0,5–0,75 ; signature ; « Reset engine » ; repli « Engine » : modules rythme / harmonie / mélodie, anticipation, saut dur ou doux à une mesure, et en natif dossier de profil et écoute OSC |
+| Centre | 20 mesures : 4 jouées, la mesure en cours, celles composées d'avance (fond plus clair ; pas encore composées : fond sombre). Rangées : numéros, air (rang dans le set, tonalité et mode, de `TunePosition`), forme (partie et passe, « A·1 » : partie A, passe 1 ; couleur par partie), accords (`chord_changes` ; un nom à chaque changement, une pédale ne se répète pas), piano-roll par piste (Melody, Counter, Chords, Bass, PercussionLow, PercussionHigh ; hauteurs relatives 3·2·3·2·1·1 ; piste sans note dans la fenêtre : nom grisé), tête de lecture. Une note se dessine selon son `Articulation` publiée : `Normal` barre pleine, `Accent` cerclée de blanc, `Detached` barre raccourcie, `Linked` bouts carrés, `Tied` bouts carrés raccrochée à la précédente par un trait (pas d'attaque), `Legato` attaque, arc depuis la note précédente et prolongement clair (le chevauchement), `Trigger` losange. Clic sur une mesure : saut (`Seek`) ; clic droit : saut, déplacement doux de la tête (`SeekPlayhead`), fin de boucle ; glisser : boucle (16 mesures au plus ; au-delà, refus affiché) |
+| Droite | horloge (mesure, pulsation, phase, temps fort, prochaine pulsation) ; état (l'équivalent de `state` du REPL : style, percussion, mode, graine, tonalité et forme de la mesure qui sonne, tempo entendu, swing, pulsation, signature, mesure / temps / pas, accord, modules) ; mixeur : gain, Mute, Solo par piste (solo = couper les autres ; une sourdine à la main survit à la fin du solo ; une piste écartée par la densité du profil, `density_tracks`, est grisée, avec « off: density < x » au survol et au bout de sa rangée du piano-roll), volume général, sourdine de la sortie, routage par piste |
 | Bas | avis : enregistrement écrit (chemin) ou téléchargé, commande refusée par l'hôte, actions de l'atelier |
 
 Les gains choisis valent pour le profil en cours : un changement de profil rend à chaque piste le niveau du profil (c'est ce que fait le moteur), et l'écran le montre.

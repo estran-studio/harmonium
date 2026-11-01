@@ -1,13 +1,13 @@
 //! Paliers de tempo, bornes et priorité des commandes du jeu.
 use harmonium_core::{
     StyleProfile, TuningParams,
-    params::MusicalParams,
-    report::MeasureSnapshot,
-    trad::{
-        TradGenerator,
+    compose::{
+        TuneGenerator,
         dynamics::Curve,
         set::{SetLength, SetRamp},
     },
+    params::MusicalParams,
+    report::MeasureSnapshot,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -30,7 +30,7 @@ fn tuning() -> TuningParams {
 }
 fn stream(config: &TuningParams, intensity: f32, bpm: f32, explicit: bool) -> Vec<MeasureSnapshot> {
     let params = MusicalParams { intensity, bpm, bpm_explicit: explicit, ..Default::default() };
-    let mut g = TradGenerator::new(params, config.clone());
+    let mut g = TuneGenerator::new(params, config.clone());
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     (1..=300).map(|b| MeasureSnapshot::from_measure(&g.generate_measure(b, &mut rng))).collect()
 }

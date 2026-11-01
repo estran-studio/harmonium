@@ -18,7 +18,7 @@
 # nouveau tirage ; B développe deux fois ses quatre mesures, notes inchangées.
 [files]
 cells = "cells.toml"
-feet = "feet.toml"
+percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
@@ -65,7 +65,7 @@ roles = ["Open", "Open", "Free", "Free", "Open", "Free", "Open", "Free"]
 name = "Pont"
 melody_center_offset = 0
 # Retombée : nappes seules, y compris au second tour.
-tracks_off = ["Bass", "Heel", "Toe", "Melody", "Countermelody"]
+tracks_off = ["Bass", "PercussionLow", "PercussionHigh", "Melody", "Countermelody"]
 roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
 [[form.parts]]
 name = "B"
@@ -215,9 +215,9 @@ notes = [{ step = 0, duration = 2, semitones = 0, octave = 1, velocity = 50 }]
 [accompaniment.chords]
 center = 60
 max_drift = 6
-strings = 4
+note_count = 4
 default_pattern = 0
-patterns = [{ hits = [{ step = 0, stroke = "block", duration = 24, velocity = 53, tie = true }] }]
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 24, velocity = 53, tie = true }] }]
 
 [instruments]
 # Lead 2 sawtooth (81) en dessus : attaque nette, registre médium distinct de
@@ -366,11 +366,11 @@ reverb_send = 0.25
 level_db = 0.0
 pan = 0.0
 reverb_send = 0.1
-[mix.tracks.Heel]
+[mix.tracks.PercussionLow]
 level_db = -5.0
 pan = -0.06
 reverb_send = 0.06
-[mix.tracks.Toe]
+[mix.tracks.PercussionHigh]
 level_db = -6.0
 pan = 0.06
 reverb_send = 0.06
@@ -385,16 +385,16 @@ presence_q = 0.8
 # génériques (voir profiles/README.md « Interprétation »), déjà employés par
 # les profils trad sur Melody ; la fixture gigue_bourdon les emploie sur les
 # pieds (principe VIII).
-[performance.tracks.Heel]
+[performance.tracks.PercussionLow]
 jitter = 0.02
-[[performance.tracks.Heel.rules]]
+[[performance.tracks.PercussionLow.rules]]
 articulation = "Accent"
 weight = 4.0
 steps = [0]
 accent = 4.0
-[performance.tracks.Toe]
+[performance.tracks.PercussionHigh]
 jitter = 0.02
-[[performance.tracks.Toe.rules]]
+[[performance.tracks.PercussionHigh.rules]]
 articulation = "Accent"
 weight = 4.0
 steps = [0]

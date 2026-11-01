@@ -50,10 +50,13 @@ pub fn print_help() {
         "PROFILS",
         &[
             ("style <identifiant|dossier>", "Charge un profil validé ; défaut reel_quebecois"),
-            ("feet <0|1|2>", "Densité de podorythmie (0 = talon 0,8 ; 1 = standard ; 2 = ornée)"),
+            (
+                "percussion <0|1|2>",
+                "Densité de percussion (0 = grave seule ; 1 = standard ; 2 = ornée)",
+            ),
             (
                 "intensity <0..1>",
-                "Énergie, articulation, pieds et chop ; effet à la prochaine mesure",
+                "Énergie, articulation, percussion et accords ; effet à la prochaine mesure",
             ),
             ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
             ("seed new", "Tire un nouveau seed au hasard et repart de la mesure 1"),
@@ -64,7 +67,10 @@ pub fn print_help() {
         "MIXER",
         &[
             ("set gain <ch> <0-1>", "Set channel gain (ch: 0-4)"),
-            ("set mute <ch>", "Mute channel (0=melody, 1=chords, 2=bass, 3=heel, 4=toe)"),
+            (
+                "set mute <ch>",
+                "Mute channel (0=melody, 1=chords, 2=bass, 3=percussion_low, 4=percussion_high)",
+            ),
             ("set unmute <ch>", "Unmute channel"),
             ("set route <ch> <bank>", "Route a channel to a SoundFont bank (-1 = bank 0)"),
             ("set output <mute|unmute>", "Silence the output (generation keeps running)"),
@@ -154,7 +160,9 @@ pub fn print_command_help(command: &str) {
 
         "intensity" => {
             println!("intensity <0..1> : énergie du style ; 0.5 conserve le rendu par défaut.");
-            println!("Reel : tempo borné autour du style, notes plus sèches, accents et pieds plus forts.");
+            println!(
+                "Tempo borné autour du style, notes plus sèches, accents et percussion plus forts."
+            );
             println!("L'air courant garde ses hauteurs ; la nouvelle distribution de cellules attend l'air suivant.");
         }
 
@@ -210,7 +218,7 @@ pub fn print_command_help(command: &str) {
             println!("{}", "SYNTAX:".bold());
             println!("  swing <0.5-0.75>");
             println!();
-            println!("0.5 = droit, 0.6 ≈ reel. Hors plage : borné et signalé.");
+            println!("0.5 = droit, 0.6 ≈ swing marqué. Hors plage : borné et signalé.");
             println!("Prend effet à la prochaine mesure générée.");
             println!();
             println!("{}", "EXAMPLES:".bold());
@@ -261,17 +269,17 @@ pub fn print_command_help(command: &str) {
             println!("  style <identifiant|dossier>");
         }
 
-        "feet" => {
-            println!("{}", "FEET".bold().cyan());
+        "percussion" => {
+            println!("{}", "PERCUSSION".bold().cyan());
             println!("{}", "=".repeat(60).dimmed());
             println!();
-            println!("Règle la densité de podorythmie en style Reel (D9) :");
-            println!("  0 = talon sur 0 et 8");
-            println!("  1 = talon 0, 4, 8, 12 + pointe 2, 6, 10, 14 (défaut)");
-            println!("  2 = talon 0, 4, 8, 12 + pointe doublée (2, 3, 6, 7, 10, 11, 14, 15)");
+            println!("Règle la densité de percussion (D9) :");
+            println!("  0 = percussion grave sur 0 et 8");
+            println!("  1 = percussion grave 0, 4, 8, 12 + percussion aiguë 2, 6, 10, 14 (défaut)");
+            println!("  2 = percussion grave 0, 4, 8, 12 + percussion aiguë doublée (2, 3, 6, 7, 10, 11, 14, 15)");
             println!();
             println!("{}", "SYNTAX:".bold());
-            println!("  feet <0|1|2>");
+            println!("  percussion <0|1|2>");
         }
         _ => {
             println!("{}", format!("No detailed help available for '{}'", command).yellow());

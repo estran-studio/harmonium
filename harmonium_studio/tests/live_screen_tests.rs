@@ -355,7 +355,7 @@ fn a_forked_profile_saved_edited_and_applied_plays_from_the_next_bar() -> Result
 
     // Enregistré dans un dossier, modifié sur disque, rouvert.
     let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
-    let folder = dir.path().join("reel_fork");
+    let folder = dir.path().join("fork");
     type_folder(&mut rig, folder.to_str().ok_or("chemin")?);
     click(&mut rig, "Save");
     let root = folder.join("profile.toml");

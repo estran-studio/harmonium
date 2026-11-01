@@ -13,13 +13,13 @@ use std::{
 
 use arrayvec::ArrayString;
 use harmonium_core::{
+    compose::{BarRole, TuneGenerator, TunePlan},
     host_resources::{HostResources, MissingResource},
     log,
     odin::OdinPatches,
     params::{MusicalParams, SessionConfig, TimeSignature},
     time_plan::score::session_rng,
     timeline::Writehead,
-    trad::{BarRole, TradGenerator, TunePlan},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -40,7 +40,7 @@ pub struct MusicComposer {
     pub config: SessionConfig,
 
     // Generation
-    generator: TradGenerator,
+    generator: TuneGenerator,
     writehead: Writehead,
     // Handoff: staged measures (composer → playback) and returned boxes
     // (playback → composer). The timeline is the source of truth; `published`
@@ -139,7 +139,7 @@ impl MusicComposer {
             "MusicComposer - Session: profil {} | BPM: {:.1}",
             musical_params.profile_id, bpm
         ));
-        let generator = TradGenerator::new(musical_params.clone(), tuning);
+        let generator = TuneGenerator::new(musical_params.clone(), tuning);
 
         let writehead = Writehead::new(sample_rate, 4);
 
@@ -553,8 +553,8 @@ impl MusicComposer {
         self.set_profile(profile)
     }
 
-    pub fn set_feet_density(&mut self, density: u8) {
-        self.musical_params.set_feet_density(density);
+    pub fn set_percussion_density(&mut self, density: u8) {
+        self.musical_params.set_percussion_density(density);
     }
 
     /// Énergie du style (0..1), audible après `invalidate_future`.
@@ -851,7 +851,7 @@ impl MusicComposer {
         &self.generator.tuning.profile
     }
 
-    /// Nombre de tours AABB joués par air (D11, `reel_arrangement.tours_per_tune`).
+    /// Nombre de tours AABB joués par air (D11, `arrangement.tours_per_tune`).
     #[must_use]
     pub fn tours_per_tune(&self) -> usize {
         self.generator.tuning.profile.arrangement.tours_per_tune

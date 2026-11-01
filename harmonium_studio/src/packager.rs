@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::manifest::{
-    FEET_BANK_ID, MAIN_BANK_ID, MANIFEST_FILE, Manifest, ODIN_ID_PREFIX, Resource,
+    MAIN_BANK_ID, MANIFEST_FILE, Manifest, ODIN_ID_PREFIX, PERCUSSION_BANK_ID, Resource,
     hashed_file_name, sha256_hex,
 };
 
@@ -21,8 +21,8 @@ use crate::manifest::{
 pub struct PackSpec {
     /// Banque principale (SF2 ou SF3).
     pub main_bank: PathBuf,
-    /// Banque de pieds, si elle existe.
-    pub feet_bank: Option<PathBuf>,
+    /// Banque de percussion, si elle existe.
+    pub percussion_bank: Option<PathBuf>,
     /// Dossier de presets `*.odin` (nom du preset = tige du fichier) ; absent ou vide : aucun
     /// preset.
     pub odin_dir: Option<PathBuf>,
@@ -32,8 +32,8 @@ pub struct PackSpec {
 /// d'un manifeste précédent qui ne sont plus référencés. Rend le manifeste écrit.
 pub fn pack(spec: &PackSpec, out: &Path) -> Result<Manifest, String> {
     let mut sources = vec![(MAIN_BANK_ID.to_owned(), spec.main_bank.clone())];
-    if let Some(feet) = &spec.feet_bank {
-        sources.push((FEET_BANK_ID.to_owned(), feet.clone()));
+    if let Some(percussion) = &spec.percussion_bank {
+        sources.push((PERCUSSION_BANK_ID.to_owned(), percussion.clone()));
     }
     if let Some(dir) = &spec.odin_dir {
         sources.extend(odin_sources(dir)?);

@@ -17,7 +17,7 @@ profil TOML validé avec ses banques. Les deux options sont exclusives.
 `--soundfont <fichier.sf2>` choisit la banque audio. La résolution par défaut
 cherche GeneralUser GS puis `assets/test.sf2` ; cette dernière ne permet pas
 une validation des timbres traditionnels. `make soundfont` installe la banque GM.
-`--feet-soundfont <fichier.sf2>` choisit la banque de pieds (défaut :
+`--percussion-soundfont <fichier.sf2>` choisit la banque de percussion (défaut :
 `assets/harmonium_trad.sf2` si présente, sinon le kit GM du canal 9).
 
 `--osc` ouvre l'écoute OSC dans le REPL : un client UDP envoie
@@ -37,7 +37,7 @@ style reel_quebecois
 style gigue_quebecoise
 style valse_quebecoise
 style profiles/mon_style
-feet 0|1|2
+percussion 0|1|2
 intensity 0.8
 seed 42
 seed new
@@ -87,7 +87,7 @@ le tempo audible à la prochaine pulse ou par rampe de N pulses (40–300 BPM).
 `reset bpm` retire la surcharge nominale. Le swing est borné à 0,5–0,75 et
 ignoré par la grille composée. `beat` lit `BeatInfo` ; Entrée, Échap, q ou
 Ctrl+C reviennent au REPL. Les pistes sont Melody=0, Chords=1, Bass=2,
-Heel=3 et Toe=4.
+PercussionLow=3 et PercussionHigh=4.
 
 `seed new` tire une nouvelle graine au hasard (affichée) et repart de la mesure 1.
 `seek <n>` rejoue le générateur jusqu'à la mesure n, de façon déterministe ;
@@ -124,15 +124,15 @@ l'hôte, y compris celles posées par l'OSC. Tab complète les commandes et prof
 
 ```bash
 cargo run -p harmonium-cli --release -- --export --bars 64 --seed 1 \
-  --record-wav demos/reel_seed1.wav --record-midi demos/reel_seed1.mid \
-  --record-musicxml demos/reel_seed1.musicxml
+  --record-wav demos/tune_seed1.wav --record-midi demos/tune_seed1.mid \
+  --record-musicxml demos/tune_seed1.musicxml
 
 cargo run -p harmonium-cli --release -- --export --bars 64 \
-  --style valse_quebecoise --seed 1 --feet off
+  --style valse_quebecoise --seed 1 --percussion off
 ```
 
 - `--bars N` borne la durée en mesures ; `--duration N` la borne en secondes.
-- `--seed`, `--feet 0|1|2|off`, `--swing`, `--tours` et `--intensity` règlent le rendu.
+- `--seed`, `--percussion 0|1|2|off`, `--swing`, `--tours` et `--intensity` règlent le rendu.
 - `--automation <fichier.toml>` applique les courbes par mesure.
 - `--record-truth <fichier.json>` écrit un objet `{sample_rate, rendered_frames,
   bar_start_frames, measures, reports}` : `measures` porte les snapshots complets

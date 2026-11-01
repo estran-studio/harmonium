@@ -1,12 +1,12 @@
 //! Frontières du profil observées sur le contrat public de snapshots.
 use harmonium_core::{
     StyleProfile,
+    compose::{
+        Arrangement, Cell, CellBank, CellRole, EntryPoint, ImposedRole, Part, PercussionHit,
+        TuneGenerator,
+    },
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    trad::{
-        Cell, CellBank, CellRole, EntryPoint, FootHit, ImposedRole, Part, ReelArrangement,
-        TradGenerator,
-    },
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -16,8 +16,8 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
     p.performance = Default::default();
     p.heterophony = None;
     p.accompaniment.as_mut().unwrap().bass.passing = None;
-    p.accompaniment.as_mut().unwrap().chords.strum = None;
-    p.accompaniment.as_mut().unwrap().chords.strings = 3;
+    p.accompaniment.as_mut().unwrap().chords.spread = None;
+    p.accompaniment.as_mut().unwrap().chords.note_count = 3;
     for part in &mut p.form.parts {
         part.second_ending = None;
     }
@@ -66,7 +66,7 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
         let prototype = a.chords.patterns[0].hits[0].clone();
         a.chords.patterns = [vec![3], vec![3, 9], vec![0, 3, 6, 9]]
             .into_iter()
-            .map(|steps| harmonium_core::trad::accomp_profile::ChordPattern {
+            .map(|steps| harmonium_core::compose::accomp_profile::ChordPattern {
                 hits: steps
                     .into_iter()
                     .map(|step| {
@@ -80,9 +80,14 @@ fn variable_profile() -> Result<StyleProfile, Box<dyn std::error::Error>> {
         a.strong_steps = vec![0, 6];
     }
     for pattern in &mut p.percussion.patterns {
-        pattern.hits = vec![FootHit::heel(0), FootHit::toe(3), FootHit::heel(6), FootHit::toe(9)];
+        pattern.hits = vec![
+            PercussionHit::low(0),
+            PercussionHit::high(3),
+            PercussionHit::low(6),
+            PercussionHit::high(9),
+        ];
     }
-    p.arrangement = ReelArrangement::from_start(1, Part(p.form.sequence[0]));
+    p.arrangement = Arrangement::from_start(1, Part(p.form.sequence[0]));
     p.validate()?;
     Ok(p)
 }
@@ -100,7 +105,7 @@ fn variable_grid_units_parts_sequence_copies_and_harmony_render()
 -> Result<(), Box<dyn std::error::Error>> {
     let profile = variable_profile()?;
     let tuning = harmonium_core::TuningParams { profile, ..Default::default() };
-    let mut generator = TradGenerator::new(MusicalParams::default(), tuning);
+    let mut generator = TuneGenerator::new(MusicalParams::default(), tuning);
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let snapshots: Vec<_> = (1..=14)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -181,13 +186,13 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
     params.enable_harmony = true;
     params.enable_rhythm = true;
 
-    let mut gen1 = TradGenerator::new(params.clone(), tuning.clone());
+    let mut gen1 = TuneGenerator::new(params.clone(), tuning.clone());
     let mut rng1 = ChaCha8Rng::seed_from_u64(42);
     let snapshots1: Vec<_> = (1..=64)
         .map(|bar| MeasureSnapshot::from_measure(&gen1.generate_measure(bar, &mut rng1)))
         .collect();
 
-    let mut gen2 = TradGenerator::new(params, tuning);
+    let mut gen2 = TuneGenerator::new(params, tuning);
     let mut rng2 = ChaCha8Rng::seed_from_u64(42);
     let snapshots2: Vec<_> = (1..=64)
         .map(|bar| MeasureSnapshot::from_measure(&gen2.generate_measure(bar, &mut rng2)))
@@ -231,7 +236,7 @@ fn compound_meter_distributed_profile_contract() -> Result<(), Box<dyn std::erro
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -268,13 +273,13 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     params.enable_harmony = true;
     params.enable_rhythm = true;
 
-    let mut gen1 = TradGenerator::new(params.clone(), tuning.clone());
+    let mut gen1 = TuneGenerator::new(params.clone(), tuning.clone());
     let mut rng1 = ChaCha8Rng::seed_from_u64(42);
     let snapshots1: Vec<_> = (1..=64)
         .map(|bar| MeasureSnapshot::from_measure(&gen1.generate_measure(bar, &mut rng1)))
         .collect();
 
-    let mut gen2 = TradGenerator::new(params, tuning);
+    let mut gen2 = TuneGenerator::new(params, tuning);
     let mut rng2 = ChaCha8Rng::seed_from_u64(42);
     let snapshots2: Vec<_> = (1..=64)
         .map(|bar| MeasureSnapshot::from_measure(&gen2.generate_measure(bar, &mut rng2)))
@@ -318,7 +323,7 @@ fn triple_meter_distributed_profile_contract() -> Result<(), Box<dyn std::error:
     assert!(!tour_bars.is_empty());
     assert_eq!(tour_bars[0].part, Part(0));
     assert_eq!(tour_bars[0].pass, 1);
-    assert_eq!(tour_bars[7].bar_in_strain, 8);
+    assert_eq!(tour_bars[7].bar_in_part, 8);
     assert_eq!(tour_bars[8].part, Part(0));
     assert_eq!(tour_bars[8].pass, 2);
     assert_eq!(tour_bars[16].part, Part(1));
@@ -336,8 +341,8 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         profile.heterophony = None;
         profile.ornaments = Default::default();
         profile.accompaniment.as_mut().unwrap().bass.passing = None;
-        profile.accompaniment.as_mut().unwrap().chords.strum = None;
-        profile.accompaniment.as_mut().unwrap().chords.strings = 3;
+        profile.accompaniment.as_mut().unwrap().chords.spread = None;
+        profile.accompaniment.as_mut().unwrap().chords.note_count = 3;
         for part in &mut profile.form.parts {
             part.second_ending = None;
             part.rhythm.clear();
@@ -360,10 +365,10 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         params.bpm = profile.meter.default_bpm;
         params.enable_melody = true;
         params.enable_harmony = true;
-        params.enable_rhythm = false; // --feet off
+        params.enable_rhythm = false; // --percussion off
         let mut all_runs = serde_json::Map::new();
         for seed in 1..=3 {
-            let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+            let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
             let mut rng = ChaCha8Rng::seed_from_u64(seed);
             let bars: Vec<_> = (1..=64)
                 .map(|bar| {
@@ -401,7 +406,7 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
         assert_eq!(
             canonical(actual)?,
             canonical(golden)?,
-            "notes de {style_id} différentes de la référence (graines 1..3, 64 mesures, feet off)"
+            "notes de {style_id} différentes de la référence (graines 1..3, 64 mesures, percussion off)"
         );
     }
     Ok(())

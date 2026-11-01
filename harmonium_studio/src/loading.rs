@@ -183,7 +183,7 @@ impl ResourceLine {
 fn label(resource: &Resource) -> String {
     match resource.role() {
         Some(Role::MainBank) => "Instrument bank".to_owned(),
-        Some(Role::FeetBank) => "Feet bank".to_owned(),
+        Some(Role::PercussionBank) => "Percussion bank".to_owned(),
         Some(Role::OdinPreset(name)) => format!("Synth preset {name}"),
         None => resource.id.clone(),
     }

@@ -1,9 +1,9 @@
 //! Les recettes publiées sont chargées sans noms de recettes dans le moteur.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, IntroConfig, Part, TuneGenerator, accomp_profile::BassDoubling},
     params::MusicalParams,
     timeline::{Measure, TrackId},
-    trad::{IntroConfig, Part, ReelArrangement, TradGenerator, accomp_profile::BassDoubling},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -22,7 +22,7 @@ fn recipe(name: &str) -> StyleProfile {
         profile["instruments"][key] = value.clone();
     }
     let mut profile = StyleProfile::from_toml(&toml::to_string(&profile).unwrap()).unwrap();
-    profile.arrangement = ReelArrangement::from_start(2, Part(0));
+    profile.arrangement = Arrangement::from_start(2, Part(0));
     profile.arrangement.intro = IntroConfig::none();
     profile.set = Default::default();
     profile
@@ -30,7 +30,7 @@ fn recipe(name: &str) -> StyleProfile {
 
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<Measure> {
     p.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: p.meter.default_bpm, ..Default::default() },
         TuningParams { profile: p.clone() },
     );
@@ -109,7 +109,7 @@ fn piano_recipe_octaves_tenths_and_runs_follow_the_low_bass_targets() {
 }
 
 #[test]
-fn accordion_recipe_has_fixed_buttons_and_no_walking_or_strum() {
+fn accordion_recipe_has_fixed_buttons_and_no_walking_or_spread() {
     let mut p = recipe("accordeon_basse_accord");
     p.harmony.steps_per_chord = p.meter.steps_per_bar;
     let mut buttons = std::collections::BTreeMap::new();
@@ -153,7 +153,7 @@ fn recipe_registers_and_doublings_are_checked_before_publication() {
         }),
         ("chords.high", |p| {
             let c = &mut p.accompaniment.as_mut().unwrap().chords;
-            c.voicing = harmonium_core::trad::accomp_profile::ChordVoicing::FixedTriad;
+            c.voicing = harmonium_core::compose::accomp_profile::ChordVoicing::FixedTriad;
             c.high = c.low + 5;
         }),
     ] {

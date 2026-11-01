@@ -1,14 +1,14 @@
 //! Retour du matériel écrit, fenêtre inter-sets et veto de la couleur du jeu.
 use harmonium_core::{
     StyleProfile, TuningParams,
-    params::MusicalParams,
-    report::MeasureSnapshot,
-    trad::{
-        Mode, TradGenerator,
+    compose::{
+        Mode, TuneGenerator,
         arrangement::IntroConfig,
         dynamics::{ColorChoice, Curve},
         set::{SetLength, SetSignature},
     },
+    params::MusicalParams,
+    report::MeasureSnapshot,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -32,7 +32,7 @@ fn run(
     seed: u64,
     changed: Option<(usize, f32, f32)>,
 ) -> Vec<MeasureSnapshot> {
-    let mut g = TradGenerator::new(MusicalParams::default(), config.clone());
+    let mut g = TuneGenerator::new(MusicalParams::default(), config.clone());
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=288)
         .map(|bar| {
@@ -133,7 +133,7 @@ fn seek_rebuilds_signature_memory_and_the_same_snapshots() {
     let config = tuning(1.0);
     let continuous = run(&config, 3, None);
     let mut rng = ChaCha8Rng::seed_from_u64(3);
-    let mut g = TradGenerator::new(MusicalParams::default(), config);
+    let mut g = TuneGenerator::new(MusicalParams::default(), config);
     g.silent_advance(150, &mut rng);
     let replay: Vec<_> = (150..=288)
         .map(|b| MeasureSnapshot::from_measure(&g.generate_measure(b, &mut rng)))

@@ -17,7 +17,7 @@ impl EmotionMapper {
     pub fn apply_dynamics(
         &self,
         emotions: &EngineParams,
-        dynamics: &crate::trad::dynamics::StyleDynamics,
+        dynamics: &crate::compose::dynamics::StyleDynamics,
         nominal_bpm: f32,
         params: &mut MusicalParams,
     ) {

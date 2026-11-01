@@ -2,9 +2,9 @@
 //! cargo run --release -p harmonium_core --example set_metrics -- sortie.json [graines] [airs]
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{ActiveTune, TuneGenerator},
     params::MusicalParams,
     timeline::TrackId,
-    trad::{ActiveTune, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -20,7 +20,7 @@ struct TuneMetrics {
     intro_tracks: Vec<u8>,
     tempo_min: f32,
     tempo_max: f32,
-    last_mode: harmonium_core::trad::Mode,
+    last_mode: harmonium_core::compose::Mode,
     tail_is_outro: bool,
     /// Par piste : nombre de notes et somme des vélocités, corps seulement.
     energy: [[u64; 2]; TrackId::ALL.len()],
@@ -31,7 +31,7 @@ fn material_hash(tune: &ActiveTune) -> String {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     for bar in 0..tune.plan.total_bars() {
         hash = (hash ^ bar as u64).wrapping_mul(0x0000_0100_0000_01b3);
-        for note in tune.fiddle.notes_for_bar(bar) {
+        for note in tune.melody.notes_for_bar(bar) {
             for value in [u64::from(note.pitch), note.start_step as u64, note.duration_steps as u64]
             {
                 hash = (hash ^ value).wrapping_mul(0x0000_0100_0000_01b3);
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     intensity: 0.5,
                     ..Default::default()
                 };
-                let mut generator = TradGenerator::new(params, tuning);
+                let mut generator = TuneGenerator::new(params, tuning);
                 let mut rng = ChaCha8Rng::seed_from_u64(seed);
                 let mut tunes: Vec<serde_json::Value> = Vec::new();
                 let mut materials = Vec::new();

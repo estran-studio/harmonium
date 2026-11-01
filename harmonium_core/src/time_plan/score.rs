@@ -14,7 +14,7 @@ use rand_chacha::ChaCha8Rng;
 
 use super::{BarTiming, Flicks, Tempo, TimePlan};
 use crate::{
-    mapper::GameControls, params::MusicalParams, trad::TradGenerator, tuning::TuningParams,
+    compose::TuneGenerator, mapper::GameControls, params::MusicalParams, tuning::TuningParams,
 };
 
 /// Écart entre deux points de reprise du générateur, en mesures.
@@ -128,7 +128,7 @@ impl DatedCommand {
 /// État de génération avant une mesure : tout ce qui détermine la suite.
 #[derive(Clone, Debug)]
 struct Cursor {
-    generator: TradGenerator,
+    generator: TuneGenerator,
     rng: ChaCha8Rng,
     params: MusicalParams,
     controls: GameControls,
@@ -153,7 +153,7 @@ impl SharedTimePlan {
         let mut params = MusicalParams::default();
         params.apply_profile_meter(&tuning.profile);
         let controls = GameControls::new(tuning.profile.meter.default_bpm);
-        let generator = TradGenerator::new(params.clone(), tuning.clone());
+        let generator = TuneGenerator::new(params.clone(), tuning.clone());
         Self {
             tuning: Arc::new(tuning),
             commands: BTreeSet::new(),

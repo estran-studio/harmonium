@@ -4,12 +4,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     events::AudioEvent,
     mapper::GameControls,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{Measure, Playhead},
-    trad::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -37,7 +37,7 @@ fn stream_with_params(
     bars: usize,
 ) -> TestResult<Vec<MeasureSnapshot>> {
     p.validate()?;
-    let mut g = TradGenerator::new(par, TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(par, TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
@@ -99,7 +99,7 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
                 );
             }
         }
-        // Le premier A1 ouvre sans pieds ni lead ; la voix entre en A2 et
+        // Le premier A1 ouvre sans percussion ni lead ; la voix entre en A2 et
         // revient après le pont, notamment sur la reprise A1'.
         for s in &snapshots[..8] {
             for track in [0, 3, 4, 5] {
@@ -206,7 +206,7 @@ fn motifs_reconnaissables_et_second_tour_varie_sans_changer_accompagnement() -> 
 fn liaisons_sans_reattaque_ni_note_orpheline() -> TestResult {
     let p = load()?;
     let signature = p.meter.time_signature;
-    let mut g = TradGenerator::new(params(&p), TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let mut measures: Vec<_> = (1..=96).map(|b| g.generate_measure(b, &mut rng)).collect();
     measures.push(Measure::new(97, signature, 210.0, 24));
@@ -312,7 +312,7 @@ fn quatre_emotions_observees_dans_les_snapshots() -> TestResult {
     };
     assert!(
         average_velocity(&intense) > average_velocity(&calm),
-        "arousal sans effet sur la dynamique des pieds"
+        "arousal sans effet sur la dynamique de la percussion"
     );
 
     // La densité enlève les couches, pas la nappe ; les deux voix arrivent

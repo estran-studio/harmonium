@@ -1,9 +1,9 @@
 //! Tonalité imposée par le profil : contrat lu exclusivement dans les snapshots.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Mode, TuneGenerator},
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -36,7 +36,7 @@ fn snapshots(p: &StyleProfile, seed: u64, valence: impl Fn(usize) -> f32) -> Vec
         harmony_valence: valence(1),
         ..Default::default()
     };
-    let mut generator = TradGenerator::new(params.clone(), TuningParams { profile: p.clone() });
+    let mut generator = TuneGenerator::new(params.clone(), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=72)
         .map(|bar| {

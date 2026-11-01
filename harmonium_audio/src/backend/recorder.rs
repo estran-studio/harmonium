@@ -72,7 +72,7 @@ pub enum OverflowPolicy {
     Block,
 }
 
-/// Map a logical channel to its MIDI channel: Heel (3) and Toe (4) share
+/// Map a logical channel to its MIDI channel: PercussionLow (3) and PercussionHigh (4) share
 /// the GM percussion channel 9.
 fn map_midi_channel(channel: u8) -> u8 {
     if channel == 3 || channel == 4 { crate::voice_manager::GM_DRUM_CHANNEL } else { channel }
@@ -375,7 +375,7 @@ impl RecorderBackend {
     }
 
     fn record_mix(&mut self) {
-        // Canonical logical order, like SynthBackend : Toe wins on shared GM ch9.
+        // Canonical logical order, like SynthBackend : PercussionHigh wins on shared GM ch9.
         for (channel, track) in self.mix.tracks.into_iter().enumerate() {
             for (controller, value) in track.controllers() {
                 self.midi(MidiEvent::Controller {
@@ -624,7 +624,7 @@ mod tests {
         }
         ons.sort_unstable();
         offs.sort_unstable();
-        // Ch 3 (heel) is mapped to GM drums (9); the truncated 40 still closes.
+        // Ch 3 (percussion_low) is mapped to GM drums (9); the truncated 40 still closes.
         assert_eq!(ons, vec![(0, 60), (0, 62), (9, 40)], "ons: {ons:?}");
         assert_eq!(offs, vec![(0, 60), (0, 62), (9, 40)], "offs: {offs:?}");
         Ok(())

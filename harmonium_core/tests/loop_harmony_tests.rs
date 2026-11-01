@@ -4,11 +4,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Mode, TuneGenerator},
     events::AudioEvent,
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
     timeline::{Articulation, Measure, Playhead},
-    trad::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -34,7 +34,7 @@ fn params(p: &StyleProfile) -> MusicalParams {
 
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<MeasureSnapshot>> {
     p.validate()?;
-    let mut g = TradGenerator::new(params(p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
@@ -105,7 +105,7 @@ fn nt_pedale_et_boucles_exactes_repetables() -> TestResult {
 fn pedale_une_attaque_puis_fin_equilibree() -> TestResult {
     let p = load("nt_pedale_boucle")?;
     let signature = p.meter.time_signature;
-    let mut g = TradGenerator::new(params(&p), TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let mut measures: Vec<_> = (1..=4).map(|b| g.generate_measure(b, &mut rng)).collect();
     measures.push(Measure::new(5, signature, 120.0, 16));
@@ -200,7 +200,7 @@ fn transposition_publique_et_voisin_chromatique_optionnel() -> TestResult {
 fn valence_attend_frontiere_et_recalcule_les_degres_modaux() -> TestResult {
     let p = load("nt_pedale_boucle")?;
     let mut par = params(&p);
-    let mut g = TradGenerator::new(par.clone(), TuningParams { profile: p });
+    let mut g = TuneGenerator::new(par.clone(), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let mut seconds = BTreeSet::new();
     for bar in 1..=48 {
@@ -349,7 +349,7 @@ fn alternatives_conservent_le_choix_lors_des_changements_de_mode() -> TestResult
     })?;
     for seed in [1, 2, 17] {
         let mut par = params(&p);
-        let mut g = TradGenerator::new(par.clone(), TuningParams { profile: p.clone() });
+        let mut g = TuneGenerator::new(par.clone(), TuningParams { profile: p.clone() });
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
         let mut selected_dark_root = None;
         for bar in 1..=48 {

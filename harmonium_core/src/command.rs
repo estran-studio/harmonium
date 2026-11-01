@@ -106,8 +106,8 @@ pub enum EngineCommand {
     /// Installe un profil validé et sélectionne le générateur de profils.
     SetStyleProfile(Box<crate::style_profile::StyleProfile>),
 
-    /// Densité de podorythmie (`0..=2`), audible à la mesure suivante.
-    SetFeetDensity(u8),
+    /// Densité de percussion (`0..=2`), audible à la mesure suivante.
+    SetPercussionDensity(u8),
 
     /// Énergie du style (`0..=1`), audible à la mesure suivante.
     SetIntensity(f32),

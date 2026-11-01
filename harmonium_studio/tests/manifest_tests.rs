@@ -7,7 +7,7 @@ use std::{collections::BTreeMap, fs};
 
 use harmonium_studio::{
     manifest::{
-        FEET_BANK_ID, HASH_IN_NAME, LoadedResources, MAIN_BANK_ID, MANIFEST_FILE, Manifest,
+        HASH_IN_NAME, LoadedResources, MAIN_BANK_ID, MANIFEST_FILE, Manifest, PERCUSSION_BANK_ID,
         Resource, Role, hashed_file_name, sha256_hex,
     },
     packager::{PackSpec, pack},
@@ -65,24 +65,24 @@ fn a_manifest_with_no_odin_preset_is_normal() {
     contents.insert(MAIN_BANK_ID.to_owned(), b"bank".to_vec());
     let loaded = LoadedResources::assemble(&manifest, contents).unwrap();
     assert_eq!(loaded.main_bank, b"bank");
-    assert_eq!(loaded.feet_bank, None);
+    assert_eq!(loaded.percussion_bank, None);
     assert!(loaded.odin_presets.is_empty());
 }
 
 #[test]
 fn resources_are_sorted_into_their_roles() {
-    let feet = resource(FEET_BANK_ID, &hashed("feet.sf2", b"f"), 1, b"f");
+    let percussion = resource(PERCUSSION_BANK_ID, &hashed("percussion.sf2", b"f"), 1, b"f");
     let b = resource("odin:b", &hashed("b.odin", b"b"), 1, b"b");
     let a = resource("odin:a", &hashed("a.odin", b"a"), 1, b"a");
-    let manifest = Manifest { resources: vec![b, main_bank(b"bank"), feet, a] };
+    let manifest = Manifest { resources: vec![b, main_bank(b"bank"), percussion, a] };
     let contents = BTreeMap::from([
         ("odin:a".to_owned(), b"a".to_vec()),
         ("odin:b".to_owned(), b"b".to_vec()),
         (MAIN_BANK_ID.to_owned(), b"bank".to_vec()),
-        (FEET_BANK_ID.to_owned(), b"f".to_vec()),
+        (PERCUSSION_BANK_ID.to_owned(), b"f".to_vec()),
     ]);
     let loaded = LoadedResources::assemble(&manifest, contents).unwrap();
-    assert_eq!(loaded.feet_bank.as_deref(), Some(&b"f"[..]));
+    assert_eq!(loaded.percussion_bank.as_deref(), Some(&b"f"[..]));
     let names: Vec<&str> = loaded.odin_presets.iter().map(|(name, _)| name.as_str()).collect();
     assert_eq!(names, ["a", "b"]);
 }
@@ -101,7 +101,10 @@ fn the_manifest_refuses_what_the_loader_could_not_trust() {
         assert!(result.is_err(), "{why}: accepted");
     };
     refused(&[], "no main bank");
-    refused(&[resource("feet-bank", &hashed("f.sf2", b"f"), 1, b"f")], "feet bank alone");
+    refused(
+        &[resource("percussion-bank", &hashed("f.sf2", b"f"), 1, b"f")],
+        "percussion bank alone",
+    );
     refused(&[good.clone(), good.clone()], "duplicate id");
     refused(&[good.clone(), resource("mystery", &hashed("m.bin", b"m"), 1, b"m")], "unknown id");
     refused(
@@ -116,14 +119,14 @@ fn the_manifest_refuses_what_the_loader_could_not_trust() {
     assert!(Manifest::parse("not json").is_err());
 }
 
-fn spec(dir: &std::path::Path, main: &[u8], feet: Option<&[u8]>) -> PackSpec {
+fn spec(dir: &std::path::Path, main: &[u8], percussion: Option<&[u8]>) -> PackSpec {
     fs::write(dir.join("main.sf2"), main).unwrap();
-    if let Some(feet) = feet {
-        fs::write(dir.join("feet.sf2"), feet).unwrap();
+    if let Some(percussion) = percussion {
+        fs::write(dir.join("percussion.sf2"), percussion).unwrap();
     }
     PackSpec {
         main_bank: dir.join("main.sf2"),
-        feet_bank: feet.map(|_| dir.join("feet.sf2")),
+        percussion_bank: percussion.map(|_| dir.join("percussion.sf2")),
         odin_dir: None,
     }
 }
@@ -132,7 +135,7 @@ fn spec(dir: &std::path::Path, main: &[u8], feet: Option<&[u8]>) -> PackSpec {
 fn pack_writes_hashed_copies_and_a_manifest_the_loader_accepts() {
     let src = tempdir().unwrap();
     let out = tempdir().unwrap();
-    let manifest = pack(&spec(src.path(), b"main bank", Some(b"feet")), out.path()).unwrap();
+    let manifest = pack(&spec(src.path(), b"main bank", Some(b"percussion")), out.path()).unwrap();
 
     let json = fs::read_to_string(out.path().join(MANIFEST_FILE)).unwrap();
     assert_eq!(Manifest::parse(&json).unwrap(), manifest);
@@ -150,15 +153,15 @@ fn pack_writes_hashed_copies_and_a_manifest_the_loader_accepts() {
 fn a_changed_bank_changes_its_file_name_and_the_old_copy_goes_away() {
     let src = tempdir().unwrap();
     let out = tempdir().unwrap();
-    let first = pack(&spec(src.path(), b"version one", Some(b"feet")), out.path()).unwrap();
-    let second = pack(&spec(src.path(), b"version two!", Some(b"feet")), out.path()).unwrap();
+    let first = pack(&spec(src.path(), b"version one", Some(b"percussion")), out.path()).unwrap();
+    let second = pack(&spec(src.path(), b"version two!", Some(b"percussion")), out.path()).unwrap();
 
     let (old, new) = (&first.resources[0], &second.resources[0]);
     assert_eq!(old.id, new.id);
     assert_ne!(old.file, new.file);
     assert!(!out.path().join(&old.file).exists(), "stale copy kept");
     assert!(out.path().join(&new.file).exists());
-    // La banque de pieds, inchangée, garde son nom et son fichier.
+    // La banque de percussion, inchangée, garde son nom et son fichier.
     assert_eq!(first.resources[1], second.resources[1]);
     assert!(out.path().join(&second.resources[1].file).exists());
 }
@@ -170,7 +173,7 @@ fn another_bank_format_is_only_another_source_file() {
     let sf2 = pack(&spec(src.path(), b"sf2 content", None), out.path()).unwrap();
     fs::write(src.path().join("main.sf3"), b"sf3 content, smaller").unwrap();
     let sf3 = pack(
-        &PackSpec { main_bank: src.path().join("main.sf3"), feet_bank: None, odin_dir: None },
+        &PackSpec { main_bank: src.path().join("main.sf3"), percussion_bank: None, odin_dir: None },
         out.path(),
     )
     .unwrap();
@@ -206,6 +209,6 @@ fn a_missing_source_is_an_error_not_an_empty_manifest() {
     let src = tempdir().unwrap();
     let out = tempdir().unwrap();
     let missing =
-        PackSpec { main_bank: src.path().join("nope.sf2"), feet_bank: None, odin_dir: None };
+        PackSpec { main_bank: src.path().join("nope.sf2"), percussion_bank: None, odin_dir: None };
     assert!(pack(&missing, out.path()).is_err());
 }

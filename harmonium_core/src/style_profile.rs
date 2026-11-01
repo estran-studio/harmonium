@@ -9,14 +9,14 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    compose::{
+        DegreeChord, Mode, arrangement::Arrangement, cells::CellBank, dynamics::StyleDynamics,
+        percussion::PercussionTable, plan::ImposedRole,
+    },
     params::{PulseSpec, TimeSignature},
     profile_source::{Mount, locate, one_line, parse},
     timeline::TrackId,
-    trad::{
-        Mode, TradChord, arrangement::ReelArrangement, cells::CellBank, dynamics::StyleDynamics,
-        feet::FeetTable, plan::ImposedRole,
-    },
-    tuning::{ReelFiddleParams, TradHarmonyParams},
+    tuning::{AccompanimentParams, MelodyParams},
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -107,11 +107,11 @@ impl ProfileRole {
         }
     }
     /// Vrai si le rôle peut tirer une cellule de `role` : rôle imposé, ou rôle libre de
-    /// poids positif (`free` : [`crate::ReelFiddleParams::free_role_weights`]).
+    /// poids positif (`free` : [`crate::MelodyParams::free_role_weights`]).
     fn needs_cell_role(
         &self,
-        role: crate::trad::CellRole,
-        free: &[(crate::trad::CellRole, u32)],
+        role: crate::compose::CellRole,
+        free: &[(crate::compose::CellRole, u32)],
     ) -> bool {
         match self {
             Self::Fixed(fixed) => {
@@ -411,7 +411,7 @@ pub struct KeyModeWeight {
 pub struct ProfileMelody {
     pub cell_units: usize,
     pub cells: CellBank,
-    pub params: ReelFiddleParams,
+    pub params: MelodyParams,
     pub key_modes: Vec<KeyModeWeight>,
     pub strong_units: Vec<usize>,
     pub weak_units: Vec<usize>,
@@ -420,7 +420,7 @@ pub struct ProfileMelody {
 #[serde(deny_unknown_fields)]
 pub struct ModeChords {
     pub mode: Mode,
-    pub chords: Vec<TradChord>,
+    pub chords: Vec<DegreeChord>,
 }
 /// Harmonie d'une partie ; les racines numériques suivent le mode actif.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -456,7 +456,7 @@ pub struct LoopChord {
     pub degree: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub semitones: Option<u8>,
-    pub quality: crate::trad::ChordQuality,
+    pub quality: crate::compose::ChordQuality,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bars: Option<usize>,
 }
@@ -473,9 +473,9 @@ pub struct ProfileHarmony {
     pub steps_per_chord: usize,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<ModeChords>,
-    /// Règles et poids du modèle jazz ; les profils trad ne les consultent pas.
+    /// Règles et poids du modèle de réécriture ; les autres modèles ne les consultent pas.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub rules: Vec<crate::models::jazz::RewriteRule>,
+    pub rules: Vec<crate::models::rewrite::RewriteRule>,
     #[serde(default)]
     pub max_recursion: u8,
     #[serde(default)]
@@ -514,7 +514,7 @@ impl ProfileInstruments {
             TrackId::Countermelody => self.countermelody_program,
             TrackId::Chords => self.chords_program,
             TrackId::Bass => self.bass_program,
-            TrackId::Heel | TrackId::Toe => Some(self.percussion_program),
+            TrackId::PercussionLow | TrackId::PercussionHigh => Some(self.percussion_program),
         }
     }
 }
@@ -540,15 +540,15 @@ pub struct StyleProfile {
     pub melody: ProfileMelody,
     pub harmony: ProfileHarmony,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub accompaniment: Option<TradHarmonyParams>,
-    pub percussion: FeetTable,
+    pub accompaniment: Option<AccompanimentParams>,
+    pub percussion: PercussionTable,
     pub instruments: ProfileInstruments,
     /// Zones Odin par piste (`[[odin.<Piste>.zones]]`) : presets fournis par
     /// l'hôte, niveaux et morphing par les 4 émotions. Vide par défaut : tout
     /// joue SoundFont. Le programme SoundFont reste toujours requis (repli).
     #[serde(default)]
     pub odin: std::collections::BTreeMap<TrackId, crate::odin::OdinTrackSpec>,
-    pub arrangement: ReelArrangement,
+    pub arrangement: Arrangement,
     pub dynamics: StyleDynamics,
     #[serde(default)]
     pub mix: crate::mix::ProfileMix,
@@ -560,7 +560,7 @@ pub struct StyleProfile {
     pub heterophony: Option<crate::heterophony::Heterophony>,
     /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
-    pub set: crate::trad::set::ProfileSet,
+    pub set: crate::compose::set::ProfileSet,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -582,8 +582,8 @@ impl StyleProfile {
                     && self.instruments.bass_program.is_some()
                     && self.arrangement.has_track(TrackId::Bass)
             }
-            TrackId::Heel => self.arrangement.has_track(TrackId::Heel),
-            TrackId::Toe => self.arrangement.has_track(TrackId::Toe),
+            TrackId::PercussionLow => self.arrangement.has_track(TrackId::PercussionLow),
+            TrackId::PercussionHigh => self.arrangement.has_track(TrackId::PercussionHigh),
         }
     }
 }
@@ -758,7 +758,7 @@ impl StyleProfile {
             for (key, filename) in files {
                 let target = match key.as_str() {
                     "cells" => "melody.cells",
-                    "feet" => "percussion",
+                    "percussion" => "percussion",
                     "arrangement" => "arrangement",
                     "dynamics" => "dynamics",
                     "set" => "set",
@@ -1079,17 +1079,15 @@ impl StyleProfile {
                 "VariedEndOf exige au moins deux unités",
             )?;
             let split = self.form.varied_end_split(self.melody.cell_units);
-            let endings = self
-                .melody
-                .cells
-                .cells
-                .iter()
-                .filter(|cell| matches!(cell.notes[split], crate::trad::CellNote::Degree(_)));
+            let endings =
+                self.melody.cells.cells.iter().filter(|cell| {
+                    matches!(cell.notes[split], crate::compose::CellNote::Degree(_))
+                });
             check(
                 split > 0
                     && endings.clone().any(|a| {
                         endings.clone().any(|b| {
-                            !crate::trad::fiddle::same_degree_classes(
+                            !crate::compose::melody::same_degree_classes(
                                 &a.notes[split..],
                                 &b.notes[split..],
                             )
@@ -1102,7 +1100,7 @@ impl StyleProfile {
         // Banques exigées par les seuls rôles employés ; un rôle libre ne compte que
         // pour un poids positif.
         let free = self.melody.params.free_role_weights();
-        for role in crate::trad::CellRole::ALL {
+        for role in crate::compose::CellRole::ALL {
             check(
                 !roles().any(|r| r.needs_cell_role(role, &free))
                     || self
@@ -1181,10 +1179,10 @@ impl StyleProfile {
         check(
             matches!(
                 self.harmony.model.as_str(),
-                "trad_functional" | "jazz_functional" | "loop" | "none"
+                "melody_functional" | "rewrite_functional" | "loop" | "none"
             ),
             "harmony.model",
-            "modèles disponibles : trad_functional, jazz_functional, loop, none",
+            "modèles disponibles : melody_functional, rewrite_functional, loop, none",
         )?;
         check(
             self.harmony.steps_per_chord > 0
@@ -1193,12 +1191,12 @@ impl StyleProfile {
             "doit diviser steps_per_bar",
         )?;
         crate::models::chord_loop::validate(self)?;
-        if self.harmony.model == "jazz_functional" {
+        if self.harmony.model == "rewrite_functional" {
             check(self.harmony.max_recursion <= 16, "harmony.max_recursion", "attendu 0..16")?;
             check(
                 !self.harmony.rules.is_empty() && self.harmony.rules.len() <= 256,
                 "harmony.rules",
-                "1..256 règles requises pour jazz_functional",
+                "1..256 règles requises pour rewrite_functional",
             )?;
             let mut total = 0.0f32;
             for (i, rule) in self.harmony.rules.iter().enumerate() {
@@ -1215,7 +1213,7 @@ impl StyleProfile {
                     "poids fini positif ou nul, 1..64 symboles, valences ordonnées dans -1..1",
                 )?;
                 total += rule.weight
-                    * crate::models::jazz::GrammarStyle::Jazz.category_weight(rule.category);
+                    * crate::models::rewrite::GrammarStyle::Extended.category_weight(rule.category);
             }
             check(
                 total.is_finite() && total > 0.0,
@@ -1231,8 +1229,8 @@ impl StyleProfile {
                 "mode unique et accords non vides requis",
             )?;
             check(
-                entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::I)
-                    && entry.chords.iter().any(|c| c.degree == crate::trad::ChordDegree::V),
+                entry.chords.iter().any(|c| c.degree == crate::compose::ChordDegree::I)
+                    && entry.chords.iter().any(|c| c.degree == crate::compose::ChordDegree::V),
                 &format!("harmony.candidates[{i}].chords"),
                 "tonique I et dominante V requises",
             )?;
@@ -1262,7 +1260,7 @@ impl StyleProfile {
             }
         }
         check(
-            self.harmony.model != "trad_functional"
+            self.harmony.model != "melody_functional"
                 || reachable.iter().all(|mode| modes.contains(mode)),
             "harmony.candidates",
             "accords requis pour chaque mode atteignable (fixed_tonality ou key_modes, color, parallel_modes)",
@@ -1285,13 +1283,13 @@ impl StyleProfile {
         if let Some(a) = &self.accompaniment {
             check(
                 a.bass.motifs.is_empty()
-                    || matches!(self.harmony.model.as_str(), "trad_functional" | "loop"),
+                    || matches!(self.harmony.model.as_str(), "melody_functional" | "loop"),
                 "accompaniment.bass.motifs",
-                "les motifs de basse demandent une harmonie trad_functional ou loop",
+                "les motifs de basse demandent une harmonie melody_functional ou loop",
             )?;
             a.validate_accompaniment(
                 m.steps_per_bar,
-                self.harmony.model == "jazz_functional",
+                self.harmony.model == "rewrite_functional",
                 &self.form.parts,
             )?;
         } else {
@@ -1321,8 +1319,8 @@ impl StyleProfile {
             )?;
         }
         check(
-            self.percussion.heel_note <= 127 && self.percussion.toe_note <= 127,
-            "percussion.heel_note",
+            self.percussion.low_note <= 127 && self.percussion.high_note <= 127,
+            "percussion.low_note",
             "notes MIDI dans 0..127",
         )?;
         let i = &self.instruments;
@@ -1439,7 +1437,7 @@ impl StyleProfile {
             }
         }
         self.arrangement.validate().map_err(|error| {
-            use crate::trad::ArrangementError as E;
+            use crate::compose::ArrangementError as E;
             let field = match &error {
                 E::ToursPerTuneOutOfRange(_) => "arrangement.tours_per_tune".into(),
                 E::TourOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.tour"),

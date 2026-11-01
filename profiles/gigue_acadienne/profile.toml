@@ -1,6 +1,6 @@
 [files]
 cells = "cells.toml"
-feet = "feet.toml"
+percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
@@ -144,7 +144,7 @@ strong_eighth_velocity_offset = 12
 even_eighth_velocity_offset = -10
 
 [harmony]
-model = "trad_functional"
+model = "melody_functional"
 steps_per_chord = 12
 [[harmony.candidates]]
 mode = "ionian"
@@ -198,11 +198,11 @@ rules = [
 voicing = "close_triad"
 center = 58
 max_drift = 5
-strings = 3
+note_count = 3
 default_pattern = 1
 patterns = [
-  { hits = [{ step = 4, stroke = "block", duration = 2, velocity = 60 }, { step = 10, stroke = "block", duration = 2, velocity = 56 }] },
-  { hits = [{ step = 2, stroke = "block", duration = 2, velocity = 56 }, { step = 4, stroke = "block", duration = 2, velocity = 62 }, { step = 8, stroke = "block", duration = 2, velocity = 56 }, { step = 10, stroke = "block", duration = 2, velocity = 62 }] },
+  { hits = [{ step = 4, direction = "block", duration = 2, velocity = 60 }, { step = 10, direction = "block", duration = 2, velocity = 56 }] },
+  { hits = [{ step = 2, direction = "block", duration = 2, velocity = 56 }, { step = 4, direction = "block", duration = 2, velocity = 62 }, { step = 8, direction = "block", duration = 2, velocity = 56 }, { step = 10, direction = "block", duration = 2, velocity = 62 }] },
 ]
 
 [instruments]
@@ -237,11 +237,11 @@ reverb_send = 0.22
 level_db = -8.0
 pan = 0.0
 reverb_send = 0.08
-[mix.tracks.Heel]
+[mix.tracks.PercussionLow]
 level_db = -6.0
 pan = -0.06
 reverb_send = 0.1
-[mix.tracks.Toe]
+[mix.tracks.PercussionHigh]
 level_db = -6.0
 pan = 0.06
 reverb_send = 0.1

@@ -2,8 +2,8 @@
 use std::{error::Error, io::Write};
 
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, report::MeasureSnapshot, timeline::Measure,
-    trad::TradGenerator,
+    StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams,
+    report::MeasureSnapshot, timeline::Measure,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -14,7 +14,7 @@ fn stream(profile: StyleProfile, seed: u64, arousal: f32) -> Vec<Measure> {
         rhythm_density: arousal,
         ..Default::default()
     };
-    let mut generator = TradGenerator::new(params, TuningParams { profile });
+    let mut generator = TuneGenerator::new(params, TuningParams { profile });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=66).map(|bar| generator.generate_measure(bar, &mut rng)).collect()
 }

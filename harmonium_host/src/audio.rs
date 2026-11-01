@@ -51,7 +51,7 @@ pub struct EngineControls {
 /// the audio thread; offline blocks, so recordings are complete.
 pub(crate) fn build_engine(
     sf2_bytes: Option<&[u8]>,
-    feet_sf2_bytes: Option<&[u8]>,
+    percussion_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     sample_rate: f64,
     overflow: OverflowPolicy,
@@ -76,7 +76,7 @@ pub(crate) fn build_engine(
 
     // Create renderer: every logical channel on SoundFont bank 0
     let default_routing = [0; harmonium_core::timeline::TrackId::ALL.len()];
-    let synth = SynthBackend::new(sample_rate, sf2_bytes, feet_sf2_bytes, &default_routing);
+    let synth = SynthBackend::new(sample_rate, sf2_bytes, percussion_sf2_bytes, &default_routing);
     // Ce que l'hôte a réellement chargé : le compositeur en tire les presets
     // Odin morphés et prévient quand un profil désigne autre chose.
     let odin = harmonium_audio::odin_bank::load_bank(odin_presets);
@@ -174,7 +174,7 @@ fn build_recorder(
 /// the platform default.
 pub fn create_timeline_stream(
     sf2_bytes: Option<&[u8]>,
-    feet_sf2_bytes: Option<&[u8]>,
+    percussion_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     buffer_frames: Option<u32>,
 ) -> Result<(cpal::Stream, EngineControls), String> {
@@ -195,7 +195,7 @@ pub fn create_timeline_stream(
     // Playback engine: moved into the CPAL closure.
     let (controls, mut playback) = build_engine(
         sf2_bytes,
-        feet_sf2_bytes,
+        percussion_sf2_bytes,
         odin_presets,
         sample_rate,
         OverflowPolicy::DropAndCount,
@@ -238,7 +238,7 @@ pub fn create_timeline_stream(
 #[allow(clippy::type_complexity)]
 pub fn create_offline_engine(
     sf2_bytes: Option<&[u8]>,
-    feet_sf2_bytes: Option<&[u8]>,
+    percussion_sf2_bytes: Option<&[u8]>,
     odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
     sample_rate: f64,
 ) -> Result<
@@ -254,8 +254,13 @@ pub fn create_offline_engine(
 > {
     // Offline there is no deadline: block rather than drop, so recordings are
     // complete and published when the stop command returns.
-    let (controls, playback) =
-        build_engine(sf2_bytes, feet_sf2_bytes, odin_presets, sample_rate, OverflowPolicy::Block);
+    let (controls, playback) = build_engine(
+        sf2_bytes,
+        percussion_sf2_bytes,
+        odin_presets,
+        sample_rate,
+        OverflowPolicy::Block,
+    );
     Ok((
         controls.composer,
         playback,

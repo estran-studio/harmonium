@@ -4,14 +4,14 @@ use rand_chacha::ChaCha8Rng;
 
 use crate::{
     algo::RngCore,
+    compose::{ChordDegree, ChordQuality, DegreeChord, Mode, TunePlan},
     style_profile::{HarmonyPart, ProfileError, StyleProfile},
-    trad::{ChordDegree, ChordQuality, Mode, TradChord, TunePlan},
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LoopHarmony {
     plan: TunePlan,
-    chords: Vec<Vec<TradChord>>,
+    chords: Vec<Vec<DegreeChord>>,
 }
 impl LoopHarmony {
     /// Le profil du plan doit avoir été validé avant la construction.
@@ -56,10 +56,13 @@ impl LoopHarmony {
                 let (part, _, offset, _) = plan.position(plan.representative_bar(material));
                 let name = &plan.profile.form.parts[part].name;
                 let chord = match &plan.profile.harmony.parts[name] {
-                    HarmonyPart::Pedal { degree, semitones, neighbor_semitones } => TradChord::new(
-                        root(*degree, *semitones, plan.mode),
-                        neighbor_semitones.map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
-                    ),
+                    HarmonyPart::Pedal { degree, semitones, neighbor_semitones } => {
+                        DegreeChord::new(
+                            root(*degree, *semitones, plan.mode),
+                            neighbor_semitones
+                                .map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
+                        )
+                    }
                     HarmonyPart::ChordLoop { loops } => {
                         let chords = &loops[selected[part]].chords;
                         let default = plan.profile.harmony.default_bars_per_chord;
@@ -76,7 +79,7 @@ impl LoopHarmony {
                                 }
                             })
                             .unwrap_or_else(|| unreachable!("validated nonempty chord loop"));
-                        TradChord::new(
+                        DegreeChord::new(
                             root(chord.degree, chord.semitones, plan.mode),
                             chord.quality,
                         )
@@ -87,7 +90,7 @@ impl LoopHarmony {
             .collect();
         Self { plan, chords }
     }
-    pub fn chords_for_bar(&self, bar: usize) -> &[TradChord] {
+    pub fn chords_for_bar(&self, bar: usize) -> &[DegreeChord] {
         &self.chords[self.plan.material_index(bar)]
     }
 }
@@ -158,7 +161,7 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                 if let Some(neighbor) = neighbor_semitones
                     && let Some(accompaniment) = &profile.accompaniment
                     && accompaniment.chords.voicing
-                        == crate::trad::accomp_profile::ChordVoicing::FixedTriad
+                        == crate::compose::accomp_profile::ChordVoicing::FixedTriad
                     && accompaniment.chords.high.saturating_sub(accompaniment.chords.low)
                         < 11 + neighbor
                 {

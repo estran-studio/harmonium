@@ -343,8 +343,8 @@ impl GlobalMetrics {
 /// Channel assignments in Harmonium (`TrackId::channel`)
 const CHANNEL_LEAD: u8 = harmonium_core::timeline::TrackId::Melody.channel();
 const CHANNEL_BASS: u8 = harmonium_core::timeline::TrackId::Bass.channel();
-const CHANNEL_SNARE: u8 = harmonium_core::timeline::TrackId::Heel.channel();
-const CHANNEL_HAT: u8 = harmonium_core::timeline::TrackId::Toe.channel();
+const CHANNEL_SNARE: u8 = harmonium_core::timeline::TrackId::PercussionLow.channel();
+const CHANNEL_HAT: u8 = harmonium_core::timeline::TrackId::PercussionHigh.channel();
 
 /// Time window (in beats) for grouping simultaneous notes into chords
 const CHORD_GROUPING_WINDOW: f64 = 0.1;
@@ -803,10 +803,10 @@ mod tests {
             (1.0, AudioEvent::NoteOn { note: 69, velocity: 90, channel: 0, legato: false }), // A
             (1.0, AudioEvent::NoteOn { note: 60, velocity: 90, channel: 0, legato: false }), // C
             (1.0, AudioEvent::NoteOn { note: 64, velocity: 90, channel: 0, legato: false }), // E
-            // Snare / Heel (channel 3)
+            // Snare / PercussionLow (channel 3)
             (0.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 3, legato: false }),
             (1.5, AudioEvent::NoteOn { note: 38, velocity: 110, channel: 3, legato: false }),
-            // Hat / Toe (channel 4)
+            // Hat / PercussionHigh (channel 4)
             (0.0, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4, legato: false }),
             (0.25, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4, legato: false }),
             (0.5, AudioEvent::NoteOn { note: 42, velocity: 70, channel: 4, legato: false }),

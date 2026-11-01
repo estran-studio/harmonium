@@ -27,7 +27,7 @@ fn a_fork_keeps_every_file_and_comment_under_a_new_identity() -> Result<(), Stri
         [
             "profile.toml",
             "cells.toml",
-            "feet.toml",
+            "percussion.toml",
             "arrangement.toml",
             "dynamics.toml",
             "set.toml"

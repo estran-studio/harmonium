@@ -2,14 +2,14 @@
 //! `gigue_acadienne`, `reel_britannique_coloniale` et `valse_britannique_coloniale`.
 //!
 //! Vérifie sur le flux de snapshots : chargement direct et par nom, métrique et pulse publiés,
-//! forme AABB de 32 mesures, notes dans le mode publié, absence de podorythmie des deux profils
+//! forme AABB de 32 mesures, notes dans le mode publié, absence de percussion des deux profils
 //! britanniques, et accompagnement aux pas décrits par chaque profil (piano de la gigue acadienne).
 
 use harmonium_core::{
     StyleProfile,
+    compose::{Part, TuneGenerator},
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
-    trad::{Part, TradGenerator},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -32,7 +32,7 @@ fn snapshots(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
         ..Default::default()
     };
     params.set_swing_ratio(p.meter.default_swing_ratio);
-    let mut generator = TradGenerator::new(params, TuningParams { profile: p.clone() });
+    let mut generator = TuneGenerator::new(params, TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -118,25 +118,25 @@ fn melody_stays_in_the_published_mode_and_tessitura() {
 }
 
 #[test]
-fn british_profiles_have_no_feet_but_the_acadian_jig_has() {
+fn british_profiles_have_no_percussion_but_the_acadian_jig_has() {
     for id in ["reel_britannique_coloniale", "valse_britannique_coloniale"] {
         let p = profile(id);
         for s in snapshots(&p, 1, 32) {
             assert!(
                 s.notes.iter().all(|n| n.track != 3 && n.track != 4),
-                "{id} : aucune podorythmie attendue"
+                "{id} : aucune percussion attendue"
             );
         }
     }
-    // Les pieds de la gigue acadienne entrent au tour 2 (arrangement) : on lit leur table.
+    // La percussion de la gigue acadienne entrent au tour 2 (arrangement) : on lit leur table.
     let p = profile("gigue_acadienne");
-    let heel_steps: Vec<_> = p
+    let percussion_low_steps: Vec<_> = p
         .percussion
         .patterns
         .iter()
         .find(|f| f.density == 0)
         .map_or_else(Vec::new, |f| f.hits.iter().map(|hit| hit.step).collect());
-    assert_eq!(heel_steps, vec![0, 6], "talon sur les pulses 1 et 4");
+    assert_eq!(percussion_low_steps, vec![0, 6], "percussion grave sur les pulses 1 et 4");
 }
 
 #[test]
@@ -147,12 +147,12 @@ fn accompaniment_follows_each_profile() {
         let steps: Vec<_> = s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         assert!(steps.iter().all(|step| [2, 4, 8, 10].contains(step)), "piano : accords {steps:?}");
     }
-    let reel = profile("reel_britannique_coloniale");
-    for s in snapshots(&reel, 1, 32) {
+    let two_two = profile("reel_britannique_coloniale");
+    for s in snapshots(&two_two, 1, 32) {
         let steps: Vec<_> = s.notes.iter().filter(|n| n.track == 1).map(|n| n.start_step).collect();
         assert!(
             steps.iter().all(|step| *step == 0 || *step == 8),
-            "reel : accords tenus {steps:?}"
+            "reel_britannique_coloniale : accords tenus {steps:?}"
         );
     }
     let waltz = profile("valse_britannique_coloniale");

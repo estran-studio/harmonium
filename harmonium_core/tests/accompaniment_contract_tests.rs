@@ -1,13 +1,13 @@
 //! Contrats d'accompagnement observés au chargement et sur les mesures publiées.
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, timeline::Measure, trad::TradGenerator,
+    StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams, timeline::Measure,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 fn stream(profile: &StyleProfile, seed: u64, bars: usize) -> Vec<Measure> {
     profile.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: profile.meter.default_bpm, ..Default::default() },
         TuningParams { profile: profile.clone() },
     );
@@ -55,8 +55,8 @@ fn invalid_voice_fields_are_rejected_at_loading_with_their_path() {
 fn arranged() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.arrangement =
-        harmonium_core::trad::ReelArrangement::from_start(2, harmonium_core::trad::Part(0));
-    p.arrangement.intro = harmonium_core::trad::IntroConfig::none();
+        harmonium_core::compose::Arrangement::from_start(2, harmonium_core::compose::Part(0));
+    p.arrangement.intro = harmonium_core::compose::IntroConfig::none();
     p.set = Default::default();
     p
 }
@@ -131,7 +131,12 @@ fn passing_keeps_neighbour_tracks_and_strong_bass_unchanged() {
             let before = stream(&plain, seed, 100);
             let after = stream(&p, seed, 100);
             for (x, y) in before.iter().zip(&after) {
-                for track in [TrackId::Melody, TrackId::Heel, TrackId::Toe, TrackId::Chords] {
+                for track in [
+                    TrackId::Melody,
+                    TrackId::PercussionLow,
+                    TrackId::PercussionHigh,
+                    TrackId::Chords,
+                ] {
                     assert_eq!(
                         note_values(x, track),
                         note_values(y, track),
@@ -155,7 +160,7 @@ fn passing_keeps_neighbour_tracks_and_strong_bass_unchanged() {
 
 #[test]
 fn every_passing_motion_stays_in_window_approaches_target_and_vetoes_melody() {
-    use harmonium_core::{timeline::TrackId, trad::accomp_profile::PassingMotion};
+    use harmonium_core::{compose::accomp_profile::PassingMotion, timeline::TrackId};
     for motion in [PassingMotion::ScaleStep, PassingMotion::ScaleWalk, PassingMotion::Chromatic] {
         let mut p = arranged();
         let bass = &mut p.accompaniment.as_mut().unwrap().bass;
@@ -225,7 +230,7 @@ fn passing_is_deterministic_after_emotional_invalidation() {
     use harmonium_core::{report::MeasureSnapshot, timeline::TrackId};
     let p = arranged();
     let params = MusicalParams { bpm: p.meter.default_bpm, ..Default::default() };
-    let mut g = TradGenerator::new(params, TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params, TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     let before: Vec<_> = (1..=40).map(|bar| g.generate_measure(bar, &mut rng)).collect();
     g.invalidate_future(4);
@@ -250,7 +255,7 @@ fn passing_curves_and_arousal_modulate_the_realized_density() {
     let counts = |density: f32, arousal: f32| -> usize {
         (1..=30)
             .map(|seed| {
-                let mut g = TradGenerator::new(
+                let mut g = TuneGenerator::new(
                     MusicalParams {
                         rhythm_density: density,
                         arousal,
@@ -333,13 +338,13 @@ fn invalid_passing_rules_are_rejected_with_field_paths() {
 }
 
 fn strummed() -> StyleProfile {
-    use harmonium_core::trad::{accomp_profile::Stroke, dynamics::Curve};
+    use harmonium_core::compose::{accomp_profile::AttackDirection, dynamics::Curve};
     let mut p = arranged();
-    p.dynamics.chop_intensity = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
-    p.dynamics.density_chop = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
+    p.dynamics.chords_intensity = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
+    p.dynamics.density_chords = Curve(vec![[0.0, 0.0], [1.0, 0.0]]);
     let c = &mut p.accompaniment.as_mut().unwrap().chords;
-    c.strings = 6;
-    c.patterns[c.default_pattern].hits[1].stroke = Stroke::Up;
+    c.note_count = 6;
+    c.patterns[c.default_pattern].hits[1].direction = AttackDirection::Up;
     p
 }
 
@@ -362,7 +367,7 @@ fn strings_attack_in_vector_order_with_bounded_ms_gaps_at_three_tempos() {
         p.meter.min_bpm = 40.0;
         p.meter.max_bpm = 300.0;
         p.meter.default_bpm = bpm;
-        let s = p.accompaniment.as_ref().unwrap().chords.strum.as_ref().unwrap();
+        let s = p.accompaniment.as_ref().unwrap().chords.spread.as_ref().unwrap();
         let measures = stream(&p, 11, 200);
         let mut up = 0;
         let mut down = 0;
@@ -407,18 +412,18 @@ fn strings_attack_in_vector_order_with_bounded_ms_gaps_at_three_tempos() {
 }
 
 #[test]
-fn strum_composes_with_atomic_v2_attack_and_configurable_anchor() {
+fn spread_composes_with_atomic_v2_attack_and_configurable_anchor() {
     use harmonium_core::{
         performance::{ArticulationRule, TrackPerformance},
         timeline::{Articulation, TrackId},
     };
     for anchor in [0.0, 0.5, 1.0] {
         let mut p = strummed();
-        let strum = p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap();
-        strum.anchor = anchor;
-        strum.gap_jitter = 0.0;
-        strum.velocity_jitter = 0;
-        strum.velocity_slope = 0;
+        let spread = p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap();
+        spread.anchor = anchor;
+        spread.gap_jitter = 0.0;
+        spread.velocity_jitter = 0;
+        spread.velocity_slope = 0;
         let rule = |articulation, weight, shorten| ArticulationRule {
             articulation,
             weight,
@@ -444,7 +449,7 @@ fn strum_composes_with_atomic_v2_attack_and_configurable_anchor() {
         );
         p.validate().unwrap(); // Un jitter V2 supérieur au demi-écart est désormais sûr : tirage commun.
         let mut block = p.clone();
-        block.accompaniment.as_mut().unwrap().chords.strum = None;
+        block.accompaniment.as_mut().unwrap().chords.spread = None;
         let baseline = stream(&block, 7, 200);
         let realized = stream(&p, 7, 200);
         for (a, b) in baseline.iter().zip(&realized) {
@@ -478,15 +483,15 @@ fn strum_composes_with_atomic_v2_attack_and_configurable_anchor() {
 }
 
 #[test]
-fn strum_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
-    use harmonium_core::{performance::TrackPerformance, trad::accomp_profile::Stroke};
+fn spread_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
+    use harmonium_core::{compose::accomp_profile::AttackDirection, performance::TrackPerformance};
     let mut p = strummed();
     let c = &mut p.accompaniment.as_mut().unwrap().chords;
     c.patterns[c.default_pattern].hits[1].step = 5;
     for hit in &mut c.patterns[c.default_pattern].hits {
-        hit.stroke = Stroke::Down;
+        hit.direction = AttackDirection::Down;
     }
-    let s = c.strum.as_mut().unwrap();
+    let s = c.spread.as_mut().unwrap();
     s.down_gap_ms = 40.0;
     s.gap_jitter = 0.0;
     s.anchor = 1.0;
@@ -503,7 +508,7 @@ fn strum_caps_the_whole_gesture_near_offset_and_neighbour_boundaries() {
     );
     let params =
         MusicalParams { bpm: p.meter.default_bpm, harmony_tension: 1.0, ..Default::default() };
-    let mut g = TradGenerator::new(params, TuningParams { profile: p });
+    let mut g = TuneGenerator::new(params, TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     for bar in 1..=200 {
         let m = g.generate_measure(bar, &mut rng);
@@ -531,50 +536,52 @@ fn optional_hits_draw_independently_of_neighbour_tracks_and_replay() {
         .count();
     assert!((350..=450).contains(&observed), "{observed}/1000");
     for (a, b) in before.iter().zip(&after) {
-        for track in [TrackId::Melody, TrackId::Heel, TrackId::Toe, TrackId::Bass] {
+        for track in
+            [TrackId::Melody, TrackId::PercussionLow, TrackId::PercussionHigh, TrackId::Bass]
+        {
             assert_eq!(note_values(a, track), note_values(b, track));
         }
     }
 }
 
 #[test]
-fn invalid_strum_fields_and_strokes_are_rejected_with_paths() {
+fn invalid_spread_fields_and_directions_are_rejected_with_paths() {
     let p = strummed();
     for (field, mutate) in [
         (
-            "strings",
-            (|p: &mut StyleProfile| p.accompaniment.as_mut().unwrap().chords.strings = 7)
+            "note_count",
+            (|p: &mut StyleProfile| p.accompaniment.as_mut().unwrap().chords.note_count = 7)
                 as fn(&mut StyleProfile),
         ),
-        ("strum.down_gap_ms", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().down_gap_ms = 41.0
+        ("spread.down_gap_ms", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().down_gap_ms = 41.0
         }),
-        ("strum.up_gap_ms", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().up_gap_ms = -1.0
+        ("spread.up_gap_ms", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().up_gap_ms = -1.0
         }),
-        ("strum.up_strings", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().up_strings = 7
+        ("spread.up_note_count", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().up_note_count = 7
         }),
-        ("strum.gap_jitter", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().gap_jitter = 0.9
+        ("spread.gap_jitter", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().gap_jitter = 0.9
         }),
-        ("strum.anchor", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().anchor = 1.1
+        ("spread.anchor", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().anchor = 1.1
         }),
-        ("strum.tempo_exponent", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().tempo_exponent = -1.0
+        ("spread.tempo_exponent", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().tempo_exponent = -1.0
         }),
-        ("strum.ref_bpm", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().ref_bpm = 0.0
+        ("spread.ref_bpm", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().ref_bpm = 0.0
         }),
-        ("strum.max_spread_ratio", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().max_spread_ratio = 0.5
+        ("spread.max_spread_ratio", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().max_spread_ratio = 0.5
         }),
-        ("strum.velocity_slope", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().velocity_slope = 21
+        ("spread.velocity_slope", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().velocity_slope = 21
         }),
-        ("strum.velocity_jitter", |p| {
-            p.accompaniment.as_mut().unwrap().chords.strum.as_mut().unwrap().velocity_jitter = 21
+        ("spread.velocity_jitter", |p| {
+            p.accompaniment.as_mut().unwrap().chords.spread.as_mut().unwrap().velocity_jitter = 21
         }),
         ("patterns[0].hits[0].probability", |p| {
             p.accompaniment.as_mut().unwrap().chords.patterns[0].hits[0].probability = 1.1
@@ -586,15 +593,15 @@ fn invalid_strum_fields_and_strokes_are_rejected_with_paths() {
         assert!(error.contains(&format!("accompaniment.chords.{field}")), "{error}");
     }
     let error = StyleProfile::from_toml(
-        &p.to_toml().unwrap().replace("stroke = \"down\"", "stroke = \"unknown\""),
+        &p.to_toml().unwrap().replace("direction = \"down\"", "direction = \"unknown\""),
     )
     .unwrap_err()
     .to_string();
-    assert!(error.contains("stroke"), "{error}");
+    assert!(error.contains("direction"), "{error}");
 }
 
 #[test]
-fn generated_strum_offsets_and_vector_order_are_present_in_static_midi() {
+fn generated_spread_offsets_and_vector_order_are_present_in_static_midi() {
     use harmonium_core::timeline::{ScoreTimeline, TrackId, timeline_to_midi};
     use midly::{MidiMessage, Smf, TrackEventKind};
     let p = strummed();

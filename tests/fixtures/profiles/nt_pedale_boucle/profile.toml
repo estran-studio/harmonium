@@ -98,19 +98,19 @@ motifs = [
 center = 40
 max_drift = 6
 default_pattern = 0
-patterns = [{ hits = [{ step = 0, stroke = "block", duration = 16, velocity = 64, tie = true }] }]
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 16, velocity = 64, tie = true }] }]
 
 [percussion]
-heel_note = 36
-toe_note = 38
-heel_velocity = 55
-toe_velocity = 45
-feet_gain = 1.0
+low_note = 36
+high_note = 38
+low_velocity = 55
+high_velocity = 45
+percussion_gain = 1.0
 velocity_humanize = 0
 patterns = [
-  { density = 0, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }] },
-  { density = 1, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 4, track = "Toe", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }, { step = 12, track = "Toe", delta_velocity = 0 }] },
-  { density = 2, hits = [{ step = 0, track = "Heel", delta_velocity = 0 }, { step = 4, track = "Toe", delta_velocity = 0 }, { step = 8, track = "Heel", delta_velocity = 0 }, { step = 12, track = "Toe", delta_velocity = 0 }] },
+  { density = 0, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 8, track = "PercussionLow", delta_velocity = 0 }] },
+  { density = 1, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 4, track = "PercussionHigh", delta_velocity = 0 }, { step = 8, track = "PercussionLow", delta_velocity = 0 }, { step = 12, track = "PercussionHigh", delta_velocity = 0 }] },
+  { density = 2, hits = [{ step = 0, track = "PercussionLow", delta_velocity = 0 }, { step = 4, track = "PercussionHigh", delta_velocity = 0 }, { step = 8, track = "PercussionLow", delta_velocity = 0 }, { step = 12, track = "PercussionHigh", delta_velocity = 0 }] },
 ]
 
 [instruments]
@@ -125,8 +125,8 @@ tours_per_tune = 8
 [arrangement.entries]
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
-Heel = { tour = 1, part = 0, pass = 1 }
-Toe = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
 [arrangement.intro]
 forms = []
 pickup_eighths = 0

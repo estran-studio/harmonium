@@ -1,13 +1,13 @@
 //! Raccords, clôture et entrées observés sur le flux public de snapshots.
 use harmonium_core::{
     StyleProfile, TuningParams,
-    params::MusicalParams,
-    report::MeasureSnapshot,
-    trad::{
-        TradGenerator,
+    compose::{
+        TuneGenerator,
         arrangement::{IntroForm, IntroRole},
         set::{SetGap, SetLength, SetTransition, TransitionKind},
     },
+    params::MusicalParams,
+    report::MeasureSnapshot,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -31,7 +31,7 @@ fn tuning(kind: TransitionKind) -> TuningParams {
 }
 
 fn stream(tuning: &TuningParams) -> Vec<MeasureSnapshot> {
-    let mut generator = TradGenerator::new(MusicalParams::default(), tuning.clone());
+    let mut generator = TuneGenerator::new(MusicalParams::default(), tuning.clone());
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     (1..=330)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -138,7 +138,7 @@ fn transition_and_gap_validation_reports_the_field() {
 #[test]
 fn game_stop_finishes_the_current_tune_even_after_the_first_set() {
     let config = tuning(TransitionKind::Direct);
-    let mut generator = TradGenerator::new(MusicalParams::default(), config);
+    let mut generator = TuneGenerator::new(MusicalParams::default(), config);
     let mut rng = ChaCha8Rng::seed_from_u64(3);
     let mut bar = 1;
     loop {

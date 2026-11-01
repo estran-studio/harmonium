@@ -1,7 +1,7 @@
 //! Contrat de la forme longue (sets) observé sur le profil et le flux de snapshots.
 use harmonium_core::{
     StyleProfile,
-    trad::set::{MAX_SET_TUNES, SetLength},
+    compose::set::{MAX_SET_TUNES, SetLength},
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -26,7 +26,7 @@ fn invalid_set_is_refused_with_the_field_path() {
         ("set.signature.return_rate", |p| p.set.signature.return_rate = f32::NAN),
         ("set.signature.memory", |p| p.set.signature.memory = 17),
         ("set.key", |p| {
-            p.set.key = harmonium_core::trad::set::SetKey {
+            p.set.key = harmonium_core::compose::set::SetKey {
                 same: 0.0,
                 parallel: 0.0,
                 relative: 0.0,
@@ -95,9 +95,9 @@ fn distributed_profiles_load_their_set_file() {
 // ---------------------------------------------------------------------------
 
 use harmonium_core::{
+    compose::{Mode, TuneGenerator, set::SetKey},
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{Mode, TradGenerator, set::SetKey},
     tuning::TuningParams,
 };
 use rand::SeedableRng;
@@ -122,7 +122,7 @@ fn session(seed: u64, tuning: &TuningParams, valence: f32, bars: usize) -> Vec<M
     params.time_signature = meter.time_signature;
     params.harmony_valence = valence;
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mut generator = TradGenerator::new(params, tuning.clone());
+    let mut generator = TuneGenerator::new(params, tuning.clone());
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
         .collect()
@@ -182,13 +182,13 @@ fn published_colors_belong_to_the_candidates_of_the_valence() {
     }
 }
 
-fn class_of(prev: (u8, Mode), next: (u8, Mode)) -> harmonium_core::trad::set::KeyClass {
-    harmonium_core::trad::set::KeyClass::of(prev, next)
+fn class_of(prev: (u8, Mode), next: (u8, Mode)) -> harmonium_core::compose::set::KeyClass {
+    harmonium_core::compose::set::KeyClass::of(prev, next)
 }
 
 #[test]
 fn class_factors_drive_the_chaining() {
-    use harmonium_core::trad::set::KeyClass;
+    use harmonium_core::compose::set::KeyClass;
     let long_set = |key: SetKey| {
         tuning(|p| {
             p.set.length = vec![SetLength { tunes: MAX_SET_TUNES, weight: 1 }];
@@ -284,7 +284,7 @@ fn last_dark_keeps_the_last_tune_of_a_set_bright() {
 // Position publiée : set_index, tune_in_set, tunes_in_set
 // ---------------------------------------------------------------------------
 
-use harmonium_core::{timeline::TrackId, trad::TunePosition};
+use harmonium_core::{compose::TunePosition, timeline::TrackId};
 
 fn positions(snapshots: &[MeasureSnapshot]) -> Vec<TunePosition> {
     snapshots.iter().filter_map(|s| s.position).collect()
@@ -401,7 +401,7 @@ fn same_seed_gives_the_same_sets_and_seek_replays_them() {
     let continuous = run(5);
     for target in [40usize, 101, 140] {
         let mut rng = ChaCha8Rng::seed_from_u64(5);
-        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
         generator.silent_advance(target, &mut rng);
         let replay: Vec<_> = (target..=300)
             .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -434,7 +434,7 @@ fn a_valence_change_keeps_the_set_plan_and_follows_the_new_candidates() {
 
         // Le jeu prend la valence −0,6 pendant l'air 2 puis jette les airs encore futurs.
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut generator = TradGenerator::new(params.clone(), tuning.clone());
+        let mut generator = TuneGenerator::new(params.clone(), tuning.clone());
         let mut stream: Vec<MeasureSnapshot> = Vec::new();
         let mut bar = 1;
         let change_bar = loop {
@@ -501,7 +501,8 @@ fn a_profile_without_set_is_one_endless_set() {
     let playing = |snapshot: &MeasureSnapshot, track: TrackId| {
         snapshot.notes.iter().any(|n| n.track == track.channel())
     };
-    let first_bar = second_tour.map(|s| (playing(s, TrackId::Bass), playing(s, TrackId::Heel)));
+    let first_bar =
+        second_tour.map(|s| (playing(s, TrackId::Bass), playing(s, TrackId::PercussionLow)));
     assert_eq!(first_bar, Ok((true, true)), "toutes les pistes dès A1 au 2ᵉ air");
 }
 
@@ -530,6 +531,6 @@ fn old_snapshots_without_set_fields_still_load() -> TestResult {
             (new.tune_index, new.tour, new.key, new.mode)
         );
     }
-    assert_eq!(harmonium_core::tuning::TUNING_VERSION, 21);
+    assert_eq!(harmonium_core::tuning::TUNING_VERSION, 22);
     Ok(())
 }

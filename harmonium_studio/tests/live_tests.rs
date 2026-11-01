@@ -7,10 +7,10 @@ use std::{net::UdpSocket, time::Duration};
 use harmonium::{LiveHost, playback::PlaybackEngine};
 use harmonium_core::{
     EngineCommand, MeasureSnapshot, StyleProfile,
+    compose::pitch_class_name,
     events::RecordFormat,
     report::NoteSnapshot,
     timeline::{Articulation, TrackId},
-    trad::pitch_class_name,
 };
 use harmonium_studio::{
     live::{Intent, LiveView, Score, Session, TRACKS, score_view},
@@ -127,7 +127,7 @@ fn the_score_view_shows_the_published_measures_and_the_playhead() -> Result<(), 
         let position = snapshot.position.ok_or("position publiée")?;
         let form = content.form.as_ref().ok_or("forme")?;
         assert_eq!(form.tune_in_set, position.tune_in_set);
-        assert_eq!(form.bar_in_strain, position.bar_in_strain);
+        assert_eq!(form.bar_in_part, position.bar_in_part);
         shown += 1;
     }
     assert!(shown >= 10, "{shown} mesures montrées");
@@ -185,26 +185,26 @@ fn an_emotion_change_recomposes_the_bars_ahead() -> Result<(), String> {
 #[test]
 fn solo_silences_the_other_tracks_and_ending_it_restores_them() -> Result<(), String> {
     let (mut session, mut playback) = session(Some(TEST_BANK))?;
-    command(&mut session, EngineCommand::SetFeetDensity(0))?;
+    command(&mut session, EngineCommand::SetPercussionDensity(0))?;
     assert!(peak(&play(&mut session, &mut playback, 300)) > 0.01, "la banque de test sonne");
 
-    // Sans pieds, la pointe ne joue pas : en solo, elle laisse le silence.
+    // Sans percussion, la percussion aiguë ne joue pas : en solo, elle laisse le silence.
     assert!(
         view(&mut session)
             .score
             .bars
             .iter()
             .filter_map(|bar| bar.content.as_ref())
-            .all(|content| content.notes.iter().all(|note| note.track != TrackId::Toe))
+            .all(|content| content.notes.iter().all(|note| note.track != TrackId::PercussionHigh))
     );
-    session.perform(Intent::Solo(Some(TrackId::Toe)))?;
+    session.perform(Intent::Solo(Some(TrackId::PercussionHigh)))?;
     let solo = play(&mut session, &mut playback, 300);
     // Reste la queue de la réverbération, sous −80 dB.
     let tail = peak(&solo[solo.len() / 2..]);
     assert!(tail < 1e-4, "solo sur une piste muette : silence ({tail})");
     let view = view(&mut session);
     for strip in &view.mixer {
-        assert_eq!(strip.audible, strip.track == TrackId::Toe, "{:?}", strip.track);
+        assert_eq!(strip.audible, strip.track == TrackId::PercussionHigh, "{:?}", strip.track);
     }
 
     // Une sourdine à la main survit à la fin du solo.
@@ -259,7 +259,7 @@ fn the_view_follows_the_commands_of_the_parity_table() -> Result<(), String> {
     let (mut session, mut playback) = session(None)?;
     for step in [
         EngineCommand::SetSwing(0.62),
-        EngineCommand::SetFeetDensity(2),
+        EngineCommand::SetPercussionDensity(2),
         EngineCommand::SetIntensity(0.8),
         EngineCommand::SetBpm(150.0),
         EngineCommand::SetTimeSignature { numerator: 3, denominator: 4 },
@@ -277,7 +277,7 @@ fn the_view_follows_the_commands_of_the_parity_table() -> Result<(), String> {
     play(&mut session, &mut playback, 50);
     let view = view(&mut session);
     assert!((view.swing - 0.62).abs() < 1e-6);
-    assert_eq!(view.feet, 2);
+    assert_eq!(view.percussion, 2);
     assert!((view.intensity - 0.8).abs() < 1e-6);
     assert!((view.nominal_bpm - 150.0).abs() < 1e-6);
     assert_eq!(view.time_signature, (3, 4));
@@ -518,7 +518,7 @@ fn the_mixer_names_the_tracks_the_density_leaves_out() -> Result<(), String> {
             .filter_map(|bar| bar.content.as_ref())
             .any(|content| content.notes.iter().any(|note| note.track == track))
     };
-    for track in [TrackId::Melody, TrackId::Bass, TrackId::Heel, TrackId::Toe] {
+    for track in [TrackId::Melody, TrackId::Bass, TrackId::PercussionLow, TrackId::PercussionHigh] {
         assert!(gate(&thin, track).is_some_and(|minimum| minimum > 0.2), "{track:?} écartée");
         assert!(!heard_ahead(&thin, track), "{track:?} sans note à venir");
     }
@@ -542,7 +542,7 @@ fn reset_returns_to_the_active_profile_defaults_at_bar_one() -> Result<(), Strin
     assert!(initial.beat.as_ref().is_some_and(|beat| beat.bar > 2), "la lecture a avancé");
     for step in [
         EngineCommand::SetSwing(0.7),
-        EngineCommand::SetFeetDensity(2),
+        EngineCommand::SetPercussionDensity(2),
         EngineCommand::SetBpm(150.0),
         EngineCommand::SetIntensity(0.9),
         EngineCommand::SetLoop { start_bar: 2, end_bar: 4 },
@@ -562,7 +562,7 @@ fn reset_returns_to_the_active_profile_defaults_at_bar_one() -> Result<(), Strin
     assert!((view.swing - initial.swing).abs() < 1e-6, "swing {}", view.swing);
     assert!((view.nominal_bpm - initial.nominal_bpm).abs() < 1e-3, "tempo {}", view.nominal_bpm);
     assert!((view.intensity - initial.intensity).abs() < 1e-6, "intensité {}", view.intensity);
-    assert_eq!(view.feet, initial.feet);
+    assert_eq!(view.percussion, initial.percussion);
     assert!(view.score.bars.iter().any(|bar| bar.content.is_some()), "des mesures recomposées");
     Ok(())
 }

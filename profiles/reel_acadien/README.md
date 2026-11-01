@@ -63,7 +63,7 @@ Le profil acadien reprend du québécois ce que les données statistiques ne con
 - **Violon** (Melody, canal 0) : Programme GM 40 (Violin), tessiture 55–88 (Sol grave G3 à Mi aigu E6), centre mélodique à 71.
 - **Accompagnement** (Chords, canal 1) : Programme GM 24 (Guitare acoustique nylon), chops sur les contretemps (pas 4 et 12).
 - **Basse acoustique** (Bass, canal 2) : Programme GM 32 (Acoustic Bass), fondamentale/quinte sur les temps de blanche (pas 0 et 8).
-- **Podorythmie** (Heel / Toe, canal 9 kit GM ou banque de pieds `harmonium_trad.sf2`) :
+- **Podorythmie** (PercussionLow / PercussionHigh, canal 9 kit GM ou banque de pieds `harmonium_trad.sf2`) :
   - Talon (note 36) : pas 0 et 8 (densité 0), pas 0, 4, 8, 12 (densité 1 et 2).
   - Pointe (note 37) : contretemps 2, 6, 10, 14 (densité 1), doublée en doubles-croches (densité 2).
 

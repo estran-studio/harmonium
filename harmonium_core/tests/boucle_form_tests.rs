@@ -3,10 +3,10 @@
 //! l'arrangement comme les autres pistes. Tout passe par `generate_measure`
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{ImposedRole, TuneGenerator},
     ornaments::{OrnamentKind, PhraseEnd},
     params::MusicalParams,
     report::{MeasureSnapshot, NoteSnapshot},
-    trad::{ImposedRole, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -23,7 +23,7 @@ fn stream(profile: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot
     params.bpm = profile.meter.default_bpm;
     params.swing_ratio = profile.meter.default_swing_ratio;
     let mut generator =
-        TradGenerator::new(params, TuningParams { profile: profile.clone(), ..Default::default() });
+        TuneGenerator::new(params, TuningParams { profile: profile.clone(), ..Default::default() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -49,12 +49,12 @@ fn boucle_quatre_mesures_melodie_entre_au_tour_2() -> Result<(), Box<dyn std::er
     for seed in [1, 2] {
         let snapshots = stream(&profile, seed, 64);
         assert_eq!(snapshots.len(), 64, "seed {seed}");
-        // Tour 1 (mesures 1-8) : pas de mélodie, accompagnement et pieds présents.
+        // Tour 1 (mesures 1-8) : pas de mélodie, accompagnement et percussion présents.
         for snapshot in snapshots.iter().take(8) {
             assert!(melody(snapshot).is_empty(), "mélodie au tour 1, seed {seed}");
             assert!(has_track(snapshot, 1), "accords au tour 1, seed {seed}");
             assert!(has_track(snapshot, 2), "basse au tour 1, seed {seed}");
-            assert!(has_track(snapshot, 3), "pieds au tour 1, seed {seed}");
+            assert!(has_track(snapshot, 3), "percussion au tour 1, seed {seed}");
         }
         // Tours 2-8 : la mélodie joue chaque mesure.
         for snapshot in snapshots.iter().skip(8) {

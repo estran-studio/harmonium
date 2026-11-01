@@ -1,10 +1,10 @@
 //! Voltas : une seule mesure différente, résolution mesurée, priorité de l'outro.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, ImposedRole, TuneGenerator},
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::{ProfileRole, WeightedRole},
-    trad::{ImposedRole, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -16,13 +16,13 @@ fn stream(mut profile: StyleProfile, seed: u64, bars: usize, outro: bool) -> Vec
     profile.heterophony = None;
     if let Some(a) = &mut profile.accompaniment {
         a.bass.passing = None;
-        a.chords.strum = None;
-        a.chords.strings = 3;
+        a.chords.spread = None;
+        a.chords.note_count = 3;
     }
     let mut params = MusicalParams::default();
     params.bpm = profile.meter.default_bpm;
     params.end_after_tour = outro;
-    let mut generator = TradGenerator::new(params, TuningParams { profile });
+    let mut generator = TuneGenerator::new(params, TuningParams { profile });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))
@@ -80,7 +80,7 @@ fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tun
     for distributed in with_endings {
         let mut profile = distributed.clone();
         profile.performance = Default::default();
-        profile.arrangement = ReelArrangement::from_start(2, Default::default());
+        profile.arrangement = Arrangement::from_start(2, Default::default());
         let mut counts = [[0usize; 3]; 2];
         for seed in 0..200 {
             let snapshots = stream(profile.clone(), seed, 64, false);
@@ -133,7 +133,7 @@ fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tun
 fn forced_profile() -> StyleProfile {
     let mut profile = StyleProfile::default();
     profile.performance = Default::default();
-    profile.arrangement = ReelArrangement::from_start(1, Default::default());
+    profile.arrangement = Arrangement::from_start(1, Default::default());
     for part in &mut profile.form.parts {
         part.roles = vec![ImposedRole::Free.into(); 8];
         part.roles[7] = ImposedRole::CadOther.into();

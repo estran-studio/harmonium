@@ -54,7 +54,7 @@ strong_eighth_velocity_offset = 0
 even_eighth_velocity_offset = 0
 
 [harmony]
-model = "trad_functional"
+model = "melody_functional"
 steps_per_chord = 12
 [[harmony.candidates]]
 mode = "ionian"
@@ -92,11 +92,11 @@ default_pattern = 0
 patterns = [{ hits = [{ step = 4, duration = 2, velocity = 66 }, { step = 8, duration = 2, velocity = 66 }] }]
 
 [percussion]
-heel_note = 51
-toe_note = 42
-heel_velocity = 55
-toe_velocity = 45
-feet_gain = 1.0
+low_note = 51
+high_note = 42
+low_velocity = 55
+high_velocity = 45
+percussion_gain = 1.0
 velocity_humanize = 0
 patterns = [
  { density = 0, euclid = { pulses = 1, steps = 12, rotation = 0 } },
@@ -117,8 +117,8 @@ tours_per_tune = 2
 Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
-Heel = { tour = 1, part = 0, pass = 1 }
-Toe = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
 [arrangement.intro]
 forms = []
 pickup_eighths = 0

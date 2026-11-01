@@ -1,8 +1,8 @@
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, ImposedRole, TuneGenerator},
     params::MusicalParams,
     report::MeasureSnapshot,
-    trad::{ImposedRole, ReelArrangement, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for distributed in StyleProfile::distributed() {
         for variant in ["before_p3t1", "before_p3t3", "after"] {
             let mut p = distributed.clone();
-            p.arrangement = ReelArrangement::from_start(2, Default::default());
+            p.arrangement = Arrangement::from_start(2, Default::default());
             for part in &mut p.form.parts {
                 if variant != "after" {
                     part.rhythm.clear();
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             for seed in 1..=200 {
-                let mut g = TradGenerator::new(
+                let mut g = TuneGenerator::new(
                     MusicalParams { bpm: p.meter.default_bpm, ..Default::default() },
                     TuningParams { profile: p.clone() },
                 );

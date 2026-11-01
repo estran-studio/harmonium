@@ -25,7 +25,7 @@ fn main() -> Result<(), String> {
         .insert_resource(control)
         .add_plugins(HarmoniumPlugin::new(HarmoniumConfig {
             main_bank: Some("audio/GeneralUser-GS.sf3".into()),
-            feet_bank: Some("audio/harmonium_trad.sf2".into()),
+            percussion_bank: Some("audio/harmonium_trad.sf2".into()),
             // Avec la feature odin : liste explicite des presets du jeu.
             odin_presets: vec![],
             ..default()

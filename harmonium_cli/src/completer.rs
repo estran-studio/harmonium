@@ -35,7 +35,7 @@ impl HarmoniumCompleter {
                 "tempo",
                 "beat",
                 "style",
-                "feet",
+                "percussion",
                 "seed",
                 "intensity",
                 "help",
@@ -165,7 +165,7 @@ impl HarmoniumCompleter {
                 }
             }
 
-            "feet" => {
+            "percussion" => {
                 if tokens.len() <= 2 {
                     let partial =
                         if tokens.len() == 2 { tokens[1].to_lowercase() } else { String::new() };
@@ -190,7 +190,7 @@ impl HarmoniumCompleter {
                         "tempo",
                         "beat",
                         "style",
-                        "feet",
+                        "percussion",
                         "intensity",
                     ]
                     .iter()

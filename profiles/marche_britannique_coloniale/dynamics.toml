@@ -1,8 +1,8 @@
 # Pilotage dynamique de la marche britannique coloniale (fifre et tambour).
 #
 # Réaction aux 4 émotions (constitution V et P4-T1) :
-# - arousal : accélère le pas cadencé (tempo_offset) et renforce les frappes de tambour (feet_velocity)
-# - density : intensifie le jeu percussif et active les roulements en doubles-croches (density_feet)
+# - arousal : accélère le pas cadencé (tempo_offset) et renforce les frappes de tambour (percussion_velocity)
+# - density : intensifie le jeu percussif et active les roulements en doubles-croches (density_percussion)
 # - tension : accentue les frappes et les flams (strong_accent, tension_offbeat)
 # - valence : module la brillance et bascule le mode (ionien / éolien) au prochain air (color, parallel_modes)
 
@@ -23,25 +23,25 @@ tension_intensity = [[0.0, 0.0], [0.5, 0.0], [1.0, 0.15]]
 tempo_offset = [[0.0, -12.0], [0.5, 0.0], [1.0, 15.0]]
 
 melody_velocity = [[0.0, 0.75], [0.5, 1.0], [1.0, 1.30]]
-guitar_velocity = [[0.0, 1.0], [1.0, 1.0]]
+chords_velocity = [[0.0, 1.0], [1.0, 1.0]]
 bass_velocity = [[0.0, 1.0], [1.0, 1.0]]
-feet_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.45]]
-feet_intensity = [[0.0, -0.5], [0.5, 0.0], [1.0, 0.5]]
-fiddle_duration = [[0.0, 1.10], [0.5, 1.0], [1.0, 0.85]]
+percussion_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.45]]
+percussion_intensity = [[0.0, -0.5], [0.5, 0.0], [1.0, 0.5]]
+melody_duration = [[0.0, 1.10], [0.5, 1.0], [1.0, 0.85]]
 strong_accent = [[0.0, -3.0], [0.5, 0.0], [1.0, 6.0]]
-chop_intensity = [[0.0, 0.0], [1.0, 0.0]]
+chords_intensity = [[0.0, 0.0], [1.0, 0.0]]
 run_weight = [[0.0, 0.8], [0.5, 1.0], [1.0, 1.5]]
 arp_weight = [[0.0, 0.8], [0.5, 1.0], [1.0, 1.5]]
 turn_weight = [[0.0, 1.0], [0.5, 1.0], [1.0, 1.0]]
 
 color_register = [[0.0, 0.0], [1.0, 0.0]]
 brightness_accent = [[0.0, -5.0], [0.5, 0.0], [1.0, 8.0]]
-density_feet = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
-density_chop = [[0.0, 0.0], [1.0, 0.0]]
+density_percussion = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+density_chords = [[0.0, 0.0], [1.0, 0.0]]
 density_tracks = [
   { track = "Melody", minimum = 0.0 },
-  { track = "Heel", minimum = 0.0 },
-  { track = "Toe", minimum = 0.0 },
+  { track = "PercussionLow", minimum = 0.0 },
+  { track = "PercussionHigh", minimum = 0.0 },
 ]
 
 tension_offbeat = [[0.0, 0.0], [0.5, 4.0], [1.0, 16.0]]

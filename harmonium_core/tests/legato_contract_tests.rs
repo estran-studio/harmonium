@@ -12,10 +12,10 @@ use std::collections::BTreeMap;
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     events::AudioEvent,
     params::MusicalParams,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -48,7 +48,7 @@ fn params(p: &StyleProfile) -> MusicalParams {
 /// Génère des mesures déterministes, comme le compositeur.
 fn measures(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<Measure>> {
     p.validate()?;
-    let mut g = TradGenerator::new(params(p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars).map(|bar| g.generate_measure(bar, &mut rng)).collect())
 }
@@ -166,7 +166,7 @@ fn principe_viii_la_valse_basse_motivique_emploie_le_legato_sans_changer_ses_not
     // Hauteurs, durées et vélocités inchangées (Ré majeur, marche 1–2–3/5–4–2) ;
     // seule l'articulation passe normal au legato.
 
-    let mut g = TradGenerator::new(params(&p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let snapshots: Vec<_> = (1..=4)
         .map(|bar| {
@@ -177,7 +177,7 @@ fn principe_viii_la_valse_basse_motivique_emploie_le_legato_sans_changer_ses_not
         .collect();
 
     for (i, s) in snapshots.iter().enumerate() {
-        let degrees = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let degrees = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             [1, 2, 3]
         } else {
             [5, 4, 2]

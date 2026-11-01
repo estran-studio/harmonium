@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Mode, TuneGenerator},
     events::AudioEvent,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::{Mode, TradGenerator},
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -27,7 +27,7 @@ fn params(p: &StyleProfile) -> MusicalParams {
 
 fn measures(p: &StyleProfile, seed: u64, bars: usize) -> TestResult<Vec<Measure>> {
     p.validate()?;
-    let mut g = TradGenerator::new(params(p), TuningParams { profile: p.clone() });
+    let mut g = TuneGenerator::new(params(p), TuningParams { profile: p.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     Ok((1..=bars).map(|bar| g.generate_measure(bar, &mut rng)).collect())
 }
@@ -123,7 +123,7 @@ fn riff_deux_mesures_exact_et_transpose_avec_les_accords() -> TestResult {
     for s in &ss[8..] {
         let r = root(s, 26)?;
         roots.insert(r);
-        let expected = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let expected = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             &first[..]
         } else {
             &second[..]
@@ -145,7 +145,7 @@ fn banque_ponderee_variantes_reelles_et_poids_nul_jamais_choisi() -> TestResult 
         for s in &ss[8..] {
             let notes = bass(s);
             assert!(notes.iter().all(|n| n.3 != 1), "sentinelle de poids nul sélectionnée");
-            if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+            if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
                 choices.insert(notes[0].3);
             }
         }
@@ -228,7 +228,7 @@ fn valse_marche_modale_et_copies_interparties_sur_le_meme_mecanisme() -> TestRes
         let r = root(s, 38)?;
         let scale: Vec<_> =
             (r..=r + 24).filter(|n| [2, 4, 6, 7, 9, 11, 1].contains(&(n % 12))).collect();
-        let degrees = if s.position.ok_or("position absente")?.bar_in_strain % 2 == 1 {
+        let degrees = if s.position.ok_or("position absente")?.bar_in_part % 2 == 1 {
             [1, 2, 3]
         } else {
             [5, 4, 2]
@@ -296,7 +296,7 @@ fn liaisons_explicites_hors_temps_fort_reste_observable() -> TestResult {
 
 #[test]
 fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResult {
-    use harmonium_core::trad::dynamics::TrackThreshold;
+    use harmonium_core::compose::dynamics::TrackThreshold;
     let p = exact_nt()?;
     let mut soft = p.clone();
     soft.dynamics.bass_velocity.0 = vec![[0.0, 0.5], [1.0, 0.5]];
@@ -308,7 +308,7 @@ fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResul
     }
     let mut gated = p.clone();
     gated.dynamics.density_tracks.push(TrackThreshold { track: TrackId::Bass, minimum: 0.8 });
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { rhythm_density: 0.0, ..params(&gated) },
         TuningParams { profile: gated },
     );
@@ -318,7 +318,7 @@ fn densite_silence_et_dynamique_s_appliquent_a_la_basse_motivique() -> TestResul
             bass(&MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng))).is_empty()
         );
     }
-    let mut off = TradGenerator::new(
+    let mut off = TuneGenerator::new(
         MusicalParams { enable_harmony: false, ..params(&p) },
         TuningParams { profile: p },
     );
@@ -364,7 +364,7 @@ fn passing_preserve_les_cibles_et_chromatismes_ecrits() -> TestResult {
 fn invalidation_et_rejeu_conservent_les_snapshots_et_les_choix_ponderes() -> TestResult {
     for id in ["nt_basse_motivique", "valse_basse_motivique"] {
         let p = load(id)?;
-        let mut g = TradGenerator::new(params(&p), TuningParams { profile: p.clone() });
+        let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p.clone() });
         let mut rng = ChaCha8Rng::seed_from_u64(7);
         let before: Vec<_> = (1..=48)
             .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))

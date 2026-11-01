@@ -12,7 +12,7 @@
 # Une piste joue de cette position jusqu'à la fin de l'air.
 #
 # Les drapeaux de jeu (`enable_melody`, `enable_harmony`, `enable_rhythm`,
-# `feet_density`) restent des plafonds : une piste joue si ce tableau
+# `percussion_density`) restent des plafonds : une piste joue si ce tableau
 # l'autorise ET si le drapeau le permet.
 
 tours_per_tune = 3
@@ -24,8 +24,8 @@ Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 2 }
 Bass = { tour = 1, part = 0, pass = 2 }
 # Les pieds entrent au deuxième tour.
-Heel = { tour = 2, part = 0, pass = 1 }
-Toe = { tour = 2, part = 0, pass = 1 }
+PercussionLow = { tour = 2, part = 0, pass = 1 }
+PercussionHigh = { tour = 2, part = 0, pass = 1 }
 Countermelody = { tour = 2, part = 0, pass = 1 }
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 //! L'hôte fournit des octets (banques SF2, presets Odin) ; un profil les
 //! désigne en données (`instruments.percussion_bank`, `[[odin.<Piste>.zones]]`).
 //! Quand le profil désigne une ressource que l'hôte n'a pas chargée, le rendu
-//! n'a aucun repli implicite : pieds silencieux, ou piste jouée par le
+//! n'a aucun repli implicite : percussion silencieux, ou piste jouée par le
 //! programme SoundFont que le profil déclare pour elle. Le chargement du
 //! profil le dit clairement au lieu de laisser un silence sans message.
 
@@ -15,7 +15,7 @@ use crate::{odin::OdinBank, style_profile::StyleProfile, timeline::TrackId};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HostResources {
     /// Banques SF2 portant un kit de percussion jouable : `128` (kit GM de la
-    /// banque principale) et/ou la banque de pieds chargée à part.
+    /// banque principale) et/ou la banque de percussion chargée à part.
     pub percussion_banks: Vec<u16>,
     /// Presets Odin analysés (vide sans l'option `odin` ou sans preset fourni).
     pub odin: OdinBank,
@@ -24,7 +24,7 @@ pub struct HostResources {
 /// Ressource désignée par un profil et absente de l'hôte.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MissingResource {
-    /// Banque de percussion non chargée : Heel/Toe silencieux.
+    /// Banque de percussion non chargée : PercussionLow/PercussionHigh silencieux.
     PercussionBank { bank: u16 },
     /// Preset Odin non chargé : la piste joue son programme SoundFont.
     OdinPreset { track: TrackId, preset: String },
@@ -35,8 +35,8 @@ impl fmt::Display for MissingResource {
         match self {
             Self::PercussionBank { bank } => write!(
                 f,
-                "banque de percussion {bank} non chargée par l'hôte : les pieds (Heel/Toe) \
-                 seront silencieux, aucun repli implicite (fournir la banque de pieds ou un kit \
+                "banque de percussion {bank} non chargée par l'hôte : la percussion (PercussionLow/PercussionHigh) \
+                 seront silencieux, aucun repli implicite (fournir la banque de percussion ou un kit \
                  GM en banque 128)"
             ),
             Self::OdinPreset { track, preset } => write!(

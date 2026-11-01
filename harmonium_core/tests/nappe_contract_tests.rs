@@ -6,11 +6,11 @@
 //! la fixture valse (principe VIII : aucun nom de style dans le code).
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::TuneGenerator,
     events::AudioEvent,
     params::{MusicalParams, TimeSignature},
     report::MeasureSnapshot,
     timeline::{Articulation, Measure, Playhead, TrackId},
-    trad::TradGenerator,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -22,7 +22,7 @@ fn load(id: &str) -> StyleProfile {
 
 fn stream(profile: &StyleProfile, params: &MusicalParams, seed: u64, bars: usize) -> Vec<Measure> {
     profile.validate().unwrap();
-    let mut g = TradGenerator::new(params.clone(), TuningParams { profile: profile.clone() });
+    let mut g = TuneGenerator::new(params.clone(), TuningParams { profile: profile.clone() });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars).map(|bar| g.generate_measure(bar, &mut rng)).collect()
 }
@@ -233,13 +233,13 @@ fn liaison_opt_in_et_refusee_dans_les_regles_d_interpretation() {
 
 #[test]
 fn seuls_les_profils_a_nappes_lient() {
-    // Garde-fou : les 10 profils trad distribués n'emploient pas `tie`, donc
+    // Garde-fou : les 10 profils à airs distribués n'emploient pas `tie`, donc
     // leurs notes publiées sont inchangées. Les profils de jeu (harmonie en
     // boucle : `nt_desert`, `isaac_*`) lient leurs nappes en données, sans
     // toucher au moteur.
     let distributed = StyleProfile::distributed();
-    let trad = distributed.iter().filter(|p| p.harmony.model != "loop").count();
-    assert_eq!(trad, 10, "dix profils trad distribués");
+    let compose = distributed.iter().filter(|p| p.harmony.model != "loop").count();
+    assert_eq!(compose, 10, "dix profils à airs distribués");
     for p in distributed {
         let tied = p
             .accompaniment

@@ -273,7 +273,7 @@ pub struct MusicalParams {
     pub time_signature: TimeSignature,
 
     /// Swing ratio applied to pairs of eighth notes (unit = 4 steps, one
-    /// quarter note). 0.5 = straight, ~0.6 ≈ reel. Bounded 0.5..=0.75 via
+    /// quarter note). 0.5 = straight, ~0.6 ≈ marked swing. Bounded 0.5..=0.75 via
     /// [`MusicalParams::set_swing_ratio`]. Ignored in compound meter (a
     /// dotted-quarter pulse of 6 steps).
     #[serde(default = "default_swing_ratio")]
@@ -298,9 +298,9 @@ pub struct MusicalParams {
     #[serde(default = "default_profile_mix")]
     pub profile_mix: crate::mix::PreparedMix,
 
-    /// Densité de podorythmie (0..=2, défaut 1 ; bornée via [`MusicalParams::set_feet_density`]).
-    #[serde(default = "default_feet_density")]
-    pub feet_density: u8,
+    /// Densité de percussion (0..=2, défaut 1 ; bornée via [`MusicalParams::set_percussion_density`]).
+    #[serde(default = "default_percussion_density")]
+    pub percussion_density: u8,
 
     /// Énergie du style (0..1), point neutre 0.5 : conserve le rendu historique.
     #[serde(default = "default_density")]
@@ -389,7 +389,7 @@ pub struct MusicalParams {
 const fn default_master_volume() -> f32 {
     1.0
 }
-const fn default_feet_density() -> u8 {
+const fn default_percussion_density() -> u8 {
     1
 }
 /// Swing par défaut : droit (0.5). Partagé par `MusicalParams` et
@@ -446,7 +446,7 @@ pub struct PlaybackParams {
     pub profile_id: arrayvec::ArrayString<PROFILE_ID_CAP>,
     pub instruments: crate::style_profile::ProfileInstruments,
     pub mix: crate::mix::PreparedMix,
-    pub feet_density: u8,
+    pub percussion_density: u8,
     pub enable_rhythm: bool,
     pub enable_harmony: bool,
     pub enable_melody: bool,
@@ -486,7 +486,7 @@ impl MusicalParams {
             profile_id,
             instruments: self.profile_instruments,
             mix: self.profile_mix,
-            feet_density: self.feet_density,
+            percussion_density: self.percussion_density,
             enable_rhythm: self.enable_rhythm,
             enable_harmony: self.enable_harmony,
             enable_melody: self.enable_melody,
@@ -508,7 +508,7 @@ impl Default for MusicalParams {
             profile_id: default_profile_id(),
             profile_instruments: default_profile_instruments(),
             profile_mix: default_profile_mix(),
-            feet_density: default_feet_density(),
+            percussion_density: default_percussion_density(),
             intensity: default_density(),
             arousal: default_density(),
 
@@ -592,9 +592,9 @@ impl MusicalParams {
         self.swing_ratio = ratio.clamp(0.5, 0.75);
     }
 
-    /// Définit la densité de podorythmie, bornée à `0..=2`.
-    pub fn set_feet_density(&mut self, density: u8) {
-        self.feet_density = density.min(2);
+    /// Définit la densité de percussion, bornée à `0..=2`.
+    pub fn set_percussion_density(&mut self, density: u8) {
+        self.percussion_density = density.min(2);
     }
 
     /// Définit l'énergie ; une entrée non finie revient au point neutre.
@@ -623,10 +623,10 @@ impl MusicalParams {
         self
     }
 
-    /// Builder pattern: set feet density (clamped to `0..=2`)
+    /// Builder pattern: set percussion density (clamped to `0..=2`)
     #[must_use]
-    pub const fn feet_density(mut self, density: u8) -> Self {
-        self.feet_density = if density > 2 { 2 } else { density };
+    pub const fn percussion_density(mut self, density: u8) -> Self {
+        self.percussion_density = if density > 2 { 2 } else { density };
         self
     }
 }
@@ -795,18 +795,18 @@ mod tests {
     }
 
     #[test]
-    fn test_feet_density_bounds() {
+    fn test_percussion_density_bounds() {
         let mut params = MusicalParams::default();
 
-        params.set_feet_density(0);
-        assert_eq!(params.feet_density, 0);
-        params.set_feet_density(2);
-        assert_eq!(params.feet_density, 2);
-        params.set_feet_density(99);
-        assert_eq!(params.feet_density, 2);
+        params.set_percussion_density(0);
+        assert_eq!(params.percussion_density, 0);
+        params.set_percussion_density(2);
+        assert_eq!(params.percussion_density, 2);
+        params.set_percussion_density(99);
+        assert_eq!(params.percussion_density, 2);
 
-        let built = MusicalParams::default().feet_density(5);
-        assert_eq!(built.feet_density, 2);
+        let built = MusicalParams::default().percussion_density(5);
+        assert_eq!(built.percussion_density, 2);
     }
 }
 

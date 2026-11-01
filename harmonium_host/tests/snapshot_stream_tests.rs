@@ -136,5 +136,5 @@ fn snapshot_stream_unchanged() {
     // position read by the composer — the interaction this change touches.
     let snapshots = composer.take_snapshots();
     assert!(snapshots.len() >= BARS, "Expected at least {BARS} snapshots, got {}", snapshots.len());
-    assert_golden("snapshot_stream_reel_seed42_8bars", &snapshots);
+    assert_golden("snapshot_stream_seed42_8bars", &snapshots);
 }

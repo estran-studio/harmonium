@@ -22,9 +22,9 @@ use harmonium::{
 };
 use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot,
+    compose::{Section, TunePosition, pitch_class_name},
     events::RecordFormat,
     timeline::{Articulation, TrackId},
-    trad::{Section, TunePosition, pitch_class_name},
 };
 use web_time::Instant;
 
@@ -34,8 +34,8 @@ pub const TRACKS: [TrackId; 6] = [
     TrackId::Countermelody,
     TrackId::Chords,
     TrackId::Bass,
-    TrackId::Heel,
-    TrackId::Toe,
+    TrackId::PercussionLow,
+    TrackId::PercussionHigh,
 ];
 
 /// Nom court d'une piste à l'écran.
@@ -377,7 +377,7 @@ impl Session {
             .as_ref()
             .map(|profile| profile.form.parts.iter().map(|part| part.name.clone()).collect())
             .unwrap_or_default();
-        let strain_lengths: Vec<usize> = profile
+        let part_lengths: Vec<usize> = profile
             .as_ref()
             .map(|profile| profile.form.parts.iter().map(|part| part.roles.len()).collect())
             .unwrap_or_default();
@@ -424,7 +424,7 @@ impl Session {
             emotion_mode: self.host.is_emotion_mode(),
             emotions: self.host.emotions(),
             intensity: params.intensity,
-            feet: params.feet_density,
+            percussion: params.percussion_density,
             swing: params.swing_ratio,
             nominal_bpm: params.bpm,
             time_signature: (ts.numerator, ts.denominator),
@@ -440,7 +440,7 @@ impl Session {
         };
         let position = sounding.and_then(|measure| measure.position);
         view.state =
-            state_groups(&view, self.host.poll_state(), position, &part_names, &strain_lengths);
+            state_groups(&view, self.host.poll_state(), position, &part_names, &part_lengths);
         view
     }
 }
@@ -473,7 +473,7 @@ pub struct LiveView {
     /// `[arousal, valence, density, tension]`.
     pub emotions: [f32; 4],
     pub intensity: f32,
-    pub feet: u8,
+    pub percussion: u8,
     pub swing: f32,
     /// Tempo nominal commandé (celui des prochaines mesures).
     pub nominal_bpm: f32,
@@ -579,7 +579,7 @@ pub struct FormMark {
     pub part: usize,
     /// « A1 » : partie et passe ; « Intro ».
     pub label: String,
-    pub bar_in_strain: usize,
+    pub bar_in_part: usize,
     /// Air dans le set (1-based) et longueur du set (0 : sans fin).
     pub tune_in_set: usize,
     pub tunes_in_set: usize,
@@ -608,7 +608,7 @@ fn form_mark(position: &TunePosition, part_names: &[String]) -> FormMark {
         } else {
             format!("{}·{}", part_name(part_names, position.part.index()), position.pass)
         },
-        bar_in_strain: position.bar_in_strain,
+        bar_in_part: position.bar_in_part,
         tune_in_set: position.tune_in_set,
         tunes_in_set: position.tunes_in_set,
         tune_index: position.tune_index,
@@ -698,11 +698,11 @@ fn state_groups(
     report: Option<&EngineReport>,
     position: Option<TunePosition>,
     part_names: &[String],
-    strain_lengths: &[usize],
+    part_lengths: &[usize],
 ) -> Vec<StateGroup> {
     let mut style = vec![
         ("Style", format!("{} ({})", view.profile_name, view.profile_id)),
-        ("Feet density", view.feet.to_string()),
+        ("Percussion density", view.percussion.to_string()),
         ("Mode", if view.emotion_mode { "emotion" } else { "direct" }.to_string()),
         ("Seed", view.seed.to_string()),
     ];
@@ -712,12 +712,12 @@ fn state_groups(
             "intro".to_string()
         } else {
             let part = position.part.index();
-            let length = strain_lengths.get(part).map_or_else(String::new, |len| format!("/{len}"));
+            let length = part_lengths.get(part).map_or_else(String::new, |len| format!("/{len}"));
             format!(
                 "{} pass {} · bar {}{length}",
                 part_name(part_names, part),
                 position.pass,
-                position.bar_in_strain
+                position.bar_in_part
             )
         };
         style.push(("Form position", form));

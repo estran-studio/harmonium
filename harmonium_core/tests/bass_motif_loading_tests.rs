@@ -1,7 +1,7 @@
 //! Refus des banques ambiguës ou injouables avant installation du profil.
 use harmonium_core::{
     StyleProfile,
-    trad::accomp_profile::{
+    compose::accomp_profile::{
         BassDegree, BassHit, BassMotif, BassMotifNote, BassReference, BassVoice,
     },
 };
@@ -102,7 +102,7 @@ fn banques_ambigues_ou_hors_grille_refusees_au_chargement() -> TestResult {
 
 #[test]
 fn bornes_midi_verifiees_apres_intervalles_octaves_et_doublures() -> TestResult {
-    use harmonium_core::trad::accomp_profile::BassDoubling;
+    use harmonium_core::compose::accomp_profile::BassDoubling;
     for (low, high, semitones, degree, octave, doubling) in [
         (0, 11, Some(-1), None, 0, vec![]),
         (116, 127, Some(1), None, 0, vec![]),

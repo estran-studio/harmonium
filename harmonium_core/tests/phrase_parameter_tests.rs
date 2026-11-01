@@ -1,15 +1,13 @@
 //! Paramètres de structure : effets audibles et frontières sur le contrat public.
 use harmonium_core::{
     StyleProfile, TuningParams,
+    compose::{Arrangement, Cell, CellBank, CellRole, ImposedRole, TuneGenerator, dynamics::Curve},
     ornaments::{OrnamentKind, OrnamentRule},
     params::MusicalParams,
     report::MeasureSnapshot,
     style_profile::{
         PositionRhythm, ProfileRole, RhythmPattern, RoleResolution, VariationOperation,
         WeightedRole,
-    },
-    trad::{
-        Cell, CellBank, CellRole, ImposedRole, ReelArrangement, TradGenerator, dynamics::Curve,
     },
 };
 use rand::SeedableRng;
@@ -25,7 +23,7 @@ fn melody(s: &MeasureSnapshot) -> Melody {
 }
 fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
     p.validate().unwrap();
-    let mut g = TradGenerator::new(
+    let mut g = TuneGenerator::new(
         MusicalParams { bpm: p.meter.default_bpm, ..Default::default() },
         TuningParams { profile: p.clone() },
     );
@@ -36,7 +34,7 @@ fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
     p.ornaments = Default::default();
-    p.arrangement = ReelArrangement::from_start(2, Default::default());
+    p.arrangement = Arrangement::from_start(2, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
     p.form.parts[0].second_ending = None;
@@ -188,7 +186,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
     for &(name, change) in controls {
         let mut p = StyleProfile::default();
         p.performance = Default::default();
-        p.arrangement = ReelArrangement::from_start(1, Default::default());
+        p.arrangement = Arrangement::from_start(1, Default::default());
         let mut modified = p.clone();
         change(&mut modified);
         assert!(
@@ -204,7 +202,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
 fn phrase_grouping_controls_percussion_boundaries_and_arbitrary_lengths() {
     let mut p = StyleProfile::named("marche_britannique_coloniale").unwrap();
     p.performance = Default::default();
-    p.arrangement = ReelArrangement::from_start(1, Default::default());
+    p.arrangement = Arrangement::from_start(1, Default::default());
     p.form.parts.truncate(1);
     p.form.sequence = vec![0, 0];
     p.form.parts[0].roles.truncate(6);
@@ -213,11 +211,10 @@ fn phrase_grouping_controls_percussion_boundaries_and_arbitrary_lengths() {
     p.form.parts[0].phrase_ends = vec![3, 6];
     let s = stream(&p, 19, 12);
     for (i, s) in s.iter().enumerate() {
-        assert_eq!(s.position.unwrap().bar_in_strain, i % 6 + 1);
-        let flam = s
-            .notes
-            .iter()
-            .any(|n| n.pitch == 40 && n.track == harmonium_core::timeline::TrackId::Toe.channel());
+        assert_eq!(s.position.unwrap().bar_in_part, i % 6 + 1);
+        let flam = s.notes.iter().any(|n| {
+            n.pitch == 40 && n.track == harmonium_core::timeline::TrackId::PercussionHigh.channel()
+        });
         assert_eq!(flam, [2, 5].contains(&(i % 6)), "mesure {}", i + 1);
     }
 }
@@ -338,7 +335,7 @@ fn distributed_rhythmic_entropy_recovers_the_pre_phrase_form() {
     assert!(!with_rhythm.is_empty(), "aucun profil à tables rhythm");
     for profile in with_rhythm {
         let mut current = profile.clone();
-        current.arrangement = ReelArrangement::from_start(1, Default::default());
+        current.arrangement = Arrangement::from_start(1, Default::default());
         current.ornaments = Default::default();
         let mut before = current.clone();
         for part in &mut before.form.parts {
@@ -382,7 +379,7 @@ fn cadence_hold_and_search_window_control_the_published_rest() {
 
 #[test]
 fn cadence_chord_qualities_come_from_profile_candidates() {
-    use harmonium_core::trad::{ChordDegree, ChordQuality, Mode};
+    use harmonium_core::compose::{ChordDegree, ChordQuality, Mode};
     let mut p = fixture();
     p.melody.key_modes = vec![harmonium_core::style_profile::KeyModeWeight {
         key: 2,
@@ -407,7 +404,7 @@ fn cadence_chord_qualities_come_from_profile_candidates() {
 
 #[test]
 fn odd_cell_default_varied_end_keeps_the_historical_floor_half() {
-    use harmonium_core::trad::CellNote;
+    use harmonium_core::compose::CellNote;
     let mut p = fixture();
     p.melody.cell_units = 7;
     p.meter.steps_per_bar = 14;

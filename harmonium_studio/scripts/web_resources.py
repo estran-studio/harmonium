@@ -9,16 +9,16 @@ Commandes :
   fetch --out DOSSIER [--from DOSSIER_LOCAL]
       Télécharge chaque ressource de la release (ou la copie depuis DOSSIER_LOCAL, qui contient les
       assets sous leur nom d'asset), contrôle taille et SHA-256, et la range sous DOSSIER/main/,
-      DOSSIER/feet/ ou DOSSIER/odin/ sous son nom d'origine (le nom d'un preset est son nom de
+      DOSSIER/percussion/ ou DOSSIER/odin/ sous son nom d'origine (le nom d'un preset est son nom de
       fichier). Une ressource qui ne correspond pas au fichier de verrou fait échouer la commande.
 
   check-profiles [--profiles DOSSIER]
       Échoue si un profil de `profiles/` nomme un preset Odin absent du verrou : la vitrine le jouerait
       en SoundFont.
 
-  stage --tag TAG --main-bank F --feet-bank F --odin-dir D --license F --out DOSSIER [--profiles DOSSIER]
+  stage --tag TAG --main-bank F --percussion-bank F --odin-dir D --license F --out DOSSIER [--profiles DOSSIER]
       Prépare une nouvelle release : copie sous leur nom d'asset la banque principale, la banque de
-      pieds, les presets Odin que nomment les profils (et eux seuls) et la licence de la banque, puis
+      percussion, les presets Odin que nomment les profils (et eux seuls) et la licence de la banque, puis
       réécrit le verrou. La publication reste à faire : `gh release create TAG DOSSIER/*`.
 
 Python 3.11 ou plus (tomllib), sans dépendance.
@@ -38,7 +38,7 @@ LOCK = ROOT / 'harmonium_studio' / 'web-resources.json'
 PROFILES = ROOT / 'profiles'
 REPOSITORY = 'estran-studio/harmonium'
 # Sous-dossier de `fetch --out` par rôle.
-ROLE_DIRS = {'main-bank': 'main', 'feet-bank': 'feet', 'odin': 'odin', 'license': 'license'}
+ROLE_DIRS = {'main-bank': 'main', 'percussion-bank': 'percussion', 'odin': 'odin', 'license': 'license'}
 
 
 def sha256(path):
@@ -116,7 +116,7 @@ def cmd_fetch(args):
 
 def cmd_stage(args):
     presets = referenced_presets(args.profiles)
-    files = [('main-bank', args.main_bank), ('feet-bank', args.feet_bank), ('license', args.license)]
+    files = [('main-bank', args.main_bank), ('percussion-bank', args.percussion_bank), ('license', args.license)]
     for name in sorted(presets):
         path = args.odin_dir / f'{name}.odin'
         if not path.exists():
@@ -147,7 +147,7 @@ def main():
     stage = sub.add_parser('stage')
     stage.add_argument('--tag', required=True)
     stage.add_argument('--main-bank', type=Path, required=True)
-    stage.add_argument('--feet-bank', type=Path, required=True)
+    stage.add_argument('--percussion-bank', type=Path, required=True)
     stage.add_argument('--odin-dir', type=Path, required=True)
     stage.add_argument('--license', type=Path, required=True)
     stage.add_argument('--out', type=Path, required=True)

@@ -76,7 +76,7 @@ Trois besoins, validés par le propriétaire le 2026-10-30 (« oui, oui, oui »)
 | **E1** | Grille riche dans `loop` selon F1 : qualités `theory::ChordType` + extensions + basse, plusieurs accords par mesure, voicer 4–5 hauteurs sans allocation, parseur de symboles complet (G7b9, alt, slash). | N1 |
 | **E3** | Identité d'accord complète dans le snapshot (qualité typée, extensions, basse, fondamentale absolue ; `ScaleGuidance` avec loop). **Bump de `TUNING_VERSION`**, goldens régénérés dans le même commit. | E1 |
 | **E5** | Accompagnement jazz en données (notes guides, sans fondamentale, drop 2, comping) enchaîné par `theory/voice_leading.rs`. | E1 |
-| **E6** | Walking bass au pas près avec approche ; basse de `jazz_functional` unifiée sur les motifs (principe IV). | E1 |
+| **E6** | Walking bass au pas près avec approche ; basse de `jazz_functional` (devenu `rewrite_functional`, N1) unifiée sur les motifs (principe IV). | E1 |
 | **E7** | Profil jazz/blues distribué, corpus choisi en L0, validé au labo puis à l'écoute. | L0, E5, E6 |
 | **P1** | Procédural par règles, en option : boucles d'accords générées par contraintes de style (ex. « 4 accords mineurs, mouvement chromatique, sur pédale ») et basse par gabarits (relance vers la fondamentale, montée d'une note par mesure). | E1 |
 | **P2** | Alternatives extraites du labo, en option : boucles, motifs de basse et patterns tirés automatiquement des transcriptions (`harmonium_lab/corpus/*/transcriptions/`, hors dépôt), comme les cellules trad. | E1 |
@@ -96,7 +96,8 @@ au-delà de six (à décider après N1, sur un besoin réel).
 - Migrer **tous** les profils (`profiles/*`, `tests/fixtures/profiles/*`), le studio, Bevy, le
   CLI, le labo, les docs (`profiles/README.md`, READMEs) ; aucun alias de schéma (principe IV).
 - Acceptation : dumps `harmonium_determinism` identiques avant / après (profils distribués,
-  graines 1–3, émotions `mid` et `hi`, 64 mesures), goldens et `TUNING_VERSION` inchangés,
+  graines 1–3, émotions `mid` et `hi`, 64 mesures), notes inchangées ; seule la clé de snapshot
+  `bar_in_strain` → `bar_in_part` change, d'où `TUNING_VERSION` 21 → 22 et goldens régénérés,
   rendus `--features odin` identiques octet pour octet ; suites vertes avec et sans `odin`,
   `harmonium_bevy`, `harmonium_studio`, wasm.
 - Risque : diff très large ; aucun autre agent sur `harmonium_core` pendant N1.
@@ -157,5 +158,5 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 | E0, E2, E9 | fusionnées (`d5e5db8`), suite workspace verte | [Compte rendu](e0-e2-e9.md) |
 | E4 | fusionnée (`14eb55a`), oxisynth du fork estran-studio | [Compte rendu](e4-notes-jouees.md) |
 | L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
-| N1 | lancée (vague 2) : worktree `n1-moteur-neutre`, Codex | — |
+| N1 | fusionnée : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 | [Compte rendu](n1-moteur-neutre.md) |
 | E1, E3, E5, E6, E7, P1, P2 | en attente | — |

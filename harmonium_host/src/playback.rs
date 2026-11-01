@@ -1142,7 +1142,7 @@ impl PlaybackEngine {
             #[cfg(feature = "odin")]
             {
                 self.odin_part_boundary =
-                    slot.measure.position.is_some_and(|position| position.bar_in_strain == 1);
+                    slot.measure.position.is_some_and(|position| position.bar_in_part == 1);
             }
             self.measure_tempo = self.bar_timing.tempo;
             if let Some(position) = slot.measure.position

@@ -6,9 +6,9 @@ use std::sync::{
 use harmonium_audio::backend::recorder::RecorderWorker;
 use harmonium_core::{
     EngineCommand, EngineReport, MeasureSnapshot, MusicalParams,
+    compose::{BarRole, TunePlan},
     events::RecordFormat,
     params::SessionConfig,
-    trad::{BarRole, TunePlan},
 };
 use web_time::Instant;
 
@@ -82,30 +82,34 @@ pub struct LiveHost {
 impl LiveHost {
     /// Start the engine on the default output device and begin playback.
     ///
-    /// `sf2_bytes` is the main bank, `feet_sf2_bytes` the feet bank (without
-    /// it the feet fall back to the GM kit on channel 9), `odin_presets` the
+    /// `sf2_bytes` is the main bank, `percussion_sf2_bytes` the percussion bank (without
+    /// it the percussion fall back to the GM kit on channel 9), `odin_presets` the
     /// `.odin` presets provided by the game (name + bytes); without the
     /// `odin` feature they are ignored (SoundFont rendering). `buffer_frames`
     /// fixes the device buffer size in frames (`None`: platform default).
     pub fn start(
         sf2_bytes: Option<&[u8]>,
-        feet_sf2_bytes: Option<&[u8]>,
+        percussion_sf2_bytes: Option<&[u8]>,
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
         buffer_frames: Option<u32>,
     ) -> Result<Self, String> {
-        let (stream, controls) =
-            audio::create_timeline_stream(sf2_bytes, feet_sf2_bytes, odin_presets, buffer_frames)?;
+        let (stream, controls) = audio::create_timeline_stream(
+            sf2_bytes,
+            percussion_sf2_bytes,
+            odin_presets,
+            buffer_frames,
+        )?;
         Self::from_controls(Some(OutputStream(stream)), controls)
     }
 
     /// Start the engine in a paused state.
     pub fn start_paused(
         sf2_bytes: Option<&[u8]>,
-        feet_sf2_bytes: Option<&[u8]>,
+        percussion_sf2_bytes: Option<&[u8]>,
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
         buffer_frames: Option<u32>,
     ) -> Result<Self, String> {
-        let host = Self::start(sf2_bytes, feet_sf2_bytes, odin_presets, buffer_frames)?;
+        let host = Self::start(sf2_bytes, percussion_sf2_bytes, odin_presets, buffer_frames)?;
         host.pause()?;
         Ok(host)
     }
@@ -117,13 +121,13 @@ impl LiveHost {
     /// behind). For tests and rendering.
     pub fn detached(
         sf2_bytes: Option<&[u8]>,
-        feet_sf2_bytes: Option<&[u8]>,
+        percussion_sf2_bytes: Option<&[u8]>,
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
         sample_rate: f64,
     ) -> Result<(Self, PlaybackEngine), String> {
         let (controls, playback) = audio::build_engine(
             sf2_bytes,
-            feet_sf2_bytes,
+            percussion_sf2_bytes,
             odin_presets,
             sample_rate,
             harmonium_audio::backend::recorder::OverflowPolicy::Block,
@@ -376,8 +380,8 @@ impl LiveHost {
                 self.composer.set_profile(*profile)?;
                 self.publish()
             }
-            EngineCommand::SetFeetDensity(density) => {
-                self.composer.set_feet_density(density);
+            EngineCommand::SetPercussionDensity(density) => {
+                self.composer.set_percussion_density(density);
                 self.invalidate_future()
             }
             EngineCommand::SetIntensity(intensity) => {

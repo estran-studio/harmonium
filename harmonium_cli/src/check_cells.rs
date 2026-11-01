@@ -1,6 +1,6 @@
 //! `--check-cells <fichier.toml>` : validation d'une banque de cellules sans lancer le moteur.
 
-use harmonium_core::trad::cells::{CellBank, CellRole};
+use harmonium_core::compose::cells::{CellBank, CellRole};
 
 /// Charge `path` via [`CellBank::from_toml`] et vérifie que chaque cellule compte
 /// `cell_units` unités (longueur du profil de style visé) ; retourne le code de sortie

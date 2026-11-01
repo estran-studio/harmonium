@@ -17,8 +17,8 @@ fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<
     profile.mix.tracks.melody = TrackMix { level_db: -12.0, pan: -1.0, reverb_send: 1.0 };
     profile.mix.tracks.chords = TrackMix { level_db: -6.0, pan: 1.0, reverb_send: 0.5 };
     profile.mix.tracks.bass = TrackMix { level_db: 0.0, pan: 0.0, reverb_send: 0.0 };
-    profile.mix.tracks.heel = TrackMix { level_db: -12.0, pan: -0.5, reverb_send: 0.25 };
-    profile.mix.tracks.toe = TrackMix { level_db: -6.0, pan: 0.5, reverb_send: 0.75 };
+    profile.mix.tracks.percussion_low = TrackMix { level_db: -12.0, pan: -0.5, reverb_send: 0.25 };
+    profile.mix.tracks.percussion_high = TrackMix { level_db: -6.0, pan: 0.5, reverb_send: 0.75 };
     composer.set_profile(profile.clone())?;
     commands
         .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
@@ -72,7 +72,11 @@ fn midi_mix_initializes_every_track_and_reapplies_on_profile_change() -> Result<
             [7, 10, 91].into_iter().zip(values).map(move |(cc, value)| (0, channel, cc, value))
         })
         .collect();
-    assert_eq!(&controllers[..15], &initial, "CC7/10/91 avant la première note, Toe gagne sur ch9");
+    assert_eq!(
+        &controllers[..15],
+        &initial,
+        "CC7/10/91 avant la première note, PercussionHigh gagne sur ch9"
+    );
     let melody: Vec<_> = controllers
         .into_iter()
         .filter(|(_, channel, _, _)| *channel == 0)

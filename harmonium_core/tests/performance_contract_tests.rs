@@ -1,7 +1,7 @@
 //! V2 : décisions observables dans les snapshots, sans inspecter le générateur.
 use harmonium_core::{
-    StyleProfile, TuningParams, params::MusicalParams, performance::Performance,
-    report::MeasureSnapshot, timeline::TrackId, trad::TradGenerator,
+    StyleProfile, TuningParams, compose::TuneGenerator, params::MusicalParams,
+    performance::Performance, report::MeasureSnapshot, timeline::TrackId,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -24,7 +24,7 @@ tension_advance = 0.10
 tension_detach = 0.20
 arousal_accent = 5.0
 "#;
-fn generator(performance: Performance, tension: f32, arousal: f32) -> TradGenerator {
+fn generator(performance: Performance, tension: f32, arousal: f32) -> TuneGenerator {
     let mut profile = StyleProfile::builtin().clone();
     profile.performance = performance;
     profile.ornaments = Default::default();
@@ -33,7 +33,7 @@ fn generator(performance: Performance, tension: f32, arousal: f32) -> TradGenera
     }
     profile.validate().unwrap();
     let params = MusicalParams { harmony_tension: tension, arousal, ..Default::default() };
-    TradGenerator::new(params, TuningParams { profile, ..Default::default() })
+    TuneGenerator::new(params, TuningParams { profile, ..Default::default() })
 }
 fn stream(performance: Performance, tension: f32, arousal: f32) -> Vec<MeasureSnapshot> {
     let mut generator = generator(performance, tension, arousal);
@@ -100,7 +100,7 @@ fn deterministic_bounded_and_breathes_at_each_configured_boundary() {
         for n in notes {
             assert!((-80..=0).contains(&n.performance.offset), "offset {}", n.performance.offset);
             assert_eq!(n.performance.gate, 870);
-            let breathes = [3, 8].contains(&position.bar_in_strain) && Some(n.start_step) == last;
+            let breathes = [3, 8].contains(&position.bar_in_part) && Some(n.start_step) == last;
             assert_eq!(
                 n.performance.breath > 0,
                 breathes,
