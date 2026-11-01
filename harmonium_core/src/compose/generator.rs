@@ -795,8 +795,7 @@ impl TuneGenerator {
             Some(IntroRole::Vamp) => {
                 // Vamp : l'accompagnement joue sur la tonique.
                 if self.track_active_in_intro(TrackId::Chords, intro) {
-                    let tonic =
-                        DegreeChord { degree: ChordDegree::I, quality: ChordQuality::Major };
+                    let tonic = DegreeChord::new(ChordDegree::I, ChordQuality::Major);
                     let chords = vec![tonic; steps / self.profile.harmony.steps_per_chord];
                     let seed = crate::ornaments::mix(
                         tune.material_seed,
@@ -914,9 +913,19 @@ impl TuneGenerator {
         let chords = self.chords_for_bar(tune, bar_in_tour);
         measure.chord_context = build_chord_context(chords[0], plan.key, plan.mode);
         if matches!(tune.harmony, HarmonyPlan::Loop(_)) {
-            measure
-                .chord_changes
-                .push(ChordChange { start_step: 0, context: measure.chord_context.clone() });
+            // Un changement par accord distinct de la mesure, plus l'attaque de la mesure.
+            for (slot, chord) in chords.iter().enumerate() {
+                if slot == 0 || *chord != chords[slot - 1] {
+                    measure.chord_changes.push(ChordChange {
+                        start_step: slot * self.profile.harmony.steps_per_chord,
+                        context: if slot == 0 {
+                            measure.chord_context.clone()
+                        } else {
+                            build_chord_context(*chord, plan.key, plan.mode)
+                        },
+                    });
+                }
+            }
         }
 
         // 1. Mélodie (D6)
@@ -1099,7 +1108,10 @@ impl TuneGenerator {
                         )
                     }
                     HarmonyPlan::Loop(harmony) => {
-                        let chord = harmony.chords_for_bar(self.performed_bar(position))[slot];
+                        // Les changements du modèle `loop` ne listent que les accords
+                        // distincts : le créneau se lit au pas du changement.
+                        let chord = harmony.chords_for_bar(self.performed_bar(position))
+                            [change.start_step / self.profile.harmony.steps_per_chord];
                         nearest_pitch(
                             chord.pitch_classes(tune.plan.key, tune.plan.mode),
                             note.pitch,
@@ -1939,11 +1951,17 @@ pub const fn pitch_class_name(pc: PitchClass) -> &'static str {
 #[must_use]
 pub fn degree_chord_name(chord: DegreeChord, key: PitchClass, mode: Mode) -> String {
     let root = pitch_class_name(chord.root_pc(key, mode));
-    match chord.quality {
+    let name = match chord.quality {
         ChordQuality::Major => root.to_string(),
         ChordQuality::Minor => format!("{root}m"),
         ChordQuality::Pedal => format!("{root} (pédale)"),
         ChordQuality::PedalNeighbor(neighbor) => format!("{root} (pédale +{neighbor})"),
+        ChordQuality::Typed(quality) => format!("{root}{quality}"),
+    };
+    if chord.is_slash(mode) {
+        format!("{name}/{}", pitch_class_name(chord.bass_pc(key, mode)))
+    } else {
+        name
     }
 }
 
@@ -1952,7 +1970,7 @@ pub fn degree_chord_name(chord: DegreeChord, key: PitchClass, mode: Mode) -> Str
 pub fn build_chord_context(chord: DegreeChord, key: PitchClass, mode: Mode) -> ChordContext {
     ChordContext {
         root_offset: i32::from(chord.root_semitones(mode)),
-        is_minor: matches!(chord.quality, ChordQuality::Minor),
+        is_minor: chord.quality.is_minor(),
         chord_name: degree_chord_name(chord, key, mode),
         scale_guidance: None,
     }

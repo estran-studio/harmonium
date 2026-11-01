@@ -62,16 +62,15 @@ even_eighth_velocity_offset = -6
 [harmony]
 model = "loop"
 steps_per_chord = 8
-default_bars_per_chord = 2
 [harmony.parts.Pedale]
 kind = "pedal"
 degree = 1
 [harmony.parts.Chromatique]
 kind = "chord_loop"
-loops = [{ weight = 1, chords = [{semitones=11,quality="Major",bars=2}, {semitones=0,quality="Major",bars=2}] }]
+loops = [{ weight = 1, chords = [{semitones=11,quality="",steps=32}, {semitones=0,quality="",steps=32}] }]
 [harmony.parts.Modale]
 kind = "chord_loop"
-loops = [{ weight = 1, chords = [{degree=1,quality="Minor",bars=2}, {degree=2,quality="Major",bars=2}] }]
+loops = [{ weight = 1, chords = [{degree=1,quality="m",steps=32}, {degree=2,quality="",steps=32}] }]
 
 [accompaniment]
 strong_steps = [0, 8]

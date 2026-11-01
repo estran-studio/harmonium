@@ -43,10 +43,16 @@ pub(crate) fn bass_hit_pitch(
     steps_per_chord: usize,
 ) -> u8 {
     let slot = hit.step / steps_per_chord;
-    let root = chords[slot].root_pc(key, mode);
     let held = slot == 0 || chords[slot] == chords[slot - 1];
     let fifth = hit.degree == BassDegree::Fifth || (hit.degree == BassDegree::FifthIfHeld && held);
-    place_in_range(if fifth { (root + 7) % 12 } else { root }, params.bass.low, params.bass.high)
+    // La quinte reste celle de la fondamentale ; la fondamentale du coup est la basse
+    // de l'accord (celle d'un accord slash, sinon la fondamentale).
+    let pc = if fifth {
+        (chords[slot].root_pc(key, mode) + 7) % 12
+    } else {
+        chords[slot].bass_pc(key, mode)
+    };
+    place_in_range(pc, params.bass.low, params.bass.high)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -289,7 +295,7 @@ fn bass_motif_note_pitch(
     steps_per_chord: usize,
 ) -> u8 {
     let ref_pc = match reference {
-        BassReference::ChordRoot => chords[local_step / steps_per_chord].root_pc(key, mode),
+        BassReference::ChordRoot => chords[local_step / steps_per_chord].bass_pc(key, mode),
         BassReference::Tonic => key % 12,
     };
     let mut pitch =
@@ -407,27 +413,54 @@ pub(crate) fn first_bass_target(
     }
 }
 
-/// Les triades s'inversent ; une pédale garde son voisin au-dessus d'elle.
+/// Voicing d'un accord : au plus 5 hauteurs, sur la pile.
+type Voicing = arrayvec::ArrayVec<u8, 5>;
+
+/// Les accords s'inversent ; une pédale garde son voisin au-dessus d'elle. Les tensions
+/// (9, 11, 13) restent au-dessus de l'octave de la fondamentale avant renversement.
+///
+/// Un accord slash est joué sur sa basse : si la basse est une note du voicing, seules les
+/// inversions qui la placent au grave sont proposées ; sinon elle s'ajoute sous le voicing
+/// (alors limité à quatre notes pour tenir en cinq).
 fn close_voicings(
     chord: DegreeChord,
     key: PitchClass,
     mode: Mode,
-) -> impl Iterator<Item = arrayvec::ArrayVec<u8, 3>> {
+) -> impl Iterator<Item = Voicing> {
     let root = chord.root_pc(key, mode);
-    let tones = chord.intervals();
+    let mut tones = chord.intervals();
+    let bass = chord.is_slash(mode).then(|| chord.bass_pc(key, mode));
+    let inside = bass.is_some_and(|bass| tones.iter().any(|t| (root + t) % 12 == bass));
+    let foreign = bass.filter(|_| !inside);
+    if foreign.is_some() {
+        tones = chord.voicing_tones(4);
+    }
     let inversions = if tones.len() < 3 { 1 } else { tones.len() };
     (0..=10u8).flat_map(move |octave| {
         let tones = tones.clone();
         (0..inversions).filter_map(move |inversion| {
             let base = u16::from(root) + 12 * u16::from(octave);
-            (inversion..inversion + tones.len())
+            let mut voicing: Voicing = (inversion..inversion + tones.len())
                 .map(|i| {
                     let wrapped = if i % tones.len() < inversion { 12 } else { 0 };
                     u8::try_from(base + u16::from(tones[i % tones.len()]) + wrapped)
                         .ok()
                         .filter(|&n| n <= 127)
                 })
-                .collect()
+                .collect::<Option<_>>()?;
+            // Les tensions empilées au-delà de l'octave peuvent passer sous la note
+            // renversée : l'ordre ascendant redevient celui du voicing.
+            voicing.sort_unstable();
+            if let Some(bass) = bass {
+                if foreign.is_some() {
+                    let below = voicing[0].checked_sub(1)?;
+                    let drop = (below % 12 + 12 - bass) % 12;
+                    voicing.insert(0, below.checked_sub(drop)?);
+                } else if voicing[0] % 12 != bass {
+                    return None;
+                }
+            }
+            Some(voicing)
         })
     })
 }
@@ -437,7 +470,7 @@ fn close_voicings(
 /// Un `ChordPlayer` neuf démarre sans voicing précédent ; en créer un par tune.
 #[derive(Clone, Debug, Default)]
 pub struct ChordPlayer {
-    previous: Option<arrayvec::ArrayVec<u8, 3>>,
+    previous: Option<Voicing>,
 }
 
 impl ChordPlayer {
@@ -454,9 +487,10 @@ impl ChordPlayer {
         key: PitchClass,
         mode: Mode,
         params: &AccompanimentParams,
-    ) -> Option<arrayvec::ArrayVec<u8, 3>> {
+    ) -> Option<Voicing> {
         let candidates = close_voicings(chord, key, mode).filter(|v| {
-            v.len() < 3
+            // Le doublage des voix supplémentaires ne concerne que les triades.
+            v.len() != 3
                 || params.chords.note_count <= 3
                 || v[usize::from(params.chords.note_count - 4)] <= 115
         });
@@ -465,10 +499,10 @@ impl ChordPlayer {
                 .filter(|v| v[0] >= params.chords.low && v[v.len() - 1] <= params.chords.high)
                 .min_by_key(|v| v[0])
         } else {
-            let count = chord.intervals().len() as i32;
-            let center_sum = count * i32::from(params.chords.center);
-            let max_drift_sum = count * i32::from(params.chords.max_drift);
             candidates.min_by_key(|v| {
+                let count = v.len() as i32;
+                let center_sum = count * i32::from(params.chords.center);
+                let max_drift_sum = count * i32::from(params.chords.max_drift);
                 let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
                 let center_dist = (sum - center_sum).abs();
                 let movement: i32 = self.previous.as_ref().map_or(0, |p| {

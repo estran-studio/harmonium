@@ -449,6 +449,12 @@ pub struct ChordLoop {
 fn default_loop_weight() -> u32 {
     1
 }
+/// Accord d'une boucle, relatif à la tonique : `{ semitones = 7, quality = "7b9", bass = 11 }`.
+///
+/// `quality` est un suffixe de symbole (`""`, `"m"`, `"m7"`, `"7b9"`, `"7alt"`…, voir
+/// `theory::quality`) ; `bass` est une basse d'accord slash, en demi-tons au-dessus de la
+/// tonique ; `steps` est la durée en pas de la grille, multiple de `steps_per_chord`
+/// (omise : un créneau).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LoopChord {
@@ -456,15 +462,11 @@ pub struct LoopChord {
     pub degree: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub semitones: Option<u8>,
-    pub quality: crate::compose::ChordQuality,
+    pub quality: crate::theory::quality::Quality,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bars: Option<usize>,
-}
-fn default_bars_per_chord() -> usize {
-    1
-}
-fn is_one(value: &usize) -> bool {
-    *value == 1
+    pub bass: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steps: Option<usize>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -482,8 +484,6 @@ pub struct ProfileHarmony {
     pub scale_guidance: bool,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parts: BTreeMap<String, HarmonyPart>,
-    #[serde(default = "default_bars_per_chord", skip_serializing_if = "is_one")]
-    pub default_bars_per_chord: usize,
 }
 impl ProfileHarmony {
     /// Une alternative unique ne requiert aucune graine ni aucun tirage.

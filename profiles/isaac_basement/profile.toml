@@ -95,46 +95,45 @@ even_eighth_velocity_offset = -4
 [harmony]
 model = "loop"
 steps_per_chord = 16
-default_bars_per_chord = 1
 [harmony.parts.A1]
 kind = "pedal"
 degree = 1
 [harmony.parts.A2]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
-  { semitones = 0, quality = "Minor", bars = 1 },
-  { semitones = 5, quality = "Minor", bars = 1 },
-  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 0, quality = "m", steps = 16 },
+  { semitones = 5, quality = "m", steps = 16 },
+  { semitones = 0, quality = "m", steps = 32 },
 ] }, { weight = 1, chords = [
-  { semitones = 0, quality = "Minor", bars = 2 },
-  { semitones = 5, quality = "Minor", bars = 1 },
-  { semitones = 7, quality = "Major", bars = 1 },
+  { semitones = 0, quality = "m", steps = 32 },
+  { semitones = 5, quality = "m", steps = 16 },
+  { semitones = 7, quality = "", steps = 16 },
 ] }]
 [harmony.parts.D]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 7, quality = "Major", bars = 1 },
-  { semitones = 5, quality = "Minor", bars = 1 },
-  { semitones = 7, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "", steps = 16 },
+  { semitones = 7, quality = "", steps = 16 },
+  { semitones = 5, quality = "m", steps = 16 },
+  { semitones = 7, quality = "", steps = 16 },
 ] }, { weight = 1, chords = [
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 5, quality = "Minor", bars = 1 },
-  { semitones = 0, quality = "Minor", bars = 1 },
-  { semitones = 7, quality = "Major", bars = 1 },
+  { semitones = 8, quality = "", steps = 16 },
+  { semitones = 5, quality = "m", steps = 16 },
+  { semitones = 0, quality = "m", steps = 16 },
+  { semitones = 7, quality = "", steps = 16 },
 ] }]
 [harmony.parts.Pont]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
-  { semitones = 6, quality = "Minor", bars = 2 },
-  { semitones = 5, quality = "Minor", bars = 2 },
-  { semitones = 3, quality = "Minor", bars = 2 },
-  { semitones = 11, quality = "Minor", bars = 2 },
+  { semitones = 6, quality = "m", steps = 32 },
+  { semitones = 5, quality = "m", steps = 32 },
+  { semitones = 3, quality = "m", steps = 32 },
+  { semitones = 11, quality = "m", steps = 32 },
 ] }, { weight = 1, chords = [
-  { semitones = 6, quality = "Minor", bars = 2 },
-  { semitones = 5, quality = "Minor", bars = 2 },
-  { semitones = 11, quality = "Minor", bars = 2 },
-  { semitones = 0, quality = "Minor", bars = 2 },
+  { semitones = 6, quality = "m", steps = 32 },
+  { semitones = 5, quality = "m", steps = 32 },
+  { semitones = 11, quality = "m", steps = 32 },
+  { semitones = 0, quality = "m", steps = 32 },
 ] }]
 
 [accompaniment]
