@@ -3,10 +3,10 @@
 //! Fournit une représentation enrichie des accords avec:
 //! - `PitchClass` (0-11)
 //! - `ChordType` étendu (Major, Minor, Aug, Dim, Dom7, etc.)
-//! - Extensions et basse séparée
+//! - Extensions et basse séparée ; suffixes lus et écrits par `theory::quality`
 //! - Niveau LCC (Lydian Chromatic Concept)
 
-use super::PitchClass;
+use super::{PitchClass, quality::Quality};
 
 /// Noms des notes pour affichage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -129,9 +129,40 @@ pub enum ChordType {
     Dominant7Sus4,
     /// Accord add9 (1-3-5-9) - ex: Cadd9
     Add9,
+    /// Accord dominant 7 quinte bémol (1-3-b5-b7) - ex: C7b5
+    Dominant7Flat5,
+    /// Accord dominant 7 sus2 (1-2-5-b7) - ex: C7sus2
+    Dominant7Sus2,
+    /// Accord dominant altéré (1-3-b7) ; ses altérations b9, #9, #11, b13 sont des
+    /// extensions imposées (voir [`Quality`]) - ex: C7alt
+    Altered,
 }
 
 impl ChordType {
+    /// Tous les types, dans l'ordre de déclaration (source unique du vocabulaire de suffixes).
+    pub const ALL: [Self; 20] = [
+        Self::Major,
+        Self::Minor,
+        Self::Augmented,
+        Self::Diminished,
+        Self::Dominant7,
+        Self::Major7,
+        Self::Minor7,
+        Self::HalfDiminished,
+        Self::Diminished7,
+        Self::Sus2,
+        Self::Sus4,
+        Self::MinorMajor7,
+        Self::Augmented7,
+        Self::Major6,
+        Self::Minor6,
+        Self::Dominant7Sus4,
+        Self::Add9,
+        Self::Dominant7Flat5,
+        Self::Dominant7Sus2,
+        Self::Altered,
+    ];
+
     /// Retourne les intervalles (en demi-tons) depuis la fondamentale
     #[must_use]
     pub const fn intervals(&self) -> &'static [u8] {
@@ -153,6 +184,9 @@ impl ChordType {
             Self::Minor6 => &[0, 3, 7, 9],
             Self::Dominant7Sus4 => &[0, 5, 7, 10],
             Self::Add9 => &[0, 2, 4, 7],
+            Self::Dominant7Flat5 => &[0, 4, 6, 10],
+            Self::Dominant7Sus2 => &[0, 2, 7, 10],
+            Self::Altered => &[0, 4, 10],
         }
     }
 
@@ -196,6 +230,9 @@ impl ChordType {
             Self::Minor6 => "m6",
             Self::Dominant7Sus4 => "7sus4",
             Self::Add9 => "add9",
+            Self::Dominant7Flat5 => "7b5",
+            Self::Dominant7Sus2 => "7sus2",
+            Self::Altered => "7alt",
         }
     }
 
@@ -211,6 +248,8 @@ impl ChordType {
                 | Self::Major6
                 | Self::Augmented7
                 | Self::Add9
+                | Self::Dominant7Flat5
+                | Self::Altered
         )
     }
 
@@ -240,7 +279,12 @@ impl ChordType {
     pub const fn is_ambiguous(&self) -> bool {
         matches!(
             self,
-            Self::Sus2 | Self::Sus4 | Self::Augmented | Self::Diminished7 | Self::Dominant7Sus4
+            Self::Sus2
+                | Self::Sus4
+                | Self::Augmented
+                | Self::Diminished7
+                | Self::Dominant7Sus4
+                | Self::Dominant7Sus2
         )
     }
 }
@@ -302,40 +346,6 @@ fn parse_root(s: &str) -> Option<(PitchClass, &str)> {
     } else {
         Some((base, rest))
     }
-}
-
-/// Parse a chord type suffix from the beginning of a string.
-/// Returns `(ChordType, remaining_str)` on success.
-/// Matches longest prefixes first to avoid ambiguity.
-fn parse_chord_type(s: &str) -> Option<(ChordType, &str)> {
-    // Ordered longest-first to prevent partial matches
-    const SUFFIXES: &[(&str, ChordType)] = &[
-        ("mMaj7", ChordType::MinorMajor7),
-        ("m7b5", ChordType::HalfDiminished),
-        ("7sus4", ChordType::Dominant7Sus4),
-        ("maj7", ChordType::Major7),
-        ("dim7", ChordType::Diminished7),
-        ("add9", ChordType::Add9),
-        ("sus2", ChordType::Sus2),
-        ("sus4", ChordType::Sus4),
-        ("7#5", ChordType::Augmented7),
-        ("dim", ChordType::Diminished),
-        ("m7", ChordType::Minor7),
-        ("m6", ChordType::Minor6),
-        ("7", ChordType::Dominant7),
-        ("6", ChordType::Major6),
-        ("m", ChordType::Minor),
-        ("+", ChordType::Augmented),
-    ];
-
-    for &(suffix, chord_type) in SUFFIXES {
-        if let Some(rest) = s.strip_prefix(suffix) {
-            return Some((chord_type, rest));
-        }
-    }
-
-    // Empty suffix = Major
-    Some((ChordType::Major, s))
 }
 
 /// Un accord avec contexte harmonique complet
@@ -459,35 +469,39 @@ impl Chord {
         total_distance
     }
 
-    /// Parse a chord from its name (e.g., "Cmaj7", "Dm7b5", "Bb7", "F#m/C#").
+    /// Parse a chord from its name (e.g., "Cmaj7", "Dm7b5", "G7b9", "C7alt", "C/E", "F#m/C#").
     ///
-    /// This is the inverse of [`Chord::name()`]. Input is normalized to sharps
-    /// (e.g., "Bb" → root 10 which displays as "A#").
+    /// The quality suffix is read by [`Quality::parse`] (the single suffix grammar, see
+    /// `theory::quality`) ; its tensions fill `extensions`. This is the inverse of
+    /// [`Chord::name()`]. Input is normalized to sharps (e.g., "Bb" → root 10 which displays
+    /// as "A#").
     pub fn from_name(s: &str) -> Result<Self, ChordParseError> {
         let s = s.trim();
         if s.is_empty() {
             return Err(ChordParseError::EmptyInput);
         }
 
-        // Split on '/' for slash chords — but only the LAST '/' counts as bass separator
-        let (chord_part, bass_part) = if let Some(slash_pos) = s.rfind('/') {
-            // Only treat as slash chord if there's content after the slash
-            let after = &s[slash_pos + 1..];
-            if after.is_empty() { (s, None) } else { (&s[..slash_pos], Some(after)) }
-        } else {
-            (s, None)
+        // Split on '/' for slash chords — but only the LAST '/' counts as bass separator,
+        // and the "6/9" quality ("C6/9", "Cm6/9") is not a slash chord.
+        let (chord_part, bass_part) = match s.rfind('/') {
+            Some(slash_pos) => {
+                let (before, after) = (&s[..slash_pos], &s[slash_pos + 1..]);
+                if after.is_empty() || (after == "9" && before.ends_with('6')) {
+                    (s, None)
+                } else {
+                    (before, Some(after))
+                }
+            }
+            None => (s, None),
         };
 
         let (root, remainder) = parse_root(chord_part).ok_or(ChordParseError::InvalidRoot)?;
 
-        let (chord_type, leftover) = parse_chord_type(remainder)
-            .ok_or_else(|| ChordParseError::InvalidQuality(remainder.to_string()))?;
+        let quality = Quality::parse(remainder)
+            .map_err(|_| ChordParseError::InvalidQuality(remainder.to_string()))?;
 
-        if !leftover.is_empty() {
-            return Err(ChordParseError::InvalidQuality(remainder.to_string()));
-        }
-
-        let mut chord = Self::new(root, chord_type);
+        let mut chord = Self::new(root, quality.chord_type());
+        chord.extensions = quality.extensions().to_vec();
 
         if let Some(bass_str) = bass_part {
             let (bass_pc, bass_leftover) = parse_root(bass_str)
@@ -501,11 +515,20 @@ impl Chord {
         Ok(chord)
     }
 
+    /// Qualité (type et extensions) de l'accord ; `None` si la combinaison est hors du
+    /// vocabulaire de suffixes.
+    #[must_use]
+    pub fn quality(&self) -> Option<Quality> {
+        Quality::from_parts(self.chord_type, &self.extensions)
+    }
+
     /// Nom complet de l'accord (ex: "C#m7")
     #[must_use]
     pub fn name(&self) -> String {
         let root_name = NoteName::from_pitch_class(self.root).as_str();
-        let suffix = self.chord_type.suffix();
+        let suffix = self
+            .quality()
+            .map_or_else(|| self.chord_type.suffix().to_string(), |quality| quality.to_string());
         let bass_str = self
             .bass
             .map_or(String::new(), |b| format!("/{}", NoteName::from_pitch_class(b).as_str()));
@@ -683,6 +706,9 @@ mod tests {
             ChordType::Minor6,
             ChordType::Dominant7Sus4,
             ChordType::Add9,
+            ChordType::Dominant7Flat5,
+            ChordType::Dominant7Sus2,
+            ChordType::Altered,
         ];
         for root in 0..12u8 {
             for &ct in &types {
@@ -740,6 +766,75 @@ mod tests {
         assert_eq!(parsed.root, 10);
         assert_eq!(parsed.chord_type, ChordType::Major7);
         assert_eq!(parsed.bass, Some(2));
+    }
+
+    #[test]
+    fn test_from_name_fills_extensions_and_bass() -> Result<(), ChordParseError> {
+        let g7b9 = Chord::from_name("G7b9")?;
+        assert_eq!(
+            (g7b9.root, g7b9.chord_type, g7b9.extensions.clone()),
+            (7, ChordType::Dominant7, vec![1])
+        );
+        assert_eq!(g7b9.all_pitch_classes(), vec![7, 11, 2, 5, 8]);
+        assert_eq!(g7b9.name(), "G7b9");
+
+        let alt = Chord::from_name("C7alt")?;
+        assert_eq!(
+            (alt.chord_type, alt.extensions.clone()),
+            (ChordType::Altered, vec![1, 3, 6, 8])
+        );
+        assert_eq!(alt.name(), "C7alt");
+
+        let slash = Chord::from_name("C/E")?;
+        assert_eq!((slash.root, slash.chord_type, slash.bass), (0, ChordType::Major, Some(4)));
+        assert!(slash.extensions.is_empty());
+
+        let half = Chord::from_name("Dm7b5")?;
+        assert_eq!((half.root, half.chord_type), (2, ChordType::HalfDiminished));
+
+        // « 6/9 » n'est pas un accord slash ; la basse s'ajoute après.
+        let six_nine = Chord::from_name("C6/9")?;
+        assert_eq!(
+            (six_nine.chord_type, six_nine.extensions.clone(), six_nine.bass),
+            (ChordType::Major6, vec![2], None)
+        );
+        assert_eq!(Chord::from_name("Cm6/9/Eb")?.bass, Some(3));
+        assert_eq!(
+            Chord::from_name("Bb13b13/D"),
+            Err(ChordParseError::InvalidQuality("13b13".into()))
+        );
+        assert_eq!(Chord::from_name("Bb9#11/D")?.bass, Some(2));
+        Ok(())
+    }
+
+    #[test]
+    fn test_name_round_trips_for_every_root_and_quality() -> Result<(), Box<dyn std::error::Error>>
+    {
+        for root in ["C", "Db", "F#", "Bb", "B"] {
+            for quality in [
+                "", "m", "7", "maj7", "m7", "m7b5", "dim7", "sus4", "6", "9", "11", "13", "maj9",
+                "m11", "7b9", "7#9", "7#11", "7b13", "7b5b9", "7#5#9", "7alt", "6/9", "13sus4",
+                "7sus2",
+            ] {
+                for bass in ["", "/E", "/Bb"] {
+                    let symbol = format!("{root}{quality}{bass}");
+                    let chord = Chord::from_name(&symbol).map_err(|e| format!("{symbol} : {e}"))?;
+                    let again = Chord::from_name(&chord.name())?;
+                    assert_eq!(chord, again, "{symbol} -> {}", chord.name());
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_name_refuses_invalid_symbols() {
+        for symbol in
+            ["G7b9b9", "C7alt9", "Cmaj7b9", "C9b9", "Cm7#11", "C6/9b9", "C/H", "C/", "H7", "C69"]
+        {
+            assert!(Chord::from_name(symbol).is_err(), "{symbol}");
+        }
+        assert_eq!(Chord::from_name("C/X"), Err(ChordParseError::InvalidBass("X".into())));
     }
 
     #[test]

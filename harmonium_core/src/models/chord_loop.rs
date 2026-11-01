@@ -5,7 +5,7 @@ use rand_chacha::ChaCha8Rng;
 use crate::{
     algo::RngCore,
     compose::{ChordDegree, ChordQuality, DegreeChord, Mode, TunePlan},
-    style_profile::{HarmonyPart, ProfileError, StyleProfile},
+    style_profile::{HarmonyPart, LoopChord, ProfileError, StyleProfile},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -16,7 +16,9 @@ pub struct LoopHarmony {
 impl LoopHarmony {
     /// Le profil du plan doit avoir été validé avant la construction.
     pub fn new(plan: TunePlan, seed: u64) -> Self {
-        let slots = plan.profile.meter.steps_per_bar / plan.profile.harmony.steps_per_chord;
+        let steps_per_bar = plan.profile.meter.steps_per_bar;
+        let period = plan.profile.harmony.steps_per_chord;
+        let slots = steps_per_bar / period;
         let selected: Vec<_> = plan
             .profile
             .form
@@ -55,37 +57,39 @@ impl LoopHarmony {
             .map(|material| {
                 let (part, _, offset, _) = plan.position(plan.representative_bar(material));
                 let name = &plan.profile.form.parts[part].name;
-                let chord = match &plan.profile.harmony.parts[name] {
+                match &plan.profile.harmony.parts[name] {
                     HarmonyPart::Pedal { degree, semitones, neighbor_semitones } => {
-                        DegreeChord::new(
+                        let chord = DegreeChord::new(
                             root(*degree, *semitones, plan.mode),
                             neighbor_semitones
                                 .map_or(ChordQuality::Pedal, ChordQuality::PedalNeighbor),
-                        )
+                        );
+                        vec![chord; slots]
                     }
                     HarmonyPart::ChordLoop { loops } => {
                         let chords = &loops[selected[part]].chords;
-                        let default = plan.profile.harmony.default_bars_per_chord;
-                        let mut remaining = offset;
-                        let chord = chords
-                            .iter()
-                            .find(|chord| {
-                                let bars = chord.bars.unwrap_or(default);
-                                if remaining < bars {
-                                    true
-                                } else {
-                                    remaining -= bars;
-                                    false
-                                }
+                        (0..slots)
+                            .map(|slot| {
+                                let mut remaining = offset * steps_per_bar + slot * period;
+                                let chord = chords
+                                    .iter()
+                                    .find(|chord| {
+                                        let steps = chord_steps(chord, period);
+                                        if remaining < steps {
+                                            true
+                                        } else {
+                                            remaining -= steps;
+                                            false
+                                        }
+                                    })
+                                    .unwrap_or_else(|| {
+                                        unreachable!("validated nonempty chord loop")
+                                    });
+                                degree_chord(chord, plan.mode)
                             })
-                            .unwrap_or_else(|| unreachable!("validated nonempty chord loop"));
-                        DegreeChord::new(
-                            root(chord.degree, chord.semitones, plan.mode),
-                            chord.quality,
-                        )
+                            .collect()
                     }
-                };
-                vec![chord; slots]
+                }
             })
             .collect();
         Self { plan, chords }
@@ -93,6 +97,17 @@ impl LoopHarmony {
     pub fn chords_for_bar(&self, bar: usize) -> &[DegreeChord] {
         &self.chords[self.plan.material_index(bar)]
     }
+}
+/// Durée en pas : explicite, sinon un créneau de la grille harmonique.
+fn chord_steps(chord: &LoopChord, steps_per_chord: usize) -> usize {
+    chord.steps.unwrap_or(steps_per_chord)
+}
+fn degree_chord(chord: &LoopChord, mode: Mode) -> DegreeChord {
+    let resolved = DegreeChord::new(
+        root(chord.degree, chord.semitones, mode),
+        ChordQuality::from_quality(chord.quality),
+    );
+    chord.bass.map_or(resolved, |bass| resolved.with_bass(bass))
 }
 fn root(degree: Option<u8>, semitones: Option<u8>, mode: Mode) -> ChordDegree {
     ChordDegree::Semitones(degree.map_or_else(
@@ -129,12 +144,6 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
             Err(ProfileError::new("harmony.parts", "réservé au modèle loop"))
         };
     }
-    if harmony.default_bars_per_chord == 0 {
-        return Err(ProfileError::new(
-            "harmony.default_bars_per_chord",
-            "durée positive en mesures entières requise",
-        ));
-    }
     for name in harmony.parts.keys() {
         if !profile.form.parts.iter().any(|part| part.name == *name) {
             return Err(ProfileError::new(
@@ -143,6 +152,9 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
             ));
         }
     }
+    let fixed_triad = profile.accompaniment.as_ref().is_some_and(|accompaniment| {
+        accompaniment.chords.voicing == crate::compose::accomp_profile::ChordVoicing::FixedTriad
+    });
     for part in &profile.form.parts {
         let path = format!("harmony.parts.{}", part.name);
         let configured = harmony
@@ -196,27 +208,44 @@ pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
                     for (index, chord) in alternative.chords.iter().enumerate() {
                         let path = format!("{path}.chords[{index}]");
                         validate_root(chord.degree, chord.semitones, &path)?;
-                        if !matches!(chord.quality, ChordQuality::Major | ChordQuality::Minor) {
+                        if chord.bass.is_some_and(|bass| bass > 11) {
                             return Err(ProfileError::new(
-                                format!("{path}.quality"),
-                                "Major ou Minor requis",
+                                format!("{path}.bass"),
+                                "attendu 0..11 demi-tons au-dessus de la tonique",
                             ));
                         }
-                        let bars = chord.bars.unwrap_or(harmony.default_bars_per_chord);
-                        if bars == 0 {
+                        if fixed_triad
+                            && (chord.bass.is_some()
+                                || !matches!(
+                                    ChordQuality::from_quality(chord.quality),
+                                    ChordQuality::Major | ChordQuality::Minor
+                                ))
+                        {
                             return Err(ProfileError::new(
-                                format!("{path}.bars"),
-                                "durée positive en mesures entières requise",
+                                "accompaniment.chords.voicing",
+                                "fixed_triad ne joue que des triades majeures et mineures \
+                                 sans basse : qualités typées et accords slash demandent close_triad",
                             ));
                         }
-                        length = length.checked_add(bars).ok_or_else(|| {
-                            ProfileError::new(format!("{path}.bars"), "durée totale en débordement")
+                        let steps = chord_steps(chord, harmony.steps_per_chord);
+                        if steps == 0 || !steps.is_multiple_of(harmony.steps_per_chord) {
+                            return Err(ProfileError::new(
+                                format!("{path}.steps"),
+                                "durée positive en pas, multiple de harmony.steps_per_chord requise",
+                            ));
+                        }
+                        length = length.checked_add(steps).ok_or_else(|| {
+                            ProfileError::new(
+                                format!("{path}.steps"),
+                                "durée totale en débordement",
+                            )
                         })?;
                     }
-                    if length != part.roles.len() {
+                    if length != part.roles.len() * profile.meter.steps_per_bar {
                         return Err(ProfileError::new(
                             format!("{path}.chords"),
-                            "la longueur de chaque alternative doit égaler la longueur de la partie",
+                            "la somme des durées en pas de chaque alternative doit égaler la \
+                             longueur de la partie en pas (mesures × meter.steps_per_bar)",
                         ));
                     }
                 }

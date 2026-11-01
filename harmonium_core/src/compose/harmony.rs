@@ -11,7 +11,9 @@ use super::{
     plan::{BarRole, ImposedRole, TunePlan},
 };
 use crate::{
-    style_profile::StyleProfile, theory::PitchClass, timeline::TimelineNote,
+    style_profile::StyleProfile,
+    theory::{PitchClass, quality::Quality},
+    timeline::TimelineNote,
     tuning::AccompanimentParams,
 };
 
@@ -35,7 +37,7 @@ pub enum ChordDegree {
     Semitones(u8),
 }
 
-/// Sonorité : triade ou pédale (sans tierce ni quinte ajoutée).
+/// Sonorité : triade, pédale (sans tierce ni quinte ajoutée) ou qualité typée.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ChordQuality {
     /// Tierce majeure (4 demi-tons).
@@ -48,6 +50,36 @@ pub enum ChordQuality {
     /// Degré tenu avec son voisin chromatique supérieur.
     #[serde(skip)]
     PedalNeighbor(u8),
+    /// Qualité d'un profil `loop` hors des triades majeure et mineure : septièmes,
+    /// tensions, altérations (voir [`Quality`]). Majeure et mineure nues restent
+    /// `Major` et `Minor` : un seul représentant par sonorité.
+    #[serde(skip)]
+    Typed(Quality),
+}
+
+impl ChordQuality {
+    /// Représentant unique d'une qualité lue d'un profil.
+    #[must_use]
+    pub fn from_quality(quality: Quality) -> Self {
+        use crate::theory::chord::ChordType;
+        if quality == Quality::plain(ChordType::Major) {
+            Self::Major
+        } else if quality == Quality::plain(ChordType::Minor) {
+            Self::Minor
+        } else {
+            Self::Typed(quality)
+        }
+    }
+
+    /// Tierce mineure (ou diminuée) : alimente `is_minor` du contexte publié.
+    #[must_use]
+    pub const fn is_minor(self) -> bool {
+        match self {
+            Self::Minor => true,
+            Self::Typed(quality) => quality.chord_type().is_minor(),
+            Self::Major | Self::Pedal | Self::PedalNeighbor(_) => false,
+        }
+    }
 }
 
 /// Accord relatif à la tonique, partagé par les modèles et l'accompagnement.
@@ -55,12 +87,23 @@ pub enum ChordQuality {
 pub struct DegreeChord {
     pub degree: ChordDegree,
     pub quality: ChordQuality,
+    /// Basse d'un accord slash, en demi-tons au-dessus de la tonique (`0..=11`) ;
+    /// `None` : la basse est la fondamentale.
+    #[serde(skip)]
+    pub bass: Option<u8>,
 }
 
 impl DegreeChord {
     #[must_use]
     pub const fn new(degree: ChordDegree, quality: ChordQuality) -> Self {
-        Self { degree, quality }
+        Self { degree, quality, bass: None }
+    }
+
+    /// Accord slash : basse en demi-tons au-dessus de la tonique.
+    #[must_use]
+    pub const fn with_bass(mut self, bass_semitones: u8) -> Self {
+        self.bass = Some(bass_semitones % 12);
+        self
     }
 
     /// Demi-tons de la fondamentale au-dessus de la tonique. Le II suit la
@@ -84,22 +127,60 @@ impl DegreeChord {
         (key % 12 + self.root_semitones(mode)) % 12
     }
 
-    /// Intervalles ascendants, sans allocation ; une pédale reste monophonique.
+    /// Demi-tons de la basse au-dessus de la tonique : la basse de l'accord slash, sinon
+    /// la fondamentale.
     #[must_use]
-    pub fn intervals(self) -> arrayvec::ArrayVec<u8, 3> {
+    pub const fn bass_semitones(self, mode: Mode) -> u8 {
+        match self.bass {
+            Some(bass) => bass % 12,
+            None => self.root_semitones(mode),
+        }
+    }
+
+    /// Classe de hauteur de la basse.
+    #[must_use]
+    pub const fn bass_pc(self, key: PitchClass, mode: Mode) -> PitchClass {
+        (key % 12 + self.bass_semitones(mode)) % 12
+    }
+
+    /// `true` si la basse diffère de la fondamentale.
+    #[must_use]
+    pub const fn is_slash(self, mode: Mode) -> bool {
+        self.bass_semitones(mode) != self.root_semitones(mode)
+    }
+
+    /// Hauteurs d'un voicing, relatives à la fondamentale, ascendantes et empilées (les
+    /// tensions au-delà de l'octave), au plus `limit.min(5)`, sans allocation. Une pédale
+    /// reste monophonique ; une triade garde ses trois intervalles.
+    #[must_use]
+    pub fn voicing_tones(self, limit: usize) -> arrayvec::ArrayVec<u8, 5> {
         match self.quality {
             ChordQuality::Major => [0, 4, 7].into_iter().collect(),
             ChordQuality::Minor => [0, 3, 7].into_iter().collect(),
             ChordQuality::Pedal => [0].into_iter().collect(),
             ChordQuality::PedalNeighbor(neighbor) => [0, neighbor].into_iter().collect(),
+            ChordQuality::Typed(quality) => quality.voicing_tones(limit),
         }
     }
 
-    /// Classes de hauteur de la sonorité, dans l'ordre de ses intervalles.
+    /// Intervalles ascendants du voicing complet (4 à 5 hauteurs au plus pour une qualité
+    /// typée), sans allocation.
     #[must_use]
-    pub fn pitch_classes(self, key: PitchClass, mode: Mode) -> arrayvec::ArrayVec<PitchClass, 3> {
+    pub fn intervals(self) -> arrayvec::ArrayVec<u8, 5> {
+        self.voicing_tones(5)
+    }
+
+    /// Classes de hauteur de la sonorité entière (toutes les tensions), croissantes pour une
+    /// qualité typée, dans l'ordre des intervalles sinon.
+    #[must_use]
+    pub fn pitch_classes(self, key: PitchClass, mode: Mode) -> arrayvec::ArrayVec<PitchClass, 12> {
         let root = self.root_pc(key, mode);
-        self.intervals().into_iter().map(|interval| (root + interval) % 12).collect()
+        match self.quality {
+            ChordQuality::Typed(quality) => {
+                quality.intervals().into_iter().map(|interval| (root + interval) % 12).collect()
+            }
+            _ => self.intervals().into_iter().map(|interval| (root + interval) % 12).collect(),
+        }
     }
 
     /// `true` si la classe de hauteur de `midi` appartient à l'accord.

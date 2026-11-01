@@ -102,40 +102,39 @@ even_eighth_velocity_offset = -4
 [harmony]
 model = "loop"
 steps_per_chord = 24
-default_bars_per_chord = 1
 [harmony.parts.A1]
 kind = "pedal"
 degree = 1
 [harmony.parts.A2]
 kind = "chord_loop"
-loops = [{ weight = 1, chords = [{ semitones = 6, quality = "Minor", bars = 8 }] }]
+loops = [{ weight = 1, chords = [{ semitones = 6, quality = "m", steps = 192 }] }]
 [harmony.parts.Pont]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
-  { semitones = 4, quality = "Major", bars = 1 },
-  { semitones = 4, quality = "Major", bars = 1 },
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 9, quality = "Major", bars = 1 },
-  { semitones = 3, quality = "Major", bars = 1 },
-  { semitones = 4, quality = "Major", bars = 1 },
-  { semitones = 4, quality = "Major", bars = 1 },
-  { semitones = 9, quality = "Major", bars = 1 },
-  { semitones = 4, quality = "Major", bars = 1 },
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 8, quality = "Major", bars = 1 },
-  { semitones = 9, quality = "Major", bars = 1 },
-  { semitones = 3, quality = "Major", bars = 1 },
-  { semitones = 5, quality = "Major", bars = 1 },
-  { semitones = 5, quality = "Major", bars = 1 },
+  { semitones = 4, quality = "", steps = 24 },
+  { semitones = 4, quality = "", steps = 24 },
+  { semitones = 8, quality = "", steps = 24 },
+  { semitones = 8, quality = "", steps = 24 },
+  { semitones = 9, quality = "", steps = 24 },
+  { semitones = 3, quality = "", steps = 24 },
+  { semitones = 4, quality = "", steps = 24 },
+  { semitones = 4, quality = "", steps = 24 },
+  { semitones = 9, quality = "", steps = 24 },
+  { semitones = 4, quality = "", steps = 24 },
+  { semitones = 8, quality = "", steps = 24 },
+  { semitones = 8, quality = "", steps = 24 },
+  { semitones = 9, quality = "", steps = 24 },
+  { semitones = 3, quality = "", steps = 24 },
+  { semitones = 5, quality = "", steps = 24 },
+  { semitones = 5, quality = "", steps = 24 },
 ] }]
 [harmony.parts.B]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
-  { semitones = 11, quality = "Major", bars = 2 },
-  { semitones = 0, quality = "Major", bars = 2 },
-  { semitones = 11, quality = "Major", bars = 2 },
-  { semitones = 0, quality = "Major", bars = 2 },
+  { semitones = 11, quality = "", steps = 48 },
+  { semitones = 0, quality = "", steps = 48 },
+  { semitones = 11, quality = "", steps = 48 },
+  { semitones = 0, quality = "", steps = 48 },
 ] }]
 
 [accompaniment]

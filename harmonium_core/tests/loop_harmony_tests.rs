@@ -239,7 +239,7 @@ fn validation_publique_refuse_les_parties_et_boucles_invalides() -> TestResult {
     reject(v)?;
     for duration in [0, 5, 65536] {
         let mut v = base.clone();
-        v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["bars"] = duration.into();
+        v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["steps"] = duration.into();
         reject(v)?;
     }
     for degree in [0, 8] {
@@ -266,7 +266,11 @@ fn validation_publique_refuse_les_parties_et_boucles_invalides() -> TestResult {
     insert(&mut v["harmony"]["parts"]["Modale"]["loops"][0], "weight", 0)?;
     reject(v)?;
     let mut v = base.clone();
-    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["bars"] = 1.into();
+    v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0]["steps"] = 8.into();
+    reject(v)?;
+    // Durée en mesures, ancienne écriture : refusée sans alias.
+    let mut v = base.clone();
+    insert(&mut v["harmony"]["parts"]["Modale"]["loops"][0]["chords"][0], "bars", 2)?;
     reject(v)?;
     for degree in [0, 8] {
         let mut v = base.clone();
@@ -291,7 +295,7 @@ fn validation_publique_refuse_les_parties_et_boucles_invalides() -> TestResult {
     insert(&mut v["harmony"]["parts"]["Modale"], "chords", legacy)?;
     reject(v)?;
     let mut v = base.clone();
-    v["harmony"]["default_bars_per_chord"] = 0.into();
+    insert(&mut v["harmony"], "default_bars_per_chord", 1)?;
     reject(v)?;
     for neighbor in [0, 12] {
         let mut v = base.clone();
@@ -335,13 +339,13 @@ fn alternative_unique_poids_neutre_sur_les_snapshots() -> TestResult {
 #[test]
 fn alternatives_conservent_le_choix_lors_des_changements_de_mode() -> TestResult {
     let p = load("nt_pedale_boucle")?;
-    let bars =
-        p.form.parts.iter().find(|p| p.name == "Modale").ok_or("partie absente")?.roles.len();
+    let steps = p.meter.steps_per_bar
+        * p.form.parts.iter().find(|p| p.name == "Modale").ok_or("partie absente")?.roles.len();
     let p = edited(&p, |v| {
         let alternatives: toml::Value = toml::from_str(&format!(
             "loops = [\
-                {{ weight = 1, chords = [{{ degree = 2, quality = 'Major', bars = {bars} }}] }},\
-                {{ weight = 3, chords = [{{ degree = 6, quality = 'Major', bars = {bars} }}] }}\
+                {{ weight = 1, chords = [{{ degree = 2, quality = '', steps = {steps} }}] }},\
+                {{ weight = 3, chords = [{{ degree = 6, quality = '', steps = {steps} }}] }}\
             ]"
         ))?;
         v["harmony"]["parts"]["Modale"]["loops"] = alternatives["loops"].clone();
