@@ -135,12 +135,15 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 
 ## Exécution (rappel pour la reprise)
 
-- Agents : omp personnel, **jamais l'abonnement Claude perso**. Depuis le 2026-10-30 (décision du
-  propriétaire) : **Codex** `openai-codex/gpt-6.1-sol` et la clé **`anthropic-api`** (crédits
-  API, `claude-opus-5-5`, `claude-sonnet-5-5`). Overlays : `/tmp/harmonium-018/codex-anthropic.yml`
-  (code : Codex, relais anthropic-api sur limite d'usage) et `anthropic-codex.yml` (recherche :
-  anthropic-api, relais Codex). OpenRouter à sec, Muse épuisé jusqu'au 2026-11-02. Limite
-  d'usage Codex atteinte à 5 agents simultanés.
+- Agents : omp personnel. Depuis le 2026-10-30 (décision du propriétaire) : **Codex**
+  `openai-codex/gpt-6.1-sol` et la clé **`anthropic-api`** (crédits API ; **à sec depuis le
+  2026-10-31**). Depuis le 2026-11-01 : l'**abonnement Claude** (provider `anthropic`) est permis
+  pour **Sonnet ou Haiku seulement** (`claude-sonnet-5-5`, `claude-haiku-5-5`), jamais Opus.
+  Overlays : `/tmp/harmonium-018/codex-sub.yml` (code : Codex, relais Sonnet sur limite d'usage) et
+  `anthropic-sub.yml` (Sonnet, relais Codex). OpenRouter à sec, Muse épuisé jusqu'au 2026-11-02.
+  Limite d'usage Codex atteinte à 5 agents simultanés, et pendant N1 avec un seul agent.
+- Terminal Orca : oh-my-zsh peut demander une mise à jour au premier lancement et avaler le
+  début de la commande ; vérifier l'écran et renvoyer la commande si besoin.
 - Lancement : `orca terminal create --worktree path:<wt> --title … --command 'env -u OMP_PROFILE
   -u PI_PROFILE -u ALL_PROXY -u http_proxy -u https_proxy ~/.local/bin/omp --profile default
   --model openai-codex/gpt-6.1-sol --config <overlay> @<brief>'`. Briefs : l'agent commite sur
@@ -158,5 +161,6 @@ puis **E7** ; **P1 / P2** en parallèle de la vague 4. Au plus deux agents à la
 | E0, E2, E9 | fusionnées (`d5e5db8`), suite workspace verte | [Compte rendu](e0-e2-e9.md) |
 | E4 | fusionnée (`14eb55a`), oxisynth du fork estran-studio | [Compte rendu](e4-notes-jouees.md) |
 | L0 | fusionnée au labo (`16defb8`) ; choix du propriétaire consignés (F3) | `harmonium_lab/corpus/sources-jazz.md` |
-| N1 | fusionnée : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 | [Compte rendu](n1-moteur-neutre.md) |
-| E1, E3, E5, E6, E7, P1, P2 | en attente | — |
+| N1 | fusionnée (`f1b2036`) : dumps, WAV et MIDI identiques (après renommage de clé), `TUNING_VERSION` 22 ; consommateurs du labo migrés (`5e52703`) | [Compte rendu](n1-moteur-neutre.md) |
+| E1 | lancée (vague 3) : worktree `e1-grille-riche`, Codex → Sonnet | — |
+| E3, E5, E6, E7, P1, P2 | en attente | — |

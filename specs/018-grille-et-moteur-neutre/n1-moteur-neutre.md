@@ -47,6 +47,8 @@ séparé n'a été nécessaire.
 - **Snapshot** : `bar_in_strain` → `bar_in_part` change une clé JSON du flux de snapshots. Les goldens
   contiennent cette clé : ils changent **de ce seul nom** (23 lignes, aucune valeur). Rupture de contrat
   (principe I) : l'orchestrateur a porté `TUNING_VERSION` de 21 à 22 dans la même branche, goldens régénérés.
+  La référence D2 du CLI (`harmonium_cli/tests/fixtures/profile_d2_main.json`) porte la version : seul son
+  tampon `TUNING_VERSION:21` → `:22` change, notes identiques (régénérée après fusion).
 
 ## Table ancien → nouveau
 
