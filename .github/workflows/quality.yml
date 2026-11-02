@@ -16,10 +16,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev pkg-config libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
-      - name: Install Rust (stable + clippy)
+      # `make lint` passe par `make bevy/check`, qui vérifie le plugin Bevy en wasm32.
+      - name: Install Rust (stable + clippy + wasm32)
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: wasm32-unknown-unknown
       - name: Install nightly rustfmt
         uses: dtolnay/rust-toolchain@nightly
         with:

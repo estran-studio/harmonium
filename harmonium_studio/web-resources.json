@@ -1,6 +1,6 @@
 {
   "repository": "estran-studio/harmonium",
-  "release": "studio-resources-1",
+  "release": "studio-resources-2",
   "resources": [
     {
       "role": "main-bank",
@@ -25,6 +25,34 @@
     },
     {
       "role": "odin",
+      "file": "Alone in the Subway.odin",
+      "asset": "odin-Alone-in-the-Subway.odin",
+      "bytes": 15145,
+      "sha256": "4b39a26bbeb067602adf78a88aa4c1ceb6abcee151cd7b00d956a43b537358ef"
+    },
+    {
+      "role": "odin",
+      "file": "Analog Bass [tx].odin",
+      "asset": "odin-Analog-Bass-tx.odin",
+      "bytes": 15113,
+      "sha256": "c6ed73c879981b577163073251bc380c518a5336ffdd2c0834eaa4fb22386a6f"
+    },
+    {
+      "role": "odin",
+      "file": "BS Decay Bass MW.odin",
+      "asset": "odin-BS-Decay-Bass-MW.odin",
+      "bytes": 15192,
+      "sha256": "5369196533824adb652546111e5b77c41885fcfae88639afb204395ee75edd10"
+    },
+    {
+      "role": "odin",
+      "file": "BS PWM Bass XY.odin",
+      "asset": "odin-BS-PWM-Bass-XY.odin",
+      "bytes": 15190,
+      "sha256": "76280bc94991fc06af4c94e04225c395fe8e8ba59cff95959a114ef1062b96c6"
+    },
+    {
+      "role": "odin",
       "file": "Bass Crusher [RM].odin",
       "asset": "odin-Bass-Crusher-RM.odin",
       "bytes": 15177,
@@ -39,10 +67,38 @@
     },
     {
       "role": "odin",
+      "file": "Church Organ.odin",
+      "asset": "odin-Church-Organ.odin",
+      "bytes": 15192,
+      "sha256": "32d142f913ea0d5c938f95fad6c374f7592f41aa1e5b8d805ec9f414d50965e6"
+    },
+    {
+      "role": "odin",
+      "file": "Clouded [RM].odin",
+      "asset": "odin-Clouded-RM.odin",
+      "bytes": 15180,
+      "sha256": "e57fa148c5f2362634dfde779228dbb178ec987b715218c34c12187fdb19fc84"
+    },
+    {
+      "role": "odin",
       "file": "Darken Nature [RM].odin",
       "asset": "odin-Darken-Nature-RM.odin",
       "bytes": 15178,
       "sha256": "937430bbcba15f9bc6bea7467b601e66d5cfaaf04f5bdbe7c63bff1b0e37a7c4"
+    },
+    {
+      "role": "odin",
+      "file": "DeepBass [Photonic].odin",
+      "asset": "odin-DeepBass-Photonic.odin",
+      "bytes": 15199,
+      "sha256": "7cd6bc634ca698b8d0ba33e89fe0217688f3e5c54f0c12aec7c58ebbc9a2028d"
+    },
+    {
+      "role": "odin",
+      "file": "Drifter.odin",
+      "asset": "odin-Drifter.odin",
+      "bytes": 15211,
+      "sha256": "cee954bc3d7c24ec1f1bfbd736694685cbf7be483b0154feefab7adb72328501"
     },
     {
       "role": "odin",
@@ -74,10 +130,17 @@
     },
     {
       "role": "odin",
-      "file": "Sausage Bassener.odin",
-      "asset": "odin-Sausage-Bassener.odin",
-      "bytes": 15240,
-      "sha256": "16842462f17e9cfda86d13ee4f9764874ba1872c92a0f1299bfbab42d5e49ed2"
+      "file": "PAD Open.odin",
+      "asset": "odin-PAD-Open.odin",
+      "bytes": 15200,
+      "sha256": "5e1238adfed0a94d7785ed9afa80468f839479a001f89f9203121ad2a98017bd"
+    },
+    {
+      "role": "odin",
+      "file": "Prophet.odin",
+      "asset": "odin-Prophet.odin",
+      "bytes": 15191,
+      "sha256": "46dcf474e6545696339d0ab0f788e3295529b40d3c7bd9626db732f0d915aaa5"
     }
   ]
 }
