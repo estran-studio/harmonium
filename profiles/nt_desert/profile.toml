@@ -14,8 +14,11 @@
 # G6d : presets Odin fidèles usine (Sausage Bassener sur Bass, Darken Nature
 # [RM] sur Chords) ; le gain master ne s'applique qu'aux pistes SoundFont, les
 # presets gardent leur master d'usine.
-# Schéma à alternatives : un seul candidat de poids 1 par partie, sans
-# nouveau tirage ; B développe deux fois ses quatre mesures, notes inchangées.
+# Alternatives (R1, phase 019, propositions P1/P2 du labo) : A1 tire la pédale G#
+# (poids 3) ou sa quinte (1) ; A2 et B tirent la boucle écrite ou une boucle générée
+# par contraintes (poids égaux) ; la batterie de densité 1 a deux grooves. La basse
+# reste écrite (rampe A1 et riff A2 de P1 écartés : distance au corpus). Chaque ajout
+# porte sa provenance en commentaire ; B développe deux fois ses quatre mesures.
 [files]
 cells = "cells.toml"
 percussion = "percussion.toml"
@@ -105,9 +108,16 @@ steps_per_chord = 24
 [harmony.parts.A1]
 kind = "pedal"
 degree = 1
+# R1, P1 §6.1/§6.4 : pédale alternative sur la quinte (tonique + 7), une fois par partie
+# et par air (tonique 3, quinte 1).
+weight = 3
+alternatives = [{ weight = 1, semitones = 7 }]
 [harmony.parts.A2]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [{ semitones = 6, quality = "m", steps = 192 }] }]
+# R1, P1 §6.1/§6.4 : quatre accords mineurs en mouvement chromatique sur pédale de ré
+# (tonique + 6), répétés deux fois sur les huit mesures, à poids égal à la boucle écrite.
+generated = [{ weight = 1, bars = 4, count = 4, qualities = ["m"], motion = { kind = "chromatic" }, start = 6, pedal = 6 }]
 [harmony.parts.Pont]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -136,6 +146,10 @@ loops = [{ weight = 1, chords = [
   { semitones = 11, quality = "", steps = 48 },
   { semitones = 0, quality = "", steps = 48 },
 ] }]
+# R1 (phase 019), P1 §6.1/§6.4 : boucle générée à côté de la boucle écrite, poids égal ;
+# quatre accords majeurs en mouvement chromatique depuis la sensible (tonique + 11),
+# deux mesures chacun sur les huit mesures de la partie.
+generated = [{ weight = 1, bars = 8, count = 4, qualities = [""], motion = { kind = "chromatic" }, start = 11 }]
 
 [accompaniment]
 strong_steps = [0, 6, 12, 18]

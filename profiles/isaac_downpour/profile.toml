@@ -8,6 +8,9 @@
 # seize mesures, mais changent un palier mineur ou la relance sensible.
 # Basses tenues ou réarticulées pondérées, demi-temps discret alternatif
 # aux densités 1/2 et cellules chorales lentes supplémentaires.
+# R1 (phase 019, propositions P2 du labo, provenance en commentaire) : une boucle
+# de C, deux motifs de basse d'A et, dans percussion.toml, un groove de densité 1
+# extraits de River of Despair. Pas de groove de densité 2 (décision du 2026-11-02).
 [files]
 cells = "cells.toml"
 percussion = "percussion.toml"
@@ -126,6 +129,9 @@ loops = [{ weight = 1, chords = [
   { semitones = 1, quality = "", steps = 32 },
   { semitones = 7, quality = "", steps = 32 },
 ] }]
+# R1 (phase 019), P2 `isaac_downpour` : troisième boucle de C extraite de
+# 47_river_of_despair, mesures 48-64 (1:20,4-1:47,0), confiance 0,848, similarité 0,78,
+# soutien 1 sur 1 fenêtre ; poids 2 = total des boucles écrites (rééquilibré).
 [harmony.parts.C]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -145,6 +151,17 @@ loops = [{ weight = 1, chords = [
   { semitones = 1, quality = "", steps = 32 },
   { semitones = 7, quality = "", steps = 32 },
   { semitones = 0, quality = "m", steps = 64 },
+] }, { weight = 2, chords = [
+  { semitones = 0, quality = "", steps = 32 },
+  { semitones = 5, quality = "m", steps = 32 },
+  { semitones = 8, quality = "", steps = 32 },
+  { semitones = 10, quality = "", steps = 32 },
+  { semitones = 8, quality = "m", bass = 11, steps = 16 },
+  { semitones = 7, quality = "", bass = 11, steps = 16 },
+  { semitones = 0, quality = "", steps = 16 },
+  { semitones = 5, quality = "m", bass = 0, steps = 16 },
+  { semitones = 1, quality = "", steps = 32 },
+  { semitones = 3, quality = "", steps = 32 },
 ] }]
 
 [accompaniment]
@@ -209,6 +226,31 @@ reference = "chord_root"
 notes = [
   { step = 0, duration = 24, semitones = 0, octave = 1, velocity = 80, legato = true },
   { step = 24, duration = 8, semitones = 0, octave = 1, velocity = 74 },
+]
+
+# R1 (phase 019), P2 `isaac_downpour` (références labo isaac-basement, proposals/isaac_downpour.toml),
+# 47_river_of_despair, confiance 0,959 (part de trames voisées), 20 fenêtres. Poids rééquilibrés
+# au total des motifs d'A écrits (3, effectifs 3 et 2 → 2 et 1).
+# Motif 1 : mesures 24-26 (0:40,4-0:43,7), soutien 3 ; la tierce majeure de l'accord (4 demi-tons
+# sans octave) tenue deux mesures. Motif 2 : mesures 26-28 (0:43,7-0:47,0), soutien 2.
+[[accompaniment.bass.motifs]]
+part = "A"
+bars = 2
+weight = 2
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 32, semitones = 4, velocity = 84 },
+]
+[[accompaniment.bass.motifs]]
+part = "A"
+bars = 2
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 5, semitones = 0, velocity = 84 },
+  { step = 5, duration = 8, semitones = 0, octave = 1, velocity = 80, legato = true },
+  { step = 14, duration = 15, semitones = 0, octave = 1, velocity = 80 },
+  { step = 29, duration = 2, semitones = 1, octave = 1, velocity = 80, legato = true },
 ]
 
 # Nappe liée : un plaqué tenu par mesure, médium (center 60).

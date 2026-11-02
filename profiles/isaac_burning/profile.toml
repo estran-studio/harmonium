@@ -6,6 +6,11 @@
 # Variantes par graine : C et C2 réordonnent les appuis VI/iv/III autour de
 # F#m sur huit mesures ; riff et basses d'accords ont une réponse pondérée.
 # Demi-temps alternatif aux densités 1/2, chœur tenu enrichi, aucun solo.
+# R1 (phase 019, propositions P1 et P2 du labo, provenance en commentaire) : C tire
+# aussi une boucle de P2 et une boucle générée, C2 une boucle générée ; la basse de
+# C et C2 compte des gabarits P1 (relance vers l'accord suivant) et celle de R et C
+# des motifs P2 ; un groove de densité 1 de P2 dans percussion.toml, sans les
+# grooves par portée de partie de P1 ni la densité 0 (décision du 2026-11-02).
 [files]
 cells = "cells.toml"
 percussion = "percussion.toml"
@@ -85,6 +90,9 @@ steps_per_chord = 16
 [harmony.parts.R]
 kind = "pedal"
 degree = 1
+# R1 (phase 019), P2 `isaac_burning` (références labo isaac-basement, proposals/isaac_burning.toml) :
+# la troisième boucle de C vient de 36_fundamentum, mesures 32-40 (0:56,3-1:10,0), confiance
+# 0,848, similarité 0,94, soutien 1 sur 1 fenêtre ; poids 2 (rééquilibré au total des écrites).
 [harmony.parts.C]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -102,7 +110,21 @@ loops = [{ weight = 1, chords = [
   { semitones = 3, quality = "", steps = 16 },
   { semitones = 5, quality = "m", steps = 16 },
   { semitones = 0, quality = "m", steps = 32 },
+] }, { weight = 2, chords = [
+  { semitones = 8, quality = "", steps = 16 },
+  { semitones = 5, quality = "", steps = 16 },
+  { semitones = 0, quality = "m", bass = 3, steps = 16 },
+  { semitones = 0, quality = "m", steps = 16 },
+  { semitones = 8, quality = "", steps = 16 },
+  { semitones = 3, quality = "", steps = 16 },
+  { semitones = 8, quality = "", bass = 3, steps = 16 },
+  { semitones = 0, quality = "m", steps = 16 },
 ] }]
+# R1, P1 §6.1/§6.4 : boucle générée de huit accords, majeurs ou mineurs, dont toutes les
+# notes tiennent dans la gamme du mode actif (`within`) ; fondamentales par intervalles
+# pondérés (quarte de préférence à la tierce mineure, répétition rare). Poids 2 (= total
+# des écrites) ; tirée une fois par partie et par air, comme les boucles écrites.
+generated = [{ weight = 2, count = 8, qualities = ["", "m"], key_fit = "within", motion = { kind = "intervals", intervals = [{ semitones = 3, weight = 2 }, { semitones = 5, weight = 3 }, { semitones = -3, weight = 2 }, { semitones = -5, weight = 2 }, { semitones = 0, weight = 1 }] } }]
 [harmony.parts.C2]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -121,6 +143,9 @@ loops = [{ weight = 1, chords = [
   { semitones = 5, quality = "m", steps = 16 },
   { semitones = 0, quality = "m", steps = 32 },
 ] }]
+# R1, P1 §6.1/§6.4 : boucle générée à côté des deux écrites, poids 2 (= total des écrites),
+# même réglage que pour C.
+generated = [{ weight = 2, count = 8, qualities = ["", "m"], key_fit = "within", motion = { kind = "intervals", intervals = [{ semitones = 3, weight = 2 }, { semitones = 5, weight = 3 }, { semitones = -3, weight = 2 }, { semitones = -5, weight = 2 }, { semitones = 0, weight = 1 }] } }]
 
 [accompaniment]
 strong_steps = [0, 8]
@@ -221,6 +246,78 @@ notes = [
   { step = 12, duration = 2, semitones = 0, octave = 1, velocity = 78 },
   { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 82 },
 ]
+
+# R1 (phase 019), P2 `isaac_burning` (proposals/isaac_burning.toml), 36_fundamentum,
+# confiance 0,939 (part de trames voisées). Poids rééquilibrés au total des motifs écrits
+# de la partie (3) : R 2 → 3 ; C 3 et 2 → 2 et 1.
+# R : mesures 2-4 (0:04,9-0:08,3), soutien 2 sur 4 fenêtres, F#2 tenu 23 pas puis deux
+# notes liées (11 demi-tons sans octave, puis b2 à l'octave 1).
+[[accompaniment.bass.motifs]]
+part = "R"
+bars = 2
+weight = 3
+reference = "tonic"
+notes = [
+  { step = 0, duration = 23, semitones = 0, octave = 1, velocity = 95 },
+  { step = 23, duration = 3, semitones = 11, velocity = 91, legato = true },
+  { step = 26, duration = 6, semitones = 1, octave = 1, velocity = 91, legato = true },
+]
+# C : mesures 32-33 (0:56,3-0:58,0), soutien 3 sur 9 fenêtres, fondamentale tenue une mesure.
+[[accompaniment.bass.motifs]]
+part = "C"
+bars = 1
+weight = 2
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 16, semitones = 0, octave = 1, velocity = 84 },
+]
+# C : mesures 35-36 (1:01,4-1:03,2), soutien 2 sur 9 fenêtres, voisin supérieur en appui.
+[[accompaniment.bass.motifs]]
+part = "C"
+bars = 1
+weight = 1
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 2, semitones = 1, octave = 1, velocity = 84 },
+  { step = 2, duration = 6, semitones = 0, octave = 1, velocity = 80, legato = true },
+  { step = 8, duration = 3, semitones = 1, octave = 1, velocity = 80, legato = true },
+  { step = 11, duration = 5, semitones = 0, octave = 1, velocity = 80, legato = true },
+]
+
+# R1, P1 §6.1/§6.4 : gabarits de C et C2 ; huit croches sur la fondamentale à l'octave 1
+# (accents aux pas 0 et 8, comme le motif écrit), plus une relance de deux pas vers la basse
+# de l'accord suivant avant chaque changement. Poids 3 (= total des motifs écrits de
+# chaque partie), dans le même pool que les motifs.
+[[accompaniment.bass.templates]]
+part = "C"
+weight = 3
+rhythm = [
+  { step = 0, duration = 2, velocity = 96 },
+  { step = 2, duration = 2, velocity = 80 },
+  { step = 4, duration = 2, velocity = 80 },
+  { step = 6, duration = 2, velocity = 80 },
+  { step = 8, duration = 2, velocity = 96 },
+  { step = 10, duration = 2, velocity = 80 },
+  { step = 12, duration = 2, velocity = 80 },
+  { step = 14, duration = 2, velocity = 80 },
+]
+cycle = [{ degree = "root", octave = 1 }]
+pickup = { lead = 2, duration = 2, velocity = 90 }
+[[accompaniment.bass.templates]]
+part = "C2"
+weight = 3
+rhythm = [
+  { step = 0, duration = 2, velocity = 96 },
+  { step = 2, duration = 2, velocity = 80 },
+  { step = 4, duration = 2, velocity = 80 },
+  { step = 6, duration = 2, velocity = 80 },
+  { step = 8, duration = 2, velocity = 96 },
+  { step = 10, duration = 2, velocity = 80 },
+  { step = 12, duration = 2, velocity = 80 },
+  { step = 14, duration = 2, velocity = 80 },
+]
+cycle = [{ degree = "root", octave = 1 }]
+pickup = { lead = 2, duration = 2, velocity = 90 }
 
 # Nappe liée : un plaqué tenu par mesure, médium (center 60).
 [accompaniment.chords]

@@ -66,6 +66,27 @@ ni dans l'ouverture sans batterie, ni au pont. À haute densité, quelques
 réponses de caisse claire s'intercalent ; à basse densité, un seul tom grave.
 Le groove courant et son micro-timing ±0,02 pas restent ceux de G7c/G7d.
 
+## Variété par graine (R1, phase 019)
+
+Propositions du labo intégrées après écoute du propriétaire (2026-11-02) :
+P1 (`specs/018-grille-et-moteur-neutre/p1-procedural-regles.md`) pour les
+accords, P2 (`harmonium_lab/references/p2-variete.md`) pour la batterie.
+`TUNING_VERSION` 25 : les notes du profil changent.
+
+- **Accords** : A1 tire la pédale G♯ (poids 3) ou sa quinte (1) ; A2 et B
+  tirent la boucle écrite ou une boucle générée par contraintes (poids égaux,
+  A2 : quatre accords mineurs chromatiques sur pédale de ré, B : quatre accords
+  majeurs chromatiques depuis la sensible). Accords : 0 → 66 % des mesures qui
+  varient d'une graine à l'autre.
+- **Batterie** : le groove de densité 1 extrait de *Fläshyn* (`0K 2S 8K 10S
+  14S 20K 22S`) rejoint le groove écrit (poids égaux) ; batterie 0 → 55 % des
+  mesures qui varient. La densité 0 extraite n'est pas retenue.
+- **Basse inchangée** : ni la rampe d'A1 (distance de couche −6,3) ni le riff
+  racine/quinte d'A2 (−1,1) de P1.
+
+Chaque ajout porte sa provenance (piste, minutage, confiance) en commentaire
+TOML. Mesures avant/après : `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md`.
+
 ## Timbres et émotions
 
 Tous les programmes nécessaires sont présents dans `assets/nt_desert.sf2`

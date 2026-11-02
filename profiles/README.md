@@ -45,6 +45,7 @@ derniers (phase 013, R1) sont construits par le même chemin — références du
 mesures et limites dans le plan 013, section R1.
 Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil de jeu vidéo : désert de *Nuclear Throne*, voir `profiles/nt_desert/README.md` et `specs/014-styles-de-jeu/g7f-nt-desert-riche.md` (écriture composée sans sifflement, comparaisons avant/après) ; G7e et G7h (legato, registre, longueurs et timbre lisibles) sont résumés dans le README du profil et le tableau d'état du plan 014.
 Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mécanismes que `nt_desert`, aucun ajout moteur, voir `profiles/isaac_basement/README.md` (les trois autres suivent le même schéma ; leur en-tête de `profile.toml` résume l'écriture).
+Phase 019, R1 : `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpour` embarquent des alternatives issues des propositions P1 (boucles générées, pédale à alternatives, gabarits de basse) et P2 (boucles, motifs et patterns extraits des transcriptions), avec leur provenance en commentaire TOML ; `TUNING_VERSION` 25. `isaac_cellar` est inchangé. Voir `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md` et les README `nt_desert` et `isaac_basement`.
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
@@ -282,8 +283,9 @@ la boucle décrit les mesures du corps de l'air.
 ## Procédural par règles (option, phase 018 P1)
 
 Quatre mécanismes **optionnels** s'ajoutent aux données écrites sans les remplacer. Un profil
-qui n'en active aucun garde ses notes octet pour octet (les profils distribués n'en activent
-aucun). Tous sont nommés par le rôle musical, tirent par le `ChaCha8Rng` injecté (entiers
+qui n'en active aucun garde ses notes octet pour octet. Depuis R1 (phase 019), `nt_desert` (boucles générées, pédale à
+alternatives) et `isaac_burning` (boucles générées, gabarits de basse) en activent ; les autres profils distribués n'en activent
+aucun. Tous sont nommés par le rôle musical, tirent par le `ChaCha8Rng` injecté (entiers
 `u64`, principe II) et sont refusés au chargement avec le champ en cause s'ils sont
 insatisfaisables. Compte rendu, preuves et recommandations par profil :
 `specs/018-grille-et-moteur-neutre/p1-procedural-regles.md`.

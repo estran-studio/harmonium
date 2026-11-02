@@ -86,12 +86,21 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
             if local < 8 || local >= 40 {
                 let pad = notes(s, 1);
                 assert_eq!(pad.len(), 1, "pédale seule, mesure {}", s.index);
-                assert_eq!(pad[0].pitch % 12, 8, "pédale G#, mesure {}", s.index);
+                // Pédale G# ou, en alternative (R1), sa quinte ré# ; la même sur A1 et A1'.
+                assert!(
+                    [8, 3].contains(&(pad[0].pitch % 12)),
+                    "pédale G# ou D#, mesure {}",
+                    s.index
+                );
+                assert_eq!(pad[0].pitch % 12, s.chord_root_pc, "pédale publiée");
             } else {
                 let pad = notes(s, 1);
                 let classes: BTreeSet<_> = pad.iter().map(|n| n.pitch % 12).collect();
+                // Triade publiée, plus la basse d'un accord slash (boucle générée sur pédale).
+                let mut chord: BTreeSet<_> = s.chord_pitch_classes.iter().copied().collect();
+                chord.insert(s.chord_bass_pc);
                 assert_eq!(pad.len(), 4, "triade doublée, mesure {}", s.index);
-                assert_eq!(classes.len(), 3, "trois classes d'accord, mesure {}", s.index);
+                assert_eq!(classes, chord, "classes de l'accord publié, mesure {}", s.index);
                 assert!(
                     pad.iter().all(|n| n.start_step == 0 && n.duration_steps == s.steps),
                     "nappe non tenue, mesure {}",
@@ -131,10 +140,13 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
                 "B sans respiration de basse"
             );
         }
+        // A2 : pédale de ré, boucle écrite (Dm tenu) ou boucle générée (accords mineurs
+        // chromatiques sur pédale de ré, R1) ; elle ouvre toujours sur Dm.
         for s in &snapshots[8..16] {
-            let classes: BTreeSet<_> = notes(s, 1).iter().map(|n| n.pitch % 12).collect();
-            assert_eq!(classes, BTreeSet::from([2, 5, 9]), "A2 en Dm, mesure {}", s.index);
+            assert_eq!(s.chord_bass_pc, 2, "A2 sur pédale de ré, mesure {}", s.index);
         }
+        let classes: BTreeSet<_> = notes(&snapshots[8], 1).iter().map(|n| n.pitch % 12).collect();
+        assert_eq!(classes, BTreeSet::from([2, 5, 9]), "A2 ouvre en Dm");
     }
     Ok(())
 }
@@ -214,7 +226,10 @@ fn liaisons_sans_reattaque_ni_note_orpheline() -> TestResult {
     let mut bass_attacks = Vec::new();
     let mut chords_attacks = Vec::new();
     let mut balance = BTreeMap::<(u8, u8), i32>::new();
+    let mut chords: Vec<(Vec<u8>, u8)> = Vec::new();
     for mut m in measures {
+        let snapshot = MeasureSnapshot::from_measure(&m);
+        chords.push((snapshot.chord_pitch_classes.clone(), snapshot.chord_bass_pc));
         let (bar, steps) = (m.index, m.steps);
         m.prepare_playback();
         reader.load_measure(Box::new(m));
@@ -247,10 +262,24 @@ fn liaisons_sans_reattaque_ni_note_orpheline() -> TestResult {
         "pédale réattaquée au lieu d'être liée : {bass_attacks:?}"
     );
     let a1: Vec<_> = chords_attacks.iter().filter(|(bar, _, _)| *bar <= 8).collect();
-    assert_eq!(a1, vec![&(1, 0, 56)], "pédale de nappe réattaquée");
-    let a2: Vec<_> = chords_attacks.iter().filter(|(bar, _, _)| *bar >= 9).collect();
-    assert_eq!(a2.len(), 4, "triade doublée réattaquée : {a2:?}");
-    assert!(a2.iter().all(|(bar, step, _)| (*bar, *step) == (9, 0)));
+    assert_eq!(a1.len(), 1, "pédale de nappe réattaquée : {a1:?}");
+    assert_eq!((a1[0].0, a1[0].1), (1, 0), "pédale de nappe réattaquée");
+    // A2 : la nappe n'est réattaquée qu'au changement d'accord (boucle écrite : une seule
+    // attaque, mesure 9 ; boucle générée de R1 : un changement par mesure), en triade doublée
+    // de quatre notes ou en triade de trois quand la basse est la fondamentale.
+    for bar in 9..=16 {
+        let attacks = chords_attacks.iter().filter(|(b, _, _)| *b == bar).count();
+        let held = bar > 9 && chords[bar - 1] == chords[bar - 2];
+        if held {
+            assert_eq!(
+                attacks, 0,
+                "nappe réattaquée sur accord tenu, mesure {bar} : {chords_attacks:?}"
+            );
+        } else {
+            assert!((3..=4).contains(&attacks), "nappe de la mesure {bar} : {chords_attacks:?}");
+        }
+    }
+    assert!(chords_attacks.iter().all(|(_, step, _)| *step == 0), "attaque hors du premier pas");
     assert!(balance.values().all(|&v| v == 0), "notes orphelines : {balance:?}");
     Ok(())
 }

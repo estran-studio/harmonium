@@ -56,6 +56,22 @@ hits = [
   { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -36 },
 ]
 
+# R1 (phase 019), P2 `isaac_downpour` (proposals/isaac_downpour.toml) : groove de densité 1
+# extrait de 47_river_of_despair (mesures 20, 22, 24, 26, 28, 30 ; 0:33,7 à 0:50,4), soutien 6
+# sur 16 fenêtres, confiance 0,315 (marge de classification moyenne, faible). Poids 3 =
+# total des patterns de densité 1 écrits (rééquilibré). Le pattern de densité 2 (0H 2S 4K
+# 8S 10K 14S, confiance 0,291, taux d'attaques plus dense que l'écrit : audio −2,1) n'est
+# pas retenu : décision du propriétaire du 2026-11-02.
+[[patterns]]
+density = 1
+weight = 3
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 4, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 12, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+]
+
 [[cadence_patterns]]
 density = 0
 hits = [
