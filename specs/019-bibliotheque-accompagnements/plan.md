@@ -176,7 +176,8 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 | Tâche | État | Compte rendu |
 |---|---|---|
 | Reprise 018 (écoutes, seek) | en attente du propriétaire | — |
-| L1, L2, V0, A3 | à lancer (vague 1) | — |
+| L1, L2, V0 | à lancer (vague 1) | — |
+| A3 | fait sur la branche `wquintal/a3-arc-chorus` (non fusionné) ; **à écouter par le propriétaire** : fixtures `grille_arc_chorus` (blues, 4 chorus) et `grille_arc_chorus_aaba` (AABA, 3 chorus), MP3 dans `harmonium_lab/corpus/ecoute_019/a3/`. `[arc]` absent : dumps et WAV identiques à `main`, `TUNING_VERSION` 24. Numéro de chorus = `TunePosition::chorus()` / `choruses()` (dérivés des champs publiés, aucun champ ajouté) ; deux temps (walking) et `tag` de comping et de batterie ajoutés pour l'arc ; seek inchangé (≈ 26 ms) | [Compte rendu](a3-arc-chorus.md) |
 | A1, A2, A4, A5, A6 | en attente | — |
 | B1–B8 | en attente | — |
 | V2, T1 | en attente | — |

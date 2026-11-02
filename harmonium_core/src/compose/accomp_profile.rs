@@ -4,8 +4,15 @@ use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    algo::RngCore, compose::dynamics::Curve, ornaments::mix, style_profile::ProfileError,
-    timeline::TrackId, tuning::AccompanimentParams,
+    algo::RngCore,
+    compose::{
+        arc::{TagWeight, tag_weight},
+        dynamics::Curve,
+    },
+    ornaments::mix,
+    style_profile::ProfileError,
+    timeline::TrackId,
+    tuning::AccompanimentParams,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -295,6 +302,9 @@ pub struct CompingMotif {
     pub weight: u32,
     #[serde(default)]
     pub hits: Vec<ChordHit>,
+    /// Étiquette que `[arc]` nomme pour choisir parmi les motifs (`comping[].tag`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -409,18 +419,32 @@ impl ChordVoice {
     }
 
     /// Attaques de la mesure : un motif de comping tiré par poids avec `seed` (une mesure
-    /// se rejoue à l'identique), sinon le motif choisi par l'intensité (`offset`).
-    pub(crate) fn bar_hits(&self, offset: f32, seed: u64) -> &[ChordHit] {
-        let total: u64 = self.comping.iter().map(|m| u64::from(m.weight)).sum();
+    /// se rejoue à l'identique), sinon le motif choisi par l'intensité (`offset`). `tags` (l'arc
+    /// du chorus) restreint le tirage aux motifs qui portent un de ses tags, au poids du motif
+    /// fois celui du tag ; aucun motif ne concourt, ou `tags` vide : le tirage du profil.
+    pub(crate) fn bar_hits(&self, offset: f32, seed: u64, tags: &[TagWeight]) -> &[ChordHit] {
+        let weight = |motif: &CompingMotif| {
+            let weight = u64::from(motif.weight);
+            if tags.is_empty() {
+                weight
+            } else {
+                weight.saturating_mul(tag_weight(tags, motif.tag.as_deref()))
+            }
+        };
+        let total: u64 = self.comping.iter().map(weight).fold(0, u64::saturating_add);
         if total == 0 {
-            return &self.pattern(offset).hits;
+            return if tags.is_empty() {
+                &self.pattern(offset).hits
+            } else {
+                self.bar_hits(offset, seed, &[])
+            };
         }
         let mut pick = ChaCha8Rng::seed_from_u64(mix(seed, 0x434F_4D50)).next_range_u64(0..total);
         for motif in &self.comping {
-            if pick < u64::from(motif.weight) {
+            if pick < weight(motif) {
                 return &motif.hits;
             }
-            pick -= u64::from(motif.weight);
+            pick -= weight(motif);
         }
         unreachable!("le tirage reste sous la somme des poids")
     }

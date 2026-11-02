@@ -681,6 +681,11 @@ pub struct StyleProfile {
     /// Forme longue : tonalités, raccords, clôture, rampe et mémoire d'airs (`set.toml`).
     #[serde(default)]
     pub set: crate::compose::set::ProfileSet,
+    /// Arc sur plusieurs chorus (`[arc]`, ou `arc.toml` via `[files]`) : intensité, densité, feel
+    /// de basse, comping, batterie, breaks et retombée varient d'un chorus à l'autre. Absent :
+    /// tous les chorus se jouent pareil.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arc: Option<crate::compose::ChorusArc>,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -882,6 +887,7 @@ impl StyleProfile {
                     "arrangement" => "arrangement",
                     "dynamics" => "dynamics",
                     "set" => "set",
+                    "arc" => "arc",
                     _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
                 };
                 let name = filename
@@ -1634,6 +1640,9 @@ impl StyleProfile {
             let field = error.split(':').next().unwrap_or("dynamics");
             ProfileError::new(format!("dynamics.{field}"), &error)
         })?;
+        if let Some(arc) = &self.arc {
+            arc.validate(self)?;
+        }
         Ok(())
     }
 }

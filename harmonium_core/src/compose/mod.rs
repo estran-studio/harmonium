@@ -1,6 +1,7 @@
 //! Composition musicale : algorithmes génériques, données dans le profil actif.
 pub mod accomp;
 pub mod accomp_profile;
+pub mod arc;
 pub mod arrangement;
 mod bass_passing;
 mod bass_template;
@@ -17,6 +18,7 @@ pub mod set;
 mod voicing;
 mod walking;
 pub use accomp::{ChordPlayer, bass_bar};
+pub use arc::{ArcBreak, ArcStage, ArcVariant, BassFeel, ChorusArc, TagWeight};
 pub use arrangement::{
     Arrangement, ArrangementError, DEFAULT_ARRANGEMENT_TOML, EntryPoint, IntroConfig, IntroForm,
     IntroInfo, IntroRole, MAX_TOURS, Part, Section, TrackEntries, TunePosition,

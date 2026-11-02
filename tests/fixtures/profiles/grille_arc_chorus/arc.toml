@@ -1,0 +1,46 @@
+# Arc de la fixture sur plusieurs chorus (A3) : valeurs d'exercice, jugées à l'écoute seulement
+# par le propriétaire (aucune mesure de corpus). Quatre chorus du blues :
+#   1      exposition : basse à deux temps, comping clairsemé, charleston, doux ;
+#   2-3    marche de basse, comping médian ou dense, ride, intensité du profil ;
+#   4      retombée (`fall`, nombre de chorus connu) : retour au deux temps, clairsemé, avec un
+#          stop-time sur les deux dernières mesures ;
+# au-delà (plus de quatre chorus ou set sans fin) : l'étape 3 (sommet) puis les étapes 2 et 3 en
+# boucle (`repeat_from`), sans retombée.
+
+# Après la dernière étape, l'arc reprend à l'étape 1 (0-based : le corps).
+repeat_from = 1
+
+# Exposition.
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.6, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.7, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+# Corps : deux chorus, chacun tire sa variante ; la seconde ajoute un break d'une mesure avant le
+# chorus suivant (basse et accords se taisent, la batterie continue).
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
+  { weight = 1, intensity = 1.2, density = 1.2, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+# Sommet : plus fort, comping dense, stop-time sur les deux dernières mesures (accords et basse
+# ne jouent que le premier temps, la batterie continue) une fois sur deux.
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.4, density = 1.4, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+# Retombée du dernier chorus : deux temps, clairsemé, charleston, stop-time sur les deux dernières
+# mesures.
+[[fall]]
+intensity = 0.5
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

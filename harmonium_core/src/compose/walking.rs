@@ -7,6 +7,11 @@
 //! sont des **notes de passage** (note de l'accord ou pas diatonique) dans la fenêtre de marche
 //! `walk_low..=walk_high`, tirées de façon à pouvoir atteindre la cible.
 //!
+//! Le feel à deux temps ne garde que les pulsations qui tombent toutes les `attack_pulses`
+//! (les temps 1 et 3 d'une mesure à quatre pulsations) et les arrivées : la même ligne, avec
+//! une seule attaque par étendue d'accord en dehors de l'arrivée (l'approche), tenue jusqu'à
+//! l'attaque suivante.
+//!
 //! Une mesure ne dépend que de ses accords, du premier accord de la suivante et de sa graine :
 //! elle se rejoue à l'identique, sans état d'une mesure à l'autre.
 
@@ -42,6 +47,8 @@ pub(crate) struct WalkingBar<'a> {
     pub steps_per_pulse: usize,
     /// Graine de la mesure : même graine, même ligne.
     pub seed: u64,
+    /// Pulsations entre deux attaques : 1, une marche par pulsation.
+    pub attack_pulses: usize,
 }
 
 /// Tirage pondéré ; `None` si tous les poids sont nuls.
@@ -188,7 +195,8 @@ impl Line<'_> {
     }
 }
 
-/// Une mesure de marche : une note par pulsation.
+/// Une mesure de marche : une note par pulsation, ou une toutes les `attack_pulses` pulsations
+/// et à chaque arrivée.
 #[must_use]
 pub(crate) fn walking_bar(
     bar: &WalkingBar<'_>,
@@ -204,21 +212,29 @@ pub(crate) fn walking_bar(
         walking,
         window: (bass.walk_low.unwrap_or(bass.low), bass.walk_high.unwrap_or(bass.high)),
     };
+    // Pulsations qui sonnent : une sur `attack_pulses`, plus chaque arrivée. Les notes de la
+    // ligne se comptent par attaque, pas par pulsation.
+    let stride = bar.attack_pulses.max(1);
+    let slots: Vec<usize> =
+        (0..pulses).filter(|&p| p % stride == 0 || chord_at(p) != chord_at(p - 1)).collect();
     let mut rng = ChaCha8Rng::seed_from_u64(mix(bar.seed, 0x5741_4C4B));
-    let mut pitches = vec![0u8; pulses];
-    let mut arrivals = vec![false; pulses];
+    let mut pitches = vec![0u8; slots.len()];
+    let mut arrivals = vec![false; slots.len()];
     let mut start = 0;
-    while start < pulses {
-        let end = (start + 1..pulses).find(|&p| chord_at(p) != chord_at(p - 1)).unwrap_or(pulses);
+    while start < slots.len() {
+        let pulse = slots[start];
+        let end_pulse =
+            (pulse + 1..pulses).find(|&p| chord_at(p) != chord_at(p - 1)).unwrap_or(pulses);
+        let end = slots.partition_point(|&p| p < end_pulse);
         arrivals[start] = true;
-        let goal = if end < pulses {
-            Some(line.target(chord_at(end)))
+        let goal = if end_pulse < pulses {
+            Some(line.target(chord_at(end_pulse)))
         } else {
             bar.next_first.map(|c| line.target(c))
         };
-        pitches[start] = line.target(chord_at(start));
+        pitches[start] = line.target(chord_at(pulse));
         let last = end - 1;
-        // Pulsation d'approche : la dernière de l'étendue, si elle n'est pas l'arrivée.
+        // Attaque d'approche : la dernière de l'étendue, si elle n'est pas l'arrivée.
         let mut approach = None;
         if last > start
             && let Some(goal) = goal
@@ -240,25 +256,34 @@ pub(crate) fn walking_bar(
             }
             None => (end, goal.map(|g| (g, end))),
         };
-        for pulse in start + 1..stop {
-            let beats_left = aim.map(|(pitch, beat)| (pitch, beat - pulse));
-            let before = pulse.checked_sub(2).map(|i| pitches[i]);
-            pitches[pulse] =
-                line.passing(pitches[pulse - 1], before, chord_at(pulse), beats_left, &mut rng);
+        for slot in start + 1..stop {
+            let beats_left = aim.map(|(pitch, beat)| (pitch, beat - slot));
+            let before = slot.checked_sub(2).map(|i| pitches[i]);
+            pitches[slot] = line.passing(
+                pitches[slot - 1],
+                before,
+                chord_at(slots[slot]),
+                beats_left,
+                &mut rng,
+            );
         }
         start = end;
     }
-    pitches
+    slots
         .iter()
         .enumerate()
-        .map(|(pulse, &pitch)| TimelineNote {
-            id: next_id(),
-            pitch,
-            start_step: pulse * bar.steps_per_pulse,
-            duration_steps: walking.duration,
-            velocity: walking.velocity + if arrivals[pulse] { walking.accent } else { 0 },
-            articulation: Articulation::Normal,
-            performance: Default::default(),
+        .map(|(slot, &pulse)| {
+            let next = slots.get(slot + 1).copied().unwrap_or(pulses);
+            TimelineNote {
+                id: next_id(),
+                pitch: pitches[slot],
+                start_step: pulse * bar.steps_per_pulse,
+                // Tenue jusqu'à l'attaque suivante, moins le souffle d'une pulsation.
+                duration_steps: (next - pulse - 1) * bar.steps_per_pulse + walking.duration,
+                velocity: walking.velocity + if arrivals[slot] { walking.accent } else { 0 },
+                articulation: Articulation::Normal,
+                performance: Default::default(),
+            }
         })
         .collect()
 }
