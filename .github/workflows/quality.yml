@@ -16,16 +16,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev pkg-config libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
-      # `make lint` passe par `make bevy/check`, qui vérifie le plugin Bevy en wasm32.
-      - name: Install Rust (stable + clippy + wasm32)
+      - name: Install Rust (stable + clippy)
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-          targets: wasm32-unknown-unknown
-      - name: Install nightly rustfmt
+      # Installé en dernier, nightly devient la chaîne par défaut : le `cargo check --target
+      # wasm32-unknown-unknown` de `make bevy/check` (appelé par `make lint`) passe par elle.
+      - name: Install nightly rustfmt + wasm32
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+          targets: wasm32-unknown-unknown
 
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
