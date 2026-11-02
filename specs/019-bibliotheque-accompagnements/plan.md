@@ -117,7 +117,8 @@ flowchart LR
 ```
 
 Vague 1 : **A3** (moteur, seul sur `harmonium_core`), **L1** (recherche), **L2 + V0** (labo).
-Vague 2 : **A1**, puis **A2** (moteur, à la suite). Vague 3 : **A4 + A5** (un agent) et **A6**
+Vague 2 : **S0** (graine du comping, constat V0), puis **A1**, puis **A2** (moteur, à la suite).
+Vague 3 : **A4 + A5** (un agent) et **A6**
 (fichiers distincts ; l'orchestrateur gère les conflits). Vague 4 : profils **B1–B8** en
 parallèle (données, un dossier de profil par agent ; un manque moteur découvert est signalé et
 traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
@@ -176,7 +177,11 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 | Tâche | État | Compte rendu |
 |---|---|---|
 | Reprise 018 (écoutes, seek) | en attente du propriétaire | — |
-| L1, L2, V0, A3 | lancées le 2026-11-02 (vague 1, Sonnet par `anthropic-sub.yml` ; briefs dans `/tmp/harmonium-019/`) | — |
+| L1 | fusionnée ; recherche terminée, **choix du propriétaire en attente** (A : MS Basic 2.0.0 MIT, recommandée ; B : A + modules FreePats CC0 ; C : statu quo GeneralUser GS) | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
+| L2 | fusionnée au labo (`0ad313e`) : GMD complet par style, WJazzD `BALLAD`/`TWOBEAT`/`LATIN`/`FUNK`, JTD swing par tempo (0,720 → 0,591 de < 120 à > 240 BPM) ; manques moteur listés (§ 6) pour A1/A6 | `harmonium_lab/references/l2-ingestion.md` |
+| V0 | fusionnée au labo (`d01d684`) : `seed-variety --chorus`, ligne de base sur 8 profils, seuils V2 proposés | `harmonium_lab/references/v0-variance/README.md` |
+| A3 | en cours (session reprise après le crash du 2026-11-02 ; travail non commité intact) | — |
+| **S0** (nouveau) | **graine du comping** : sur `wjazzd_swing` à `main`, 8 graines × 24 mesures → piano 2 séquences distinctes (une par grille par défaut), basse 4, batterie 5 (constat V0, reproduit par l'orchestrateur). Le comping ne dépend pas de la graine de session à grille égale. À corriger avant A1 (moteur, après fusion d'A3) | — |
 | A1, A2, A4, A5, A6 | en attente | — |
 | B1–B8 | en attente | — |
 | V2, T1 | en attente | — |
