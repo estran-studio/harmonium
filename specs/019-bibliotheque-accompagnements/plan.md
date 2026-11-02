@@ -176,7 +176,8 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 | Tâche | État | Compte rendu |
 |---|---|---|
 | Reprise 018 (écoutes, seek) | en attente du propriétaire | — |
-| L1, L2, V0, A3 | à lancer (vague 1) | — |
+| L1 | recherche terminée, **choix du propriétaire en attente** | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
+| L2, V0, A3 | à lancer (vague 1) | — |
 | A1, A2, A4, A5, A6 | en attente | — |
 | B1–B8 | en attente | — |
 | V2, T1 | en attente | — |
