@@ -1,6 +1,7 @@
 # L1 — Banques SoundFont pour training (phase 019, vague 1)
 
-**État : recherche terminée, choix du propriétaire en attente.** Toutes les licences ont été relues le
+**État : terminée. Choix du propriétaire (2026-11-02) : option C, GeneralUser GS conservée** (aucune
+différence entendue entre A, B et C ; sons de GeneralUser GS préférés) ; rien des §9 n'est appliqué. Toutes les licences ont été relues le
 **2026-11-02** (date de consultation de chaque lien ci-dessous, sauf mention contraire). Branche
 `wquintal/l1-banques-sf2`, documents seulement : ni code, ni profil, ni banque dans le diff.
 

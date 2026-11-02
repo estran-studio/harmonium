@@ -29,8 +29,10 @@ moteur. Les comptes rendus de 018 listent les manques :
 
 - **D1 — SoundFont seulement pour training.** Training n'inclut pas Odin (GPL) : tout ce qui
   sert training doit sonner sans `odin`. Odin reste permis pour les jeux. La palette dépend donc
-  de la banque SoundFont : une banque plus riche que GeneralUser GS est cherchée (L1), licence
-  vérifiée, **choix du propriétaire**.
+  de la banque SoundFont : une banque plus riche que GeneralUser GS a été cherchée (L1), licence
+  vérifiée. **Choix du propriétaire (2026-11-02) : GeneralUser GS reste la banque (option C de
+  L1)** : aucune différence audible entre A, B et C, et ses sons sont préférés. La palette
+  d'A2 et des profils B se construit donc sur les programmes GM de GeneralUser GS.
 - **D2 — Tous les styles** d'iReal sont visés, sans priorité imposée ; l'ordre ci-dessous suit les
   dépendances et la qualité des sources.
 - **D3 — Variance d'abord générique** (principes V et VIII) : chaque mécanisme est un algorithme
@@ -97,8 +99,9 @@ nom générique (« jazz », « latin »).
   dans `p1-procedural-regles.md` et `harmonium_lab/references/p2-variete.md`). Page :
   `http://192.168.8.171:8080/#phase-018`.
 - **`seek_to_bar_64_under_50ms`** : à la limite sur la CI après 018 (55 et 57 ms, puis passé) ;
-  local 24 → 26 ms. Décider : accélérer le chemin de seek ou ajuster le seuil de la CI. Les
-  tâches A ajoutent du travail par mesure : mesurer la durée du seek à chaque fusion.
+  local 24 → 26 ms. **Décision du propriétaire (2026-11-02) : rien à changer** (ni le chemin de
+  seek ni le seuil). Les tâches A ajoutent du travail par mesure : mesurer la durée du seek à
+  chaque fusion et revenir au propriétaire si elle monte.
 
 ## Ordre
 
@@ -176,8 +179,8 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| Reprise 018 (écoutes, seek) | en attente du propriétaire | — |
-| L1 | fusionnée ; recherche terminée, **choix du propriétaire en attente** (A : MS Basic 2.0.0 MIT, recommandée ; B : A + modules FreePats CC0 ; C : statu quo GeneralUser GS) | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
+| Reprise 018 (écoutes, seek) | seek : décidé, rien à changer ; écoutes E5/E6, E7, P1, P2 : en attente du propriétaire | — |
+| L1 | terminée ; **choix du propriétaire : C, GeneralUser GS conservée** (aucune différence entendue entre A, B, C ; sons de GeneralUser GS préférés) | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
 | L2 | fusionnée au labo (`0ad313e`) : GMD complet par style, WJazzD `BALLAD`/`TWOBEAT`/`LATIN`/`FUNK`, JTD swing par tempo (0,720 → 0,591 de < 120 à > 240 BPM) ; manques moteur listés (§ 6) pour A1/A6 | `harmonium_lab/references/l2-ingestion.md` |
 | V0 | fusionnée au labo (`d01d684`) : `seed-variety --chorus`, ligne de base sur 8 profils, seuils V2 proposés | `harmonium_lab/references/v0-variance/README.md` |
 | A3 | en cours (session reprise après le crash du 2026-11-02 ; travail non commité intact) | — |
