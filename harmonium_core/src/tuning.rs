@@ -10,8 +10,10 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : `rewrite_functional` rend basse et accords par les voix communes (E5/E6).
-pub const TUNING_VERSION: u32 = 24;
+/// Version du contrat : la graine de l'accompagnement (comping, marche et notes de passage de
+/// la basse, motifs de basse) vient de la graine de session, tirée une fois par air après la
+/// mélodie, et non plus de la mélodie écrite (S0). 25 est réservée à la tâche R1.
+pub const TUNING_VERSION: u32 = 26;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -644,6 +644,24 @@ classes de hauteur). `center` et `max_drift` pilotent la conduite de voix des tr
 `default_pattern` est utilisé lorsque les courbes `chords_intensity + density_chords`
 valent zéro ; sinon l'index est `round(1 + offset)`, borné à la table.
 
+### Graine d'accompagnement (S0, `TUNING_VERSION` 26)
+
+Les couches de l'accompagnement qui tirent au sort (comping, marche de basse, notes de passage,
+motifs et gabarits de basse, gratté) ne lisent **pas** la mélodie écrite : chaque air tire une graine
+d'accompagnement dans le RNG de session (deux entiers de 32 bits, une fois par air), et chaque mesure
+en dérive la sienne par `mix(graine, indice de mesure)`, sans état d'une mesure à l'autre (un seek
+recalcule une mesure depuis son indice et les graines de l'air). Avant S0, la graine dérivait des
+notes de la mélodie : sous une grille d'accords fixe, la banque de cellules minimale la réduisait à
+deux valeurs, et seize graines de session donnaient deux comping et deux basses.
+
+- Le tirage a lieu **après** la mélodie, l'intro et le matériel de l'air : la mélodie, l'intro et
+  les ornements du premier air ne changent pas. Les airs suivants d'un même set, eux, reçoivent un
+  RNG décalé de deux tirages par air : ils tirent d'autres cellules (un profil à plusieurs airs par
+  set n'a donc plus les mêmes airs 2 et suivants qu'avant S0).
+- Tout profil avec `[accompaniment]` tire, que ses couches tirent ou non (ajouter ou retirer une
+  couche ne décale aucun autre tirage). Un profil sans `[accompaniment]` garde son flux.
+- Les ornements et l'hétérophonie gardent la graine de matériel (dérivée de la mélodie écrite).
+
 ### Motifs de basse
 
 `bass.motifs` remplace `bass.hits` : les deux sources sont exclusives, puis
@@ -702,8 +720,8 @@ nommer (refusé comme sans emploi), et le plan n'y tire aucune tranche.
 Le tirage préfère les motifs entiers qui tiennent avant la fin de partie ;
 sinon il tronque un motif à cette frontière, jamais au-delà.
 
-La sélection est fixée une fois par air, dans un domaine ChaCha8 dérivé du
-matériel écrit, sans déplacer les tirages des autres pistes. Les passes et tours
+La sélection est fixée une fois par air, dans un domaine ChaCha8 dérivé de la graine
+d'accompagnement de l'air (voir « Graine d'accompagnement »). Les passes et tours
 rejouent les mêmes tranches. `CopyOf` et `CopyOfPart` copient **une mesure**,
 puis transposent ses intervalles sur l'harmonie de destination. Une copie
 interrompt la tranche courante sans suspendre l'avancée du motif. La seconde fin
@@ -758,8 +776,8 @@ l'interprétation V2 de la piste Bass comme les autres notes.
 
 Poids entiers : somme positive dans u32, au plus 64 règles ; `duration > 0`,
 `velocity_delta` −127..127, `min_leap` 0..127. Règle impossible : abstention.
-Les tirages réutilisent la graine de matériel de V3b, dans un domaine basse
-distinct par mesure et attaque : ni mélodie, ni percussion, ni air suivant déplacé.
+Les tirages dérivent de la graine d'accompagnement de l'air (« Graine d'accompagnement »), dans
+un domaine basse distinct par mesure et attaque : ni mélodie, ni percussion déplacées.
 Les valeurs distribuées viennent du §7 de l'étude, **à valider à l'oreille** :
 marche sans harmonie ; valse seulement dans le dernier quart de phrase ;
 hornpipe plus rare (`none_weight = 10`), reel québécois `5`, autres reels/gigues `4`.
@@ -801,7 +819,7 @@ passing = { chord_tone_weight = 3, scale_step_weight = 3 }
 La cible de la dernière pulsation de la mesure est l'arrivée du premier temps de la mesure
 suivante : après la dernière mesure du dernier tour il n'y a pas de cible, donc pas
 d'approche. Une mesure se joue à l'identique d'une génération à l'autre : ses tirages
-dépendent de la graine de matériel de l'air et de la mesure, jamais de la note de la mesure
+dépendent de la graine d'accompagnement de l'air et de la mesure, jamais de la note de la mesure
 précédente. Poids `u32` ; une somme nulle (`approach`, `passing`) est refusée.
 
 **Deux temps.** Une variante de `[arc]` peut demander `bass_feel = "two_feel"` : la même ligne,
@@ -910,7 +928,7 @@ comping = [
 ```
 
 `comping` est une banque de rythmes d'**une mesure**, tirés par poids (`u32`, défaut 1, somme
-positive, au plus 256 motifs) avec la graine de matériel et le numéro de mesure : une mesure se
+positive, au plus 256 motifs) avec la graine d'accompagnement et le numéro de mesure : une mesure se
 rejoue à l'identique. Elle remplace le choix du motif d'intensité (`patterns`, toujours requis,
 joué aussi par l'intro). Un motif sans attaque est un silence. Les attaques ont les mêmes
 champs que celles de `patterns` (`direction`, `probability`, `tie`) plus `anticipate = true` :

@@ -71,8 +71,14 @@ pub struct ActiveTune {
     /// Graine des tirages d'interprétation de l'air, tirée une fois (0 si le
     /// profil n'a aucune interprétation) ; un flux par mesure en dérive.
     pub performance_seed: u64,
-    /// Graine dérivée du matériel écrit, commune aux ornements et à l'accompagnement.
+    /// Graine dérivée du matériel écrit : ornements et hétérophonie seulement (la mélodie
+    /// écrite et ses ornements ne dépendent pas de la graine d'accompagnement).
     pub material_seed: u64,
+    /// Graine de l'accompagnement (comping, marche et notes de passage de la basse, motifs
+    /// de basse), tirée une fois par air dans le RNG injecté, **après** la mélodie, l'intro et
+    /// le matériel (0 et aucun tirage sans `[accompaniment]`). Chaque mesure en dérive sa graine
+    /// par son seul indice (`mix(graine, mesure)`), sans état d'une mesure à l'autre.
+    pub accompaniment_seed: u64,
     /// Graine de l'arc sur plusieurs chorus, tirée une fois par air (0 si le profil n'a pas
     /// d'arc) ; l'arc d'un set lit celle de son premier air.
     arc_seed: u64,
@@ -543,8 +549,10 @@ impl TuneGenerator {
                     .eval(self.arc_intensity(position.tune_index, arc.as_ref()))
                     + self.profile.dynamics.density_chords.eval(self.arc_density(arc.as_ref()))
             };
-            let seed =
-                crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
+            let seed = crate::ornaments::mix(
+                tune.accompaniment_seed,
+                self.performed_bar(&position) as u64,
+            );
             // L'intro joue le motif par défaut (voir `fill_intro_measure`) ; les tours, celui
             // de la mesure.
             let hits = if is_intro {
@@ -638,7 +646,7 @@ impl TuneGenerator {
         let context = super::bass_passing::PassingContext {
             key: tune.plan.key,
             mode: tune.plan.mode,
-            seed: tune.material_seed,
+            seed: tune.accompaniment_seed,
             bar,
             phase: (position.bar_in_part - 1 - start) as f32 / span,
             phrase_bars: span,
@@ -843,7 +851,7 @@ impl TuneGenerator {
                     let tonic = DegreeChord::new(ChordDegree::I, ChordQuality::Major);
                     let chords = vec![tonic; steps / self.profile.harmony.steps_per_chord];
                     let seed = crate::ornaments::mix(
-                        tune.material_seed,
+                        tune.accompaniment_seed,
                         self.performed_bar(position) as u64,
                     );
                     let next_note_id = &mut self.next_note_id;
@@ -980,7 +988,10 @@ impl TuneGenerator {
                             mode: plan.mode,
                             steps_per_chord: self.profile.harmony.steps_per_chord,
                             steps_per_pulse: self.profile.meter.steps_per_pulse,
-                            seed: crate::ornaments::mix(tune.material_seed, bar_in_tour as u64),
+                            seed: crate::ornaments::mix(
+                                tune.accompaniment_seed,
+                                bar_in_tour as u64,
+                            ),
                             attack_pulses: arc.map_or(1, ArcBar::attack_pulses),
                         },
                         &accompaniment.bass,
@@ -1515,7 +1526,7 @@ impl TuneGenerator {
         let mut chord_player = ChordPlayer::new();
         for b in part_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
-            let seed = crate::ornaments::mix(tune.material_seed, b as u64);
+            let seed = crate::ornaments::mix(tune.accompaniment_seed, b as u64);
             chord_player.advance_bar(
                 &c,
                 self.next_bar_first_chord(tune, b),
@@ -1529,7 +1540,7 @@ impl TuneGenerator {
         }
         let chords = self.chords_for_bar(tune, bar_in_tour);
         let next_first = self.next_bar_first_chord(tune, bar_in_tour);
-        let seed = crate::ornaments::mix(tune.material_seed, bar_in_tour as u64);
+        let seed = crate::ornaments::mix(tune.accompaniment_seed, bar_in_tour as u64);
         let next_note_id = &mut self.next_note_id;
         let mut next_id = || {
             let id = *next_note_id;
@@ -1761,7 +1772,9 @@ impl TuneGenerator {
         // Tirer l'intro (P1-T11)
         let intro_info = self.draw_intro(tune_index, &plan, &melody, rng);
         // Aucun tirage : une graine dérivée du matériel écrit de l'air garde l'intro, les
-        // tirages suivants et la mélodie écrite identiques avec ou sans ornements.
+        // tirages suivants et la mélodie écrite identiques avec ou sans ornements. Les
+        // ornements seuls la lisent ; la condition reste celle d'avant l'accompagnement
+        // pour que leur tirage ne change pas.
         let material_seed = if self.profile.heterophony.is_some()
             || self.profile.ornaments.needs_seed()
             || self.profile.accompaniment.as_ref().is_some_and(|a| {
@@ -1781,23 +1794,25 @@ impl TuneGenerator {
         } else {
             0
         };
+        // Graine de l'accompagnement : un tirage par air dès que le profil a un accompagnement
+        // (sans lui, le flux est celui d'avant), qu'une couche en tire ou non : ajouter ou
+        // retirer une couche ne décale ainsi aucun autre tirage. Elle vient du RNG injecté,
+        // donc de la graine de session, et non de la mélodie écrite, que la banque de cellules
+        // d'un profil sous grille fixe réduit à deux valeurs. Tirée après tout le reste de
+        // l'air : la mélodie, l'intro et les ornements de cet air ne bougent pas.
+        let accompaniment_seed = if self.profile.accompaniment.is_some() {
+            let high = rng.next_range_u64(0..1 << 32);
+            (high << 32) | rng.next_range_u64(0..1 << 32)
+        } else {
+            0
+        };
         let bass_plan = if let Some(source) = source {
             source.bass_plan.clone()
         } else if let Some(a) = &self.profile.accompaniment
             && a.bass.uses_plan()
         {
-            let mut bass_rng = ChaCha8Rng::seed_from_u64(crate::ornaments::mix(
-                crate::ornaments::tune_seed(
-                    tune_index,
-                    (0..plan.material_bars()).flat_map(|i| {
-                        melody
-                            .notes_for_bar(plan.representative_bar(i))
-                            .into_iter()
-                            .map(|n| (n.pitch, n.start_step, n.duration_steps))
-                    }),
-                ),
-                0x424D_4F54,
-            ));
+            let mut bass_rng =
+                ChaCha8Rng::seed_from_u64(crate::ornaments::mix(accompaniment_seed, 0x424D_4F54));
             BassMotifPlan::new(&plan, &a.bass, &mut bass_rng)
         } else {
             BassMotifPlan::default()
@@ -1819,6 +1834,7 @@ impl TuneGenerator {
             variant_seed,
             performance_seed,
             material_seed,
+            accompaniment_seed,
             arc_seed,
             intro_info,
             initial_mode: plan.mode,
