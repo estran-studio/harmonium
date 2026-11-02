@@ -218,6 +218,8 @@ pub struct PercussionPattern {
     pub part: Option<String>,
     /// Portée optionnelle : le pattern ne concourt que pour ce tour de l'air (1-based).
     pub tour: Option<usize>,
+    /// Étiquette que `[arc]` nomme pour choisir parmi les patterns (`arc.stages[].variants[].percussion`).
+    pub tag: Option<String>,
     /// Liste des coups composant la mesure.
     pub hits: Vec<PercussionHit>,
     euclid: Option<(EuclideanPattern, TrackId)>,
@@ -227,7 +229,7 @@ impl PercussionPattern {
     /// Crée un nouveau [`PercussionPattern`].
     #[must_use]
     pub const fn new(density: u8, hits: Vec<PercussionHit>) -> Self {
-        Self { density, weight: 1, part: None, tour: None, hits, euclid: None }
+        Self { density, weight: 1, part: None, tour: None, tag: None, hits, euclid: None }
     }
 
     pub(crate) fn euclidean_steps(&self) -> Option<usize> {
@@ -265,6 +267,8 @@ impl<'de> Deserialize<'de> for PercussionPattern {
             part: Option<String>,
             #[serde(default)]
             tour: Option<usize>,
+            #[serde(default)]
+            tag: Option<String>,
         }
         let raw = Raw::deserialize(deserializer)?;
         let mut euclid = None;
@@ -303,6 +307,7 @@ impl<'de> Deserialize<'de> for PercussionPattern {
             weight: raw.weight,
             part: raw.part,
             tour: raw.tour,
+            tag: raw.tag,
             hits,
             euclid,
         })
@@ -316,7 +321,8 @@ impl Serialize for PercussionPattern {
             "PercussionPattern",
             3 + usize::from(self.euclid.is_some())
                 + usize::from(self.part.is_some())
-                + usize::from(self.tour.is_some()),
+                + usize::from(self.tour.is_some())
+                + usize::from(self.tag.is_some()),
         )?;
         state.serialize_field("density", &self.density)?;
         state.serialize_field("weight", &self.weight)?;
@@ -325,6 +331,9 @@ impl Serialize for PercussionPattern {
         }
         if let Some(tour) = self.tour {
             state.serialize_field("tour", &tour)?;
+        }
+        if let Some(tag) = &self.tag {
+            state.serialize_field("tag", tag)?;
         }
         if let Some((pattern, track)) = self.euclid {
             state.serialize_field("euclid", &pattern)?;
@@ -739,6 +748,43 @@ impl PercussionTable {
             let duplicate = seen[density];
             seen[density] = true;
             duplicate
+        })
+    }
+
+    /// Vrai si une mesure de relance remplace le pattern ordinaire à la densité `density`.
+    pub(crate) fn has_cadence_pattern(&self, density: u8) -> bool {
+        self.cadence_patterns.iter().any(|pattern| pattern.density == density.min(2))
+    }
+
+    /// Pattern de la densité `density` tiré parmi ceux qui portent un tag de `tags` (poids du
+    /// pattern fois celui du tag) et dont la portée `part` convient, avec le flux `seed`.
+    /// `None` : aucun pattern ne concourt, le choix ordinaire s'applique.
+    pub(crate) fn tagged_pattern(
+        &self,
+        part: &str,
+        density: u8,
+        tags: &[super::arc::TagWeight],
+        seed: u64,
+    ) -> Option<&PercussionPattern> {
+        let density = density.min(2);
+        let weight = |pattern: &PercussionPattern| {
+            if pattern.density == density && pattern.part.as_deref().is_none_or(|p| p == part) {
+                u64::from(pattern.weight)
+                    .saturating_mul(super::arc::tag_weight(tags, pattern.tag.as_deref()))
+            } else {
+                0
+            }
+        };
+        let total = self.patterns.iter().map(weight).fold(0, u64::saturating_add);
+        if total == 0 {
+            return None;
+        }
+        let mut pick = ChaCha8Rng::seed_from_u64(seed).next_range_u64(0..total);
+        self.patterns.iter().find(|pattern| {
+            let weight = weight(pattern);
+            let hit = pick < weight;
+            pick = pick.saturating_sub(weight);
+            hit
         })
     }
 }

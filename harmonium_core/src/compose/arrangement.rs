@@ -164,6 +164,20 @@ impl TunePosition {
         self.tour >= self.tours
     }
 
+    /// Numéro 1-based du chorus dans le set (0 en intro) : un chorus est une passe complète de
+    /// la forme (`tour`), comptée sur les airs du set (`tune_in_set`) ; dans un set sans fin,
+    /// sur ceux de la session. Les champs exposés par `MeasureSnapshot` suffisent à le lire.
+    #[must_use]
+    pub const fn chorus(&self) -> usize {
+        if self.tour == 0 { 0 } else { self.tune_in_set.saturating_sub(1) * self.tours + self.tour }
+    }
+
+    /// Nombre de chorus du set, `None` si le set n'a pas de fin (`tunes_in_set == 0`).
+    #[must_use]
+    pub const fn choruses(&self) -> Option<usize> {
+        if self.tunes_in_set == 0 { None } else { Some(self.tunes_in_set * self.tours) }
+    }
+
     /// Vrai si la mesure est dans une intro.
     #[must_use]
     pub const fn is_intro(&self) -> bool {

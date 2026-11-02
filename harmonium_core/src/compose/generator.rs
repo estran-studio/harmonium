@@ -10,6 +10,7 @@ use rand_chacha::ChaCha8Rng;
 
 use super::{
     accomp::{BassMotifPlan, ChordPlayer, bass_bar, bass_motif_bar, first_bass_target},
+    arc::ArcBar,
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     bass_template::{TemplateBar, bass_template_bar},
     cells::Cell,
@@ -72,6 +73,9 @@ pub struct ActiveTune {
     pub performance_seed: u64,
     /// Graine dérivée du matériel écrit, commune aux ornements et à l'accompagnement.
     pub material_seed: u64,
+    /// Graine de l'arc sur plusieurs chorus, tirée une fois par air (0 si le profil n'a pas
+    /// d'arc) ; l'arc d'un set lit celle de son premier air.
+    arc_seed: u64,
     /// Informations d'intro pour cet air (P1-T11).
     pub intro_info: IntroInfo,
     initial_mode: Mode,
@@ -162,14 +166,33 @@ impl TuneGenerator {
         }
     }
 
-    fn percussion_density(&self, intensity: f32) -> u8 {
+    fn percussion_density(&self, intensity: f32, rhythm_density: f32) -> u8 {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
         (f32::from(p.percussion_density)
             + d.percussion_intensity.eval(intensity)
-            + d.density_percussion.eval(p.rhythm_density))
+            + d.density_percussion.eval(rhythm_density))
         .round()
         .clamp(0.0, 2.0) as u8
+    }
+
+    /// Intensité lue par les courbes de `dynamics` à cette mesure : celle de l'air, fois le
+    /// multiplicateur de l'arc du chorus. Le tempo garde l'intensité de l'air.
+    fn arc_intensity(&self, tune_index: usize, arc: Option<&ArcBar<'_>>) -> f32 {
+        let intensity = self.effective_intensity(tune_index);
+        arc.map_or(intensity, |arc| arc.intensity(intensity))
+    }
+
+    /// Densité rythmique lue par les courbes de densité, multipliée par l'arc du chorus.
+    fn arc_density(&self, arc: Option<&ArcBar<'_>>) -> f32 {
+        let density = self.musical_params.rhythm_density;
+        arc.map_or(density, |arc| arc.density(density))
+    }
+
+    /// Graine de l'arc du set de l'air `tune_index` : celle de son premier air (0 sans arc).
+    fn arc_seed(&self, tune_index: usize) -> u64 {
+        let first = self.set_of(tune_index).map_or(tune_index, |(_, set)| set.first_tune());
+        self.tunes.get(&first).map_or(0, |tune| tune.arc_seed)
     }
 
     /// Met à jour les paramètres de tuning et invalide le cache de tunes afin que
@@ -423,13 +446,25 @@ impl TuneGenerator {
         let held =
             last_bar && self.transition_for(position.tune_index + 1).0 == TransitionKind::Held;
         let is_outro = last_bar && (self.musical_params.end_after_tour || set_outro || held);
+        // L'arc ne touche ni l'intro ni la mesure de clôture. Le profil est cloné (un compteur
+        // de références) pour que l'état de l'arc ne garde pas `self` emprunté.
+        let arc_profile = (!is_intro && !is_outro)
+            .then(|| self.profile.arc.as_ref().map(|_| Arc::clone(&self.profile)))
+            .flatten();
+        let arc = arc_profile.as_ref().and_then(|profile| {
+            profile.arc.as_ref()?.at(
+                self.arc_seed(position.tune_index),
+                &position,
+                profile.form.bars_per_tour(),
+            )
+        });
 
         if is_intro {
             self.fill_intro_measure(&tune, &position, &mut measure);
         } else if is_outro {
             self.fill_outro_measure(&tune, &position, &mut measure);
         } else {
-            self.fill_tour_measure(&tune, &position, &mut measure);
+            self.fill_tour_measure(&tune, &position, &mut measure, arc.as_ref());
         }
         // Pas des notes écrites (coups ou motif) : seuls les ajouts de passage sont vétoés.
         let written_bass_steps: Vec<usize> = if !is_intro
@@ -441,7 +476,7 @@ impl TuneGenerator {
             Vec::new()
         };
         if !is_intro && !is_outro {
-            self.apply_bass_passing(&mut measure, &tune, &position);
+            self.apply_bass_passing(&mut measure, &tune, &position, arc.as_ref());
         }
 
         let written: Vec<usize> = if self.profile.ornaments.is_inert() {
@@ -449,7 +484,7 @@ impl TuneGenerator {
         } else {
             measure.notes_for_track(TrackId::Melody).iter().map(|n| n.duration_steps).collect()
         };
-        self.apply_dynamics(&mut measure);
+        self.apply_dynamics(&mut measure, arc.as_ref());
         self.fit_planned_melody(&mut measure, &tune, &position);
         let hetero_written = if !is_intro && self.track_active(TrackId::Countermelody, &position) {
             let context = self.ornament_context(&measure, &tune, &position);
@@ -505,8 +540,8 @@ impl TuneGenerator {
                 self.profile
                     .dynamics
                     .chords_intensity
-                    .eval(self.effective_intensity(position.tune_index))
-                    + self.profile.dynamics.density_chords.eval(self.musical_params.rhythm_density)
+                    .eval(self.arc_intensity(position.tune_index, arc.as_ref()))
+                    + self.profile.dynamics.density_chords.eval(self.arc_density(arc.as_ref()))
             };
             let seed =
                 crate::ornaments::mix(tune.material_seed, self.performed_bar(&position) as u64);
@@ -515,7 +550,7 @@ impl TuneGenerator {
             let hits = if is_intro {
                 &a.chords.pattern(0.0).hits
             } else {
-                a.chords.bar_hits(offset, seed)
+                a.chords.bar_hits(offset, seed, arc.as_ref().map_or(&[][..], ArcBar::comping_tags))
             };
             super::chord_spread::apply(&mut measure, &a.chords, hits, seed);
         }
@@ -562,6 +597,9 @@ impl TuneGenerator {
         {
             super::bass_passing::veto_final(&mut measure, &a.bass, &written_bass_steps);
         }
+        if let Some(arc) = &arc {
+            arc.apply_break(&mut measure);
+        }
 
         measure
     }
@@ -571,6 +609,7 @@ impl TuneGenerator {
         measure: &mut Measure,
         tune: &ActiveTune,
         position: &TunePosition,
+        arc: Option<&ArcBar<'_>>,
     ) {
         let Some(a) = &self.profile.accompaniment else {
             return;
@@ -603,7 +642,7 @@ impl TuneGenerator {
             bar,
             phase: (position.bar_in_part - 1 - start) as f32 / span,
             phrase_bars: span,
-            density: self.musical_params.rhythm_density,
+            density: self.arc_density(arc),
             arousal: self.musical_params.arousal,
             strong_steps: &a.strong_steps,
             chords: &chords,
@@ -758,7 +797,10 @@ impl TuneGenerator {
                         &tuning.profile.percussion,
                         plan.profile.form.sequence[0],
                         0,
-                        self.percussion_density(self.effective_intensity(position.tune_index)),
+                        self.percussion_density(
+                            self.effective_intensity(position.tune_index),
+                            self.musical_params.rhythm_density,
+                        ),
                         false,
                     );
                     let (percussion_low_notes, percussion_high_notes) = percussion_notes(
@@ -886,6 +928,7 @@ impl TuneGenerator {
         tune: &ActiveTune,
         position: &TunePosition,
         measure: &mut Measure,
+        arc: Option<&ArcBar<'_>>,
     ) {
         if let HarmonyPlan::None = &tune.harmony {
             let bar_in_tour = self.performed_bar(position);
@@ -897,7 +940,7 @@ impl TuneGenerator {
                     measure.add_note(TrackId::Melody, note);
                 }
             }
-            self.fill_percussion(tune, position, measure);
+            self.fill_percussion(tune, position, measure, arc);
             return;
         }
         let bar_in_tour = self.performed_bar(position);
@@ -915,7 +958,7 @@ impl TuneGenerator {
 
         // 2. Accompagnement (accords + basse, D8)
         if self.track_active(TrackId::Chords, position) {
-            for note in self.chord_notes_for_bar(tune, bar_in_tour) {
+            for note in self.chord_notes_for_bar(tune, bar_in_tour, arc) {
                 measure.add_note(TrackId::Chords, note);
             }
         }
@@ -938,6 +981,7 @@ impl TuneGenerator {
                             steps_per_chord: self.profile.harmony.steps_per_chord,
                             steps_per_pulse: self.profile.meter.steps_per_pulse,
                             seed: crate::ornaments::mix(tune.material_seed, bar_in_tour as u64),
+                            attack_pulses: arc.map_or(1, ArcBar::attack_pulses),
                         },
                         &accompaniment.bass,
                         walking,
@@ -986,7 +1030,7 @@ impl TuneGenerator {
                 }
             }
         }
-        self.fill_percussion(tune, position, measure);
+        self.fill_percussion(tune, position, measure, arc);
     }
 
     /// Premier accord de la mesure suivante du tour joué ; `None` après la dernière.
@@ -1139,6 +1183,7 @@ impl TuneGenerator {
         tune: &ActiveTune,
         position: &TunePosition,
         measure: &mut Measure,
+        arc: Option<&ArcBar<'_>>,
     ) {
         // 3. Percussion (percussion grave + percussion aiguë, D9)
         let percussion_low_active = self.track_active(TrackId::PercussionLow, position);
@@ -1151,15 +1196,33 @@ impl TuneGenerator {
                 position.bar_in_part - 1,
                 tune.plan.bar_role(self.performed_bar(position)).role,
             );
-            let pattern = tune.percussion_plan.pattern(
-                &self.tuning.profile.percussion,
-                position.part.0,
-                position.tour,
-                self.percussion_density(self.effective_intensity(position.tune_index)),
-                is_cadence,
+            let table = &self.tuning.profile.percussion;
+            let density = self.percussion_density(
+                self.arc_intensity(position.tune_index, arc),
+                self.arc_density(arc),
             );
+            // Une mesure de relance garde son pattern ; ailleurs l'arc restreint le choix aux
+            // patterns de ses tags.
+            let replaced = is_cadence && table.has_cadence_pattern(density);
+            let tagged = arc.filter(|_| !replaced).and_then(|arc| {
+                table.tagged_pattern(
+                    &self.profile.form.parts[position.part.0].name,
+                    density,
+                    arc.percussion_tags(),
+                    arc.percussion_seed(position.part.0, density.min(2)),
+                )
+            });
+            let pattern = tagged.unwrap_or_else(|| {
+                tune.percussion_plan.pattern(
+                    table,
+                    position.part.0,
+                    position.tour,
+                    density,
+                    is_cadence,
+                )
+            });
             let (percussion_low_notes, percussion_high_notes) =
-                percussion_notes(&self.tuning.profile.percussion, pattern, measure.steps, humanize);
+                percussion_notes(table, pattern, measure.steps, humanize);
             if percussion_low_active {
                 for mut note in percussion_low_notes {
                     note.id = self.alloc_note_id();
@@ -1309,11 +1372,11 @@ impl TuneGenerator {
         chords
     }
 
-    fn apply_dynamics(&mut self, measure: &mut Measure) {
+    fn apply_dynamics(&mut self, measure: &mut Measure, arc: Option<&ArcBar<'_>>) {
         let p = &self.musical_params;
         let d = &self.tuning.profile.dynamics;
         let intensity =
-            self.effective_intensity(measure.position.map_or(0, |position| position.tune_index));
+            self.arc_intensity(measure.position.map_or(0, |position| position.tune_index), arc);
         let duration =
             d.melody_duration.eval(intensity) * d.tension_duration.eval(p.harmony_tension);
         let strong = d.strong_accent.eval(intensity)
@@ -1434,15 +1497,21 @@ impl TuneGenerator {
     /// Calcule les attaques d'accords de `bar_in_tour` en rejouant le [`ChordPlayer`]
     /// depuis le début de la passe courante, sans hypothèse de longueur ;
     /// le matériel rejoué reste stable après invalidation émotionnelle.
-    fn chord_notes_for_bar(&mut self, tune: &ActiveTune, bar_in_tour: usize) -> Vec<TimelineNote> {
+    fn chord_notes_for_bar(
+        &mut self,
+        tune: &ActiveTune,
+        bar_in_tour: usize,
+        arc: Option<&ArcBar<'_>>,
+    ) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
         let part_pass_start = bar_in_tour - offset;
         let Some(harmony) = self.tuning.profile.accompaniment.as_ref() else {
             return Vec::new();
         };
         let d = &self.tuning.profile.dynamics;
-        let chord_offset = d.chords_intensity.eval(self.effective_intensity(tune.tune_index))
-            + d.density_chords.eval(self.musical_params.rhythm_density);
+        let chord_offset = d.chords_intensity.eval(self.arc_intensity(tune.tune_index, arc))
+            + d.density_chords.eval(self.arc_density(arc));
+        let tags = arc.map_or(&[][..], ArcBar::comping_tags);
         let mut chord_player = ChordPlayer::new();
         for b in part_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
@@ -1453,7 +1522,7 @@ impl TuneGenerator {
                 tune.plan.key,
                 tune.plan.mode,
                 harmony,
-                harmony.chords.bar_hits(chord_offset, seed),
+                harmony.chords.bar_hits(chord_offset, seed, tags),
                 self.profile.harmony.steps_per_chord,
                 seed,
             );
@@ -1473,7 +1542,7 @@ impl TuneGenerator {
             tune.plan.key,
             tune.plan.mode,
             harmony,
-            harmony.chords.bar_hits(chord_offset, seed),
+            harmony.chords.bar_hits(chord_offset, seed, tags),
             self.profile.harmony.steps_per_chord,
             seed,
             &mut next_id,
@@ -1566,6 +1635,14 @@ impl TuneGenerator {
         let variant_seed = if self.profile.harmony.has_alternatives()
             || self.profile.percussion.has_alternatives()
         {
+            let high = rng.next_range_u64(0..1 << 32);
+            (high << 32) | rng.next_range_u64(0..1 << 32)
+        } else {
+            0
+        };
+        // Graine de l'arc : un tirage par air, seulement si le profil a un arc (les profils
+        // sans arc gardent le même flux). Celle du premier air du set sert à tout le set.
+        let arc_seed = if self.profile.arc.is_some() {
             let high = rng.next_range_u64(0..1 << 32);
             (high << 32) | rng.next_range_u64(0..1 << 32)
         } else {
@@ -1742,6 +1819,7 @@ impl TuneGenerator {
             variant_seed,
             performance_seed,
             material_seed,
+            arc_seed,
             intro_info,
             initial_mode: plan.mode,
             material_origin,

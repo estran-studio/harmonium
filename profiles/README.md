@@ -412,6 +412,9 @@ tour = 2
 hits = [{ step = 4, track = "PercussionLow" }, { step = 12, track = "PercussionHigh" }]
 ```
 
+Un pattern ordinaire accepte aussi `tag = "..."` : une étiquette libre, sans effet sur le choix
+ordinaire, que `[arc]` nomme pour choisir les patterns d'un chorus (charleston, puis ride).
+
 Fixture de contrat : `tests/fixtures/profiles/regles_procedurales/` (les quatre mécanismes ;
 tests : `harmonium_core/tests/procedural_rules_tests.rs`).
 
@@ -801,6 +804,14 @@ d'approche. Une mesure se joue à l'identique d'une génération à l'autre : se
 dépendent de la graine de matériel de l'air et de la mesure, jamais de la note de la mesure
 précédente. Poids `u32` ; une somme nulle (`approach`, `passing`) est refusée.
 
+**Deux temps.** Une variante de `[arc]` peut demander `bass_feel = "two_feel"` : la même ligne,
+avec une attaque toutes les deux pulsations (temps 1 et 3 en 4/4) et à chaque changement
+d'accord. L'arrivée est celle de la marche ; l'attaque suivante dans l'étendue de l'accord est
+l'approche de la cible suivante (tirage `approach`, sinon une note de passage qui la rend
+atteignable), tenue jusqu'à l'attaque d'après. Les poids de `[accompaniment.bass.walking]` sont
+ceux de la marche ; les enrichissements (notes répétées, croches, chromatisme, autres arrivées)
+ne sont pas exprimables aujourd'hui.
+
 ### Accords grattés
 
 `chords.note_count` (3..6, défaut 3) complète la triade par octaves en montant.
@@ -907,6 +918,10 @@ l'attaque joue l'accord en vigueur à la **fin** de sa durée (`step + duration`
 qui commence à cette fin ; sans changement, l'accord du pas. Une attaque qui finit sur la barre
 joue le premier accord de la mesure suivante et, après la dernière mesure du dernier tour,
 l'accord du pas. Un profil sans `comping` ni `anticipate` garde son flux.
+
+Un motif de `comping` accepte un `tag = "..."` (étiquette libre, sans effet seule) que
+`[arc]` nomme pour restreindre le tirage d'un chorus à certains rythmes (clairsemés, denses).
+Voir « Arc sur plusieurs chorus ».
 
 La fixture technique `../tests/fixtures/profiles/grille_accompagnee/` active la marche et le
 comping sans fondamentale sur un blues de douze mesures en fa (ii-V dans la mesure 9) puis un
@@ -1519,6 +1534,85 @@ accompagnement, intro et interprétation sont recalculés pour l'état courant.
 La fenêtre de mémoire référence les airs déjà conservés pour la position et le seek :
 pas de deuxième copie, et `invalidate_future` retire automatiquement les futurs retours.
 Le rejeu depuis la mesure 1 reconstruit la même mémoire.
+
+## Arc sur plusieurs chorus (`[arc]`, phase 019 A3)
+
+Un **chorus** est une passe complète de la forme (`TunePosition.tour`) : pour un profil `loop`
+sous une grille fournie, la partie de N mesures répétée. `[arc]` (ou `arc.toml`, `[files] arc =
+"arc.toml"`) fait varier d'un chorus à l'autre l'intensité, la densité, le feel de basse, le
+comping, la batterie, les breaks et la retombée finale. Section absente : tous les chorus se
+jouent pareil, et le flux de snapshots est celui d'avant (aucun tirage de plus). Aucun nom de
+style dans l'algorithme ; la musique est dans les données. Aucune réharmonisation : les accords
+publiés ne changent jamais.
+
+**Numéro de chorus.** `MeasureSnapshot.position` expose déjà `tour` et `tours` (chorus de l'air),
+`tune_in_set` et `tunes_in_set` (airs du set). Le chorus du set se lit `TunePosition::chorus()` =
+`(tune_in_set - 1) × tours + tour` (0 en intro) et le nombre de chorus `TunePosition::choruses()` =
+`tunes_in_set × tours`, `None` pour un **set sans fin** (`tunes_in_set == 0`). Un set d'un air
+(`length = [{ tunes = 1 }]`) de `tours_per_tune` chorus est donc un arc **de fin connue** ; un set
+sans `length` est un arc **sans fin**. Aucun champ de snapshot n'est ajouté.
+
+```toml
+# arc.toml
+repeat_from = 1              # absent : la dernière étape se tient sans fin
+
+[[stages]]                   # étape 1 (indice 0) : un chorus
+choruses = 1                 # 1..=1024, défaut 1
+variants = [                 # chaque chorus de l'étape tire sa variante par poids
+  { weight = 3, intensity = 0.6, density = 0.5, bass_feel = "two_feel",
+    comping = [{ tag = "sparse", weight = 3 }, { tag = "medium" }],
+    percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.7, bass_feel = "two_feel", comping = [{ tag = "medium" }] },
+]
+
+[[stages]]                   # étape 2 : deux chorus
+choruses = 2
+variants = [{ bass_feel = "walking", percussion = [{ tag = "ride" }],
+              breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] }]
+
+[[fall]]                     # retombée : variantes du dernier chorus quand le nombre est connu
+intensity = 0.5
+bass_feel = "two_feel"
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]   # stop-time
+```
+
+| Champ | Bornes | Effet |
+|---|---|---|
+| `stages` | 1..=16 étapes | Dans l'ordre des chorus. Une étape couvre `choruses` chorus consécutifs (1..=1024) |
+| `stages[].variants` | 1..=16, somme des poids dans u32 | Chaque chorus de l'étape tire **sa** variante par poids : un flux ChaCha8 dérivé de la graine de l'arc et du numéro de chorus |
+| `repeat_from` | indice d'étape 0-based | Passé la dernière étape, l'arc reprend à cette étape en boucle. Absent : la dernière étape se tient (set sans fin ou plus de chorus que d'étapes) |
+| `fall` | 0..=16 variantes | Variantes du **dernier chorus du set**, qui remplacent celles de l'étape. Jouées seulement si le nombre de chorus est connu **et d'au moins deux** ; set sans fin ou un seul chorus : jamais |
+| `weight` | ≥ 1 (défaut 1) | Poids du tirage de la variante |
+| `intensity` | 0..=2, défaut 1 | Multiplicateur de l'intensité lue par les courbes de `dynamics` (vélocités par piste, choix du motif de comping par intensité, niveau de densité de la batterie), borné à 0..1 après le produit. **Ne change pas le tempo** |
+| `density` | 0..=2, défaut 1 | Multiplicateur de la densité rythmique lue par `density_percussion`, `density_chords` et les notes de passage de la basse (`accompaniment.bass.passing`), borné à 0..1. N'ouvre ni ne ferme une piste (`density_tracks`) |
+| `bass_feel` | `walking` ou `two_feel`, absent : le profil | Exige `accompaniment.bass.walking`. `two_feel` : une attaque toutes les deux pulsations (temps 1 et 3 en 4/4), tenue jusqu'à l'attaque suivante, plus une arrivée à chaque changement d'accord |
+| `comping` | 0..=8 `{ tag, weight }` | Restreint le tirage du comping aux motifs de `accompaniment.chords.comping` dont le `tag` est nommé, au poids du motif × le poids du tag. Aucun motif concerné : le tirage du profil |
+| `percussion` | 0..=8 `{ tag, weight }` | Même mécanisme sur les `[[patterns]]` de `percussion.toml` (de la densité et de la partie de la mesure) ; les mesures de relance (`[[cadence_patterns]]`) gardent leur pattern |
+| `breaks` | 0..=8 | Voir ci-dessous |
+
+**Tags.** `tag = "..."` (optionnel) sur un motif de `accompaniment.chords.comping` et sur un
+`[[patterns]]` de batterie. Le tag n'est pas une portée : il ne change rien sans `[arc]`. Un tag
+nommé par l'arc doit exister dans sa banque (erreur à `arc.stages[i].variants[j].comping[k].tag`).
+
+**Breaks et stop-time.** `{ start, bars, chance, tracks, keep_steps }` : `start` est la première
+mesure de la fenêtre, **1-based dans le chorus**, négatif compté depuis la fin (`-2` : l'avant-
+dernière) ; `bars` mesures (défaut 1, la fenêtre reste dans le chorus) ; `chance` (0..=1, défaut 1)
+tirée une fois par chorus et par break ; `tracks` (défaut vide : toutes les pistes) ; `keep_steps` :
+les attaques des pistes touchées qui ne démarrent pas à l'un de ces pas sont retirées. Vide :
+silence complet de ces pistes (break) ; `[0]` : stop-time sur le premier temps. Les accords publiés
+(`chord_changes`) ne changent pas. Ni intro ni mesure de clôture du set ne portent d'arc.
+
+**Tirage et seek.** La graine de l'arc est tirée une fois par air (deux tirages de 32 bits, **seulement si
+le profil a un arc** : sans arc le flux ne change pas) ; celle du **premier air du set** sert à tout
+le set, donc un arc qui traverse plusieurs airs reste cohérent. L'état d'une mesure ne dépend que de
+sa position et de cette graine (variante, break, motif de comping et pattern de batterie par flux
+dérivés) : une mesure se rejoue à l'identique après un seek.
+
+Fixtures de contrat : `tests/fixtures/profiles/grille_arc_chorus/` (blues de douze mesures, quatre
+chorus : exposition à deux temps, corps à la marche, retombée à deux temps) et
+`grille_arc_chorus_aaba/` (forme AABA de trente-deux mesures, trois chorus) ; tests :
+`harmonium_core/tests/arc_chorus_tests.rs`. Compte rendu :
+[`specs/019-bibliotheque-accompagnements/a3-arc-chorus.md`](../specs/019-bibliotheque-accompagnements/a3-arc-chorus.md).
 
 
 
