@@ -60,7 +60,7 @@ tonalité est verrouillée en fa et la grille d'entrée s'écrit relative à la 
 | Accords | voicings `rootless` de quatre sons conduits par les voix communes, fenêtre 52..76, programme 0 (piano) ; six rythmes d'une mesure tirés par poids, dont trois avec une attaque anticipée sur la mesure suivante et un silence |
 | Batterie | kit jazz de GeneralUser GS (banque 128, programme 32) : ride 51, pédale de charleston 44, caisse claire 38, toms 43, grosse caisse 36 ; densité 0 ride seul, 1 ride et pédale aux temps 2 et 4, 2 caisse claire fantôme et grosse caisse ; relance de fin de phrase à la densité 2 |
 | Timing | basse sur la batterie (0 pas), accords en retard de 0,2 pas, jitter 0,1 pas |
-| Mixage | master +23 dB, batterie à 0 dB, basse −16 dB, accords −14 dB (RMS de chaque piste mesuré hors ligne) |
+| Mixage | master +25 dB, batterie −9 dB, basse −16 dB, accords −14 dB : en solo, ride environ 8 LU sous la basse et les accords (la batterie à 0 dB couvrait tout à l'écoute du propriétaire) |
 
 Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont ceux de GeneralUser GS.
 
