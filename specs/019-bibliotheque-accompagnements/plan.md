@@ -179,7 +179,8 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 
 | Tâche | État | Compte rendu |
 |---|---|---|
-| Reprise 018 (écoutes, seek) | seek : décidé, rien à changer ; écoutes E5/E6, E7, P1, P2 : en attente du propriétaire | — |
+| Reprise 018 (écoutes, seek) | **close** (2026-11-02). Seek : rien à changer. Écoute E5/E6, E7 : **validée** (« un jazz très très basique et statique » : base acceptée, la variance de 019 est le manque). P1/P2 : **intégration demandée** selon les recommandations → tâche **R1** | — |
+| **R1** | intégration P1/P2 aux profils de jeu (`nt_desert`, `isaac_basement`, `isaac_burning`, `isaac_downpour` ; rien pour `isaac_cellar`) ; rupture assumée (`TUNING_VERSION` 25) ; lancée le 2026-11-02 en parallèle d'A3 | — |
 | L1 | terminée ; **choix du propriétaire : C, GeneralUser GS conservée** (aucune différence entendue entre A, B, C ; sons de GeneralUser GS préférés) | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
 | L2 | fusionnée au labo (`0ad313e`) : GMD complet par style, WJazzD `BALLAD`/`TWOBEAT`/`LATIN`/`FUNK`, JTD swing par tempo (0,720 → 0,591 de < 120 à > 240 BPM) ; manques moteur listés (§ 6) pour A1/A6 | `harmonium_lab/references/l2-ingestion.md` |
 | V0 | fusionnée au labo (`d01d684`) : `seed-variety --chorus`, ligne de base sur 8 profils, seuils V2 proposés | `harmonium_lab/references/v0-variance/README.md` |

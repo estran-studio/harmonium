@@ -2,8 +2,9 @@
 
 **Statut** : planifiée le 2026-10-30, sous la constitution 4.5.0. Toutes les tâches sont fusionnées
 (2026-11-02, `TUNING_VERSION` 24, suites vertes : 787 workspace, 118 odin, 11 Bevy, natif = wasm
-98 / 98, labo 416). **Reste l'écoute du propriétaire** : E5/E6, E7 (`wjazzd_swing`), et
-l'intégration des propositions P1/P2 aux profils, qui n'a lieu qu'après cette écoute. Phases
+98 / 98, labo 416). **Écoute du propriétaire faite le 2026-11-02** : E5/E6 et E7 (`wjazzd_swing`)
+validés comme base (« un jazz très très basique et statique » : la variance est le travail de 019) ;
+intégration des propositions P1/P2 aux profils de jeu demandée, faite en 019 (tâche R1). Phases
 précédentes closes ou en suivi : 016 (variété par graine, timbre par zone, glissando, zones Z1 ;
 `specs/016-variete-et-timbres/plan.md`), 017 (plugin Bevy, `specs/017-plugin-bevy/plan.md`).
 
