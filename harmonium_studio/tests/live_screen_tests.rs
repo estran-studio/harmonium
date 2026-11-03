@@ -254,6 +254,11 @@ fn the_style_selector_the_profile_folder_and_the_seed_fields_drive_the_session()
     // Sélecteur de style : ouvrir, choisir.
     rig.harness.get_all_by_role(Role::ComboBox).next().ok_or("style selector")?.click();
     rig.harness.step();
+    // La liste compte plus de profils que la fenêtre n'en montre : faire défiler jusqu'à l'entrée avant de cliquer.
+    rig.harness.get_by_label("Valse québécoise").scroll_to_me();
+    for _ in 0..8 {
+        rig.harness.step();
+    }
     rig.harness.get_by_label("Valse québécoise").click();
     rig.harness.step();
     rig.harness.step();
