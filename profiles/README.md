@@ -415,7 +415,10 @@ hits = [{ step = 4, track = "PercussionLow" }, { step = 12, track = "PercussionH
 ```
 
 Un pattern ordinaire accepte aussi `tag = "..."` : une étiquette libre, sans effet sur le choix
-ordinaire, que `[arc]` nomme pour choisir les patterns d'un chorus (charleston, puis ride).
+ordinaire, que `[arc]` nomme pour choisir les patterns d'un chorus (charleston, puis ride). Les
+suites de patterns sur plusieurs mesures (`[[phrases]]`) et les relances de fin de phrase
+(`[[fills]]`, qui remplacent `[[cadence_patterns]]` à la densité qu'elles déclarent) sont décrites
+dans « Phrases d'accompagnement sur plusieurs mesures ».
 
 Fixture de contrat : `tests/fixtures/profiles/regles_procedurales/` (les quatre mécanismes ;
 tests : `harmonium_core/tests/procedural_rules_tests.rs`).
@@ -941,7 +944,9 @@ l'accord du pas. Un profil sans `comping` ni `anticipate` garde son flux.
 
 Un motif de `comping` accepte un `tag = "..."` (étiquette libre, sans effet seule) que
 `[arc]` nomme pour restreindre le tirage d'un chorus à certains rythmes (clairsemés, denses).
-Voir « Arc sur plusieurs chorus ».
+Voir « Arc sur plusieurs chorus ». Les suites de motifs sur plusieurs mesures
+(`accompaniment.chords.phrases`) sont décrites dans « Phrases d'accompagnement sur plusieurs
+mesures ».
 
 La fixture technique `../tests/fixtures/profiles/grille_accompagnee/` active la marche et le
 comping sans fondamentale sur un blues de douze mesures en fa (ii-V dans la mesure 9) puis un
@@ -1606,8 +1611,8 @@ breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] 
 | `intensity` | 0..=2, défaut 1 | Multiplicateur de l'intensité lue par les courbes de `dynamics` (vélocités par piste, choix du motif de comping par intensité, niveau de densité de la batterie), borné à 0..1 après le produit. **Ne change pas le tempo** |
 | `density` | 0..=2, défaut 1 | Multiplicateur de la densité rythmique lue par `density_percussion`, `density_chords` et les notes de passage de la basse (`accompaniment.bass.passing`), borné à 0..1. N'ouvre ni ne ferme une piste (`density_tracks`) |
 | `bass_feel` | `walking` ou `two_feel`, absent : le profil | Exige `accompaniment.bass.walking`. `two_feel` : une attaque toutes les deux pulsations (temps 1 et 3 en 4/4), tenue jusqu'à l'attaque suivante, plus une arrivée à chaque changement d'accord |
-| `comping` | 0..=8 `{ tag, weight }` | Restreint le tirage du comping aux motifs de `accompaniment.chords.comping` dont le `tag` est nommé, au poids du motif × le poids du tag. Aucun motif concerné : le tirage du profil |
-| `percussion` | 0..=8 `{ tag, weight }` | Même mécanisme sur les `[[patterns]]` de `percussion.toml` (de la densité et de la partie de la mesure) ; les mesures de relance (`[[cadence_patterns]]`) gardent leur pattern |
+| `comping` | 0..=8 `{ tag, weight }` | Restreint le tirage du comping aux motifs de `accompaniment.chords.comping` et aux phrases de `accompaniment.chords.phrases` dont le `tag` est nommé, au poids du motif (ou de la phrase) × le poids du tag. Aucun motif concerné : le tirage du profil ; aucune phrase concernée : les mesures se tirent une à une |
+| `percussion` | 0..=8 `{ tag, weight }` | Même mécanisme sur les `[[patterns]]`, les `[[phrases]]` et les `[[fills]]` de `percussion.toml` (de la densité et de la partie de la mesure) ; les mesures de relance de `[[cadence_patterns]]` gardent leur pattern |
 | `breaks` | 0..=8 | Voir ci-dessous |
 
 **Tags.** `tag = "..."` (optionnel) sur un motif de `accompaniment.chords.comping` et sur un
@@ -1633,6 +1638,118 @@ chorus : exposition à deux temps, corps à la marche, retombée à deux temps) 
 `grille_arc_chorus_aaba/` (forme AABA de trente-deux mesures, trois chorus) ; tests :
 `harmonium_core/tests/arc_chorus_tests.rs`. Compte rendu :
 [`specs/019-bibliotheque-accompagnements/a3-arc-chorus.md`](../specs/019-bibliotheque-accompagnements/a3-arc-chorus.md).
+
+## Phrases d'accompagnement sur plusieurs mesures (phase 019, A1)
+
+Le comping et la batterie se tirent **par phrase** de 1 à 8 mesures au lieu d'une mesure à la fois,
+et la batterie peut jouer des **relances** de 1 à 4 mesures en fin de phrase. Tout est optionnel :
+un profil sans `phrases` ni `fills` garde son flux, ses dumps et ses rendus (aucune des clés
+n'est sérialisée, aucun tirage de plus). Aucun nom de style dans l'algorithme ; la musique est dans
+les données.
+
+**Découpage d'une passe.** Chaque passe d'une partie (`form.sequence` : une entrée = une passe) se
+découpe en phrases par un tirage pondéré. Le découpage **ne franchit jamais la frontière d'une
+partie, donc ni celle d'un chorus** (un chorus est un nombre entier de parties). Une phrase `at =
+"part_end"` ou `"chorus_end"` se pose en **fin** de passe (la **mise en place** avant le changement
+de section) ; le reste se découpe depuis le début de la passe, par tirages successifs parmi les
+phrases qui tiennent dans ce qui reste. Une mesure sans phrase qui tienne (reste plus court que
+la plus courte phrase) se joue comme sans phrase : motif tiré seul, pattern ordinaire.
+
+| `at` | Place |
+|---|---|
+| `any` (défaut) | n'importe où dans la passe |
+| `part_start` | première phrase de la passe (comping et batterie ; pas pour une relance) |
+| `part_end` | dernière phrase de **chaque** passe de partie : mise en place avant un changement de section |
+| `chorus_end` | dernière phrase de la dernière partie du chorus ; **l'emporte** sur `part_end` à cet endroit (la classe la plus précise qui a un candidat gagne) |
+
+Dans un profil à une partie par chorus (grille utilisateur), `part_end` et `chorus_end` désignent la
+même mesure. Une fin de passe n'est jamais optionnelle : si une phrase de fin concourt, elle joue ;
+pour une fin facultative, déclarer aussi une phrase de fin neutre.
+
+### Phrases de comping
+
+```toml
+[accompaniment.chords]
+comping = [                                   # banque de motifs d'une mesure, indices 0..
+  { weight = 4, tag = "medium", hits = [...] },     # 0
+  { weight = 1, tag = "sparse", hits = [] },        # 1 (silence)
+]
+
+[[accompaniment.chords.phrases]]
+weight = 3                  # défaut 1, > 0
+tag = "medium"              # optionnel : étiquette que [arc] nomme, comme pour un motif
+at = "part_end"             # défaut any
+part = "B"                  # optionnel : nom de form.parts[], la phrase ne concourt que là
+motifs = [0, 0, 1, 0]       # un motif de comping par mesure, 1..=8 ; indices dans `comping`
+```
+
+| Champ | Bornes | Effet |
+|---|---|---|
+| `phrases` | 0..=256 | Banque de phrases ; chaque mesure d'une phrase joue le motif désigné, à la place du tirage d'un motif par mesure |
+| `weight` | ≥ 1 | Poids du tirage de la phrase |
+| `motifs` | 1..=8 indices dans `comping` | Une mesure par entrée ; le motif joue comme en tirage ordinaire (même `hits`, même voicing et conduite de voix) |
+| `at`, `part`, `tag` | voir plus haut | Place, portée, étiquette |
+
+### Phrases et relances de batterie
+
+```toml
+# percussion.toml
+fills_none_weight = 3       # poids de « pas de relance » dans le tirage d'une fin de phrase (défaut 0)
+
+[[phrases]]                 # suite de patterns de même densité, indices de [[patterns]]
+density = 1                 # 0, 1 ou 2 : ne concourt qu'à cette densité
+weight = 3
+tag = "ride"
+at = "any"
+part = "B"                  # optionnel
+patterns = [3, 4, 3, 5]     # 1..=8 patterns de la densité, sans portée `part` ni `tour`
+
+[[fills]]                   # relance de fin de phrase
+density = 2
+weight = 3
+tag = "ride"
+at = "part_end"             # any (défaut), part_end ou chorus_end
+start_step = 12             # pas de la première mesure où la relance prend la main (levée au temps 4)
+bars = [                    # 1..=4 mesures : la relance s'achève avec la phrase
+  { hits = [{ step = 12, voice = "snare" }, { step = 15, voice = "snare" }] },
+]
+```
+
+- **Phrases de batterie** : le découpage ci-dessus, à la densité de la mesure (celle de la
+  batterie après l'intensité et la densité de l'arc). Un `[[patterns]]` référencé n'a ni `part`
+  ni `tour` (erreur à `percussion.phrases[i].patterns[j]`). Sans phrase à la densité de la mesure,
+  ou sous une étiquette d'arc qu'aucune phrase ne porte : pattern de l'arc ou ordinaire.
+  Une mesure de `[[cadence_patterns]]` garde son pattern.
+- **Relance** : tirée à **chaque fin de phrase**, avec le flux de la passe et de la mesure. La fin
+  est celle de la phrase de batterie qui couvre la mesure ; hors des phrases de la table (densité
+  sans phrase, reste de passe), c'est une fin de phrase de la forme (`form.parts[].phrase_ends`
+  ou les rôles cadentiels). Une relance de `n` mesures couvre les `n` dernières de la phrase
+  (jamais plus que la phrase) : dans la première, le pattern joue jusqu'à `start_step` puis la
+  relance prend la main (ses coups sont à `start_step` ou après) ; les suivantes sont celles de la
+  relance seule. Les relances de la densité concourent par poids (× le poids du tag sous un arc),
+  parmi la classe de place la plus précise qui en a une, avec « pas de relance »
+  (`fills_none_weight`). Sous un arc qui nomme des tags, seules les relances de ces tags
+  concourent ; aucune : pas de relance.
+- **Remplace `[[cadence_patterns]]`** à la densité qu'elle déclare : une relance et un pattern de
+  cadence pour la même densité sont refusés (`percussion.fills[i].density`). Une table sans
+  `fills` garde son comportement (le pattern de cadence remplace la mesure de fin de phrase).
+
+**Graine et seek.** Les phrases se tirent avec `ActiveTune::accompaniment_seed` (tirée aussi quand le
+profil n'a que des phrases ou relances de batterie, sans `[accompaniment]`) et l'indice de la
+première mesure de la passe, par des flux ChaCha8 distincts (comping, batterie ; fin de passe,
+ouverture, relance). La phrase d'une mesure se recalcule depuis sa seule position : aucun état
+d'une mesure à l'autre, donc le même rejeu après un seek. Le découpage se calcule une fois par
+mesure générée (jamais par mesure rejouée de la conduite de voix), côté compositeur : rien de plus
+dans le callback audio.
+
+**Erreurs** : chemin du champ (`accompaniment.chords.phrases[2].motifs[1]`,
+`percussion.fills[0].bars[0].hits[1].step`, `percussion.phrases[0].patterns[1]`…). Champ inconnu :
+refusé.
+
+Fixtures de contrat : `tests/fixtures/profiles/grille_phrases/` (blues de douze mesures, quatre
+chorus) et `grille_phrases_aaba/` (AABA, `part_start`, `part_end`, `chorus_end`) ; tests :
+`harmonium_core/tests/phrases_tests.rs`. Compte rendu :
+[`specs/019-bibliotheque-accompagnements/a1-phrases.md`](../specs/019-bibliotheque-accompagnements/a1-phrases.md).
 
 
 
