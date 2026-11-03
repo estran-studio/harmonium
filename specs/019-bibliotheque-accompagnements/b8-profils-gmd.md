@@ -199,7 +199,7 @@ stop-time sur l'avant-dernière mesure (arc), le swing de `gmd_dance_disco` à 0
 | `harmonium_determinism`, `main` (`git archive` de `0fe8b52`, cible séparée) contre la branche | **98 fichiers identiques octet pour octet** ; 42 fichiers ajoutés (140 au total) |
 | `harmonium_determinism/scripts/run.sh` (wasm-bindgen du harnais, `/tmp/harmonium-019/wb/bin`) | **natif = wasm : 140 / 140** |
 | `TUNING_VERSION`, goldens, `profile_d2_main.json` | inchangés (aucun profil existant touché) |
-| `cargo test --workspace -q --no-fail-fast` | voir « Suites complètes » en fin de document |
+| `cargo test --workspace -q --no-fail-fast` | **865 réussis, 0 échec, 2 ignorés** (dont les 10 de `gmd_styles_profile_tests`) |
 | `cargo test -p harmonium --features odin` ; `cargo test -p harmonium_bevy` | verts (11 tests Bevy) |
 | `cargo check -p harmonium_studio` ; `web_resources.py check-profiles` | passent ; 17 presets Odin, aucun nouveau |
 | `cargo check --target wasm32-unknown-unknown` (`harmonium_core`, `harmonium_audio`, `harmonium`, avec et sans `odin` ; `harmonium_bevy --no-default-features`) | passent |
