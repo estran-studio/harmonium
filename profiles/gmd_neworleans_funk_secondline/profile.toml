@@ -159,20 +159,20 @@ motifs = [
   # 1. Deux temps : fondamentale blanche, quinte blanche.
   { bars = 1, weight = 5, reference = "chord_root", notes = [
     { step = 0, duration = 7, semitones = 0, velocity = 100 },
-    { step = 8, duration = 7, semitones = 7, octave = -1, velocity = 92 },
+    { step = 8, duration = 7, semitones = 7, velocity = 92 },
   ] },
   # 2. Deux temps syncopé : un, le « et » du deux, trois et la levée du quatre.
   { bars = 1, weight = 4, reference = "chord_root", notes = [
     { step = 0, duration = 5, semitones = 0, velocity = 100 },
-    { step = 6, duration = 2, semitones = 7, octave = -1, velocity = 86 },
+    { step = 6, duration = 2, semitones = 7, velocity = 86 },
     { step = 8, duration = 5, semitones = 0, velocity = 96 },
-    { step = 14, duration = 2, semitones = 7, octave = -1, velocity = 84 },
+    { step = 14, duration = 2, semitones = 7, velocity = 84 },
   ] },
   # 3. Positions de la grosse caisse du second line : pas 0, 3, 6, 8, 11, 14.
   { bars = 1, weight = 4, reference = "chord_root", notes = [
     { step = 0, duration = 3, semitones = 0, velocity = 104 },
     { step = 3, duration = 3, semitones = 0, velocity = 88 },
-    { step = 6, duration = 2, semitones = 7, octave = -1, velocity = 84 },
+    { step = 6, duration = 2, semitones = 7, velocity = 84 },
     { step = 8, duration = 3, semitones = 0, velocity = 98 },
     { step = 11, duration = 3, semitones = 0, velocity = 86 },
     { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 80 },
@@ -180,9 +180,9 @@ motifs = [
   # 4. Marche de quatre noires : fondamentale, quinte, fondamentale, septième mineure.
   { bars = 1, weight = 3, reference = "chord_root", notes = [
     { step = 0, duration = 4, semitones = 0, velocity = 98 },
-    { step = 4, duration = 4, semitones = 7, octave = -1, velocity = 86 },
+    { step = 4, duration = 4, semitones = 7, velocity = 86 },
     { step = 8, duration = 4, semitones = 0, velocity = 94 },
-    { step = 12, duration = 4, semitones = 10, octave = -1, velocity = 84 },
+    { step = 12, duration = 4, semitones = 10, velocity = 84 },
   ] },
   # 5. Croches : fondamentale et octave, appuyées sur le un et le trois.
   { bars = 1, weight = 2, reference = "chord_root", notes = [
@@ -193,22 +193,24 @@ motifs = [
     { step = 8, duration = 2, semitones = 0, velocity = 96 },
     { step = 10, duration = 2, semitones = 0, octave = 1, velocity = 78 },
     { step = 12, duration = 2, semitones = 0, velocity = 84 },
-    { step = 14, duration = 2, semitones = 7, octave = -1, velocity = 82 },
+    { step = 14, duration = 2, semitones = 7, velocity = 82 },
   ] },
   # 6. Deux mesures : syncope du second line puis deux temps.
   { bars = 2, weight = 3, reference = "chord_root", notes = [
     { step = 0, duration = 3, semitones = 0, velocity = 104 },
     { step = 3, duration = 3, semitones = 0, velocity = 88 },
-    { step = 6, duration = 2, semitones = 7, octave = -1, velocity = 84 },
+    { step = 6, duration = 2, semitones = 7, velocity = 84 },
     { step = 8, duration = 3, semitones = 0, velocity = 98 },
     { step = 11, duration = 3, semitones = 0, velocity = 86 },
     { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 80 },
     { step = 16, duration = 7, semitones = 0, velocity = 100 },
-    { step = 24, duration = 7, semitones = 7, octave = -1, velocity = 90 },
+    { step = 24, duration = 7, semitones = 7, velocity = 90 },
   ] },
-  # 7. Tenue : une ronde.
+  # 7. Deux blanches : la fondamentale tenue, une blanche par demi-mesure pour suivre un changement
+  #    d'accord au temps 3.
   { bars = 1, weight = 1, reference = "chord_root", notes = [
-    { step = 0, duration = 16, semitones = 0, velocity = 96 },
+    { step = 0, duration = 8, semitones = 0, velocity = 96 },
+    { step = 8, duration = 8, semitones = 0, velocity = 88 },
   ] },
 ]
 
@@ -252,8 +254,13 @@ comping = [
   { weight = 3, tag = "dense", hits = [{ step = 0, duration = 1, velocity = 84 }, { step = 1, duration = 1, velocity = 58 }, { step = 3, duration = 1, velocity = 70 }, { step = 4, duration = 1, velocity = 78 }, { step = 6, duration = 1, velocity = 66 }, { step = 7, duration = 1, velocity = 60 }, { step = 8, duration = 1, velocity = 82 }, { step = 9, duration = 1, velocity = 58 }, { step = 11, duration = 1, velocity = 70 }, { step = 12, duration = 1, velocity = 78 }, { step = 14, duration = 1, velocity = 66 }, { step = 15, duration = 1, velocity = 62 }] },
   { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 86 }, { step = 3, duration = 1, velocity = 66 }, { step = 4, duration = 1, velocity = 60 }, { step = 7, duration = 1, velocity = 68 }, { step = 8, duration = 3, velocity = 84 }, { step = 11, duration = 1, velocity = 66 }, { step = 12, duration = 1, velocity = 60 }, { step = 15, duration = 1, velocity = 68, anticipate = true }] },
   { weight = 2, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 86 }, { step = 2, duration = 2, velocity = 70 }, { step = 4, duration = 2, velocity = 78 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 2, velocity = 84 }, { step = 10, duration = 2, velocity = 70 }, { step = 12, duration = 2, velocity = 78 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+  # 12-15 : variantes (un rythme de plus par étiquette, pour que les phrases ne se répètent pas).
+  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 4, velocity = 66 }, { step = 12, duration = 3, velocity = 64 }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 78 }, { step = 4, duration = 2, velocity = 66 }, { step = 6, duration = 2, velocity = 64 }, { step = 10, duration = 3, velocity = 72 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 2, duration = 3, velocity = 74 }, { step = 5, duration = 2, velocity = 64 }, { step = 8, duration = 3, velocity = 74 }, { step = 13, duration = 3, velocity = 68 }] },
+  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 1, velocity = 84 }, { step = 2, duration = 2, velocity = 70 }, { step = 4, duration = 1, velocity = 78 }, { step = 5, duration = 1, velocity = 60 }, { step = 7, duration = 2, velocity = 70 }, { step = 8, duration = 1, velocity = 82 }, { step = 10, duration = 2, velocity = 70 }, { step = 12, duration = 1, velocity = 78 }, { step = 13, duration = 1, velocity = 60 }, { step = 15, duration = 1, velocity = 66, anticipate = true }] },
 ]
-# Phrases de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11), règles de métier.
+# Phrases de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..15), règles de métier.
 phrases = [
   { weight = 3, tag = "sparse", motifs = [0, 0, 1, 0] },
   { weight = 3, tag = "sparse", motifs = [1, 1, 2, 1] },
@@ -272,6 +279,14 @@ phrases = [
   { weight = 2, tag = "dense", motifs = [10, 10] },
   { weight = 2, tag = "dense", motifs = [8, 9] },
   { weight = 3, tag = "dense", at = "part_end", motifs = [8, 8, 9, 11] },
+  { weight = 2, tag = "sparse", motifs = [12, 12, 1, 12] },
+  { weight = 2, tag = "sparse", motifs = [0, 12] },
+  { weight = 3, tag = "medium", motifs = [13, 14, 13, 14] },
+  { weight = 2, tag = "medium", motifs = [4, 13] },
+  { weight = 2, tag = "medium", motifs = [14, 6, 14, 7] },
+  { weight = 3, tag = "dense", motifs = [15, 15, 9, 15] },
+  { weight = 2, tag = "dense", motifs = [8, 15] },
+  { weight = 2, tag = "dense", motifs = [15, 10, 15, 11] },
 ]
 
 [instruments]
@@ -284,16 +299,16 @@ percussion_program = 0
 [ornaments]
 rate_scale = 0.0
 
-# Micro-timing de la batterie : médianes du GMD neworleans/funk et secondline (écart à la grille,
-# en pas) : sur le temps −0,08 à −0,12 (grosse caisse, caisse claire, pédale), hors temps de −0,06
-# à +0,08 : derrière le temps sur les contretemps. Valeurs reprises en arrondi, dispersion 0,12 à
-# 0,20 pas bornée à 0,1 par le moteur.
+# Micro-timing de la batterie : médianes du GMD neworleans/funk (8 fichiers) de l'écart à la grille, en
+# pas : sur le temps grosse caisse −0,08, caisse claire −0,08, pédale −0,12, charleston −0,08 ; hors
+# temps (contretemps, pas 2 de la pulsation) grosse caisse +0,075, caisse claire +0,05, charleston et
+# pédale ≈ 0. Les batteurs jouent sur le temps légèrement en avant et les contretemps légèrement en
+# retard. Appliqué aux pas 0 et 2 de chaque pulsation, arrondi ; dispersion 0,12 à 0,20 pas : non reproduite,
+# aucun `jitter` sur la batterie (voir `gmd_funk`).
 [performance.tracks.PercussionLow]
-offsets = [-0.09, 0.0, 0.02, -0.06, -0.09, 0.0, 0.02, -0.06, -0.09, 0.0, 0.02, -0.06, -0.09, 0.0, 0.02, -0.06]
-jitter = 0.08
+offsets = [-0.08, 0.0, 0.075, 0.0, -0.08, 0.0, 0.075, 0.0, -0.08, 0.0, 0.075, 0.0, -0.08, 0.0, 0.075, 0.0]
 [performance.tracks.PercussionHigh]
-offsets = [-0.09, 0.0, 0.02, -0.04, -0.09, 0.0, 0.02, -0.04, -0.09, 0.0, 0.02, -0.04, -0.09, 0.0, 0.02, -0.04]
-jitter = 0.08
+offsets = [-0.09, 0.0, 0.03, 0.0, -0.09, 0.0, 0.03, 0.0, -0.09, 0.0, 0.03, 0.0, -0.09, 0.0, 0.03, 0.0]
 [performance.tracks.Bass]
 jitter = 0.04
 [performance.tracks.Chords]
@@ -301,7 +316,7 @@ jitter = 0.05
 
 # Mixage de service, réglé sur le LUFS en solo de chaque piste (README).
 [mix]
-master_db = 25.0
+master_db = 24.5
 [mix.room]
 room_size = 0.3
 damping = 0.6

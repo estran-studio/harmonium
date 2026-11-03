@@ -399,9 +399,10 @@ def emit(name: str, cfg, patterns, phr, fl, medians) -> str:
         "high_velocity = 64",
         "percussion_gain = 1.0",
         "velocity_humanize = 4",
-        "# Poids de « pas de relance » dans le tirage d'une fin de phrase (valeur de service : le GMD isole",
-        "# les relances, la part de fins de phrase sans relance n'y est pas mesurable).",
-        "fills_none_weight = 3",
+        "# Poids de « pas de relance » dans le tirage d'une fin de phrase : 0,8 × le poids total des relances",
+        "# d'une densité, soit 44 % de fins de phrase sans relance (valeur de service : le GMD isole les",
+        "# relances, la part de fins de phrase sans relance n'y est pas mesurable).",
+        f"fills_none_weight = {max(1, round(0.8 * sum(f['weight'] for f in fl)))}",
         "",
     ]
     for role in sorted(used, key=lambda r: (VOICES[r][2] != "PercussionLow", VOICES[r][0])):

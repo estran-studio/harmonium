@@ -16,9 +16,10 @@ low_velocity = 64
 high_velocity = 64
 percussion_gain = 1.0
 velocity_humanize = 4
-# Poids de « pas de relance » dans le tirage d'une fin de phrase (valeur de service : le GMD isole
-# les relances, la part de fins de phrase sans relance n'y est pas mesurable).
-fills_none_weight = 3
+# Poids de « pas de relance » dans le tirage d'une fin de phrase : 0,8 × le poids total des relances
+# d'une densité, soit 44 % de fins de phrase sans relance (valeur de service : le GMD isole les
+# relances, la part de fins de phrase sans relance n'y est pas mesurable).
+fills_none_weight = 29
 
 [[voices]]
 name = "kick"

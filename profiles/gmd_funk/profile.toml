@@ -234,9 +234,11 @@ motifs = [
     { step = 28, duration = 2, semitones = 10, velocity = 86 },
     { step = 30, duration = 2, semitones = 0, velocity = 84 },
   ] },
-  # 7. Pédale tenue : une ronde (chorus clairsemé).
+  # 7. Deux blanches : la fondamentale tenue (chorus clairsemé) ; une blanche par demi-mesure pour
+  #    que la basse suive un changement d'accord au temps 3.
   { bars = 1, weight = 2, reference = "chord_root", notes = [
-    { step = 0, duration = 16, semitones = 0, velocity = 98 },
+    { step = 0, duration = 8, semitones = 0, velocity = 98 },
+    { step = 8, duration = 8, semitones = 0, velocity = 90 },
   ] },
   # 8. Deux mesures : fondamentale, quinte et octave, croches décalées d'une mesure à l'autre.
   { bars = 2, weight = 3, reference = "chord_root", notes = [
@@ -378,13 +380,13 @@ rate_scale = 0.0
 # Micro-timing de la batterie : médianes du GMD funk (écart à la grille, en pas) : charleston
 # −0,04 (on et off), grosse caisse −0,04 (off) à −0,07 (on), caisse claire −0,02 à −0,07. Le
 # GMD est joué sur un kit électronique contre un métronome : les batteurs jouent légèrement en
-# avant ; dispersion 0,13 à 0,20 pas, bornée par le moteur à 0,1.
+# avant ; dispersion 0,13 à 0,20 pas : non reproduite, aucun `jitter` sur la batterie (le tirage de `jitter`
+# partage son flux entre les pistes et la basse à notes de passage le décalerait : contrat
+# `passing_keeps_neighbour_tracks_and_strong_bass_unchanged`).
 [performance.tracks.PercussionLow]
 offsets = [-0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05]
-jitter = 0.08
 [performance.tracks.PercussionHigh]
 offsets = [-0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04, -0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04]
-jitter = 0.08
 [performance.tracks.Bass]
 jitter = 0.04
 [performance.tracks.Chords]
