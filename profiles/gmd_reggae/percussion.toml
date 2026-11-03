@@ -1,0 +1,341 @@
+# Batterie du profil `gmd_reggae` (phase 019, B8) : GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b8/generer.py`
+# (`gmd_batterie.py`) depuis le Groove MIDI Dataset v1.0.0 (Google LLC, CC BY 4.0 ; Gillick, Roberts, Engel, Eck,
+# Bamman, ICML 2019) : styles reggae, 4/4 droit, 2 fichiers `beat`, 132 mesures,
+# 2 batteur(s) ; 16 fichiers `fill`. Aucune mesure d'un enregistrement n'est copiée.
+# Un pattern = un groupe de mesures de même geste de timekeeper (mêmes pas exactement, ou même figure nette) ;
+# chaque coup est un (rôle, pas) dont la probabilité par pas dans le groupe atteint le seuil de la densité
+# (0 : timekeeper ≥ 0,5 ; 1 : + charleston pédale et ouverte, grosse caisse, caisse claire, cross-stick ≥ 0,5 ;
+# 2 : grosse caisse, caisse claire, cross-stick dès 0,25, charleston ouverte dès 0,35, crash ≥ 0,5). Poids = effectif
+# de mesures du groupe. `delta_velocity` = accent relatif du groupe sur le niveau de rendu de la voix
+# (vélocités du TD-11 non transposées, réglage de service). Étiquettes : `hat` charleston fermée, `ride`,
+# `open` charleston ouverte (le timekeeper du groupe), nommées par `arc.toml`.
+# `[[phrases]]` : suites de groupes de 2 ou 4 mesures vues dans plusieurs fichiers du corpus (mesurées : suites de groupes vues ≥ 3 fois (≥ 2 si la suite change de groupe) dans ≥ 2 fichiers ; 6 phrases de groove tenu 4 mesures ajoutées pour les groupes sans suite mesurée (règle de métier)).
+# `[[fills]]` : relances de 1 ou 2 mesures, groupées par longueur et pas de départ, moyenne seuillée des fichiers `fill`
+# (au moins 2 fichiers sur 3 d'accord dans un petit groupe, 0,25 au-delà) ; `fills_none_weight` : valeur de service.
+
+low_note = 36
+high_note = 38
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 3
+
+fills_none_weight = 4
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 100
+track = "PercussionLow"
+
+[[voices]]
+name = "hat"
+note = 42
+velocity = 70
+track = "PercussionHigh"
+
+[[voices]]
+name = "open"
+note = 46
+velocity = 76
+track = "PercussionHigh"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 62
+track = "PercussionHigh"
+
+[[voices]]
+name = "sidestick"
+note = 37
+velocity = 88
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 96
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_high"
+note = 50
+velocity = 92
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_low"
+note = 43
+velocity = 92
+track = "PercussionHigh"
+
+# 0 : hat_closed:quarters_plus, hat_closed:pas:0,2,4,6,8,10,12
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 25
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -19 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 4, voice = "hat", delta_velocity = -12 },
+  { step = 6, voice = "hat", delta_velocity = 29 },
+  { step = 8, voice = "hat", delta_velocity = 10 },
+  { step = 10, voice = "hat", delta_velocity = 37 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+]
+
+# 1 : hat_closed:quarters_plus
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 19
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -19 },
+  { step = 0, voice = "pedal", delta_velocity = 63 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -12 },
+  { step = 6, voice = "hat", delta_velocity = 29 },
+  { step = 8, voice = "hat", delta_velocity = 10 },
+  { step = 8, voice = "sidestick", delta_velocity = -14 },
+  { step = 10, voice = "hat", delta_velocity = 37 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+  { step = 14, voice = "open", delta_velocity = 51 },
+]
+
+# 2 : hat_closed:quarters_plus
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 19
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 11 },
+  { step = 0, voice = "hat", delta_velocity = -19 },
+  { step = 0, voice = "pedal", delta_velocity = 63 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 2, voice = "sidestick", delta_velocity = -1 },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -12 },
+  { step = 4, voice = "sidestick", delta_velocity = -27 },
+  { step = 6, voice = "hat", delta_velocity = 29 },
+  { step = 8, voice = "kick", delta_velocity = 11 },
+  { step = 8, voice = "hat", delta_velocity = 10 },
+  { step = 8, voice = "sidestick", delta_velocity = -14 },
+  { step = 10, voice = "hat", delta_velocity = 37 },
+  { step = 11, voice = "sidestick", delta_velocity = -24 },
+  { step = 11, voice = "snare", delta_velocity = 29 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+  { step = 14, voice = "open", delta_velocity = 51 },
+  { step = 14, voice = "sidestick", delta_velocity = -6 },
+]
+
+# 3 : hat_closed:eighths
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 16
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -16 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 4, voice = "hat", delta_velocity = -19 },
+  { step = 6, voice = "hat", delta_velocity = 3 },
+  { step = 8, voice = "hat", delta_velocity = 41 },
+  { step = 10, voice = "hat", delta_velocity = -5 },
+  { step = 12, voice = "hat", delta_velocity = 2 },
+  { step = 14, voice = "hat", delta_velocity = 54 },
+]
+
+# 4 : hat_closed:eighths
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 16
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 2 },
+  { step = 0, voice = "hat", delta_velocity = -16 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -19 },
+  { step = 6, voice = "hat", delta_velocity = 3 },
+  { step = 8, voice = "kick" },
+  { step = 8, voice = "hat", delta_velocity = 41 },
+  { step = 10, voice = "hat", delta_velocity = -5 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 2 },
+  { step = 14, voice = "hat", delta_velocity = 54 },
+  { step = 14, voice = "sidestick", delta_velocity = 3 },
+]
+
+# 5 : hat_closed:eighths
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 16
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 2 },
+  { step = 0, voice = "hat", delta_velocity = -16 },
+  { step = 2, voice = "hat", delta_velocity = 57 },
+  { step = 2, voice = "sidestick", delta_velocity = 2 },
+  { step = 2, voice = "snare", delta_velocity = 31 },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -19 },
+  { step = 4, voice = "snare", delta_velocity = -38 },
+  { step = 5, voice = "snare", delta_velocity = -78 },
+  { step = 6, voice = "hat", delta_velocity = 3 },
+  { step = 8, voice = "kick" },
+  { step = 8, voice = "hat", delta_velocity = 41 },
+  { step = 8, voice = "sidestick", delta_velocity = -3 },
+  { step = 8, voice = "snare", delta_velocity = 31 },
+  { step = 10, voice = "hat", delta_velocity = -5 },
+  { step = 11, voice = "sidestick", delta_velocity = -8 },
+  { step = 11, voice = "snare", delta_velocity = -84 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 2 },
+  { step = 14, voice = "hat", delta_velocity = 54 },
+  { step = 14, voice = "sidestick", delta_velocity = 3 },
+  { step = 14, voice = "snare", delta_velocity = 30 },
+]
+
+# 6 : hat_closed:pas:0,2,4,6,8,10,12
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 6
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -27 },
+  { step = 0, voice = "pedal", delta_velocity = 65 },
+  { step = 2, voice = "hat", delta_velocity = 55 },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -20 },
+  { step = 4, voice = "sidestick", delta_velocity = -33 },
+  { step = 6, voice = "hat", delta_velocity = 30 },
+  { step = 8, voice = "hat", delta_velocity = 2 },
+  { step = 8, voice = "sidestick", delta_velocity = -16 },
+  { step = 10, voice = "hat", delta_velocity = 17 },
+  { step = 11, voice = "sidestick", delta_velocity = -21 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 6 },
+  { step = 14, voice = "open", delta_velocity = 51 },
+  { step = 14, voice = "sidestick", delta_velocity = -4 },
+]
+
+# 7 : hat_closed:pas:0,2,4,6,8,10,12
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 6
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -5 },
+  { step = 0, voice = "hat", delta_velocity = -27 },
+  { step = 0, voice = "pedal", delta_velocity = 65 },
+  { step = 2, voice = "hat", delta_velocity = 55 },
+  { step = 2, voice = "sidestick" },
+  { step = 4, voice = "kick", delta_velocity = 27 },
+  { step = 4, voice = "hat", delta_velocity = -20 },
+  { step = 4, voice = "sidestick", delta_velocity = -33 },
+  { step = 6, voice = "hat", delta_velocity = 30 },
+  { step = 8, voice = "kick", delta_velocity = -9 },
+  { step = 8, voice = "hat", delta_velocity = 2 },
+  { step = 8, voice = "sidestick", delta_velocity = -16 },
+  { step = 10, voice = "hat", delta_velocity = 17 },
+  { step = 11, voice = "sidestick", delta_velocity = -21 },
+  { step = 12, voice = "kick", delta_velocity = 27 },
+  { step = 12, voice = "hat", delta_velocity = 6 },
+  { step = 14, voice = "open", delta_velocity = 51 },
+  { step = 14, voice = "sidestick", delta_velocity = -4 },
+]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 4
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 4
+patterns = [4, 4]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 4
+patterns = [5, 5]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 19
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 19
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 19
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 6
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 6
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 6
+patterns = [7, 7, 7, 7]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 15
+bars = [
+  { hits = [
+    { step = 4, voice = "kick", delta_velocity = -2 },
+    { step = 4, voice = "snare", delta_velocity = -28 },
+    { step = 6, voice = "snare", delta_velocity = -30 },
+    { step = 8, voice = "snare", delta_velocity = 18 },
+    { step = 11, voice = "snare", delta_velocity = -51 },
+    { step = 11, voice = "tom_high", delta_velocity = -41 },
+    { step = 11, voice = "tom_low", delta_velocity = 12 },
+    { step = 12, voice = "kick", delta_velocity = 15 },
+    { step = 13, voice = "snare", delta_velocity = 15 },
+    { step = 14, voice = "snare", delta_velocity = 28 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 15
+bars = [
+  { hits = [
+    { step = 4, voice = "kick", delta_velocity = -2 },
+    { step = 4, voice = "snare", delta_velocity = -28 },
+    { step = 6, voice = "snare", delta_velocity = -30 },
+    { step = 8, voice = "snare", delta_velocity = 18 },
+    { step = 11, voice = "snare", delta_velocity = -51 },
+    { step = 11, voice = "tom_high", delta_velocity = -41 },
+    { step = 11, voice = "tom_low", delta_velocity = 12 },
+    { step = 12, voice = "kick", delta_velocity = 15 },
+    { step = 13, voice = "snare", delta_velocity = 15 },
+    { step = 14, voice = "snare", delta_velocity = 28 },
+  ] },
+]

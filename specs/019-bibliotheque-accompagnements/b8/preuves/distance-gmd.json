@@ -1,0 +1,226 @@
+{
+  "gmd_afrobeat": {
+    "any": {
+      "non_calibre": 0.397,
+      "profil": 0.06,
+      "sans_arc": 0.031
+    },
+    "hat": {
+      "non_calibre": 0.8,
+      "profil": 0.116,
+      "sans_arc": 0.15
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.339,
+      "sans_arc": 0.224
+    },
+    "moyenne": {
+      "non_calibre": 0.799,
+      "profil": 0.211,
+      "sans_arc": 0.158
+    },
+    "ride": {
+      "non_calibre": 0.602,
+      "profil": 0.445,
+      "sans_arc": 0.143
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.329,
+      "sans_arc": 0.225
+    }
+  },
+  "gmd_dance_disco": {
+    "any": {
+      "non_calibre": 0.435,
+      "profil": 0.089,
+      "sans_arc": 0.045
+    },
+    "hat": {
+      "non_calibre": 0.862,
+      "profil": 0.206,
+      "sans_arc": 0.117
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.21,
+      "sans_arc": 0.074
+    },
+    "moyenne": {
+      "non_calibre": 0.824,
+      "profil": 0.164,
+      "sans_arc": 0.113
+    },
+    "ride": {
+      "non_calibre": 0.87,
+      "profil": 1.0,
+      "sans_arc": 1.0
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.151,
+      "sans_arc": 0.215
+    }
+  },
+  "gmd_hiphop": {
+    "any": {
+      "non_calibre": 0.368,
+      "profil": 0.08,
+      "sans_arc": 0.091
+    },
+    "hat": {
+      "non_calibre": 0.827,
+      "profil": 0.125,
+      "sans_arc": 0.146
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.181,
+      "sans_arc": 0.197
+    },
+    "moyenne": {
+      "non_calibre": 0.799,
+      "profil": 0.149,
+      "sans_arc": 0.166
+    },
+    "ride": {
+      "non_calibre": 0.877,
+      "profil": 1.0,
+      "sans_arc": 1.0
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.212,
+      "sans_arc": 0.231
+    }
+  },
+  "gmd_pop": {
+    "any": {
+      "non_calibre": 0.236,
+      "profil": 0.084,
+      "sans_arc": 0.059
+    },
+    "hat": {
+      "non_calibre": 0.762,
+      "profil": 0.253,
+      "sans_arc": 0.152
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.301,
+      "sans_arc": 0.361
+    },
+    "moyenne": {
+      "non_calibre": 0.75,
+      "profil": 0.212,
+      "sans_arc": 0.208
+    },
+    "ride": {
+      "non_calibre": 0.704,
+      "profil": 0.446,
+      "sans_arc": 0.152
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.211,
+      "sans_arc": 0.26
+    }
+  },
+  "gmd_reggae": {
+    "any": {
+      "non_calibre": 0.319,
+      "profil": 0.169,
+      "sans_arc": 0.167
+    },
+    "hat": {
+      "non_calibre": 0.801,
+      "profil": 0.078,
+      "sans_arc": 0.083
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.278,
+      "sans_arc": 0.265
+    },
+    "moyenne": {
+      "non_calibre": 0.78,
+      "profil": 0.251,
+      "sans_arc": 0.239
+    },
+    "ride": {
+      "non_calibre": 1.0,
+      "profil": 1.0,
+      "sans_arc": 1.0
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.478,
+      "sans_arc": 0.442
+    }
+  },
+  "gmd_rock": {
+    "any": {
+      "non_calibre": 0.339,
+      "profil": 0.085,
+      "sans_arc": 0.088
+    },
+    "hat": {
+      "non_calibre": 0.714,
+      "profil": 0.373,
+      "sans_arc": 0.406
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.218,
+      "sans_arc": 0.234
+    },
+    "moyenne": {
+      "non_calibre": 0.763,
+      "profil": 0.23,
+      "sans_arc": 0.245
+    },
+    "ride": {
+      "non_calibre": 0.579,
+      "profil": 0.157,
+      "sans_arc": 0.147
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.243,
+      "sans_arc": 0.251
+    }
+  },
+  "gmd_soul": {
+    "any": {
+      "non_calibre": 0.326,
+      "profil": 0.087,
+      "sans_arc": 0.074
+    },
+    "hat": {
+      "non_calibre": 0.81,
+      "profil": 0.397,
+      "sans_arc": 0.117
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.346,
+      "sans_arc": 0.372
+    },
+    "moyenne": {
+      "non_calibre": 0.784,
+      "profil": 0.285,
+      "sans_arc": 0.214
+    },
+    "ride": {
+      "non_calibre": 0.742,
+      "profil": 0.466,
+      "sans_arc": 0.851
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.309,
+      "sans_arc": 0.292
+    }
+  }
+}
