@@ -1,4 +1,4 @@
-.PHONY: soundfont run run/debug studio studio/assets studio/web/build studio/web/serve studio/web/resources studio/site studio/site/deploy bevy/demo bevy/test bevy/check test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
+.PHONY: soundfont run run/debug studio studio/assets studio/open studio/install-handler studio/uninstall-handler studio/web/build studio/web/serve studio/web/resources studio/site studio/site/deploy bevy/demo bevy/test bevy/check test test/sheet test/lab-export test/determinism wasm/check fmt lint audit quality
 
 # ════════════════════════════════════════════════════════════════════
 # ════════════════════════════════════════════════════════════════════
@@ -58,6 +58,30 @@ studio/assets:
 ## Studio natif (fenêtre)
 studio: studio/assets
 	cargo run -p harmonium_studio --release -- $(ARGS)
+
+## Ouvre un lien dans le studio natif : le transmet au studio qui tourne, sinon le lance (en pause : aucun son
+## tant que l'on n'appuie pas sur lecture, sauf PLAY=1). Soit URL='harmonium://open?…', soit les paramètres :
+##   make studio/open PROFILE=<id ou dossier> SEED=3 BAR=17 LOOP=17-24 BPM=180 SWING=0.6 SOLO=Bass MUTE=Melody,Chords
+## Un id de profil distribué ouvre le dossier profiles/<id> de ce dépôt (rechargé à chaud quand ses fichiers changent).
+studio/open: studio/assets
+	cargo run -q -p harmonium_studio --release -- open \
+		$(if $(URL),'$(URL)') \
+		$(if $(PROFILE),--profile '$(PROFILE)') $(if $(SEED),--seed '$(SEED)') $(if $(BAR),--bar '$(BAR)') \
+		$(if $(LOOP),--loop '$(LOOP)') $(if $(BPM),--bpm '$(BPM)') $(if $(SWING),--swing '$(SWING)') \
+		$(if $(SOLO),--solo '$(SOLO)') $(if $(MUTE),--mute '$(MUTE)') $(if $(PLAY),--play)
+
+## Binaire du studio que le gestionnaire de liens appelle (celui de CE dépôt ou worktree ; réinstaller pour en changer).
+STUDIO_BIN ?= $(CURDIR)/target/release/harmonium_studio
+
+## Enregistre le schéma harmonium:// (macOS : appli de lancement dans ~/Applications ; Linux : .desktop + xdg-mime) :
+## un clic sur un lien harmonium://open?… l'ouvre dans le studio.
+studio/install-handler:
+	cargo build -q -p harmonium_studio --release
+	sh harmonium_studio/scripts/install_link_handler.sh '$(STUDIO_BIN)'
+
+## Retire le gestionnaire de liens.
+studio/uninstall-handler:
+	sh harmonium_studio/scripts/install_link_handler.sh --uninstall
 
 ## Studio web : build Trunk dans harmonium_studio/dist (demande `trunk` et `rustup target add wasm32-unknown-unknown`)
 studio/web/build: studio/assets

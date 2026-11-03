@@ -21,12 +21,14 @@ use harmonium::{
     playback::{MEASURE_WINDOW_CAP, TICKS_PER_BEAT, TransportPosition},
 };
 use harmonium_core::{
-    EngineCommand, EngineReport, MeasureSnapshot,
+    EngineCommand, EngineReport, MeasureSnapshot, StyleProfile,
     compose::{Section, TunePosition, pitch_class_name},
     events::RecordFormat,
     timeline::{Articulation, TrackId},
 };
 use web_time::Instant;
+
+use crate::link::{OpenRequest, ProfileRef};
 
 /// Les pistes, dans l'ordre de l'écran (piano-roll et mixeur).
 pub const TRACKS: [TrackId; 6] = [
@@ -156,6 +158,12 @@ pub struct Desk {
     /// Enregistrements en cours, dans l'ordre de [`RECORD_FORMATS`].
     pub recording: [bool; 3],
     pub playing: bool,
+    /// Tempo imposé à la main (`SetBpm`) ; `None` : celui du profil. Un profil installé le rend
+    /// au tempo du profil (le moteur remet le tempo et le swing) ; le rechargement à chaud le
+    /// remet donc lui-même.
+    pub imposed_bpm: Option<f32>,
+    /// Swing imposé à la main (`SetSwing`) ; `None` : celui du profil.
+    pub imposed_swing: Option<f32>,
     /// Profil dont les gains choisis valent : le moteur rend à chaque piste le niveau du profil
     /// quand le profil change.
     mix_profile: Arc<str>,
@@ -176,6 +184,8 @@ impl Desk {
             audible_tempo: None,
             recording: [false; 3],
             playing: false,
+            imposed_bpm: None,
+            imposed_swing: None,
             mix_profile: profile,
         }
     }
@@ -187,6 +197,13 @@ impl Desk {
                 if let Some(slot) = self.gains.get_mut(usize::from(*channel)) {
                     *slot = Some(gain.clamp(0.0, 1.0));
                 }
+            }
+            EngineCommand::SetBpm(bpm) => self.imposed_bpm = Some(*bpm),
+            EngineCommand::ResetBpm => self.imposed_bpm = None,
+            EngineCommand::SetSwing(swing) => self.imposed_swing = Some(*swing),
+            EngineCommand::SetStyleProfile(_) => {
+                self.imposed_bpm = None;
+                self.imposed_swing = None;
             }
             EngineCommand::SetChannelMute { channel, muted } => {
                 if let Some(slot) = self.sent_mutes.get_mut(usize::from(*channel)) {
@@ -214,6 +231,8 @@ impl Desk {
             EngineCommand::Reset => {
                 self.loop_range = None;
                 self.audible_tempo = None;
+                self.imposed_bpm = None;
+                self.imposed_swing = None;
             }
             EngineCommand::StartRecording(format) => self.recording[format_index(*format)] = true,
             EngineCommand::StopRecording(format) => self.recording[format_index(*format)] = false,
@@ -351,6 +370,63 @@ impl Session {
             self.apply(command)?;
         }
         Ok(())
+    }
+
+    /// Exécute un lien d'ouverture ([`OpenRequest::intents`]) : profil (déjà lu), graine, tempo,
+    /// pistes, mesure, boucle, lecture. S'arrête à la première commande que l'hôte refuse.
+    pub fn open(
+        &mut self,
+        request: &OpenRequest,
+        profile: Option<StyleProfile>,
+    ) -> Result<(), String> {
+        for intent in request.intents(profile) {
+            self.perform(intent)?;
+        }
+        Ok(())
+    }
+
+    /// Installe la nouvelle version du profil qui joue (rechargement à chaud) en gardant ce que
+    /// le moteur remet à zéro avec un profil : tempo et swing imposés, niveaux choisis. La graine,
+    /// la mesure, la boucle, les solos et les sourdines ne bougent pas avec un profil. Refusé :
+    /// rien ne change.
+    pub fn reload_profile(&mut self, profile: StyleProfile) -> Result<(), String> {
+        let (bpm, swing) = (self.desk.imposed_bpm, self.desk.imposed_swing);
+        self.apply(EngineCommand::SetStyleProfile(Box::new(profile)))?;
+        if let Some(bpm) = bpm {
+            self.apply(EngineCommand::SetBpm(bpm))?;
+        }
+        if let Some(swing) = swing {
+            self.apply(EngineCommand::SetSwing(swing))?;
+        }
+        // Le moteur rend leur niveau aux pistes quand le mixage du profil change.
+        for track in TRACKS {
+            let channel = track.channel();
+            if let Some(gain) = self.desk.gains[usize::from(channel)] {
+                self.apply(EngineCommand::SetChannelGain { channel, gain })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Le lien de l'état présent : graine, mesure sous la tête de lecture, boucle, tempo et swing
+    /// imposés, solo et sourdines. `profile` est ce que le studio sait de l'origine du profil.
+    /// En pause (`play` faux) : ouvrir ce lien ne fait pas de bruit.
+    #[must_use]
+    pub fn link_state(&self, profile: Option<ProfileRef>) -> OpenRequest {
+        OpenRequest {
+            profile,
+            seed: Some(self.host.session_seed()),
+            bar: Some(self.host.transport_position().bar.max(1)),
+            loop_range: self.desk.loop_range,
+            bpm: self.desk.imposed_bpm,
+            swing: self.desk.imposed_swing,
+            solo: self.desk.solo,
+            mute: TRACKS
+                .into_iter()
+                .filter(|track| self.desk.muted[usize::from(track.channel())])
+                .collect(),
+            play: false,
+        }
     }
 
     /// Les enregistrements terminés depuis le dernier appel, nommés.

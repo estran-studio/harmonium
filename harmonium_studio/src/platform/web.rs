@@ -9,7 +9,7 @@ use std::{
 };
 
 use eframe::egui;
-use harmonium_core::events::RecordFormat;
+use harmonium_core::{StyleProfile, events::RecordFormat};
 use js_sys::{Array, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
@@ -22,6 +22,7 @@ use web_sys::{
 use super::{LoadHandle, update_state};
 use crate::{
     app::StudioApp,
+    link::{OpenRequest, Opening, ProfileRef, ResolvedProfile},
     live::{Recording, Session},
     loading::{
         CACHE_NAME, CacheDecision, LoadState, RESOURCES_DIR, ResourceStatus, Source, cache_key,
@@ -48,9 +49,13 @@ const TICK_MS: u32 = 100;
 pub struct Settings {
     /// Taille du tampon audio en images (`?buffer=`).
     pub buffer_frames: Option<u32>,
+    /// La requête de l'URL (`?profile=reel_quebecois&seed=3`), lue au démarrage comme un lien
+    /// d'ouverture.
+    pub query: String,
 }
 
-/// Lit les paramètres de l'URL : `?buffer=<images>`.
+/// Lit les paramètres de l'URL : `?buffer=<images>` ; les autres sont ceux d'un lien d'ouverture
+/// (`?profile=<id>&seed=…`, voir [`crate::link`]).
 pub fn settings() -> Result<Settings, String> {
     let search =
         web_sys::window().ok_or("no window")?.location().search().map_err(|e| format!("{e:?}"))?;
@@ -59,7 +64,66 @@ pub fn settings() -> Result<Settings, String> {
         Some(text) => parse_buffer_frames(&text)?,
         None => DEFAULT_BUFFER_FRAMES,
     };
-    Ok(Settings { buffer_frames: Some(buffer_frames) })
+    Ok(Settings { buffer_frames: Some(buffer_frames), query: search })
+}
+
+// === Liens d'ouverture ===
+
+/// Lit le profil qu'une demande désigne : le web n'a que les profils compilés (pas de disque).
+pub fn resolve_open(request: OpenRequest) -> Result<Opening, String> {
+    let profile = match &request.profile {
+        None => None,
+        Some(ProfileRef::Id(id)) => Some(ResolvedProfile {
+            profile: StyleProfile::named(id).map_err(|e| e.to_string())?,
+            watch: None,
+        }),
+        Some(ProfileRef::Folder(_)) => {
+            return Err(
+                "a profile folder cannot be opened in the web studio (use the Workbench upload)"
+                    .to_string(),
+            );
+        }
+    };
+    Ok(Opening { request, profile })
+}
+
+/// La demande de l'URL de la page, s'il y en a une.
+pub struct OpenInbox(Vec<Result<Opening, String>>);
+
+/// Lit l'URL de la page comme un lien d'ouverture : `?profile=<id>&seed=…&bar=…` ; `buffer` est
+/// un réglage du studio. Sans paramètre de lien, rien à ouvrir.
+pub fn open_inbox(_ctx: &egui::Context, settings: &Settings) -> OpenInbox {
+    let request = OpenRequest::from_query(&settings.query, &["buffer"]);
+    OpenInbox(match request {
+        Ok(request) if request == OpenRequest::default() => Vec::new(),
+        Ok(request) => vec![resolve_open(request)],
+        Err(message) => vec![Err(format!("Page address: {message}"))],
+    })
+}
+
+impl OpenInbox {
+    /// Les demandes arrivées depuis le dernier appel : celle de l'URL, une fois.
+    pub fn take(&mut self) -> Vec<Result<Opening, String>> {
+        std::mem::take(&mut self.0)
+    }
+}
+
+/// L'heure locale, « hh:mm:ss ».
+#[must_use]
+pub fn clock_time() -> String {
+    let now = js_sys::Date::new_0();
+    format!("{:02}:{:02}:{:02}", now.get_hours(), now.get_minutes(), now.get_seconds())
+}
+
+/// L'adresse de la page qui rouvre `request` : la page sans sa requête, plus celle de la demande
+/// (le web n'a pas de schéma `harmonium://`).
+#[must_use]
+pub fn share_link(request: &OpenRequest) -> String {
+    let base = web_sys::window()
+        .and_then(|window| window.location().href().ok())
+        .map(|href| href.split(['?', '#']).next().unwrap_or_default().to_string())
+        .unwrap_or_default();
+    format!("{base}{}", request.to_query())
 }
 
 // === Ressources : manifeste, Cache Storage, téléchargement en flux ===
@@ -473,7 +537,7 @@ pub fn run() {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
     let settings = settings().unwrap_or_else(|message| {
         log::warn!("{message}");
-        Settings { buffer_frames: Some(DEFAULT_BUFFER_FRAMES) }
+        Settings { buffer_frames: Some(DEFAULT_BUFFER_FRAMES), query: String::new() }
     });
     spawn_local(async move {
         let result = start_app(settings).await;

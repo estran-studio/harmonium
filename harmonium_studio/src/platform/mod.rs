@@ -10,12 +10,16 @@
 //! | atelier | ouvrir et enregistrer un dossier de profil | téléverser, télécharger en `.zip`, brouillon dans `localStorage` |
 //! | OSC | écouteur UDP du host (`start_osc`) | absent |
 //! | réglages | arguments de la ligne de commande | paramètres d'URL |
+//! | liens d'ouverture | canal TCP local (`Control`), `--open`, schéma `harmonium://` | requête de l'URL de la page (profils compilés) |
+//! | rechargement à chaud | fichiers du profil surveillés (`ProfileWatch`) | absent (pas de disque) |
 //!
 //! Le reste (écran, décisions de chargement, construction de la session) est commun et vit hors de
 //! ce module. Les deux côtés exposent les mêmes noms : `Settings`, `settings`, `start_loading`,
-//! `SessionHandle`, `Pump`, `start_pump`, `RecordingSink`, `recording_sink`, `run` ; le natif
-//! ajoute `Osc`, `start_osc`, `read_profile_folder` et `write_profile_folder`, le web
-//! `offer_download`, `Upload`, `pick_profile_files`, `load_draft` et `store_draft`.
+//! `SessionHandle`, `Pump`, `start_pump`, `RecordingSink`, `recording_sink`, `OpenInbox`,
+//! `open_inbox`, `share_link`, `clock_time`, `run` ; le natif ajoute `Osc`, `start_osc`,
+//! `read_profile_folder` et `write_profile_folder`, le web `offer_download`, `Upload`,
+//! `pick_profile_files`, `load_draft` et `store_draft` ; `resolve_open` existe des deux côtés
+//! (le natif lit aussi les dossiers, et prend le dossier des profils du dépôt).
 
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
