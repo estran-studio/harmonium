@@ -1,0 +1,183 @@
+# Fixture technique de la basse riche et des voicings variés (phase 019, A4 et A5) : copie de
+# `grille_arc_chorus` (blues de douze mesures de `wjazzd_swing`, arc sur quatre chorus) avec
+# toutes les options de basse (arrivées sur la tierce, la quinte ou la septième, côté d'approche
+# tiré, chromatisme de passage, notes répétées, croches de passage et notes fantômes, deux temps
+# avec quinte) et de voicings (tension de couleur tirée par graine, dérive de registre bornée).
+# Aucune validation d'écoute revendiquée ; non distribuée. Les poids de basse sont calibrés sur
+# WJazzD (`harmonium_lab/references/wjazzd-swing/measures-bass.json`) quand une mesure existe, et
+# jugés de métier sinon : voir `specs/019-bibliotheque-accompagnements/a4-a5-basse-voicings.md`.
+# Les valeurs de basse, de comping, de batterie et de mixage de départ sont celles de
+# `wjazzd_swing` (voir son README).
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+
+[meta]
+id = "grille_basse_voicings"
+name = "Fixture technique basse riche et voicings variés (blues)"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution ; paramètres de wjazzd_swing"
+tags = ["test", "accompagnement", "grille", "arc", "basse", "voicings"]
+corpus = "Paramètres de basse, de comping et de batterie copiés de wjazzd_swing (Weimar Jazz Database, ODbL 1.0 ; Groove MIDI Dataset, CC BY 4.0 ; Jazz Trio Database, MIT : mentions complètes dans profiles/wjazzd_swing/profile.toml). Grille : blues de douze mesures, forme commune écrite pour le profil."
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+default_swing_ratio = 0.71
+default_bpm = 150.0
+min_bpm = 90.0
+max_bpm = 285.0
+
+[fixed_tonality]
+key = 5
+mode = "ionian"
+
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Blues"
+melody_center_offset = 0
+phrase_ends = [12]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 5, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+# Blues en fa : I7 IV7 I7 I7 | IV7 IV7 I7 I7 | ii7 V7 I7 | I7 V7 à la blanche.
+[harmony.parts.Blues]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 0, quality = "7", steps = 16 },
+  { semitones = 5, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 32 },
+  { semitones = 5, quality = "7", steps = 32 },
+  { semitones = 0, quality = "7", steps = 32 },
+  { semitones = 2, quality = "m7", steps = 16 },
+  { semitones = 7, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 16 },
+  { semitones = 0, quality = "7", steps = 8 },
+  { semitones = 7, quality = "7", steps = 8 },
+] }]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 33
+walk_high = 50
+[accompaniment.bass.walking]
+velocity = 78
+accent = 6
+duration = 4
+max_leap = 11
+toward_target_weight = 2
+keep_direction_weight = 1
+approach = { none_weight = 70, chromatic_weight = 10, diatonic_weight = 6, side = { from_weight = 50, other_weight = 15, above_weight = 35 } }
+passing = { chord_tone_weight = 40, scale_step_weight = 60, chromatic_weight = 30, repeat_weight = 40 }
+arrival = { root_weight = 63, third_weight = 12, fifth_weight = 12, seventh_weight = 13 }
+eighths = { none_weight = 84, chromatic_weight = 3, diatonic_weight = 3, ghost_weight = 10, velocity = 58, ghost_velocity = 34 }
+two_feel = { passing_weight = 1, fifth_weight = 2 }
+
+# Comping de wjazzd_swing, motifs étiquetés par densité d'attaques pour l'arc : `sparse` (au plus
+# une attaque par mesure), `medium` (deux), `dense` (trois, dont une anticipée).
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 76
+# Tension de couleur tirée par graine parmi celles que la qualité permet, dérive de registre
+# bornée à six demi-tons autour du centre (règles de métier : aucune mesure de corpus).
+color = { none_weight = 2, published_weight = 2, ninth_weight = 3, eleventh_weight = 1, thirteenth_weight = 3 }
+register_drift = { step = 2, max = 6 }
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 62 }, { step = 8, direction = "block", duration = 8, velocity = 62 }] }]
+comping = [
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
+  { weight = 3, tag = "dense", hits = [{ step = 4, duration = 3, velocity = 60 }, { step = 10, duration = 3, velocity = 56 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 4, velocity = 62 }, { step = 8, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 6, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 1, tag = "sparse", hits = [{ step = 8, duration = 8, velocity = 60 }] },
+  { weight = 1, tag = "sparse", hits = [] },
+]
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 32
+
+[ornaments]
+rate_scale = 0.0
+
+[performance.tracks.Bass]
+jitter = 0.1
+[performance.tracks.Chords]
+offsets = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+jitter = 0.1
+
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.0
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -16.0
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

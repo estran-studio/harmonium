@@ -1048,6 +1048,10 @@ impl TuneGenerator {
                                 tune.accompaniment_seed,
                                 bar_in_tour as u64,
                             ),
+                            next_seed: crate::ornaments::mix(
+                                tune.accompaniment_seed,
+                                bar_in_tour as u64 + 1,
+                            ),
                             attack_pulses: arc.map_or(1, ArcBar::attack_pulses),
                         },
                         &accompaniment.bass,
