@@ -618,7 +618,11 @@ impl TuneGenerator {
             };
             super::chord_spread::apply(&mut measure, &a.chords, hits, seed);
         }
-        if !is_intro && !is_outro && !self.profile.ornaments.is_inert() {
+        if !is_intro
+            && !is_outro
+            && !self.profile.ornaments.is_inert()
+            && self.tuning.profile.melody.difficulty.as_ref().is_none_or(|limits| limits.ornaments)
+        {
             self.apply_ornaments(&mut measure, &tune, &position, &written);
         }
         if let Some((written, independent_steps)) = hetero_written {
@@ -664,8 +668,26 @@ impl TuneGenerator {
         if let Some(arc) = &arc {
             arc.apply_break(&mut measure);
         }
+        if !is_intro && !is_outro {
+            self.silence_alternated_tracks(&mut measure, &position);
+        }
 
         measure
+    }
+
+    /// Alternance de l'arrangement : une piste muette à cette mesure est composée comme
+    /// toujours (les autres pistes, vétos et voix dérivées la voient) puis retirée du
+    /// snapshot, qui ne publie aucune de ses notes.
+    fn silence_alternated_tracks(&self, measure: &mut Measure, position: &TunePosition) {
+        let arrangement = &self.tuning.profile.arrangement;
+        let bar = self.performed_bar(position);
+        for &track in arrangement.alternation.keys() {
+            if !arrangement.plays_bar(track, bar)
+                && let Some(notes) = measure.tracks.get_mut(&track)
+            {
+                notes.clear();
+            }
+        }
     }
 
     fn apply_bass_passing(
@@ -1183,6 +1205,15 @@ impl TuneGenerator {
         if measure.chord_changes.is_empty() {
             return;
         }
+        let limits = self.tuning.profile.melody.difficulty.as_ref();
+        if limits.is_some_and(|limits| !limits.chord_fit) {
+            return;
+        }
+        // Filtre de difficulté sans altération : seules les notes de la gamme de l'air restent
+        // permises ; sans note permise, la hauteur écrite est gardée.
+        let in_scale_only = limits.is_some_and(|limits| !limits.out_of_scale);
+        let (key, mode) = (tune.plan.key, tune.plan.mode);
+        let in_scale = move |pc: &u8| !in_scale_only || mode.contains_midi(key, *pc);
         let bar = tune.plan.material_index(self.performed_bar(position));
         let Some(notes) = measure.tracks.get_mut(&TrackId::Melody) else { return };
         let source = std::mem::take(notes);
@@ -1211,25 +1242,38 @@ impl TuneGenerator {
                             .intervals()
                             .iter()
                             .map(|&interval| (chord.root + interval) % 12)
-                            .chain(scale.iter().copied());
-                        nearest_pitch(
-                            allowed,
-                            note.pitch,
-                            params.tessitura_min,
-                            params.tessitura_max,
-                        )
+                            .chain(scale.iter().copied())
+                            .filter(in_scale);
+                        if allowed.clone().next().is_none() {
+                            note.pitch
+                        } else {
+                            nearest_pitch(
+                                allowed,
+                                note.pitch,
+                                params.tessitura_min,
+                                params.tessitura_max,
+                            )
+                        }
                     }
                     HarmonyPlan::Loop(harmony) => {
                         // Les changements du modèle `loop` ne listent que les accords
                         // distincts : le créneau se lit au pas du changement.
                         let chord = harmony.chords_for_bar(self.performed_bar(position))
                             [change.start_step / self.profile.harmony.steps_per_chord];
-                        nearest_pitch(
-                            chord.pitch_classes(tune.plan.key, tune.plan.mode),
-                            note.pitch,
-                            params.tessitura_min,
-                            params.tessitura_max,
-                        )
+                        let allowed = chord
+                            .pitch_classes(tune.plan.key, tune.plan.mode)
+                            .into_iter()
+                            .filter(in_scale);
+                        if allowed.clone().next().is_none() {
+                            note.pitch
+                        } else {
+                            nearest_pitch(
+                                allowed,
+                                note.pitch,
+                                params.tessitura_min,
+                                params.tessitura_max,
+                            )
+                        }
                     }
                     _ => unreachable!("modèle filtré avant la réalisation mélodique"),
                 };
@@ -2051,7 +2095,13 @@ impl TuneGenerator {
         let profile = &self.tuning.profile;
         let melody_opens = profile.has_track(TrackId::Melody)
             && (!first_in_set || profile.arrangement.opens(TrackId::Melody, &self.profile.form));
-        let pickup_eighths = if melody_opens { intro_config.pickup_eighths } else { 0 };
+        // La levée, courtes notes en marge de la ligne écrite, ne tient pas dans un filtre de
+        // difficulté : elle est retirée.
+        let pickup_eighths = if melody_opens && profile.melody.difficulty.is_none() {
+            intro_config.pickup_eighths
+        } else {
+            0
+        };
         let pickup_bars = usize::from(pickup_eighths > 0);
         let content_bars =
             if first_in_set { form_bars.max(pickup_bars) } else { form_bars + pickup_bars };

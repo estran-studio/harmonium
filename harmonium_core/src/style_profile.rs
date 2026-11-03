@@ -415,6 +415,9 @@ pub struct ProfileMelody {
     pub key_modes: Vec<KeyModeWeight>,
     pub strong_units: Vec<usize>,
     pub weak_units: Vec<usize>,
+    /// Bornes de difficulté de la mélodie (`[melody.difficulty]`). Absent : aucune borne.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub difficulty: Option<crate::compose::MelodyDifficulty>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -688,6 +691,12 @@ pub struct StyleProfile {
     pub arc: Option<crate::compose::ChorusArc>,
 }
 impl StyleProfile {
+    /// Vrai si la ligne mélodique se compose mesure par mesure sur tous les tours (reprises
+    /// variées, rôles tirés à chaque passe, ou difficulté bornée) plutôt que par cellules
+    /// distinctes répétées.
+    pub(crate) fn expanded_material(&self) -> bool {
+        self.form.expanded_material() || self.melody.difficulty.is_some()
+    }
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
     pub fn has_track(&self, track: TrackId) -> bool {
         match track {
@@ -1216,6 +1225,9 @@ impl StyleProfile {
             "cell_units × steps_per_unit doit couvrir une mesure",
         )?;
         self.melody.cells.validate().map_err(|e| ProfileError::new("melody.cells", e))?;
+        if let Some(difficulty) = &self.melody.difficulty {
+            difficulty.validate(self.melody.cell_units)?;
+        }
         for (i, cell) in self.melody.cells.cells.iter().enumerate() {
             check(
                 cell.notes.len() == self.melody.cell_units,
@@ -1593,6 +1605,16 @@ impl StyleProfile {
                 E::ToursPerTuneOutOfRange(_) => "arrangement.tours_per_tune".into(),
                 E::TourOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.tour"),
                 E::PassOutOfRange { track, .. } => format!("arrangement.entries.{track:?}.pass"),
+                E::AlternationWithoutEntry(track) => format!("arrangement.alternation.{track:?}"),
+                E::AlternationPeriodOutOfRange { track, .. } => {
+                    format!("arrangement.alternation.{track:?}.period")
+                }
+                E::AlternationPlayOutOfRange { track, .. } => {
+                    format!("arrangement.alternation.{track:?}.play")
+                }
+                E::AlternationPhaseOutOfRange { track, .. } => {
+                    format!("arrangement.alternation.{track:?}.phase")
+                }
                 E::PickupEighthsOutOfRange(_) => "arrangement.intro.pickup_eighths".into(),
                 E::IntroBarsOutOfRange { role, .. } | E::IntroWeightZero { role } => {
                     let index = self

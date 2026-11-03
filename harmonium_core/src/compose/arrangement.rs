@@ -29,6 +29,9 @@ pub const MAX_INTRO_BARS: usize = 4;
 /// Nombre maximal de croches de levée (borne de validation).
 pub const MAX_PICKUP_EIGHTHS: u8 = 3;
 
+/// Longueur maximale (en mesures) du cycle d'une alternance.
+pub const MAX_ALTERNATION_PERIOD: usize = 32;
+
 // ---------------------------------------------------------------------------
 // Section d'une mesure (intro ou tour)
 // ---------------------------------------------------------------------------
@@ -361,6 +364,42 @@ impl TrackEntries {
             .collect()
     }
 }
+
+/// Alternance mesure à mesure d'une piste : elle joue `play` mesures de chaque cycle de
+/// `period` mesures, se tait les autres. Les mesures se comptent depuis la première mesure
+/// de la forme de l'air (hors intro), en continu d'un tour à l'autre ; un nouvel air repart de
+/// zéro.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Alternation {
+    /// Longueur du cycle en mesures (`2..=`[`MAX_ALTERNATION_PERIOD`]).
+    pub period: usize,
+    /// Mesures jouées par cycle (`1..period`) ; omis : la moitié du cycle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub play: Option<usize>,
+    /// Décalage du cycle en mesures (`0..period`) : la mesure `n` (0-based) est jouée quand
+    /// `(n + phase) % period < play`. `phase = play` : la piste se tait d'abord.
+    #[serde(default)]
+    pub phase: usize,
+}
+
+impl Alternation {
+    /// Mesures jouées par cycle.
+    #[must_use]
+    pub const fn played_bars(&self) -> usize {
+        match self.play {
+            Some(play) => play,
+            None => self.period / 2,
+        }
+    }
+
+    /// Vrai si la mesure `bar` (0-based depuis le début de la forme de l'air) est jouée.
+    #[must_use]
+    pub const fn plays(&self, bar: usize) -> bool {
+        self.period == 0 || (bar + self.phase) % self.period < self.played_bars()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // ArrangementError
 // ---------------------------------------------------------------------------
@@ -372,8 +411,16 @@ pub enum ArrangementError {
     TomlParse(String),
     /// `tours_per_tune` hors de `1..=`[`MAX_TOURS`].
     ToursPerTuneOutOfRange(i64),
-    /// Une clé de `[entries]` n'est pas une piste connue.
+    /// Une clé de `[entries]` ou de `[alternation]` n'est pas une piste connue.
     UnknownTrack(String),
+    /// Alternance déclarée pour une piste absente de `[entries]`.
+    AlternationWithoutEntry(TrackId),
+    /// `period` d'une alternance hors de `2..=`[`MAX_ALTERNATION_PERIOD`].
+    AlternationPeriodOutOfRange { track: TrackId, period: usize },
+    /// `play` d'une alternance hors de `1..period`.
+    AlternationPlayOutOfRange { track: TrackId, play: usize },
+    /// `phase` d'une alternance hors de `0..period`.
+    AlternationPhaseOutOfRange { track: TrackId, phase: usize },
     /// Une piste n'a pas de point d'entrée.
     MissingTrack(TrackId),
     /// `tour` hors de `1..=`[`MAX_TOURS`].
@@ -422,6 +469,21 @@ impl fmt::Display for ArrangementError {
             Self::PickupEighthsOutOfRange(n) => {
                 write!(f, "pickup_eighths hors limites (attendu 0..={MAX_PICKUP_EIGHTHS}) : {n}")
             }
+            Self::AlternationWithoutEntry(track) => {
+                write!(f, "alternance déclarée pour {track:?}, absente de [entries]")
+            }
+            Self::AlternationPeriodOutOfRange { track, period } => write!(
+                f,
+                "période d'alternance hors limites pour {track:?} (attendu 2..={MAX_ALTERNATION_PERIOD}) : {period}"
+            ),
+            Self::AlternationPlayOutOfRange { track, play } => write!(
+                f,
+                "mesures jouées par cycle hors limites pour {track:?} (attendu 1..period) : {play}"
+            ),
+            Self::AlternationPhaseOutOfRange { track, phase } => write!(
+                f,
+                "phase d'alternance hors limites pour {track:?} (attendu 0..period) : {phase}"
+            ),
         }
     }
 }
@@ -442,6 +504,10 @@ pub struct Arrangement {
     /// Configuration des intros idiomatiques (P1-T11).
     #[serde(default)]
     pub intro: IntroConfig,
+    /// Alternance de mesures jouées et muettes par piste (`[alternation]`, clés = noms de
+    /// pistes, comme `[entries]`). Vide : chaque piste joue toutes ses mesures.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub alternation: std::collections::BTreeMap<TrackId, Alternation>,
 }
 
 impl<'de> Deserialize<'de> for Arrangement {
@@ -470,6 +536,8 @@ struct RawArrangement {
     entries: std::collections::BTreeMap<String, RawEntry>,
     #[serde(default)]
     intro: IntroConfig,
+    #[serde(default)]
+    alternation: std::collections::BTreeMap<String, Alternation>,
 }
 
 impl TryFrom<RawArrangement> for Arrangement {
@@ -516,7 +584,15 @@ impl TryFrom<RawArrangement> for Arrangement {
         let countermelody = take_optional(TrackId::Countermelody)?;
         let entries =
             TrackEntries { melody, chords, bass, percussion_low, percussion_high, countermelody };
-        let table = Self { tours_per_tune, entries, intro: raw.intro };
+        let mut alternation = std::collections::BTreeMap::new();
+        for (name, value) in raw.alternation {
+            let track = TrackId::ALL
+                .into_iter()
+                .find(|t| format!("{t:?}") == name)
+                .ok_or(ArrangementError::UnknownTrack(name))?;
+            alternation.insert(track, value);
+        }
+        let table = Self { tours_per_tune, entries, intro: raw.intro, alternation };
         Ok(table)
     }
 }
@@ -548,6 +624,7 @@ impl Arrangement {
                 countermelody: Some(start),
             },
             intro: IntroConfig::none(),
+            alternation: std::collections::BTreeMap::new(),
         }
     }
 
@@ -582,6 +659,27 @@ impl Arrangement {
             }
         }
         self.intro.validate()?;
+        for (&track, alternation) in &self.alternation {
+            if self.entries.get(track).is_none() {
+                return Err(ArrangementError::AlternationWithoutEntry(track));
+            }
+            if !(2..=MAX_ALTERNATION_PERIOD).contains(&alternation.period) {
+                return Err(ArrangementError::AlternationPeriodOutOfRange {
+                    track,
+                    period: alternation.period,
+                });
+            }
+            let play = alternation.played_bars();
+            if !(1..alternation.period).contains(&play) {
+                return Err(ArrangementError::AlternationPlayOutOfRange { track, play });
+            }
+            if alternation.phase >= alternation.period {
+                return Err(ArrangementError::AlternationPhaseOutOfRange {
+                    track,
+                    phase: alternation.phase,
+                });
+            }
+        }
         Ok(())
     }
 
@@ -627,6 +725,13 @@ impl Arrangement {
             return true;
         }
         position.ordinal() >= self.entry_ordinal(entry, form)
+    }
+
+    /// Vrai si l'alternance de `track` joue la mesure `bar` (0-based depuis le début de la
+    /// forme de l'air). Une piste sans alternance joue toutes ses mesures.
+    #[must_use]
+    pub fn plays_bar(&self, track: TrackId, bar: usize) -> bool {
+        self.alternation.get(&track).is_none_or(|alternation| alternation.plays(bar))
     }
 
     /// Vrai si `track` joue dès la première mesure de la forme au premier air d'un set.

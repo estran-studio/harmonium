@@ -4,13 +4,14 @@
 use super::{
     arrangement::Part,
     cells::{Cell, CellBank, CellNote, CellRole},
+    difficulty::{self, Rendering},
     mode::{degree_to_diatonic_step, diatonic_step_to_degree},
     plan::{ImposedRole, TunePlan},
 };
 use crate::{
     algo::RngCore,
     theory::PitchClass,
-    timeline::{Articulation, TimelineNote},
+    timeline::{Articulation, TimelineNote, TrackId},
     tuning::{MelodyParams, TuningParams},
 };
 
@@ -108,7 +109,7 @@ impl MelodyLine {
             params: params.clone(),
             tonic_midi,
         };
-        if line.plan.profile.form.expanded_material() {
+        if line.plan.profile.expanded_material() {
             line.build_performed(active_bank, rng);
         }
         line
@@ -246,7 +247,37 @@ impl MelodyLine {
             }
             played.extend(cells);
         }
+        if let Some(limits) = &self.plan.profile.melody.difficulty {
+            let profile = &self.plan.profile;
+            let bars: Vec<difficulty::BarFacts> = (0..played.len())
+                .map(|bar| {
+                    let role = self.plan.bar_role(bar);
+                    difficulty::BarFacts {
+                        cadential: role.role.is_cadential(),
+                        published: !profile.form.part_mutes(role.part.0, TrackId::Melody)
+                            && profile.arrangement.plays_bar(TrackId::Melody, bar),
+                    }
+                })
+                .collect();
+            difficulty::conform(
+                &mut played,
+                &bars,
+                self.plan.total_bars(),
+                limits,
+                &self.rendering(&profile.melody.strong_units),
+            );
+        }
         self.performed = played;
+    }
+
+    /// Réalisation de la ligne : tonalité de l'air, tonique et tessiture.
+    fn rendering<'a>(&self, strong_units: &'a [usize]) -> Rendering<'a> {
+        Rendering {
+            mode: self.plan.mode,
+            tonic: self.tonic_midi,
+            tessitura: (self.params.tessitura_min, self.params.tessitura_max),
+            strong_units,
+        }
     }
 }
 
@@ -765,6 +796,8 @@ fn shape_cadence(cell: &mut Cell, role: ImposedRole, form: &crate::style_profile
 #[derive(Clone)]
 struct EvaluatedCandidate {
     cell: Cell,
+    /// Excès sur les bornes de hauteur du filtre de difficulté (0 sans filtre ou dans les bornes).
+    difficulty_excess: i16,
     /// `0` si toutes les notes brutes tombent dans `tessitura_min..=tessitura_max`, `1` sinon.
     tessitura_penalty: u8,
     /// Excès de saut au-delà d'une quinte (continuité d'entrée + rebouclage sur la mesure 1).
@@ -781,8 +814,9 @@ struct EvaluatedCandidate {
 }
 
 impl EvaluatedCandidate {
-    const fn score_key(&self) -> (u8, i16, u8, i16, i16, i32) {
+    const fn score_key(&self) -> (i16, u8, i16, u8, i16, i16, i32) {
         (
+            self.difficulty_excess,
             self.tessitura_penalty,
             self.fifth_excess,
             self.register_penalty,
@@ -793,7 +827,8 @@ impl EvaluatedCandidate {
     }
 
     fn is_strict_match(&self, plan: &TunePlan) -> bool {
-        self.tessitura_penalty == 0
+        self.difficulty_excess == 0
+            && self.tessitura_penalty == 0
             && self.fifth_excess == 0
             && self.register_penalty == 0
             && self.continuity_excess == 0
@@ -1134,7 +1169,19 @@ fn evaluate_candidate(
 
     let contour_distance_tenths = ((mean_midi - target_midi).abs() * 10.0).round() as i32;
 
+    let difficulty_excess = plan.profile.melody.difficulty.as_ref().map_or(0, |limits| {
+        let rendering = Rendering {
+            mode: plan.mode,
+            tonic: tonic_midi,
+            tessitura: (params.tessitura_min, params.tessitura_max),
+            strong_units: &plan.profile.melody.strong_units,
+        };
+        let previous = prev_last_step.map(|step| rendering.pitch(diatonic_step_to_degree(step)));
+        difficulty::pitch_excess(&cell, previous, limits, &rendering)
+    });
+
     EvaluatedCandidate {
+        difficulty_excess,
         cell,
         tessitura_penalty,
         fifth_excess,

@@ -168,14 +168,14 @@ impl TunePlan {
     }
     /// Cellules distinctes, y compris les fins de reprise configurées.
     pub fn material_bars(&self) -> usize {
-        if self.profile.form.expanded_material() {
+        if self.profile.expanded_material() {
             return self.total_bars() * self.profile.arrangement.tours_per_tune;
         }
         self.profile.form.unique_bars()
             + self.profile.form.parts.iter().filter(|part| part.second_ending.is_some()).count()
     }
     pub fn material_index(&self, bar: usize) -> usize {
-        if self.profile.form.expanded_material() {
+        if self.profile.expanded_material() {
             return bar % self.material_bars();
         }
         let (part, _, offset, second_ending) = self.position(bar);
@@ -213,7 +213,7 @@ impl TunePlan {
     }
     /// Mesure jouée représentant la cellule distincte `i` (fins comprises).
     pub fn representative_bar(&self, i: usize) -> usize {
-        if self.profile.form.expanded_material() {
+        if self.profile.expanded_material() {
             return i;
         }
         let form = &self.profile.form;

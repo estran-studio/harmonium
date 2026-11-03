@@ -7,6 +7,7 @@ mod bass_passing;
 mod bass_template;
 pub mod cells;
 mod chord_spread;
+pub mod difficulty;
 pub mod dynamics;
 pub mod generator;
 pub mod harmony;
@@ -21,13 +22,15 @@ mod walking;
 pub use accomp::{ChordPlayer, bass_bar};
 pub use arc::{ArcBreak, ArcStage, ArcVariant, BassFeel, ChorusArc, TagWeight};
 pub use arrangement::{
-    Arrangement, ArrangementError, DEFAULT_ARRANGEMENT_TOML, EntryPoint, IntroConfig, IntroForm,
-    IntroInfo, IntroRole, MAX_TOURS, Part, Section, TrackEntries, TunePosition,
+    Alternation, Arrangement, ArrangementError, DEFAULT_ARRANGEMENT_TOML, EntryPoint, IntroConfig,
+    IntroForm, IntroInfo, IntroRole, MAX_ALTERNATION_PERIOD, MAX_TOURS, Part, Section,
+    TrackEntries, TunePosition,
 };
 pub use cells::{
     Cell, CellBank, CellBankError, CellError, CellNote, CellRole, DEFAULT_CELLS_TOML,
     FIFTH_DIATONIC_STEPS, FIFTH_SEMITONES,
 };
+pub use difficulty::MelodyDifficulty;
 pub use generator::{
     ActiveTune, TuneGenerator, build_chord_context, degree_chord_name, pitch_class_name,
 };

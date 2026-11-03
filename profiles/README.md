@@ -54,12 +54,14 @@ Phase 019, R1 : `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpou
 | `[fixed_tonality]` | Optionnel : `key` (classe MIDI 0..11, do = 0) et `mode` (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) obligatoires. Verrouille la tonalité de tous les airs : priorité sur `melody.key_modes`, `dynamics.color`, pondération du set et bascules parallèles. Absent : comportement émotionnel inchangé. Voir « Tonalité verrouillée ». |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "PercussionLow", "PercussionHigh"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
 | `[melody]` | `cell_units` unités par cellule (= une mesure), `strong_units`, `weak_units` (accents 0-based), `key_modes = [{key, mode, weight}]` (classe MIDI 0..11). `params` règle tessiture, registre, continuité, vélocités et poids de rôles. `cells` contient une liste `[[cells]]` avec `role`, `notes`, `weight` ; seuls les rôles effectivement employés par la forme (et les rôles libres de poids positif) sont exigés. Notes : degrés `1..14`, octave grave `1,`..`7,`, `-` pour prolonger. |
+| `[melody.difficulty]` | Optionnel (E10). Bornes de difficulté de la mélodie : saut en demi-tons, attaques par mesure, plus petite durée, ambitus d'une mesure, gamme, ornements, ajustement aux accords. Voir « Difficulté de la mélodie ». |
 | `[harmony]` | `model = "melody_functional"`, `"rewrite_functional"`, `"loop"` ou `"none"`, `steps_per_chord` diviseur de la mesure. `melody_functional` : `[[harmony.candidates]]` par mode, `chords = [{degree, quality}]` ; chaque mode atteignable (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) est requis avec I et V. V majeur en ionien, phrygien et mineur harmonique (sensible pour les deux derniers), mineur en mixolydien, dorien et éolien. Le II suit la seconde du mode (bII phrygien). Jazz : `[[harmony.rules]]`, `max_recursion` (0..16, défaut 0), `scale_guidance` (défaut false). Boucle : `parts` par nom de partie, accords relatifs à la tonique avec qualité, basse et durée en pas, voir « Harmonie en boucle et pédale ». |
 | `[accompaniment]` | Vote harmonique (`strong_steps`, poids, `tie_priority`), voix `[accompaniment.bass]` (`hits`, `motifs`, `passing` ou `walking`) et `[accompaniment.chords]` (`patterns` ou `comping`, `voicing`, `spread`) décrites ci-dessous. |
 | `[percussion]` | Notes MIDI, vélocités, gain, humanisation et `[[patterns]]` par densité 0, 1, 2 (`percussion.toml` externe) : `weight` entier strictement positif (défaut 1), `hits = [{step, track="PercussionLow"\|"PercussionHigh", delta_velocity}]` **ou** `euclid = {pulses, steps, rotation}` avec `track = "PercussionLow"` ou `"PercussionHigh"` (défaut PercussionLow). Plusieurs patterns d'une densité forment les alternatives pondérées ; voir « Batterie par graine ». Rotation entière, positive vers la droite ; `steps` égale la grille, `0 <= pulses <= steps`. Durée zéro = déclenchement de sample. |
 | `[instruments]` | Programmes SoundFont 0-based : `melody_program`, `countermelody_program` optionnel, `chords_program`, `bass_program`, `percussion_program` et `percussion_bank`. |
 | `[[odin.<Piste>.zones]]` | Optionnel. Zones d'émotion ordonnées d'une piste (`Melody`, `Chords`, `Bass`, `Countermelody`) : `when`, `preset`, `level_db`, `glide_ms`, `transpose` et `morph`. Dernière zone sans `when` obligatoire. Voir « Instrument Odin par piste ». |
 | `[arrangement]` | `tours_per_tune`, `entries` par piste (`tour`, `part`, `pass`). `PercussionLow` et `PercussionHigh` sont requis ; toute autre piste (`Melody` comprise) peut entrer plus tard ou être omise. Une piste entrée continue à jouer. Les entrées ne s'appliquent qu'au premier air de chaque set (voir « Forme longue »). |
+| `[arrangement.alternation]` | Optionnel (E11). Par piste déclarée dans `[entries]`, une alternance de mesures jouées et muettes : `period` (cycle en mesures), `play` (mesures jouées, défaut la moitié), `phase`. Voir « Alternance de mesures (question-réponse) ». |
 | `[arrangement.intro]` / `[intro]` du fichier d'arrangement | Formes pondérées d'intro : rôle `percussion`, `tail` ou `vamp`, longueur en mesures, levée en unités. Intro complète au premier air de chaque set ; raccords des suivants dans `[set.transitions]`. |
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Sans `fixed_tonality`, chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois par piste et EQ stéréo ; schéma et bornes ci-dessous. |
@@ -1753,6 +1755,89 @@ chorus) et `grille_phrases_aaba/` (AABA, `part_start`, `part_end`, `chorus_end`)
 
 
 
+
+## Difficulté de la mélodie (`[melody.difficulty]`, phase 019 E10)
+
+Section optionnelle de `[melody]`, absente des profils distribués : sans elle le flux est celui
+d'avant. Elle borne la mélodie **publiée** (la piste `Melody` du snapshot), pas seulement les
+cellules : une borne tient sur chaque paire de notes consécutives, qu'elles soient dans la même
+cellule, dans deux cellules voisines, de part et d'autre d'une frontière de phrase ou de partie,
+d'une reprise ou d'un tour au suivant.
+
+```toml
+[melody.difficulty]
+max_leap_semitones = 4            # plus grand saut entre deux attaques (1..24)
+max_attacks_per_bar = 4           # attaques par mesure (1..cell_units)
+min_note_units = 2                # plus petite durée, en unités de cellule (1..cell_units)
+max_cell_ambitus_semitones = 7    # ambitus des attaques d'une mesure (1..36)
+out_of_scale = false              # défaut true : faux = aucune note hors de la gamme de l'air
+ornaments = false                 # défaut true : faux = aucun ornement sur la mélodie
+chord_fit = false                 # défaut true : faux = pas de rapprochement des accords
+```
+
+Chaque borne omise est sans effet. `ornaments` et `chord_fit` valent `true` par défaut : les
+ornements (`[ornaments]`) et l'ajustement des notes aux accords des modèles `loop` et
+`rewrite_functional` s'ajoutent alors à la ligne écrite, **hors des bornes** ; pour que le
+snapshot lui-même respecte `max_leap_semitones`, `max_attacks_per_bar` et `min_note_units`, les
+mettre à `false`. `out_of_scale = false` retient, dans l'ajustement aux accords, les seules notes
+de la gamme de l'air.
+
+Mécanisme (`compose/difficulty.rs`) : le tirage des cellules préfère celles dont le saut interne,
+le saut d'entrée et l'ambitus respectent le filtre ; puis la ligne jouée de l'air entier est
+réécrite. Les attaques les plus courtes sont fusionnées (la note retirée prolonge la précédente ;
+temps faibles et fin de mesure d'abord) jusqu'à `max_attacks_per_bar` et `min_note_units` ; les
+hauteurs sont reprises par programmation dynamique sur toute la ligne, au plus petit écart total
+aux notes écrites, sur les notes de la gamme dans la tessiture, avec le saut et l'ambitus pour
+contraintes (la dernière note d'une cadence résiste, une ligne constante convient toujours). La
+dernière mesure se raccorde à la première, et la dernière mesure du premier tour aussi (intro
+d'entrée par la fin). Les mesures d'une partie qui tait la mélodie (`tracks_off`) ou muettes par
+l'alternance ne comptent pas : le saut se borne d'une mesure publiée à la suivante.
+
+Un profil à filtre compose sa ligne mesure par mesure sur tous les tours (comme les profils à
+reprises variées : `material_bars` couvre tous les tours). **La levée d'intro
+(`arrangement.intro.pickup_eighths`) est retirée** : ses croches ne tiennent pas dans les bornes.
+
+Limites : les bornes valent dans un air et ses tours ; la jonction entre deux airs d'un même set
+n'est pas bornée. Une bascule de mode parallèle (`dynamics.parallel_modes`) déplace des notes
+d'au plus un demi-ton après le filtre (un saut peut varier de deux). Le filtre ne peut que simplifier : une mélodie déjà
+clairsemée garde sa densité (régler `min_note_units` au-dessus de sa durée native pour la calmer).
+
+Pilotage par l'hôte : en données seulement. Le filtre s'applique au tirage de la ligne d'un air ;
+un `SetStyleProfile` en cours d'air laisse l'air courant tel quel (comme tout changement de
+cellules ou de tessiture) et change les airs suivants. Une application qui règle un niveau
+(`harmonium_training`) installe le profil du niveau avant `SetSeed`/`NewMelody`, comme pour la
+tessiture : `profile.melody.difficulty = Some(MelodyDifficulty { .. })` sur sa copie du profil.
+
+Mesure de référence : `cargo run -p harmonium_core --example melody_difficulty --release -- --filter`
+(3 graines × 64 mesures, les profils distribués qui ont une mélodie, quatre niveaux).
+
+## Alternance de mesures (question-réponse, `[arrangement.alternation]`, phase 019 E11)
+
+Section optionnelle du fichier d'arrangement (ou de `[arrangement]` inline), à côté de `[entries]`,
+même clé par nom de piste. Une piste y joue `play` mesures de chaque cycle de `period` mesures et
+se tait les autres :
+
+```toml
+[alternation]
+Melody = { period = 4 }                        # joue 2 mesures, se tait 2
+Countermelody = { period = 8, play = 3, phase = 2 }
+```
+
+- `period` : cycle en mesures, `2..=32` ; `play` : mesures jouées, `1..period`, défaut `period / 2` ;
+  `phase` : `0..period`, décalage du cycle. La mesure `n` (0-based) de la forme est jouée quand
+  `(n + phase) % period < play` ; `phase = play` : la piste se tait d'abord.
+- Les mesures se comptent depuis la première mesure de la forme de l'air, hors intro, en continu
+  d'un tour à l'autre ; un nouvel air repart de zéro. L'intro et la mesure de clôture ne sont
+  pas touchées.
+- Une piste muette est composée comme toujours puis retirée du snapshot : les autres pistes
+  (vétos de la basse, voix dérivées comme `Countermelody`, qui suit la mélodie) restent celles du
+  profil sans alternance. Pour taire aussi la seconde voix, la déclarer avec la même alternance.
+- Toute piste de `[entries]` peut alterner ; une piste absente de `[entries]` est refusée. Les
+  drapeaux de jeu (`EnableMelody`…) et les entrées progressives restent des plafonds.
+
+Pilotage par l'hôte : `SetStyleProfile` avec `arrangement.alternation` renseigné (ou vidé) agit sur
+les mesures encore à composer, sans toucher aux cellules : c'est la lecture du profil courant à
+chaque mesure. Il réinitialise tempo et swing, que l'application renvoie.
 
 ## Règles de phrase
 
