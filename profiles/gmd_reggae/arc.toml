@@ -1,0 +1,38 @@
+# Arc de gmd_reggae sur plusieurs chorus (A3) : valeurs de service, aucune mesure de corpus (le GMD donne des
+# grooves de 30 à 40 mesures, pas la forme d'un morceau). Quatre chorus de la forme :
+#   1      exposition : comping clairsemé (tenue, blanches), ossature de batterie à la charleston fermée, doux
+#          (niveau de densité 1 : grosse caisse, caisse claire, charleston) ;
+#   2-3    corps : comping médian ou dense, charleston, intensité du profil ; la variante forte plus fort, avec un break
+#          d'une mesure avant le chorus suivant (accords et basse se taisent, la batterie continue) ;
+#   4      retombée (`fall`, nombre de chorus connu) : clairsemé, charleston seule (niveau de densité 0), stop-time
+#          sur les deux dernières mesures ;
+# au-delà (plus de quatre chorus ou set sans fin) : le sommet (plus fort, stop-time une fois sur deux), puis le corps
+# et le sommet en boucle.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.65, density = 0.9, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.75, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }] },
+  { weight = 1, intensity = 1.2, density = 1.2, comping = [{ tag = "dense" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.5
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

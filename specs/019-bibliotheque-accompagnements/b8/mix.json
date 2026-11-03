@@ -1,0 +1,37 @@
+{
+  "gmd_afrobeat": {
+    "Bass": -14.4,
+    "Chords": -12.4,
+    "Percussion": -12.5
+  },
+  "gmd_dance_disco": {
+    "Bass": -15.4,
+    "Chords": -14.4,
+    "Percussion": -14.2
+  },
+  "gmd_hiphop": {
+    "Bass": -11.5,
+    "Chords": -13.4,
+    "Percussion": -14.6
+  },
+  "gmd_pop": {
+    "Bass": -14.4,
+    "Chords": -13.6,
+    "Percussion": -12.6
+  },
+  "gmd_reggae": {
+    "Bass": -13.9,
+    "Chords": -14.1,
+    "Percussion": -14.1
+  },
+  "gmd_rock": {
+    "Bass": -10.6,
+    "Chords": -19.8,
+    "Percussion": -16.2
+  },
+  "gmd_soul": {
+    "Bass": -14.6,
+    "Chords": -14.4,
+    "Percussion": -15.3
+  }
+}

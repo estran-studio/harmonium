@@ -1,0 +1,58 @@
+{
+  "gmd_afrobeat": {
+    "Bass": -25.2,
+    "Chords": -26.1,
+    "PercussionHigh": -31.8,
+    "PercussionLow": -28.2,
+    "kit": -26.7,
+    "mix": -21.9
+  },
+  "gmd_dance_disco": {
+    "Bass": -25.2,
+    "Chords": -26.2,
+    "PercussionHigh": -28.6,
+    "PercussionLow": -28.1,
+    "kit": -25.4,
+    "mix": -21.0
+  },
+  "gmd_hiphop": {
+    "Bass": -25.0,
+    "Chords": -25.9,
+    "PercussionHigh": -30.9,
+    "PercussionLow": -26.0,
+    "kit": -24.8,
+    "mix": -21.1
+  },
+  "gmd_pop": {
+    "Bass": -25.2,
+    "Chords": -26.1,
+    "PercussionHigh": -24.8,
+    "PercussionLow": -31.6,
+    "kit": -23.9,
+    "mix": -20.9
+  },
+  "gmd_reggae": {
+    "Bass": -25.1,
+    "Chords": -26.1,
+    "PercussionHigh": -30.3,
+    "PercussionLow": -28.3,
+    "kit": -26.2,
+    "mix": -22.0
+  },
+  "gmd_rock": {
+    "Bass": -25.0,
+    "Chords": -26.0,
+    "PercussionHigh": -26.9,
+    "PercussionLow": -29.2,
+    "kit": -24.9,
+    "mix": -21.4
+  },
+  "gmd_soul": {
+    "Bass": -25.0,
+    "Chords": -26.2,
+    "PercussionHigh": -26.0,
+    "PercussionLow": -34.3,
+    "kit": -25.4,
+    "mix": -21.4
+  }
+}
