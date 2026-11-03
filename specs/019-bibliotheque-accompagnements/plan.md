@@ -41,6 +41,18 @@ moteur. Les comptes rendus de 018 listent les manques :
 - **D4 — Pas de réharmonisation par défaut** : training note l'impro contre la grille de
   l'utilisateur ; l'accompagnement ne la contredit pas (accords de passage, substitutions : option
   désactivée par défaut si un style en a besoin).
+- **D5 — Pas de validation à l'oreille tâche par tâche** (propriétaire, 2026-11-03 : « ça sonne
+  tout assez similaire et redondant », il ne se sent pas en mesure de juger). Les tâches livrent
+  des **preuves chiffrées** ; l'orchestrateur revérifie et fusionne sans attendre d'écoute. Les
+  pages d'écoute ne sont plus exigées des agents. Le reste du plan continue tel quel.
+- **D6 — Priorité : plus de styles et une variété entre graines qui s'entend** (propriétaire,
+  2026-11-03 : « New seed » sur `wjazzd_swing` et sur `isaac_cellar` donne « quasiment la même
+  chose »). Constat de l'orchestrateur : une graine ne change que des détails dans la mesure
+  (rythme de comping, notes de passage) ; tempo, tonalité, instruments, famille de voicings,
+  kit, forme et intensité sont fixes par profil, et l'arc (A3) et les phrases (A1) ne sont
+  activés dans aucun profil distribué. D'où **A2 élargie** (habillage tiré par graine) et **R2**
+  (l'appliquer, avec l'arc et les phrases, à tous les profils distribués), et un critère
+  « variété qui s'entend » dans V2.
 - Rappels : notes des profils existants inchangées sauf décision explicite (principe I : rupture
   = `TUNING_VERSION` + goldens dans le même commit) ; corpus et licences selon le principe VII
   et `harmonium_lab/corpus/sources-jazz.md` (décisions F3 de 018 : NC/SA au labo seulement,
@@ -62,7 +74,7 @@ moteur. Les comptes rendus de 018 listent les manques :
 |---|---|---|
 | **A3** | **Arc sur plusieurs chorus** : numéro de chorus exposé au générateur ; par chorus, en données : intensité, densité, feel de basse (deux temps → marche), comping (clairsemé → dense), batterie (charleston → ride), breaks et stop-time, retombée finale ; pondéré et tiré par graine. Fonctionne sous grille utilisateur (une partie de N mesures répétée). | — |
 | **A1** | **Phrases sur plusieurs mesures** : banques de motifs de 2, 4 ou 8 mesures pour comping et batterie (et basse si utile), choix selon la position dans la forme (mise en place avant un changement de section, relance de fin de phrase) ; remplace le tirage mesure par mesure quand il est activé. | A3 |
-| **A2** | **Orchestration par graine et par chorus** : programmes SoundFont pondérés par piste (piano, guitare ou orgue au comping ; contrebasse ou basse électrique ; kit baguettes ou balais), changement possible au chorus ; sans Odin (D1). | A3 |
+| **A2** | **Habillage par graine et orchestration par chorus** (élargie le 2026-11-03, D6) : variantes de session pondérées, tirées **une fois par graine**, qui surchargent des paramètres globaux nommés en liste blanche : tempo dans la plage du profil, tonalité et mode permis (sauf `[fixed_tonality]`), programmes SoundFont par piste (piano, guitare ou orgue au comping ; contrebasse ou basse électrique ; kit baguettes ou balais), famille de voicings, dosage du swing, registre, tags de banques (comping, batterie, phrases), arc ; changement d'instrument possible au chorus ; programmes visibles dans les snapshots et le MIDI exporté ; sans Odin (D1), presets Odin des jeux tirables aussi. | A3 |
 | **A4** | **Basse** : deux temps, notes répétées, croches de passage et notes fantômes, chromatisme de passage, arrivée sur une note d'accord autre que la basse, côté d'approche réglable ; calibrés sur WJazzD (E7). | A1 |
 | **A5** | **Voicings** : drop 3, quartes, structures supérieures, tension de couleur tirée par graine dans celles de la qualité, dérive de registre bornée ; même conduite de voix (`theory::voice_leading`). | A1 |
 | **A6** | **Swing et micro-timing selon le tempo** (courbe en données, mesurée dans JTD) ; subdivisions ternaires (shuffle 12/8), 3/4 et 6/8 vérifiés sous grille ; manques moteur éventuels des feels latins (clave, bossa, montuno) traités ici, génériques. | A1 |
@@ -81,15 +93,20 @@ moteur. Les comptes rendus de 018 listent les manques :
 | **B8** | Rock, pop, gospel, reggae et autres styles présents dans le GMD | GMD | L2 |
 
 Chaque profil : grille par défaut (forme commune ou domaine public US et Canada), tous les
-mécanismes A activés et calibrés, mentions de licence, tests de contrat, dumps dans
-`harmonium_determinism`, page d'écoute. Les noms exacts se décident avec les sources (L2) ; aucun
-nom générique (« jazz », « latin »).
+mécanismes A activés et calibrés (dont l'habillage par graine d'A2 dès qu'il existe), mentions de
+licence, tests de contrat, dumps dans `harmonium_determinism`, preuve chiffrée de variété entre
+graines (D5, D6). Les noms exacts se décident avec les sources (L2) ; aucun nom générique
+(« jazz », « latin »).
+
+| Tâche | Contenu | Dépend de |
+|---|---|---|
+| **R2** | **Variété qui s'entend dans les profils existants** (D6) : habillage par graine (A2), arc (A3) et phrases (A1) activés dans les 16 profils distribués — jeux (`isaac_*` dont `isaac_cellar`, `nt_desert`), trads, `wjazzd_swing` — avec des valeurs dans les bornes de chaque tradition ou de chaque jeu ; rupture assumée (`TUNING_VERSION`) | A2 |
 
 ### Preuve et livraison à training
 
 | Tâche | Contenu | Dépend de |
 |---|---|---|
-| **V2** | Variance prouvée par style : `seed-variety` par chorus contre V0 (seuils écrits dans le compte rendu), distance au corpus quand il existe, écoute du propriétaire (page web, section par style, moments en minutes:secondes). | B* |
+| **V2** | Variance prouvée par style et par profil existant : `seed-variety` par chorus contre V0 (seuils écrits dans le compte rendu), **variété qui s'entend** : sur 16 graines, nombre d'habillages distincts (tempo à ± 8 BPM près, tonalité, programmes par piste, famille de voicings, kit) et part des mesures dont comping et batterie diffèrent d'une graine à l'autre ; distance au corpus quand il existe. Écoute du propriétaire facultative (D5). | B*, R2 |
 | **T1** | Table **style iReal → profil** (le champ `style` de `harmonium_practice/src/ireal.rs`) et doc d'usage pour training : grille utilisateur dans un profil `loop`, `[fixed_tonality]`, choix du profil, graine, nombre de chorus. Rien de training dans ce dépôt (constitution 4.5.0). | B* |
 
 ## Reprise de 018 (à traiter en début de phase)
@@ -139,11 +156,11 @@ flowchart LR
 
 Vague 1 : **A3** (moteur, seul sur `harmonium_core`), **L1** (recherche), **L2 + V0** (labo).
 Vague 2 : **S0** (graine du comping, constat V0), puis **A1** (moteur, `harmonium_core`) en
-parallèle d'**E13** (défaut de training, `harmonium_host`). Vague 3 : **A2** ; **E10** et **E11**
-(mélodie et arrangement) ; **A4 + A5** (un agent) et **A6** (fichiers distincts ; l'orchestrateur
-gère les conflits). Vague 4 : profils **B1–B8** en parallèle (données, un dossier de profil par
-agent ; un manque moteur découvert est signalé et traité par un seul agent moteur), **E12** avec
-B1. Vague 5 : **V2**, **T1**.
+parallèle d'**E13** (défaut de training, `harmonium_host`). Vague 3 (lancée le 2026-11-03) :
+**A2** élargie (habillage par graine) ; **E10 + E11** (un agent, mélodie et arrangement) ;
+**A4 + A5** (un agent) ; **A6** ; styles qui ne dépendent que de L2 et A1 : **B4 + B7** (un agent)
+et **B8** (un agent). Vague 4 : **R2** (dès A2 fusionnée), **B1** (+ **E12**), **B2**, **B3**,
+**B5**, **B6**, et habillage d'A2 ajouté aux profils B4, B7, B8. Vague 5 : **V2**, **T1**.
 
 ## Acceptation commune (toute tâche moteur)
 
@@ -205,8 +222,8 @@ B1. Vague 5 : **V2**, **T1**.
 | V0 | fusionnée au labo (`d01d684`) : `seed-variety --chorus`, ligne de base sur 8 profils, seuils V2 proposés | `harmonium_lab/references/v0-variance/README.md` |
 | A3 | **fusionnée** (2026-11-02). `[arc]` optionnel : étapes de chorus pondérées par graine, retombée, breaks et stop-time, feel deux temps, `tag` de comping et de batterie ; numéro de chorus = `TunePosition::chorus()` / `choruses()` (aucun champ sérialisé ajouté). Revérifié par l'orchestrateur : dumps 98/98 et 32 WAV (16 profils × 2 graines) identiques à `main`, natif = wasm 98/98, 806 workspace, 118 odin, 11 Bevy, studio, clippy identique à `main`, fmt ; seek 26,0–26,7 ms (main 25,9–26,2). **À écouter par le propriétaire** : `#phase-019-a3` (fixtures `grille_arc_chorus`, `grille_arc_chorus_aaba`) | [Compte rendu](a3-arc-chorus.md) |
 | **S0** | **fusionnée** (2026-11-02, `f7cf57c`). Cause vérifiée : comping, marche, notes de passage et plan de motifs de basse tiraient leur graine de `material_seed` (dérivée de la mélodie écrite), qui ne prend que 2 valeurs sur 16 graines sous grille fixe ; correction : `accompaniment_seed` tirée une fois par air dans le RNG de session, après la mélodie (ornements et hétérophonie gardent `material_seed`). Variété inter-graines sur 16 graines : comping 2 → 16, basse 2 → 16. **Rupture : `TUNING_VERSION` 26** ; 15 profils distribués sur 16 changent d'accompagnement (revérifié : dumps et WAV), `marche_britannique_coloniale` (sans accompagnement) identique. Après fusion R1 + S0 : 810 workspace, 118 odin, 11 Bevy, studio, natif = wasm 98/98, clippy identique, fmt. **À écouter par le propriétaire** : `#phase-019-s0`, et les trads dans le studio (accompagnement retiré autrement) | [Compte rendu](s0-graine-accompagnement.md) |
-| **A1** | **fusionnée** (2026-11-03). Phrases de 1 à 8 mesures pour le comping (`accompaniment.chords.phrases`) et la batterie (`[[phrases]]`), relances de 1 à 4 mesures à position de départ (`[[fills]]`, remplacent `cadence_patterns` à la densité déclarée), place dans la forme (`any`, `part_start`, `part_end` = mise en place, `chorus_end`), tags de l'arc ; tirage sans état. Optionnel en données : revérifié par l'orchestrateur, dumps 98/98 et 32 WAV identiques à `main`, `TUNING_VERSION` 26 inchangé. Variance (fixture de l'arc, 16 graines) : séquences de batterie distinctes 7 → 16 (blues) et 5 → 16 (AABA) ; distance inter-graines du comping en baisse de 6 à 11 points (structure au lieu du hasard mesure par mesure). Seek : inchangé sans phrases, + 0,9 à 2,5 ms avec. **À écouter par le propriétaire** : `#phase-019-a1` | [Compte rendu](a1-phrases.md) |
+| **A1** | **fusionnée** (2026-11-03). Phrases de 1 à 8 mesures pour le comping (`accompaniment.chords.phrases`) et la batterie (`[[phrases]]`), relances de 1 à 4 mesures à position de départ (`[[fills]]`, remplacent `cadence_patterns` à la densité déclarée), place dans la forme (`any`, `part_start`, `part_end` = mise en place, `chorus_end`), tags de l'arc ; tirage sans état. Optionnel en données : revérifié par l'orchestrateur, dumps 98/98 et 32 WAV identiques à `main`, `TUNING_VERSION` 26 inchangé. Variance (fixture de l'arc, 16 graines) : séquences de batterie distinctes 7 → 16 (blues) et 5 → 16 (AABA) ; distance inter-graines du comping en baisse de 6 à 11 points (structure au lieu du hasard mesure par mesure). Seek : inchangé sans phrases, + 0,9 à 2,5 ms avec. écoute facultative (D5) : `#phase-019-a1` | [Compte rendu](a1-phrases.md) |
 | **E13** | **fusionnée** (2026-11-03). Quatre défauts vérifiés (epoch non annoncé au playback, file pleine qui bloque le re-staging, mesure non chargée gardée sous la tête, tête du compositeur en retard après un seek) ; `DropFrom { bar, epoch }`, rejet des boîtes périmées à l'adoption, bit « non chargé » dans l'atomique de transport, réserve de file, re-staging immédiat après seek. Test de contrat 13/27 en échec sur `main`, 0/28 après ; revérifié par l'orchestrateur : dumps 98/98 et 32 WAV identiques ; seek inchangé (26–28 ms), un pas de latence de moins après un seek. **À transmettre à training** : contournement à retirer (`drain_playback_window`, cycle `resume`/`pause` de `prepare_playback`, `rebuild_current_bar` au départ de piste), liste dans le compte rendu | [Compte rendu](e13-mesures-perimees.md) |
-| A2, A4, A5, A6, E10, E11, E12 | en attente | — |
-| B1–B8 | en attente | — |
+| A2, A4 + A5, A6, E10 + E11, B4 + B7, B8 | lancées le 2026-11-03 (vague 3) | — |
+| R2, B1–B3, B5, B6, E12 | en attente (vague 4) | — |
 | V2, T1 | en attente | — |
