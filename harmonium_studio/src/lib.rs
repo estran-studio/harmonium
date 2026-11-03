@@ -2,6 +2,9 @@
 //!
 //! - [`manifest`], [`packager`], [`loading`] : ressources (manifeste, générateur, logique du
 //!   chargement). Pures : sans eframe, sans navigateur, sans disque pour le chargement.
+//! - [`link`] : les liens d'ouverture `harmonium://open?…` (profil, graine, mesure, boucle…).
+//! - [`reload`] : rechargement à chaud des fichiers d'un profil. [`control`] (natif) : canal de
+//!   commande local et commande `open`.
 //! - [`live`] : l'écran Live sans fenêtre (session, intentions → `EngineCommand`, vues tirées de
 //!   la sortie publiée).
 //! - [`live_screen`] : l'écran Live dessiné par egui.
@@ -22,12 +25,18 @@ pub mod packager;
 
 #[cfg(feature = "app")]
 mod app;
+#[cfg(all(feature = "app", not(target_arch = "wasm32")))]
+pub mod control;
+#[cfg(feature = "app")]
+pub mod link;
 #[cfg(feature = "app")]
 pub mod live;
 #[cfg(feature = "app")]
 pub mod live_screen;
 #[cfg(feature = "app")]
 pub mod platform;
+#[cfg(feature = "app")]
+pub mod reload;
 #[cfg(feature = "app")]
 pub mod workbench;
 #[cfg(feature = "app")]

@@ -67,9 +67,33 @@ Version publique : <https://harmonium-website.pages.dev/> (page d'accueil) et
   `make studio`. En natif, le repli « Engine » de l'écran Live charge aussi un dossier de profil hors du dépôt.
 - **Garder une trace** : REC (WAV, MIDI, MusicXML) écrit dans `~/Music/Harmonium Studio/`, nommé par profil et
   graine ; la graine affichée rejoue la même musique.
-- **Session d'agent** : le studio et le REPL sortent du son. Un agent ne les lance pas lui-même ; il donne la
-  commande et ce qu'il faut écouter au propriétaire. Ses propres vérifications restent silencieuses : rendu hors
-  ligne, par exemple
+- **Liens d'ouverture** : le studio s'ouvre sur un état précis par un lien, comme avec `xdg-open`.
+  `harmonium://open?profile=<id ou dossier absolu>&seed=3&bar=17&loop=17-24&bpm=180&swing=0.6&solo=Bass&mute=Melody,Chords&play=0`
+  (tout est facultatif ; les noms sont ceux du REPL et du CLI). Un `id` de profil distribué ouvre le dossier
+  `profiles/<id>` du dépôt quand il existe (l'édition se recharge sans recompiler), sinon le profil compilé ; un
+  chemin absolu ouvre n'importe quel dossier de profil (worktree, fixture). **En pause par défaut** : aucun son
+  avant `play=1` ou le bouton lecture. Un lien est un état entier : sans `solo`, `mute` ni `loop`, les pistes sont
+  rendues et la boucle levée ; sans `bar`, la lecture part de la mesure 1 (ou du début de la boucle).
+  ```bash
+  make studio/open PROFILE=~/orca/workspaces/harmonium/a2-x/profiles/reel_quebecois SEED=3 BAR=17   # le studio qui tourne le prend, sinon il se lance
+  make studio/open URL='harmonium://open?profile=reel_quebecois&seed=3&bar=17&loop=17-24'
+  target/release/harmonium_studio open --profile profiles/reel_quebecois --seed 3 --bar 17
+  make studio/install-handler   # les liens harmonium://… deviennent cliquables (macOS, Linux) ; studio/uninstall-handler les retire
+  ```
+  Le canal est un port TCP local (`127.0.0.1:47820`, `--control <adresse>` pour un autre), sans autre accès que
+  l'ouverture d'un lien. Web : les mêmes paramètres en requête d'URL pour les profils compilés
+  (`…/studio/?profile=valse_quebecoise&seed=3&bar=9`). Détails : [`harmonium_studio/README.md`](harmonium_studio/README.md).
+- **Rechargement à chaud** (natif) : le studio surveille `profile.toml` et les banques de son `[files]` du dossier
+  chargé (lien, ou « Profile folder » → « Load »). Un changement se recharge après 300 ms de repos ; la graine, la
+  mesure, la boucle, les solos et mutes, le tempo et le swing imposés sont gardés. Un profil invalide ne remplace
+  rien : l'erreur (`fichier:ligne: champ: message`) s'affiche en rouge, le précédent continue de jouer. L'heure du
+  dernier rechargement est dans la barre du haut (« reloaded hh:mm:ss »).
+- **« Copy link »** (barre du haut) copie le lien de l'état présent (profil, graine, mesure, boucle, tempo et swing
+  imposés, solo, mutes) : celui qui l'ouvre entend la même chose. Un brouillon de l'atelier n'a pas de lien tant
+  qu'il n'est pas enregistré dans un dossier et chargé.
+- **Session d'agent** : le studio et le REPL sortent du son. Seuls l'orchestrateur et le propriétaire ouvrent des
+  liens, en pause par défaut ; les agents de tâche ne lancent jamais le studio (ni `make studio/open`) et vérifient
+  hors ligne, en silence : rendu hors ligne, par exemple
   `cargo run -p harmonium-cli --features odin -- --export --bars 8 --style isaac_basement -s assets/GeneralUser-GS.sf2 --odin-presets assets/odin --record-wav /tmp/essai.wav`,
   ou `LiveHost::detached` dans un test.
 

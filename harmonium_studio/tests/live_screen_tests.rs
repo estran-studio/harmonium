@@ -273,6 +273,9 @@ fn the_style_selector_the_profile_folder_and_the_seed_fields_drive_the_session()
     assert_ne!(seed(&rig), 42);
 
     // Natif : un dossier de profil sur disque, comme `style <dossier>`.
+    // Une graine de vingt chiffres a fait passer la barre du haut sur deux rangées : un cadre pour
+    // que l'arbre d'accessibilité suive la mise en page avant de cliquer.
+    rig.harness.step();
     rig.harness.get_by_label("Engine").click();
     rig.harness.step();
     let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/../profiles/gigue_acadienne");

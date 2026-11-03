@@ -18,11 +18,13 @@ use harmonium_core::{
 use web_time::Instant;
 
 use crate::{
+    link::{Opening, ProfileRef},
     live::{
         BarView, BeatView, Intent, LiveView, MixerStrip, NoteView, RECORD_FORMATS, ScoreView,
         Session, TRACKS, WINDOW_BARS, format_label, track_label,
     },
-    platform::{RecordingSink, SessionHandle},
+    platform::{RecordingSink, SessionHandle, clock_time, share_link},
+    reload::ProfileWatch,
     workbench_screen::WorkbenchScreen,
 };
 
@@ -47,6 +49,28 @@ pub struct Credits {
 struct Notice {
     text: String,
     error: bool,
+}
+
+/// Le dossier d'où vient le profil qui joue : ses fichiers sont surveillés, et le lien copié le
+/// désigne.
+struct Watched {
+    watch: ProfileWatch,
+    /// Identifiant du profil chargé depuis ce dossier : le dossier ne vaut que tant que le
+    /// profil qui joue porte cet identifiant.
+    profile_id: String,
+    status: Option<ReloadStatus>,
+}
+
+/// Le dernier rechargement à chaud, tel que l'écran le montre.
+enum ReloadStatus {
+    Reloaded {
+        at: String,
+    },
+    /// Le profil précédent joue toujours.
+    Failed {
+        at: String,
+        error: String,
+    },
 }
 
 /// Un glisser sur la partition : la boucle en préparation.
@@ -80,6 +104,7 @@ pub struct LiveScreen {
     /// Mesure du champ de saut.
     seek_bar: usize,
     loop_drag: Option<LoopDrag>,
+    folder: Option<Watched>,
     #[cfg(not(target_arch = "wasm32"))]
     osc: Option<crate::platform::Osc>,
     /// Dossier de profil à charger (natif ; champ de saisie).
@@ -103,6 +128,7 @@ impl LiveScreen {
             time_signature: None,
             seek_bar: 1,
             loop_drag: None,
+            folder: None,
             #[cfg(not(target_arch = "wasm32"))]
             osc: None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -110,11 +136,103 @@ impl LiveScreen {
         }
     }
 
-    fn notify(&mut self, text: impl Into<String>, error: bool) {
+    pub fn notify(&mut self, text: impl Into<String>, error: bool) {
         self.notices.push(Notice { text: text.into(), error });
         if self.notices.len() > NOTICES_KEPT {
             self.notices.remove(0);
         }
+    }
+
+    /// Exécute une demande d'ouverture (lien, `--open`, URL de la page) : profil, graine, mesure,
+    /// boucle, tempo, pistes, lecture ([`Session::open`]). Le dossier du profil est surveillé.
+    pub fn open(&mut self, opening: Opening) {
+        let Opening { request, profile } = opening;
+        let (profile, watch) = match profile {
+            Some(resolved) => (Some(resolved.profile), resolved.watch),
+            None => (None, None),
+        };
+        let profile_id = profile.as_ref().map(|profile| profile.meta.id.clone());
+        match self.session.with(|session| session.open(&request, profile)) {
+            Ok(()) => {
+                if let Some(profile_id) = profile_id {
+                    self.folder = watch.map(|watch| Watched { watch, profile_id, status: None });
+                }
+                self.notify(format!("Opened {}", share_link(&request)), false);
+            }
+            Err(error) => self.notify(format!("Could not open the link: {error}"), true),
+        }
+    }
+
+    /// Recharge le profil du dossier surveillé quand ses fichiers ont changé : la graine, la mesure,
+    /// la boucle, les solos et sourdines, le tempo et le swing imposés restent. Un profil invalide
+    /// laisse jouer le précédent.
+    fn poll_reload(&mut self) {
+        let Some(folder) = &mut self.folder else { return };
+        let Some(reloaded) = folder.watch.poll(Instant::now()) else { return };
+        let at = clock_time();
+        let outcome = reloaded.and_then(|profile| {
+            let id = profile.meta.id.clone();
+            let name = profile.meta.name.clone();
+            self.session.with(|session| session.reload_profile(profile)).map(|()| (id, name))
+        });
+        match outcome {
+            Ok((id, name)) => {
+                folder.profile_id = id;
+                folder.status = Some(ReloadStatus::Reloaded { at: at.clone() });
+                self.notify(format!("Reloaded {name} at {at}"), false);
+            }
+            Err(error) => {
+                folder.status = Some(ReloadStatus::Failed { at, error: error.clone() });
+                self.notify(format!("Reload failed, previous profile kept: {error}"), true);
+            }
+        }
+    }
+
+    /// Copie le lien de l'état présent (profil, graine, mesure, boucle, tempo et swing imposés,
+    /// solos et sourdines) : celui qui l'ouvre entend la même chose.
+    fn copy_link(&mut self, ctx: &egui::Context, view: &LiveView) {
+        let profile = match &self.folder {
+            Some(folder) if folder.profile_id == view.profile_id => {
+                ProfileRef::Folder(folder.watch.dir().to_path_buf())
+            }
+            _ if StyleProfile::distributed().iter().any(|p| p.meta.id == view.profile_id) => {
+                ProfileRef::Id(view.profile_id.clone())
+            }
+            _ => {
+                self.notify(
+                    "This profile is neither a distributed one nor loaded from a folder: save it to a folder and load it first.",
+                    true,
+                );
+                return;
+            }
+        };
+        let request = self.session.with(|session| session.link_state(Some(profile)));
+        let link = share_link(&request);
+        ctx.copy_text(link.clone());
+        self.notify(format!("Copied: {link}"), false);
+    }
+
+    /// Le dossier surveillé et son dernier rechargement : « reloaded hh:mm:ss », ou l'erreur
+    /// (fichier et ligne) d'un profil refusé, le précédent continuant de jouer.
+    fn reload_status(&self, ui: &mut egui::Ui) {
+        let Some(folder) = &self.folder else { return };
+        let dir = folder.watch.dir();
+        let name = dir
+            .file_name()
+            .map_or_else(|| dir.display().to_string(), |name| name.to_string_lossy().into_owned());
+        ui.label(RichText::new(format!("Watching {name}")).weak())
+            .on_hover_text(format!("{}\nReloaded when its files change.", dir.display()));
+        match &folder.status {
+            None => {}
+            Some(ReloadStatus::Reloaded { at }) => {
+                ui.colored_label(Color32::from_rgb(150, 200, 150), format!("reloaded {at}"));
+            }
+            Some(ReloadStatus::Failed { at, error }) => {
+                ui.colored_label(Color32::LIGHT_RED, format!("reload failed {at}: {error}"))
+                    .on_hover_text("The previous profile keeps playing.");
+            }
+        }
+        ui.separator();
     }
 
     /// Dessine l'écran dans `ui`, puis exécute ce que l'utilisateur a demandé.
@@ -125,6 +243,7 @@ impl LiveScreen {
                 Err(error) => self.notify(format!("Could not save the recording: {error}"), true),
             }
         }
+        self.poll_reload();
         let view = self.session.with(|session| session.view(Instant::now()));
         let mut intents = Vec::new();
 
@@ -141,6 +260,11 @@ impl LiveScreen {
         self.about(ui.ctx());
 
         for intent in intents {
+            // Un profil installé par un geste (sélecteur de style, Apply de l'atelier) remplace
+            // celui du dossier : ses fichiers ne sont plus rechargés.
+            if matches!(&intent, Intent::Command(EngineCommand::SetStyleProfile(_))) {
+                self.folder = None;
+            }
             if let Err(error) = self.session.with(|session| session.perform(intent)) {
                 self.notify(error, true);
             }
@@ -203,6 +327,7 @@ impl LiveScreen {
                     }
                 });
             ui.separator();
+            self.reload_status(ui);
 
             let play = if view.desk.playing { "Pause" } else { "Play" };
             if ui.button(play).clicked() {
@@ -232,6 +357,15 @@ impl LiveScreen {
             }
             if ui.button("New seed").clicked() {
                 intents.push(Intent::Command(EngineCommand::NewMelody));
+            }
+            if ui
+                .button("Copy link")
+                .on_hover_text(
+                    "Copy a link that reopens this profile, seed, bar, loop, solo and mutes.",
+                )
+                .clicked()
+            {
+                self.copy_link(ui.ctx(), view);
             }
             ui.separator();
 
@@ -465,15 +599,16 @@ impl LiveScreen {
             });
             #[cfg(not(target_arch = "wasm32"))]
             {
-                self.profile_folder_row(ui, intents);
+                self.profile_folder_row(ui);
                 self.osc_row(ui);
             }
         });
     }
 
-    /// Charge un profil depuis un dossier (fixtures, worktrees), comme `style <dossier>` du REPL.
+    /// Charge un profil depuis un dossier (fixtures, worktrees), comme `style <dossier>` du REPL,
+    /// et surveille ses fichiers : une modification se recharge à chaud.
     #[cfg(not(target_arch = "wasm32"))]
-    fn profile_folder_row(&mut self, ui: &mut egui::Ui, intents: &mut Vec<Intent>) {
+    fn profile_folder_row(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Profile folder");
             ui.add(
@@ -482,13 +617,27 @@ impl LiveScreen {
                     .hint_text("path"),
             );
             if ui.button("Load").clicked() {
-                match StyleProfile::load(self.profile_dir.trim()) {
-                    Ok(profile) => intents
-                        .push(Intent::Command(EngineCommand::SetStyleProfile(Box::new(profile)))),
-                    Err(error) => self.notify(error.to_string(), true),
-                }
+                self.load_folder();
             }
         });
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_folder(&mut self) {
+        let resolved =
+            match crate::platform::load_folder(std::path::Path::new(self.profile_dir.trim())) {
+                Ok(resolved) => resolved,
+                Err(error) => return self.notify(error, true),
+            };
+        let profile_id = resolved.profile.meta.id.clone();
+        let command = Intent::Command(EngineCommand::SetStyleProfile(Box::new(resolved.profile)));
+        match self.session.with(|session| session.perform(command)) {
+            Ok(()) => {
+                self.folder =
+                    resolved.watch.map(|watch| Watched { watch, profile_id, status: None });
+            }
+            Err(error) => self.notify(error, true),
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
