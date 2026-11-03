@@ -102,6 +102,16 @@ pub struct MeasureSnapshot {
     /// `None` hors style à airs.
     #[serde(default)]
     pub position: Option<crate::compose::TunePosition>,
+    /// Programmes qui sonnent sur la mesure (pistes mélodiques, banque et programme du kit),
+    /// publiés quand le profil orchestre par graine ou par chorus (variante de session ou arc
+    /// avec `instruments`) ; absent : ceux de `[instruments]` du profil. Un changement d'une
+    /// mesure à la suivante est un changement de programme à la barre.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruments: Option<crate::style_profile::ProfileInstruments>,
+    /// Variantes de session tirées pour cette graine (une par groupe de `[[session.variants]]`),
+    /// les mêmes sur toutes les mesures d'une session ; vide sans habillage par graine.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub session: Vec<crate::compose::DrawnVariant>,
 }
 
 impl MeasureSnapshot {
@@ -147,6 +157,8 @@ impl MeasureSnapshot {
             swing_ratio: measure.swing_ratio,
             pulse: measure.pulse,
             position: measure.position,
+            instruments: measure.instruments,
+            session: measure.session.clone(),
         }
     }
 }

@@ -295,6 +295,10 @@ pub struct PlaybackEngine {
     tempo_override: Option<TempoRamp>,
     // An explicit SetTempo wins over data-driven measure ramps.
     tempo_override_explicit: bool,
+    // Programmes de la mesure sous la tête (`Measure.instruments`) et derniers programmes
+    // annoncés au renderer : une annonce par changement d'orchestration.
+    measure_instruments: Option<harmonium_core::style_profile::ProfileInstruments>,
+    announced_instruments: Option<harmonium_core::style_profile::ProfileInstruments>,
 
     // Predictive clock (D1): the current state plus the triple-buffer
     // producer half. `clock` is copied into the buffer on each publish (a
@@ -476,6 +480,8 @@ impl PlaybackEngine {
             audible_tempo: tempo,
             tempo_override: None,
             tempo_override_explicit: false,
+            measure_instruments: None,
+            announced_instruments: None,
             clock: TransportClock::initial(sample_rate as u32),
             clock_tx,
             current_pulse: PulseSpec::default(),
@@ -917,6 +923,15 @@ impl PlaybackEngine {
                 swing_ratio: self.swing_ratio,
             });
         }
+        // Programmes de la mesure : annoncés une fois, à la première mesure qui diffère de ce
+        // que le renderer a reçu (changement d'instrument à la frontière d'un chorus, ou
+        // premier pas de la session). `Copy`, aucune allocation.
+        if let Some(instruments) = self.measure_instruments
+            && self.announced_instruments != Some(instruments)
+        {
+            self.announced_instruments = Some(instruments);
+            self.renderer.handle_event(AudioEvent::SetInstruments { instruments });
+        }
     }
 
     /// Step completion: publish the entered step, exactly one step duration
@@ -1180,6 +1195,12 @@ impl PlaybackEngine {
                 self.pending_mix_reset = true;
             }
             self.swing_ratio = slot.measure.swing_ratio;
+            // Orchestration par session ou par chorus : copie `Copy`, annoncée par
+            // `relay_measure_params` ; sans orchestration, le renderer garde ceux du profil.
+            self.measure_instruments = slot.measure.instruments;
+            if self.measure_instruments.is_none() {
+                self.announced_instruments = None;
+            }
             self.current_pulse = slot.measure.pulse;
             // Same rule as the shared plan (`time_plan::TimePlan`): a tempo
             // change on a tune measure ramps over the measure's pulses from
@@ -1437,6 +1458,7 @@ impl PlaybackEngine {
                 }
                 PlaybackCommand::ProgramChange { channel, program } => {
                     self.renderer.handle_event(AudioEvent::ProgramChange { channel, program });
+                    self.announced_instruments = None;
                 }
                 PlaybackCommand::SetMutedChannels(channels) => {
                     for (track, &muted) in self.tracks.iter_mut().zip(channels.iter()) {
@@ -1456,6 +1478,9 @@ impl PlaybackEngine {
                     let mix_changed = self.musical_params.profile_id != params.profile_id
                         || self.musical_params.mix != params.mix;
                     self.renderer.handle_event(AudioEvent::UpdateMusicalParams { params });
+                    // Le renderer vient de reprendre les programmes du profil : la mesure
+                    // sous la tête, si elle orchestre, les annonce de nouveau au prochain pas.
+                    self.announced_instruments = None;
                     self.reported_tempo = Some(Tempo::from_bpm(params.bpm));
                     self.reported_signature = params.time_signature;
                     self.musical_params = params;

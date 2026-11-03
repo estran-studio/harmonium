@@ -51,7 +51,11 @@ pub fn timeline_to_midi(
 
     for track in TrackId::ALL {
         if track == TrackId::PercussionLow {
-            smf.tracks.push(build_drum_track(measures, profile.mix.tracks.percussion_high.midi()));
+            smf.tracks.push(build_drum_track(
+                measures,
+                profile.mix.tracks.percussion_high.midi(),
+                profile.instruments.percussion_program,
+            ));
             continue;
         }
         if track == TrackId::PercussionHigh {
@@ -201,6 +205,18 @@ fn build_instrument_track(
     }
 
     let mut events: Vec<(u32, TrackEventKind<'static>)> = Vec::with_capacity(spans.len() * 2);
+    // Les changements de programme précèdent les attaques du même tick (tri stable).
+    events.extend(program_changes(measures, |i| i.program(track_id), program).into_iter().map(
+        |(tick, program)| {
+            (
+                tick,
+                TrackEventKind::Midi {
+                    channel: u4::new(channel),
+                    message: MidiMessage::ProgramChange { program: u7::new(program) },
+                },
+            )
+        },
+    ));
     for (on_tick, off_tick, pitch, vel) in spans {
         events.push((
             on_tick,
@@ -270,6 +286,7 @@ fn build_instrument_track(
 fn build_drum_track(
     measures: &[Measure],
     mix: crate::mix::MidiTrackMix,
+    base_kit: u8,
 ) -> Vec<TrackEvent<'static>> {
     let mut events: Vec<(u32, TrackEventKind<'static>)> = Vec::new();
 
@@ -319,6 +336,21 @@ fn build_drum_track(
         }
     }
 
+    // Les changements de kit précèdent les coups du même tick (tri stable).
+    let kits = program_changes(measures, |i| Some(i.percussion_program), Some(base_kit));
+    events.splice(
+        0..0,
+        kits.into_iter().map(|(tick, program)| {
+            (
+                tick,
+                TrackEventKind::Midi {
+                    channel: u4::new(GM_DRUM_CHANNEL),
+                    message: MidiMessage::ProgramChange { program: u7::new(program) },
+                },
+            )
+        }),
+    );
+
     // Sort by tick, NoteOff before NoteOn at same tick
     events.sort_by(|a, b| {
         a.0.cmp(&b.0).then_with(|| {
@@ -351,6 +383,27 @@ fn build_drum_track(
     });
 
     track
+}
+
+/// Changements de programme d'une piste : `(tick, programme)` à chaque mesure dont l'orchestration
+/// (`Measure::instruments`) donne un programme différent du précédent ; `initial` est le programme
+/// déjà déclaré en tête de piste.
+fn program_changes(
+    measures: &[Measure],
+    program_of: impl Fn(&crate::style_profile::ProfileInstruments) -> Option<u8>,
+    initial: Option<u8>,
+) -> Vec<(u32, u8)> {
+    let mut current = initial;
+    let mut changes = Vec::new();
+    for measure in measures {
+        if let Some(program) = measure.instruments.as_ref().and_then(&program_of)
+            && current != Some(program)
+        {
+            changes.push((measure_start(measure), program));
+            current = Some(program);
+        }
+    }
+    changes
 }
 
 // ---------------------------------------------------------------------------

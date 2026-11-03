@@ -61,12 +61,25 @@ def load_lock():
     return json.loads(LOCK.read_text())
 
 
+def odin_tracks(profile, data):
+    """Spécifications Odin d'un profil : `[odin]` et celles de ses variantes de session
+    (`[[session.variants]] odin`, en ligne ou dans le fichier de `[files] session`)."""
+    yield from data.get('odin', {}).values()
+    session = data.get('session', {})
+    name = data.get('files', {}).get('session')
+    if name:
+        session = tomllib.loads((profile.parent / name).read_text())
+    for variant in session.get('variants', []):
+        yield from variant.get('odin', {}).values()
+
+
 def referenced_presets(profiles):
-    """Presets Odin nommés par les profils (`[[odin.<piste>.zones]] preset`), avec les profils qui les citent."""
+    """Presets Odin nommés par les profils (`[[odin.<piste>.zones]] preset`, variantes de session
+    comprises), avec les profils qui les citent."""
     presets = {}
     for profile in sorted(profiles.glob('*/profile.toml')):
         data = tomllib.loads(profile.read_text())
-        for track in data.get('odin', {}).values():
+        for track in odin_tracks(profile, data):
             for zone in track.get('zones', []) if isinstance(track, dict) else []:
                 users = presets.setdefault(zone['preset'], [])
                 if profile.parent.name not in users:

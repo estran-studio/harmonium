@@ -18,7 +18,11 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
-use super::{accomp_profile::require, arrangement::TunePosition};
+use super::{
+    accomp_profile::require,
+    arrangement::TunePosition,
+    session::{InstrumentOverride, SessionBase},
+};
 use crate::{
     algo::RngCore,
     ornaments::mix,
@@ -153,6 +157,11 @@ pub struct ArcVariant {
     /// Feel de la basse ; exige `accompaniment.bass.walking`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bass_feel: Option<BassFeel>,
+    /// Orchestration du chorus : programmes qui remplacent ceux du profil (et ceux de la
+    /// variante de session tirée) à partir de la première mesure du chorus. Un chorus qui n'en
+    /// déclare pas garde ceux de la session : le changement se défait au chorus suivant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruments: Option<InstrumentOverride>,
     /// Tags des motifs (`accompaniment.chords.comping[].tag`) et des phrases de comping
     /// (`accompaniment.chords.phrases[].tag`) autorisés, pondérés.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -164,6 +173,22 @@ pub struct ArcVariant {
     pub percussion: Vec<TagWeight>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub breaks: Vec<ArcBreak>,
+}
+
+impl Default for ArcVariant {
+    /// Variante neutre : ne change rien au profil.
+    fn default() -> Self {
+        Self {
+            weight: 1,
+            intensity: 1.0,
+            density: 1.0,
+            bass_feel: None,
+            instruments: None,
+            comping: Vec::new(),
+            percussion: Vec::new(),
+            breaks: Vec::new(),
+        }
+    }
 }
 
 const fn default_multiplier() -> f32 {
@@ -199,24 +224,36 @@ pub struct ChorusArc {
     pub fall: Vec<ArcVariant>,
 }
 
-/// État de l'arc à une mesure : variante du chorus et break éventuel.
+/// État de l'arc à une mesure : variante du chorus et break éventuel, sous la base de la
+/// variante de session (multiplicateurs et tags de repli, [`SessionBase`]).
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ArcBar<'a> {
     variant: &'a ArcVariant,
+    base: Option<&'a SessionBase>,
     seed: u64,
     chorus: usize,
     brk: Option<&'a ArcBreak>,
 }
 
 impl<'a> ArcBar<'a> {
-    /// Intensité de la mesure : celle du jeu fois le multiplicateur, bornée à 0..1.
+    /// Mesure sans arc sous la base de session seule : variante neutre, aucun break.
+    pub(crate) fn base_only(base: &'a SessionBase, seed: u64, chorus: usize) -> Self {
+        Self { variant: &base.neutral, base: Some(base), seed, chorus, brk: None }
+    }
+
+    fn base_multiplier(&self, pick: impl FnOnce(&SessionBase) -> f32) -> f32 {
+        self.base.map_or(1.0, pick)
+    }
+
+    /// Intensité de la mesure : celle du jeu fois les multiplicateurs de la session et du chorus,
+    /// bornée à 0..1.
     pub(crate) fn intensity(&self, base: f32) -> f32 {
-        (base * self.variant.intensity).clamp(0.0, 1.0)
+        (base * self.base_multiplier(|b| b.intensity) * self.variant.intensity).clamp(0.0, 1.0)
     }
 
     /// Densité rythmique de la mesure, bornée à 0..1.
     pub(crate) fn density(&self, base: f32) -> f32 {
-        (base * self.variant.density).clamp(0.0, 1.0)
+        (base * self.base_multiplier(|b| b.density) * self.variant.density).clamp(0.0, 1.0)
     }
 
     /// Pulsations entre deux attaques de la basse (1 : une marche par pulsation).
@@ -224,12 +261,25 @@ impl<'a> ArcBar<'a> {
         self.variant.bass_feel.map_or(1, BassFeel::attack_pulses)
     }
 
+    /// Tags du comping : ceux du chorus, à défaut ceux de la session.
     pub(crate) fn comping_tags(&self) -> &'a [TagWeight] {
-        &self.variant.comping
+        match (self.variant.comping.is_empty(), self.base) {
+            (true, Some(base)) => &base.comping,
+            _ => &self.variant.comping,
+        }
     }
 
+    /// Tags de la batterie : ceux du chorus, à défaut ceux de la session.
     pub(crate) fn percussion_tags(&self) -> &'a [TagWeight] {
-        &self.variant.percussion
+        match (self.variant.percussion.is_empty(), self.base) {
+            (true, Some(base)) => &base.percussion,
+            _ => &self.variant.percussion,
+        }
+    }
+
+    /// Programmes du chorus, s'il en déclare.
+    pub(crate) fn instruments(&self) -> Option<&'a InstrumentOverride> {
+        self.variant.instruments.as_ref()
     }
 
     /// Graine du tirage de batterie de la partie `part` à la densité `density` : constante dans
@@ -297,8 +347,15 @@ impl ChorusArc {
     }
 
     /// État de l'arc à la mesure de `position` ; `None` pendant une intro. `bars` : mesures
-    /// d'un chorus (`form.bars_per_tour()`), `seed` : graine de l'arc du set.
-    pub(crate) fn at(&self, seed: u64, position: &TunePosition, bars: usize) -> Option<ArcBar<'_>> {
+    /// d'un chorus (`form.bars_per_tour()`), `seed` : graine de l'arc du set, `base` : base de
+    /// la variante de session.
+    pub(crate) fn at<'a>(
+        &'a self,
+        seed: u64,
+        position: &TunePosition,
+        bars: usize,
+        base: Option<&'a SessionBase>,
+    ) -> Option<ArcBar<'a>> {
         if position.is_intro() {
             return None;
         }
@@ -317,23 +374,38 @@ impl ChorusArc {
             let draw = rng.next_range_u64(0..1 << 32) as f64 / (1u64 << 32) as f64;
             (draw < f64::from(brk.chance)).then_some(brk)
         });
-        Some(ArcBar { variant, seed, chorus, brk })
+        Some(ArcBar { variant, base, seed, chorus, brk })
     }
 
-    /// Valide la section contre le profil (`field` : chemin de la section, `arc`).
-    pub(crate) fn validate(&self, profile: &StyleProfile) -> Result<(), ProfileError> {
+    /// Vrai si une variante de l'arc (étape ou retombée) déclare des programmes : les mesures
+    /// publient alors leur orchestration, y compris les chorus qui reviennent à celle du profil.
+    pub(crate) fn has_instruments(&self) -> bool {
+        self.stages
+            .iter()
+            .flat_map(|stage| &stage.variants)
+            .chain(&self.fall)
+            .any(|variant| variant.instruments.is_some())
+    }
+
+    /// Valide la section contre le profil ; `path` : chemin de la section dans le profil
+    /// (`arc`, ou `session.arcs.<nom>` pour un arc nommé par une variante de session).
+    pub(crate) fn validate(&self, profile: &StyleProfile, path: &str) -> Result<(), ProfileError> {
         let steps = profile.meter.steps_per_bar;
         let bars = profile.form.bars_per_tour();
         require(
             (1..=MAX_STAGES).contains(&self.stages.len()),
-            "arc.stages",
+            format!("{path}.stages"),
             "1..16 étapes requises",
         )?;
         if let Some(from) = self.repeat_from {
-            require(from < self.stages.len(), "arc.repeat_from", "étape inconnue dans arc.stages")?;
+            require(
+                from < self.stages.len(),
+                format!("{path}.repeat_from"),
+                &format!("étape inconnue dans {path}.stages"),
+            )?;
         }
         for (s, stage) in self.stages.iter().enumerate() {
-            let field = format!("arc.stages[{s}]");
+            let field = format!("{path}.stages[{s}]");
             require(
                 (1..=MAX_STAGE_CHORUSES).contains(&stage.choruses),
                 format!("{field}.choruses"),
@@ -348,7 +420,7 @@ impl ChorusArc {
             )?;
         }
         if !self.fall.is_empty() {
-            self.validate_variants(profile, &self.fall, "arc.fall", steps, bars)?;
+            self.validate_variants(profile, &self.fall, &format!("{path}.fall"), steps, bars)?;
         }
         Ok(())
     }
@@ -362,25 +434,6 @@ impl ChorusArc {
         bars: usize,
     ) -> Result<(), ProfileError> {
         require((1..=MAX_VARIANTS).contains(&variants.len()), field, "1..16 variantes requises")?;
-        let comping_tags: HashSet<&str> = profile
-            .accompaniment
-            .iter()
-            .flat_map(|a| {
-                a.chords
-                    .comping
-                    .iter()
-                    .filter_map(|motif| motif.tag.as_deref())
-                    .chain(a.chords.phrases.iter().filter_map(|phrase| phrase.tag.as_deref()))
-            })
-            .collect();
-        let percussion_tags: HashSet<&str> = profile
-            .percussion
-            .patterns
-            .iter()
-            .filter_map(|p| p.tag.as_deref())
-            .chain(profile.percussion.phrases.iter().filter_map(|p| p.tag.as_deref()))
-            .chain(profile.percussion.fills.iter().filter_map(|f| f.tag.as_deref()))
-            .collect();
         let mut total = 0u64;
         for (v, variant) in variants.iter().enumerate() {
             let field = format!("{field}[{v}]");
@@ -399,36 +452,10 @@ impl ChorusArc {
                 format!("{field}.bass_feel"),
                 "le feel de basse demande accompaniment.bass.walking",
             )?;
-            for (name, tags, known, bank) in [
-                (
-                    "comping",
-                    &variant.comping,
-                    &comping_tags,
-                    "accompaniment.chords (comping, phrases)",
-                ),
-                (
-                    "percussion",
-                    &variant.percussion,
-                    &percussion_tags,
-                    "percussion (patterns, phrases, fills)",
-                ),
-            ] {
-                require(tags.len() <= MAX_TAGS, format!("{field}.{name}"), "au plus 8 tags")?;
-                let mut seen = HashSet::new();
-                for (t, tag) in tags.iter().enumerate() {
-                    let field = format!("{field}.{name}[{t}]");
-                    require(tag.weight > 0, format!("{field}.weight"), "poids positif requis")?;
-                    require(
-                        seen.insert(tag.tag.as_str()),
-                        format!("{field}.tag"),
-                        "tag unique requis",
-                    )?;
-                    require(
-                        known.contains(tag.tag.as_str()),
-                        format!("{field}.tag"),
-                        &format!("aucun élément de {bank} ne porte ce tag"),
-                    )?;
-                }
+            validate_tags(profile, &field, "comping", &variant.comping)?;
+            validate_tags(profile, &field, "percussion", &variant.percussion)?;
+            if let Some(instruments) = &variant.instruments {
+                instruments.validate(profile, &format!("{field}.instruments"))?;
             }
             require(
                 variant.breaks.len() <= MAX_BREAKS,
@@ -478,4 +505,55 @@ impl ChorusArc {
             "somme des poids des variantes trop grande (u32)",
         )
     }
+}
+
+/// Valide les tags pondérés `tags` d'une banque (`name` : `comping` ou `percussion`) sous `field` :
+/// poids positifs, tags uniques, chacun porté par un élément de la banque du profil. Commun à
+/// l'arc et aux variantes de session.
+pub(crate) fn validate_tags(
+    profile: &StyleProfile,
+    field: &str,
+    name: &str,
+    tags: &[TagWeight],
+) -> Result<(), ProfileError> {
+    let (known, bank): (HashSet<&str>, &str) =
+        if name == "comping" {
+            (
+                profile
+                    .accompaniment
+                    .iter()
+                    .flat_map(|a| {
+                        a.chords.comping.iter().filter_map(|motif| motif.tag.as_deref()).chain(
+                            a.chords.phrases.iter().filter_map(|phrase| phrase.tag.as_deref()),
+                        )
+                    })
+                    .collect(),
+                "accompaniment.chords (comping, phrases)",
+            )
+        } else {
+            (
+                profile
+                    .percussion
+                    .patterns
+                    .iter()
+                    .filter_map(|p| p.tag.as_deref())
+                    .chain(profile.percussion.phrases.iter().filter_map(|p| p.tag.as_deref()))
+                    .chain(profile.percussion.fills.iter().filter_map(|f| f.tag.as_deref()))
+                    .collect(),
+                "percussion (patterns, phrases, fills)",
+            )
+        };
+    require(tags.len() <= MAX_TAGS, format!("{field}.{name}"), "au plus 8 tags")?;
+    let mut seen = HashSet::new();
+    for (t, tag) in tags.iter().enumerate() {
+        let field = format!("{field}.{name}[{t}]");
+        require(tag.weight > 0, format!("{field}.weight"), "poids positif requis")?;
+        require(seen.insert(tag.tag.as_str()), format!("{field}.tag"), "tag unique requis")?;
+        require(
+            known.contains(tag.tag.as_str()),
+            format!("{field}.tag"),
+            &format!("aucun élément de {bank} ne porte ce tag"),
+        )?;
+    }
+    Ok(())
 }

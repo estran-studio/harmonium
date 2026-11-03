@@ -689,6 +689,11 @@ pub struct StyleProfile {
     /// tous les chorus se jouent pareil.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arc: Option<crate::compose::ChorusArc>,
+    /// Habillage par graine (`[session]`, ou `session.toml` via `[files]`) : variantes pondérées
+    /// tirées une fois par graine de session, qui surchargent des réglages globaux nommés, et
+    /// arcs nommés qu'elles peuvent choisir. Absent : la graine ne change pas l'habillage.
+    #[serde(default, skip_serializing_if = "crate::compose::ProfileSession::is_empty")]
+    pub session: crate::compose::ProfileSession,
 }
 impl StyleProfile {
     /// Vrai si la ligne mélodique se compose mesure par mesure sur tous les tours (reprises
@@ -897,6 +902,7 @@ impl StyleProfile {
                     "dynamics" => "dynamics",
                     "set" => "set",
                     "arc" => "arc",
+                    "session" => "session",
                     _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
                 };
                 let name = filename
@@ -1508,96 +1514,7 @@ impl StyleProfile {
         )?;
         check(i.percussion_bank <= 255, "instruments.percussion_bank", "banque SF2 dans 0..255")?;
         for (track, spec) in &self.odin {
-            let track_name = track.name();
-            check(
-                self.instruments.program(*track).is_some(),
-                &format!("odin.{track_name}"),
-                "programme SoundFont requis (rendu sans `odin`)",
-            )?;
-            check(
-                (1..=crate::odin::ODIN_MAX_ZONES).contains(&spec.zones.len()),
-                &format!("odin.{track_name}.zones"),
-                "1 à 4 zones requises, dont le défaut final",
-            )?;
-            for (index, zone) in spec.zones.iter().enumerate() {
-                let field = format!("odin.{track_name}.zones[{index}]");
-                check(
-                    zone.when.is_none() == (index + 1 == spec.zones.len()),
-                    &format!("{field}.when"),
-                    "seule la dernière zone doit être sans when (défaut obligatoire)",
-                )?;
-                if let Some(when) = zone.when {
-                    let axes = [
-                        ("arousal", when.arousal, 0.0),
-                        ("valence", when.valence, -1.0),
-                        ("density", when.density, 0.0),
-                        ("tension", when.tension, 0.0),
-                    ];
-                    check(
-                        axes.iter().any(|(_, bounds, _)| bounds.is_some()),
-                        &format!("{field}.when"),
-                        "when doit borner au moins un axe émotionnel",
-                    )?;
-                    for (axis, bounds, floor) in axes {
-                        if let Some([min, max]) = bounds {
-                            check(
-                                min.is_finite()
-                                    && max.is_finite()
-                                    && floor <= min
-                                    && min <= max
-                                    && max <= 1.0,
-                                &format!("{field}.when.{axis}"),
-                                &format!("bornes finies inclusives ordonnées dans {floor}..1"),
-                            )?;
-                        }
-                    }
-                }
-                check(
-                    !zone.preset.is_empty()
-                        && zone.preset.len() <= crate::odin::ODIN_PRESET_NAME_CAP,
-                    &format!("{field}.preset"),
-                    "nom de preset non vide de 64 octets au plus",
-                )?;
-                check(
-                    !zone.preset.contains('/') && !zone.preset.contains('\\'),
-                    &format!("{field}.preset"),
-                    "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)",
-                )?;
-                check(
-                    zone.level_db.is_finite() && (-60.0..=12.0).contains(&zone.level_db),
-                    &format!("{field}.level_db"),
-                    "niveau de zone fini dans -60..12 dB",
-                )?;
-                check(
-                    zone.glide_ms.is_finite()
-                        && (zone.glide_ms == 0.0 || (40.0..=500.0).contains(&zone.glide_ms)),
-                    &format!("{field}.glide_ms"),
-                    "temps nominal de glissando fini : 0 (désactivé) ou 40..500 ms",
-                )?;
-                check(
-                    (-24..=24).contains(&zone.transpose),
-                    &format!("{field}.transpose"),
-                    "transposition du preset dans -24..24 demi-tons",
-                )?;
-                check(
-                    zone.morph.len() <= crate::odin::ODIN_MAX_RULES,
-                    &format!("{field}.morph"),
-                    &format!("au plus {} règles par zone", crate::odin::ODIN_MAX_RULES),
-                )?;
-                let mut seen = [false; crate::odin::OdinMorphParam::COUNT];
-                for rule in &zone.morph {
-                    let slot = rule.param.index();
-                    check(!seen[slot], &format!("{field}.morph"), "paramètre unique par zone")?;
-                    seen[slot] = true;
-                    check(
-                        [rule.arousal, rule.valence, rule.density, rule.tension]
-                            .iter()
-                            .all(|gain| gain.is_finite()),
-                        &format!("{field}.morph"),
-                        "gains de morphing finis",
-                    )?;
-                }
-            }
+            self.validate_odin_spec(*track, spec, &format!("odin.{}", track.name()))?;
         }
         self.arrangement.validate().map_err(|error| {
             use crate::compose::ArrangementError as E;
@@ -1665,7 +1582,109 @@ impl StyleProfile {
             ProfileError::new(format!("dynamics.{field}"), &error)
         })?;
         if let Some(arc) = &self.arc {
-            arc.validate(self)?;
+            arc.validate(self, "arc")?;
+        }
+        self.session.validate(self)?;
+        Ok(())
+    }
+}
+
+impl StyleProfile {
+    /// Valide la spécification Odin de `track` ; `path` : chemin de la spécification dans le
+    /// profil (`odin.Bass`, ou `session.variants[2].odin.Bass`).
+    pub(crate) fn validate_odin_spec(
+        &self,
+        track: TrackId,
+        spec: &crate::odin::OdinTrackSpec,
+        path: &str,
+    ) -> Result<(), ProfileError> {
+        check(
+            self.instruments.program(track).is_some(),
+            path,
+            "programme SoundFont requis (rendu sans `odin`)",
+        )?;
+        check(
+            (1..=crate::odin::ODIN_MAX_ZONES).contains(&spec.zones.len()),
+            &format!("{path}.zones"),
+            "1 à 4 zones requises, dont le défaut final",
+        )?;
+        for (index, zone) in spec.zones.iter().enumerate() {
+            let field = format!("{path}.zones[{index}]");
+            check(
+                zone.when.is_none() == (index + 1 == spec.zones.len()),
+                &format!("{field}.when"),
+                "seule la dernière zone doit être sans when (défaut obligatoire)",
+            )?;
+            if let Some(when) = zone.when {
+                let axes = [
+                    ("arousal", when.arousal, 0.0),
+                    ("valence", when.valence, -1.0),
+                    ("density", when.density, 0.0),
+                    ("tension", when.tension, 0.0),
+                ];
+                check(
+                    axes.iter().any(|(_, bounds, _)| bounds.is_some()),
+                    &format!("{field}.when"),
+                    "when doit borner au moins un axe émotionnel",
+                )?;
+                for (axis, bounds, floor) in axes {
+                    if let Some([min, max]) = bounds {
+                        check(
+                            min.is_finite()
+                                && max.is_finite()
+                                && floor <= min
+                                && min <= max
+                                && max <= 1.0,
+                            &format!("{field}.when.{axis}"),
+                            &format!("bornes finies inclusives ordonnées dans {floor}..1"),
+                        )?;
+                    }
+                }
+            }
+            check(
+                !zone.preset.is_empty() && zone.preset.len() <= crate::odin::ODIN_PRESET_NAME_CAP,
+                &format!("{field}.preset"),
+                "nom de preset non vide de 64 octets au plus",
+            )?;
+            check(
+                !zone.preset.contains('/') && !zone.preset.contains('\\'),
+                &format!("{field}.preset"),
+                "nom de preset sans chemin (`<nom>.odin` fourni par l'hôte)",
+            )?;
+            check(
+                zone.level_db.is_finite() && (-60.0..=12.0).contains(&zone.level_db),
+                &format!("{field}.level_db"),
+                "niveau de zone fini dans -60..12 dB",
+            )?;
+            check(
+                zone.glide_ms.is_finite()
+                    && (zone.glide_ms == 0.0 || (40.0..=500.0).contains(&zone.glide_ms)),
+                &format!("{field}.glide_ms"),
+                "temps nominal de glissando fini : 0 (désactivé) ou 40..500 ms",
+            )?;
+            check(
+                (-24..=24).contains(&zone.transpose),
+                &format!("{field}.transpose"),
+                "transposition du preset dans -24..24 demi-tons",
+            )?;
+            check(
+                zone.morph.len() <= crate::odin::ODIN_MAX_RULES,
+                &format!("{field}.morph"),
+                &format!("au plus {} règles par zone", crate::odin::ODIN_MAX_RULES),
+            )?;
+            let mut seen = [false; crate::odin::OdinMorphParam::COUNT];
+            for rule in &zone.morph {
+                let slot = rule.param.index();
+                check(!seen[slot], &format!("{field}.morph"), "paramètre unique par zone")?;
+                seen[slot] = true;
+                check(
+                    [rule.arousal, rule.valence, rule.density, rule.tension]
+                        .iter()
+                        .all(|gain| gain.is_finite()),
+                    &format!("{field}.morph"),
+                    "gains de morphing finis",
+                )?;
+            }
         }
         Ok(())
     }
