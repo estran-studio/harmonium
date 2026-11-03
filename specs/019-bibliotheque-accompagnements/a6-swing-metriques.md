@@ -92,6 +92,9 @@ sans `performance`, aucun décalage de batterie.
 | `TUNING_VERSION`, goldens | inchangés |
 | Clippy | 867 avertissements, comme `main` (comptes par fichier identiques) |
 | `cargo fmt --check` | propre |
+| `cargo test --workspace -q --no-fail-fast` | 107 suites, **885 réussis, 2 ignorés, 0 échec** |
+| `cargo test -p harmonium --features odin` ; `cargo test -p harmonium_bevy` ; `cargo check -p harmonium_studio` | 151 réussis ; 11 réussis ; compile |
+| Crates moteur en `wasm32-unknown-unknown` (`harmonium_core`, `harmonium`, `harmonium_audio`) | compilent (l'entier `1 << 40` d'un premier jet débordait sur `usize` 32 bits : corrigé en `u64`) |
 | `seek_to_bar_64_under_50ms` | minimum sur 20 graines : 23,2–23,3 ms sur la branche, 23,2–24,5 ms sur `main` (la médiane bouge avec la charge de la machine) |
 
 Mutations vérifiées (chacune fait échouer au moins un test de `swing_metriques_tests`) : remappage par piste
