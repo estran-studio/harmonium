@@ -39,8 +39,8 @@ Le studio est l'outil pour essayer le moteur à l'oreille et à l'œil : choisir
 émotions, voir les notes publiées et entendre le résultat à la mesure suivante.
 
 ```bash
-make studio STUDIO_ODIN=assets/odin   # natif ; recompile, donc embarque les profils de profiles/ tels quels
-make studio/web/serve STUDIO_ODIN=assets/odin   # web sur http://127.0.0.1:8787 (trunk requis)
+make studio   # natif ; recompile, donc embarque les profils de profiles/ tels quels
+make studio/web/serve   # web sur http://127.0.0.1:8787 (trunk requis)
 ```
 
 Version publique : <https://harmonium-website.pages.dev/> (page d'accueil) et
@@ -48,9 +48,10 @@ Version publique : <https://harmonium-website.pages.dev/> (page d'accueil) et
 
 - **Banques** : `assets/GeneralUser-GS.sf2` (`make soundfont`) et `assets/harmonium_trad.sf2` (percussion) ;
   `STUDIO_BANKS` change le dossier. **Presets Odin** : `STUDIO_ODIN` désigne un dossier de `*.odin` à plat
-  (nom du preset = nom du fichier). Sans lui, les pistes Odin des profils (Isaac, `nt_desert`) jouent leur
-  programme SoundFont, avec un avertissement au démarrage. `assets/odin/` est local et non versionné : des
-  liens vers les presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`).
+  (nom du preset = nom du fichier) ; par défaut `assets/odin/` quand il existe (`STUDIO_ODIN=` pour s'en
+  passer). Sans presets, les pistes Odin des profils (Isaac, `nt_desert`) jouent leur programme SoundFont,
+  avec un avertissement au démarrage. `assets/odin/` est local et non versionné : des liens vers les
+  presets d'usine d'Odin 2 (`Soundbanks/Factory Presets/`).
 - **Écran Live** :
   - en haut : style, graine, lecture, enregistrement ;
   - à gauche : émotions (pavé valence × arousal, densité, tension), mode direct, percussion, tempo, swing,

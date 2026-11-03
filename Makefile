@@ -43,8 +43,9 @@ run/debug:
 
 ## Dossier des banques (hors git) : par défaut `assets/` du checkout principal, aussi depuis un worktree.
 STUDIO_BANKS ?= $(shell dirname "$$(git rev-parse --path-format=absolute --git-common-dir)")/assets
-## Dossier de presets Odin (`*.odin`) ; vide : aucun.
-STUDIO_ODIN ?=
+## Dossier de presets Odin (`*.odin`) : `assets/odin` du checkout principal s'il existe (local, non versionné),
+## pour que les profils de jeu ouverts par un lien sonnent avec leurs presets ; vide : aucun.
+STUDIO_ODIN ?= $(wildcard $(STUDIO_BANKS)/odin)
 STUDIO_RESOURCES := harmonium_studio/resources
 
 ## Copie les banques en fichiers à empreinte dans harmonium_studio/resources, avec assets.json
