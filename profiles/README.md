@@ -836,8 +836,44 @@ avec une attaque toutes les deux pulsations (temps 1 et 3 en 4/4) et à chaque c
 d'accord. L'arrivée est celle de la marche ; l'attaque suivante dans l'étendue de l'accord est
 l'approche de la cible suivante (tirage `approach`, sinon une note de passage qui la rend
 atteignable), tenue jusqu'à l'attaque d'après. Les poids de `[accompaniment.bass.walking]` sont
-ceux de la marche ; les enrichissements (notes répétées, croches, chromatisme, autres arrivées)
-ne sont pas exprimables aujourd'hui.
+ceux de la marche.
+
+#### Basse plus riche (phase 019, A4)
+
+Six options **absentes par défaut** (aucune n'ajoute de tirage à la ligne tant qu'elle n'est pas
+déclarée : un profil sans elles garde ses notes), toutes dans `[accompaniment.bass.walking]`. Les
+poids sont des `u32` ; une somme nulle est refusée. Fixture : `tests/fixtures/profiles/grille_basse_voicings/`.
+
+```toml
+approach = { none_weight = 70, chromatic_weight = 10, diatonic_weight = 6, side = { from_weight = 50, other_weight = 15, above_weight = 35 } }
+passing  = { chord_tone_weight = 40, scale_step_weight = 60, chromatic_weight = 30, repeat_weight = 40 }
+arrival  = { root_weight = 63, third_weight = 12, fifth_weight = 12, seventh_weight = 13 }
+eighths  = { none_weight = 84, chromatic_weight = 3, diatonic_weight = 3, ghost_weight = 10, velocity = 58, ghost_velocity = 34 }
+two_feel = { passing_weight = 1, fifth_weight = 2 }
+```
+
+| Option | Effet |
+|---|---|
+| `approach.side` | côté de l'approche, tiré à chaque approche : `from_weight` (côté de l'arrivée précédente, règle historique), `other_weight` (côté opposé), `above_weight` (au-dessus de la cible), `below_weight` (dessous). La fenêtre de marche qui n'offre pas le côté tiré laisse l'autre côté |
+| `passing.chromatic_weight` | chromatisme de passage : un demi-ton de la note précédente, hors de la gamme du mode et de l'accord ; genre de note tiré à côté des notes d'accord et des pas de gamme |
+| `passing.repeat_weight` | note répétée : la note précédente rejouée (au passage seulement, jamais à l'arrivée ni à l'approche) |
+| `arrival` | l'arrivée (changement d'accord, premier temps) joue la tierce, la quinte ou la septième de l'accord au lieu de sa basse. **Jamais la grille contredite (D4)** : un accord slash, une pédale ou un accord sans le degré tiré gardent la basse publiée ; la note reste une note de l'accord publié, dans `low..high`. Tirée avec la graine de la mesure et le rang de la pulsation, **indépendamment** du reste de la ligne : la mesure précédente retrouve l'arrivée de la suivante (graine de la mesure suivante) pour y mener son approche |
+| `eighths` | après la note d'une pulsation dont la suivante tombe à la pulsation suivante (feel de marche ; pas au deux temps), une **croche de passage** (approche chromatique ou diatonique de la note suivante, vélocité `velocity`) ou une **note fantôme** (même hauteur, `ghost_velocity`), à la demi-pulsation ; la note de la pulsation est alors coupée à la demi-pulsation. Pas d'ajout après une approche. Demande `meter.steps_per_pulse` pair. Ne change aucune note de pulsation (test de contrat) |
+| `two_feel` | feel à deux temps : la deuxième attaque d'une étendue d'accord qui n'est pas une approche est la **quinte** de l'accord (la plus proche de la note précédente) avec `fifth_weight`, une note de passage avec `passing_weight` |
+
+Calibrage (`make backing-validate` du labo, `grille_arc_chorus` avant, `grille_basse_voicings` après,
+blues de douze mesures sans arc, 88 mesures par graine, 16 graines inconnues 11 à 26) : distance
+agrégée à WJazzD swing **0,224 → 0,133** (blues 0,217 → 0,133) ; chromatisme de passage 28 % (WJazzD
+27 %), notes répétées 20 % (20 %), arrivée sur la basse 64 % (63 % du groupe `reliable`, 41 % de `all`).
+Les **croches de basse n'ont pas de source** (WJazzD ne note que la hauteur par temps, L2 § 6
+point 8) : leurs poids sont de métier (7 à 8 % de notes hors pulsation, dont trois quarts de
+fantômes). Détail : `specs/019-bibliotheque-accompagnements/a4-a5-basse-voicings.md`.
+
+**Gabarits non swing.** `accompaniment.bass.templates` (« Basse par gabarits ») exprime déjà
+fondamentale-octave (`cycle = [{ degree = "root" }, { degree = "root", octave = 1 }]` sur huit
+croches), fondamentale-quinte en croches (`cycle = [{ degree = "root" }, { degree = "fifth" }]`) et
+les motifs syncopés (`rhythm` à pas libres) ; rien n'est ajouté au moteur (test de contrat
+`les_gabarits_expriment_octave_quinte_en_croches_et_motifs_syncopes`).
 
 ### Accords grattés
 
@@ -911,6 +947,39 @@ serrés.
 | `rootless` | quatre sons sans la fondamentale, **type A** (tierce en bas : tierce, quinte, septième, tension) ou **type B** (septième en bas : septième, tension, tierce, quinte), la conduite de voix choisit celui qui bouge le moins. Sans tension dans la qualité, la pile se prolonge à l'octave supérieure (tierce, quinte, septième, tierce). Triades : type A seulement |
 | `rootless_a`, `rootless_b` | un seul type (B retombe sur A pour une triade) |
 | `drop2` | quatre sons en position serrée dont la deuxième voix depuis l'aigu descend d'une octave ; une triade double sa fondamentale |
+| `drop3` | quatre sons en position serrée dont la troisième voix depuis l'aigu descend d'une octave (ambitus de 17 à 19 demi-tons sur un accord de septième) |
+| `fourths` | quartes justes empilées (*So What*) : quatre sons, trois quartes d'écart, dans les sons de l'accord (type, tensions publiées) et des tensions naturelles que sa qualité permet ; la pile garde la tierce ou la septième. Fa 7 : tierce, treizième, neuvième, quinte ; sol m 7 : quinte, fondamentale, onzième, septième. Sans pile pour la qualité (triade, diminué), retombe sur `rootless` |
+| `upper_structure` | structure supérieure : une triade majeure ou mineure bâtie sur un degré autre que la fondamentale (la basse porte la fondamentale), dans tous ses renversements ; ses trois sons sont ceux de l'accord et de la tension de couleur, et elle garde la tierce ou la septième (ex. sol m sur do 7 avec la neuvième, mi m sur do maj7). Sans structure pour la qualité (do 7 sans tension), retombe sur `rootless` |
+| `shell` | *shell* à deux voix : la tierce et la septième (sixte, quinte d'une triade), dans les deux dispositions |
+| `open` | *spread* : drop 2 et 4 de la position serrée, quatre sons sur plus d'une octave (ambitus de 20 à 22 demi-tons sur un accord de septième) |
+
+**Tension de couleur tirée par graine** (`chords.color`, absente par défaut : la tension historique,
+9, 13, #11, b9, #9, b13, 11 par priorité). Par accord joué, un tirage pondéré avec la graine de la
+mesure et le créneau d'accord :
+
+```toml
+color = { none_weight = 2, published_weight = 2, ninth_weight = 3, eleventh_weight = 1, thirteenth_weight = 3 }
+register_drift = { step = 2, max = 6 }
+```
+
+`none` : aucune tension ; `published` : la tension publiée par la qualité (priorité historique) ;
+`ninth`, `eleventh`, `thirteenth` : une tension naturelle que la qualité permet **sans la publier**.
+Elle n'est tirée que si le tableau de métier de `voicing.rs` l'autorise pour le type (9 et 13 sur
+majeur, maj7, 7 et 7sus4 ; 9 et 11 sur mineur et m7 ; 9 sur 6, m6 et mMaj7 ; rien sur m7b5, dim7,
+augmenté, sus2, altéré), si aucun son de l'accord (type et tensions publiées) ne la double ni
+ne l'altère (b9 ou #9 pour la 9, #11 pour la 11, b13 pour la 13) et si elle ne tombe pas **un demi-ton
+au-dessus d'un son de l'accord** (note à éviter : 11 sur une tierce majeure, 13 sur une quinte
+augmentée). **Jamais en conflit avec la grille (D4)** ; un poids inéligible vaut 0 ; sans poids
+éligible, la tension historique (pédale comprise). Valable pour `guide_tones`, `rootless*`, `drop2`,
+`drop3`, `open` (la tension remplace les tensions publiées dans la pile) et `upper_structure`
+(les sons permis de la triade) ; `fourths` préfère les piles qui portent la tension tirée ;
+`shell` n'a pas de tension.
+
+**Dérive de registre** (`chords.register_drift`, absente par défaut) : à chaque mesure, le centre
+des voicings se déplace de `step` demi-tons au plus (haut, bas ou rien, tiré par graine) sans jamais
+s'éloigner de plus de `max` demi-tons de `center` (`step` 1..12, `max` `step`..24). Il repart de
+zéro au début de chaque passe de partie, d'où le rejeu à l'identique après un seek (les voicings
+sont rejoués depuis ce point). Le choix suit la même conduite de voix et la même fenêtre `low..high`.
 
 Les voicings jazz se placent dans la fenêtre `low..high` (au moins douze demi-tons) :
 de tous les renversements et de toutes les octaves, le voicing retenu est, dans l'ordre,

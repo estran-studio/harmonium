@@ -212,6 +212,15 @@ pub struct BassWalking {
     pub keep_direction_weight: u32,
     pub approach: WalkingApproach,
     pub passing: WalkingPassing,
+    /// Arrivée sur une autre note de l'accord que sa basse publiée (tierce, quinte, septième).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arrival: Option<WalkingArrival>,
+    /// Croches de passage et notes fantômes entre deux pulsations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eighths: Option<WalkingEighths>,
+    /// Deuxième attaque du feel à deux temps : la quinte plutôt qu'une note de passage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub two_feel: Option<WalkingTwoFeel>,
 }
 
 const fn default_toward_target_weight() -> u32 {
@@ -222,8 +231,9 @@ const fn default_keep_direction_weight() -> u32 {
     2
 }
 
-/// Poids de l'approche de la pulsation qui précède une arrivée. L'approche se pose du côté de
-/// la note d'arrivée précédente : au-dessus de la cible si la ligne part plus haut, sinon dessous.
+/// Poids de l'approche de la pulsation qui précède une arrivée. Sans `side`, l'approche se pose
+/// du côté de la note d'arrivée précédente : au-dessus de la cible si la ligne part plus haut,
+/// sinon dessous.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WalkingApproach {
@@ -236,6 +246,33 @@ pub struct WalkingApproach {
     /// La note de la gamme du mode voisine de la cible.
     #[serde(default)]
     pub diatonic_weight: u32,
+    /// Côté de l'approche, tiré à chaque approche.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side: Option<ApproachSide>,
+}
+
+/// Côté de l'approche d'une cible : poids de quatre manières de le choisir. Le côté retenu est
+/// essayé d'abord ; la fenêtre de marche qui ne l'offre pas laisse l'autre côté.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ApproachSide {
+    /// Côté de l'arrivée précédente (au-dessus de la cible si la ligne part plus haut) : la règle
+    /// historique.
+    #[serde(default)]
+    pub from_weight: u32,
+    /// Côté opposé à l'arrivée précédente.
+    #[serde(default)]
+    pub other_weight: u32,
+    /// Toujours au-dessus de la cible.
+    #[serde(default)]
+    pub above_weight: u32,
+    /// Toujours sous la cible.
+    #[serde(default)]
+    pub below_weight: u32,
+}
+
+fn is_zero(value: &u32) -> bool {
+    *value == 0
 }
 
 /// Poids des notes de passage entre l'arrivée et l'approche.
@@ -248,6 +285,68 @@ pub struct WalkingPassing {
     /// Note de la gamme du mode, à un pas diatonique de la note précédente.
     #[serde(default)]
     pub scale_step_weight: u32,
+    /// Chromatisme de passage : un demi-ton de la note précédente, hors de la gamme du mode et
+    /// de l'accord.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub chromatic_weight: u32,
+    /// Note répétée : la note précédente rejouée.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub repeat_weight: u32,
+}
+
+/// Arrivée sur une note de l'accord : poids de la basse publiée (la fondamentale, ou la basse
+/// d'un accord slash) et des autres degrés, tirés par arrivée (changement d'accord et premier
+/// temps). Un accord slash, une pédale ou un accord sans le degré demandé gardent la basse
+/// publiée : la grille de l'utilisateur n'est jamais contredite (D4). La note choisie est
+/// celle de l'arrivée et de l'approche qui la précède, d'une mesure à l'autre.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingArrival {
+    /// La basse de l'accord.
+    #[serde(default)]
+    pub root_weight: u32,
+    #[serde(default)]
+    pub third_weight: u32,
+    #[serde(default)]
+    pub fifth_weight: u32,
+    #[serde(default)]
+    pub seventh_weight: u32,
+}
+
+/// Croches entre deux pulsations de la marche : une pulsation peut recevoir, après sa note, une
+/// croche de passage (approche de la note suivante, au demi-ton ou à la gamme) ou une note
+/// fantôme (la même hauteur, légère). Seulement quand la note suivante tombe à la pulsation
+/// suivante (feel de marche) et que la pulsation a un nombre pair de pas.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingEighths {
+    /// Pulsation sans croche.
+    #[serde(default)]
+    pub none_weight: u32,
+    /// Croche de passage : approche chromatique de la note suivante.
+    #[serde(default)]
+    pub chromatic_weight: u32,
+    /// Croche de passage : approche par la gamme du mode.
+    #[serde(default)]
+    pub diatonic_weight: u32,
+    /// Note fantôme.
+    #[serde(default)]
+    pub ghost_weight: u32,
+    /// Vélocité d'une croche de passage.
+    pub velocity: u8,
+    /// Vélocité d'une note fantôme.
+    pub ghost_velocity: u8,
+}
+
+/// Feel à deux temps : poids de la quinte de l'accord (fondamentale-quinte) contre une note de
+/// passage ordinaire à la deuxième attaque d'une étendue d'accord qui n'est pas une approche.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingTwoFeel {
+    #[serde(default)]
+    pub passing_weight: u32,
+    #[serde(default)]
+    pub fifth_weight: u32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -364,6 +463,47 @@ pub struct ChordVoice {
     pub low: u8,
     #[serde(default = "fixed_high")]
     pub high: u8,
+    /// Tension de couleur tirée par graine parmi celles que la qualité permet ; sans cette
+    /// section, la tension de la qualité qui passe en premier selon la priorité historique.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<ColorTensions>,
+    /// Dérive du registre d'une mesure à l'autre, bornée autour de `center`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub register_drift: Option<RegisterDrift>,
+}
+
+/// Poids de la tension de couleur d'un accord, tirée par graine (mesure et créneau d'accord) :
+/// `none` : aucune tension ; `published` : une tension de la qualité publiée (priorité 9, 13, #11,
+/// b9, #9, b13, 11) ; 9, 11 et 13 : une tension naturelle que la qualité permet **sans la
+/// publier**. Une tension naturelle n'est tirée que si la qualité l'autorise (tableau de
+/// `voicing.rs`), si elle ne double pas un son de l'accord, si la qualité n'altère pas déjà ce
+/// degré (b9 ou #9 pour la 9, #11 pour la 11, b13 pour la 13) et si elle ne tombe pas un demi-ton
+/// au-dessus d'un son de l'accord (note à éviter) : jamais en conflit avec la grille (D4). Un
+/// poids inéligible vaut 0 ; sans poids éligible, la tension historique.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorTensions {
+    #[serde(default)]
+    pub none_weight: u32,
+    #[serde(default)]
+    pub published_weight: u32,
+    #[serde(default)]
+    pub ninth_weight: u32,
+    #[serde(default)]
+    pub eleventh_weight: u32,
+    #[serde(default)]
+    pub thirteenth_weight: u32,
+}
+
+/// Dérive du registre : à chaque mesure, le centre des voicings se déplace de `step` demi-tons au
+/// plus (haut, bas ou rien, tiré par graine) sans jamais s'éloigner de plus de `max` demi-tons de
+/// `center`. La dérive repart de zéro au début de chaque passe de partie (les voicings sont
+/// rejoués depuis ce point, d'où le rejeu à l'identique après un seek).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterDrift {
+    pub step: u8,
+    pub max: u8,
 }
 
 fn triad_note_count() -> u8 {
@@ -394,6 +534,20 @@ pub enum ChordVoicing {
     RootlessB,
     /// Quatre sons en position serrée dont la deuxième voix depuis l'aigu descend d'une octave.
     Drop2,
+    /// Quatre sons en position serrée dont la troisième voix depuis l'aigu descend d'une octave.
+    Drop3,
+    /// Quartes justes empilées (*So What*) : quatre sons, une pile de quartes dans les sons de
+    /// la qualité qui garde sa tierce ou sa septième.
+    Fourths,
+    /// Structure supérieure : une triade (majeure ou mineure) bâtie sur un degré de la qualité,
+    /// que la basse porte ; les sons de la triade sont ceux de la qualité et de sa tension de
+    /// couleur.
+    UpperStructure,
+    /// *Shell* à deux voix : la tierce et la septième (ou sixte, quinte d'une triade).
+    Shell,
+    /// *Spread* : position serrée à quatre sons dont les deuxième et quatrième voix depuis
+    /// l'aigu descendent d'une octave (drop 2 et 4).
+    Open,
 }
 
 impl ChordVoicing {
@@ -756,12 +910,67 @@ impl BassWalking {
             format!("{field}.approach"),
             "somme des poids positive requise",
         )?;
+        if let Some(side) = &approach.side {
+            require(
+                u64::from(side.from_weight)
+                    + u64::from(side.other_weight)
+                    + u64::from(side.above_weight)
+                    + u64::from(side.below_weight)
+                    > 0,
+                format!("{field}.approach.side"),
+                "somme des poids positive requise",
+            )?;
+        }
         let passing = &self.passing;
         require(
             u64::from(passing.chord_tone_weight) + u64::from(passing.scale_step_weight) > 0,
             format!("{field}.passing"),
-            "somme des poids positive requise",
-        )
+            "somme des poids positive requise (note de l'accord ou pas de gamme)",
+        )?;
+        if let Some(arrival) = &self.arrival {
+            require(
+                u64::from(arrival.root_weight)
+                    + u64::from(arrival.third_weight)
+                    + u64::from(arrival.fifth_weight)
+                    + u64::from(arrival.seventh_weight)
+                    > 0,
+                format!("{field}.arrival"),
+                "somme des poids positive requise",
+            )?;
+        }
+        if let Some(eighths) = &self.eighths {
+            require(
+                steps_per_pulse.is_multiple_of(2),
+                format!("{field}.eighths"),
+                "une croche demande un nombre pair de pas par pulsation",
+            )?;
+            require(
+                u64::from(eighths.none_weight)
+                    + u64::from(eighths.chromatic_weight)
+                    + u64::from(eighths.diatonic_weight)
+                    + u64::from(eighths.ghost_weight)
+                    > 0,
+                format!("{field}.eighths"),
+                "somme des poids positive requise",
+            )?;
+            for (name, velocity) in
+                [("velocity", eighths.velocity), ("ghost_velocity", eighths.ghost_velocity)]
+            {
+                require(
+                    (1..=127).contains(&velocity),
+                    format!("{field}.eighths.{name}"),
+                    "vélocité dans 1..127 requise",
+                )?;
+            }
+        }
+        if let Some(two_feel) = &self.two_feel {
+            require(
+                u64::from(two_feel.passing_weight) + u64::from(two_feel.fifth_weight) > 0,
+                format!("{field}.two_feel"),
+                "somme des poids positive requise",
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -1223,6 +1432,25 @@ impl AccompanimentParams {
         )?;
         if let Some(spread) = &c.spread {
             spread.validate(c.note_count)?;
+        }
+        if let Some(color) = &c.color {
+            require(
+                u64::from(color.none_weight)
+                    + u64::from(color.published_weight)
+                    + u64::from(color.ninth_weight)
+                    + u64::from(color.eleventh_weight)
+                    + u64::from(color.thirteenth_weight)
+                    > 0,
+                "accompaniment.chords.color",
+                "somme des poids positive requise",
+            )?;
+        }
+        if let Some(drift) = &c.register_drift {
+            require(
+                (1..=12).contains(&drift.step) && (drift.step..=24).contains(&drift.max),
+                "accompaniment.chords.register_drift",
+                "step dans 1..12 et max dans step..24 requis",
+            )?;
         }
         require(
             c.default_pattern < c.patterns.len(),

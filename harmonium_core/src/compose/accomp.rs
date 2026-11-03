@@ -3,6 +3,8 @@
 //! anticipées et alternance fondamentale/quinte de la basse. La marche de basse est dans
 //! `walking`.
 
+use rand::SeedableRng;
+
 use super::{
     accomp_profile::{
         BassCandidate, BassDegree, BassDoubling, BassMotifNote, BassReference, BassSource,
@@ -501,25 +503,52 @@ fn close_voicings(
 #[derive(Clone, Debug, Default)]
 pub struct ChordPlayer {
     previous: Option<Voicing>,
+    /// Décalage du registre en demi-tons (`accompaniment.chords.register_drift`), nul au départ.
+    drift: i16,
 }
 
 impl ChordPlayer {
     #[must_use]
     pub const fn new() -> Self {
-        Self { previous: None }
+        Self { previous: None, drift: 0 }
+    }
+
+    /// Déplace le centre du registre pour la mesure de graine `seed` : un pas vers le haut, vers
+    /// le bas ou rien, sans jamais dépasser `max` demi-tons autour de `center`.
+    fn drift_bar(&mut self, params: &AccompanimentParams, seed: u64) {
+        let Some(drift) = params.chords.register_drift else {
+            return;
+        };
+        let mut rng =
+            rand_chacha::ChaCha8Rng::seed_from_u64(crate::ornaments::mix(seed, 0x4452_4654));
+        let step = i16::from(drift.step);
+        let moved = match rng.next_range_u64(0..3) {
+            0 => -step,
+            1 => 0,
+            _ => step,
+        };
+        let max = i16::from(drift.max);
+        self.drift = (self.drift + moved).clamp(-max, max);
     }
 
     /// Voicing le plus proche du précédent (ou du centre du profil au premier
     /// accord), dans la limite de dérive autorisée. Un voicing jazz reste dans la fenêtre
-    /// `low..=high` quand un candidat y tient, sinon sort le moins possible.
+    /// `low..=high` quand un candidat y tient, sinon sort le moins possible. `color_seed` tire
+    /// la tension de couleur (`accompaniment.chords.color`).
     fn voice(
         &mut self,
         chord: DegreeChord,
         key: PitchClass,
         mode: Mode,
         params: &AccompanimentParams,
+        color_seed: u64,
     ) -> Option<Voicing> {
-        let candidates = match voicing::candidates(chord, key, mode, params.chords.voicing) {
+        let color = params
+            .chords
+            .color
+            .as_ref()
+            .map_or(voicing::Color::Priority, |c| voicing::draw_color(chord, c, color_seed));
+        let candidates = match voicing::candidates(chord, key, mode, params.chords.voicing, color) {
             Some(comping) => Candidates::Comping(comping),
             None => Candidates::Close(close_voicings(chord, key, mode).filter(|v| {
                 // Le doublage des voix supplémentaires ne concerne que les triades.
@@ -529,6 +558,7 @@ impl ChordPlayer {
             })),
         };
         let windowed = matches!(candidates, Candidates::Comping(_));
+        let center = i32::from(params.chords.center) + i32::from(self.drift);
         let best = if params.chords.voicing == ChordVoicing::FixedTriad {
             candidates
                 .filter(|v| v[0] >= params.chords.low && v[v.len() - 1] <= params.chords.high)
@@ -536,7 +566,7 @@ impl ChordPlayer {
         } else {
             candidates.min_by_key(|v| {
                 let count = v.len() as i32;
-                let center_sum = count * i32::from(params.chords.center);
+                let center_sum = count * center;
                 let max_drift_sum = count * i32::from(params.chords.max_drift);
                 let sum: i32 = v.iter().map(|&n| i32::from(n)).sum();
                 let center_dist = (sum - center_sum).abs();
@@ -598,12 +628,17 @@ impl ChordPlayer {
         next_id: &mut impl FnMut() -> NoteId,
     ) -> Vec<TimelineNote> {
         let voice = &params.chords;
+        self.drift_bar(params, seed);
         let mut notes = Vec::with_capacity(hits.len() * usize::from(voice.note_count));
         for hit in hits.iter().filter(|hit| super::chord_spread::selected(hit, seed)) {
             let step = hit.step;
-            let Some(voicing) =
-                self.voice(hit_chord(hit, chords, next_first, steps_per_chord), key, mode, params)
-            else {
+            let Some(voicing) = self.voice(
+                hit_chord(hit, chords, next_first, steps_per_chord),
+                key,
+                mode,
+                params,
+                color_seed(hit, seed, steps_per_chord),
+            ) else {
                 continue;
             };
             // Les voix supplémentaires doublent les triades seulement :
@@ -658,11 +693,23 @@ impl ChordPlayer {
         steps_per_chord: usize,
         seed: u64,
     ) {
+        self.drift_bar(params, seed);
         for hit in hits.iter().filter(|h| super::chord_spread::selected(h, seed)) {
-            let _ =
-                self.voice(hit_chord(hit, chords, next_first, steps_per_chord), key, mode, params);
+            let _ = self.voice(
+                hit_chord(hit, chords, next_first, steps_per_chord),
+                key,
+                mode,
+                params,
+                color_seed(hit, seed, steps_per_chord),
+            );
         }
     }
+}
+
+/// Graine de la tension de couleur d'une attaque : la mesure et le créneau d'accord qu'elle joue.
+fn color_seed(hit: &ChordHit, seed: u64, steps_per_chord: usize) -> u64 {
+    let at = if hit.anticipate { hit.step + hit.duration } else { hit.step };
+    crate::ornaments::mix(seed, 0x434F_4C00 + (at / steps_per_chord) as u64)
 }
 
 /// Accord d'une attaque : celui du pas, ou, pour une attaque anticipée, celui en vigueur à la
@@ -866,5 +913,32 @@ mod tests {
         found.sort_unstable();
         found.dedup();
         assert_eq!(found.len(), all.len());
+    }
+}
+
+#[cfg(test)]
+mod drift_tests {
+    use super::*;
+    use crate::compose::accomp_profile::RegisterDrift;
+
+    #[test]
+    fn register_drift_stays_within_its_bound_and_reaches_it() {
+        let mut params = AccompanimentParams::default();
+        params.chords.register_drift = Some(RegisterDrift { step: 3, max: 7 });
+        let mut player = ChordPlayer::new();
+        let mut seen = std::collections::BTreeSet::new();
+        for seed in 0..4000u64 {
+            let before = player.drift;
+            player.drift_bar(&params, seed);
+            assert!((-7..=7).contains(&player.drift), "dérive {}", player.drift);
+            assert!((player.drift - before).abs() <= 3, "pas {before} -> {}", player.drift);
+            seen.insert(player.drift);
+        }
+        // Haut, bas et immobile se tirent ; la dérive atteint les deux bornes.
+        assert!(seen.contains(&7) && seen.contains(&-7), "{seen:?}");
+        // Sans `register_drift`, la dérive reste nulle.
+        let mut still = ChordPlayer::new();
+        still.drift_bar(&AccompanimentParams::default(), 1);
+        assert_eq!(still.drift, 0);
     }
 }
