@@ -31,8 +31,11 @@ pub const EMOTIONS: [(&str, [f32; 4]); 2] =
 
 /// Sondes en texte, un fichier chacune : `(nom du fichier, sonde)`. Natif et wasm les écrivent,
 /// `run.sh` les compare comme les cas.
-pub const PROBES: [(&str, Probe); 2] =
-    [("session.txt", session_probe), ("recording.txt", recording_probe)];
+pub const PROBES: [(&str, Probe); 3] = [
+    ("session.txt", session_probe),
+    ("recording.txt", recording_probe),
+    ("swing_fixtures.txt", swing_fixtures_probe),
+];
 
 /// Une sonde : le texte du fichier qu'elle produit.
 pub type Probe = fn() -> Result<String, String>;
@@ -153,4 +156,94 @@ pub fn recording_probe() -> Result<String, String> {
         .ok_or("aucun WAV publié")?;
     let reader = hound::WavReader::new(std::io::Cursor::new(&wav)).map_err(|e| e.to_string())?;
     Ok(format!("wav_bytes={} wav_samples={}\n", wav.len(), reader.len()))
+}
+
+/// Fichiers d'une fixture de `tests/fixtures/profiles/`, embarqués pour tourner sans disque (wasm).
+macro_rules! fixture_files {
+    ($dir:literal: $($file:literal),+ $(,)?) => {
+        &[$(($file, include_str!(concat!("../../tests/fixtures/profiles/", $dir, "/", $file)))),+]
+    };
+}
+
+type Fixture = (&'static str, &'static [(&'static str, &'static str)]);
+
+const SWING_FIXTURES: [Fixture; 4] = [
+    (
+        "grille_shuffle_ternaire",
+        fixture_files!("grille_shuffle_ternaire": "profile.toml", "cells.toml", "percussion.toml",
+            "arrangement.toml", "dynamics.toml", "set.toml", "swing.toml"),
+    ),
+    (
+        "grille_valse_jazz",
+        fixture_files!("grille_valse_jazz": "profile.toml", "cells.toml", "percussion.toml",
+            "arrangement.toml", "dynamics.toml", "set.toml", "swing.toml", "arc.toml"),
+    ),
+    (
+        "grille_six_huit",
+        fixture_files!("grille_six_huit": "profile.toml", "cells.toml", "percussion.toml",
+            "arrangement.toml", "dynamics.toml", "set.toml", "arc.toml"),
+    ),
+    (
+        "grille_clave",
+        fixture_files!("grille_clave": "profile.toml", "cells.toml", "percussion.toml",
+            "arrangement.toml", "dynamics.toml", "set.toml"),
+    ),
+];
+
+/// Swing selon le tempo, micro-timing de voix, coups probabilistes et clave (A6) : les quatre
+/// fixtures sans Odin, lues en mémoire, jouent 24 mesures à deux tempos imposés ; une ligne par
+/// mesure (rapport de la grille, empreinte de toutes les attaques avec leur décalage). Le
+/// remappage du swing par piste et les tirages sans état passent par des flottants : natif et
+/// wasm doivent écrire les mêmes lignes.
+///
+/// # Errors
+/// Fixture illisible ou invalide.
+pub fn swing_fixtures_probe() -> Result<String, String> {
+    use harmonium_core::{
+        MusicalParams, TuningParams, compose::TuneGenerator, time_plan::score::session_rng,
+    };
+
+    let mut text = String::new();
+    for (name, files) in SWING_FIXTURES {
+        let profile = StyleProfile::from_files(files.iter().copied())
+            .map_err(|error| format!("{name}: {error}"))?;
+        for bpm in [110.0_f32, 230.0] {
+            let params = MusicalParams {
+                bpm,
+                bpm_explicit: true,
+                time_signature: profile.meter.time_signature,
+                swing_ratio: profile.meter.default_swing_ratio,
+                percussion_density: 2,
+                ..MusicalParams::default()
+            };
+            let mut generator =
+                TuneGenerator::new(params, TuningParams { profile: profile.clone() });
+            let mut rng = session_rng(1);
+            for bar in 1..=24 {
+                let measure = generator.generate_measure(bar, &mut rng);
+                let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+                for track in harmonium_core::timeline::TrackId::ALL {
+                    for note in measure.notes_for_track(track) {
+                        let fields = [
+                            u64::from(track.channel()),
+                            note.start_step as u64,
+                            u64::from(note.pitch),
+                            u64::from(note.velocity),
+                            note.performance.offset as u16 as u64,
+                        ];
+                        for field in fields {
+                            hash = (hash ^ field).wrapping_mul(0x0100_0000_01b3);
+                        }
+                    }
+                }
+                writeln!(
+                    text,
+                    "{name} bpm={bpm} bar={bar} swing={:.6} notes={hash:016x}",
+                    measure.swing_ratio
+                )
+                .map_err(|error| error.to_string())?;
+            }
+        }
+    }
+    Ok(text)
 }

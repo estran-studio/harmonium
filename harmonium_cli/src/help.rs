@@ -220,6 +220,10 @@ pub fn print_command_help(command: &str) {
             println!();
             println!("0.5 = droit, 0.6 ≈ swing marqué. Hors plage : borné et signalé.");
             println!("Prend effet à la prochaine mesure générée.");
+            println!(
+                "Le rapport demandé vaut pour toutes les pistes et l'emporte sur la courbe de swing \
+                 selon le tempo du profil (jusqu'à `reset` ou à un autre profil)."
+            );
             println!();
             println!("{}", "EXAMPLES:".bold());
             println!("  swing 0.6");

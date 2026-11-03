@@ -686,6 +686,15 @@ pub struct StyleProfile {
     /// tous les chorus se jouent pareil.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arc: Option<crate::compose::ChorusArc>,
+    /// Swing selon le tempo, par piste (`[swing]`, ou `swing.toml` via `[files]`) : le rapport
+    /// de chaque piste suit une courbe tempo → rapport mesurée ; la piste de référence fixe celui
+    /// de la grille. Absent : un seul rapport (`meter.default_swing_ratio`) pour toutes les pistes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swing: Option<crate::swing::SwingByTempo>,
+    /// Clave (`[clave]`) : cycle de deux mesures, 3-2, 2-3 ou tiré par air, qui contraint le
+    /// début des phrases de comping et de batterie portant `clave = "three"` ou `"two"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clave: Option<crate::compose::Clave>,
 }
 impl StyleProfile {
     /// Vrai si le profil déclare et active la piste (non nulle, modèle harmonique cohérent).
@@ -888,6 +897,7 @@ impl StyleProfile {
                     "dynamics" => "dynamics",
                     "set" => "set",
                     "arc" => "arc",
+                    "swing" => "swing",
                     _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
                 };
                 let name = filename
@@ -1644,6 +1654,26 @@ impl StyleProfile {
         })?;
         if let Some(arc) = &self.arc {
             arc.validate(self)?;
+        }
+        if let Some(swing) = &self.swing {
+            swing.validate()?;
+        }
+        if self.clave.is_none() {
+            let chords = self.accompaniment.iter().flat_map(|a| a.chords.phrases.iter());
+            for (i, phrase) in chords.enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("accompaniment.chords.phrases[{i}].clave"),
+                    "section [clave] requise",
+                )?;
+            }
+            for (i, phrase) in self.percussion.phrases.iter().enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("percussion.phrases[{i}].clave"),
+                    "section [clave] requise",
+                )?;
+            }
         }
         Ok(())
     }

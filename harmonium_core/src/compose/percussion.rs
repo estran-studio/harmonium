@@ -19,8 +19,8 @@ use super::{
     accomp_profile::require,
     arc::{TagWeight, tagged_weight},
     phrase::{
-        Candidate, MAX_FILL_BARS, MAX_PHRASE_BARS, MAX_PHRASES, PhraseAt, Slot, Window, pick_fill,
-        tile,
+        Candidate, ClaveSide, MAX_FILL_BARS, MAX_PHRASE_BARS, MAX_PHRASES, PhraseAt, Slot, Window,
+        pick_fill, tile,
     },
     plan::TunePlan,
 };
@@ -47,37 +47,62 @@ pub struct PercussionHit {
     pub note: Option<u8>,
     /// Voix percussive ciblée (optionnelle).
     pub voice: Option<String>,
+    /// Probabilité du coup en millièmes (`1..=1000`) ; `None` : le coup joue toujours. Le tirage
+    /// dérive de la graine d'accompagnement de l'air, de la mesure, du pas et de la note : le
+    /// même coup tombe ou non à l'identique après un seek.
+    pub probability: Option<u16>,
 }
 
 impl PercussionHit {
     /// Crée un coup de percussion avec pas, piste et delta de vélocité.
     #[must_use]
     pub const fn new(step: usize, track: TrackId, delta_velocity: i8) -> Self {
-        Self { step, track, delta_velocity, note: None, voice: None }
+        Self { step, track, delta_velocity, note: None, voice: None, probability: None }
     }
 
     /// Raccourci pour un coup de percussion grave (delta de vélocité nul).
     #[must_use]
     pub const fn low(step: usize) -> Self {
-        Self { step, track: TrackId::PercussionLow, delta_velocity: 0, note: None, voice: None }
+        Self {
+            step,
+            track: TrackId::PercussionLow,
+            delta_velocity: 0,
+            note: None,
+            voice: None,
+            probability: None,
+        }
     }
 
     /// Raccourci pour un coup de percussion aiguë (delta de vélocité nul).
     #[must_use]
     pub const fn high(step: usize) -> Self {
-        Self { step, track: TrackId::PercussionHigh, delta_velocity: 0, note: None, voice: None }
+        Self {
+            step,
+            track: TrackId::PercussionHigh,
+            delta_velocity: 0,
+            note: None,
+            voice: None,
+            probability: None,
+        }
     }
 
     /// Raccourci pour un coup de percussion aiguë avec delta de vélocité explicite.
     #[must_use]
     pub const fn high_with_delta(step: usize, delta_velocity: i8) -> Self {
-        Self { step, track: TrackId::PercussionHigh, delta_velocity, note: None, voice: None }
+        Self {
+            step,
+            track: TrackId::PercussionHigh,
+            delta_velocity,
+            note: None,
+            voice: None,
+            probability: None,
+        }
     }
 
     /// Coup avec note explicite.
     #[must_use]
     pub const fn with_note(step: usize, track: TrackId, note: u8, delta_velocity: i8) -> Self {
-        Self { step, track, delta_velocity, note: Some(note), voice: None }
+        Self { step, track, delta_velocity, note: Some(note), voice: None, probability: None }
     }
 
     /// Coup avec voix percussive nommée.
@@ -89,19 +114,20 @@ impl PercussionHit {
             delta_velocity,
             note: None,
             voice: Some(voice.into()),
+            probability: None,
         }
     }
 }
 
 impl From<(usize, TrackId)> for PercussionHit {
     fn from((step, track): (usize, TrackId)) -> Self {
-        Self { step, track, delta_velocity: 0, note: None, voice: None }
+        Self { step, track, delta_velocity: 0, note: None, voice: None, probability: None }
     }
 }
 
 impl From<(usize, TrackId, i8)> for PercussionHit {
     fn from((step, track, delta_velocity): (usize, TrackId, i8)) -> Self {
-        Self { step, track, delta_velocity, note: None, voice: None }
+        Self { step, track, delta_velocity, note: None, voice: None, probability: None }
     }
 }
 
@@ -154,6 +180,8 @@ enum RawPercussionHit {
         #[serde(default)]
         note: Option<u8>,
         #[serde(default)]
+        probability: Option<f32>,
+        #[serde(default)]
         delta_velocity: i8,
     },
     Tuple2(usize, #[serde(deserialize_with = "deserialize_percussion_track")] TrackId),
@@ -164,19 +192,28 @@ impl<'de> Deserialize<'de> for PercussionHit {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawPercussionHit::deserialize(deserializer)?;
         match raw {
-            RawPercussionHit::Struct { step, track, voice, note, delta_velocity } => {
+            RawPercussionHit::Struct { step, track, voice, note, probability, delta_velocity } => {
                 let track = track.unwrap_or(if voice.as_deref() == Some("bass_drum") {
                     TrackId::PercussionLow
                 } else {
                     TrackId::PercussionHigh
                 });
-                Ok(Self { step, track, delta_velocity, note, voice })
+                let probability = probability
+                    .map(|p| {
+                        if p.is_finite() && p > 0.0 && p <= 1.0 {
+                            Ok((p * 1000.0).round() as u16)
+                        } else {
+                            Err(serde::de::Error::custom(
+                                "probability : valeur finie attendue dans ]0, 1]",
+                            ))
+                        }
+                    })
+                    .transpose()?;
+                Ok(Self { step, track, delta_velocity, note, voice, probability })
             }
-            RawPercussionHit::Tuple2(step, track) => {
-                Ok(Self { step, track, delta_velocity: 0, note: None, voice: None })
-            }
+            RawPercussionHit::Tuple2(step, track) => Ok(Self::from((step, track))),
             RawPercussionHit::Tuple3(step, track, delta_velocity) => {
-                Ok(Self { step, track, delta_velocity, note: None, voice: None })
+                Ok(Self::from((step, track, delta_velocity)))
             }
         }
     }
@@ -192,6 +229,8 @@ struct RawPercussionHitSerialize<'a> {
     note: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     voice: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    probability: Option<f32>,
 }
 
 const fn is_zero_i8(v: &i8) -> bool {
@@ -211,6 +250,7 @@ impl Serialize for PercussionHit {
             delta_velocity: self.delta_velocity,
             note: self.note,
             voice: self.voice.as_deref(),
+            probability: self.probability.map(|p| f32::from(p) / 1000.0),
         };
         raw.serialize(serializer)
     }
@@ -384,6 +424,10 @@ pub struct PercussionPhrase {
     /// Un pattern par mesure : indices dans `[[patterns]]`, de la densité de la phrase, sans
     /// portée `part` ni `tour`. 1 à 8 mesures.
     pub patterns: Vec<usize>,
+    /// Côté de la clave (cycle de deux mesures, `[clave]` du profil) où la phrase commence :
+    /// `three` (la mesure aux trois attaques) ou `two`. Absent : n'importe où.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clave: Option<ClaveSide>,
 }
 
 /// Mesure d'une relance.
@@ -873,6 +917,20 @@ impl PercussionTable {
         !self.phrases.is_empty() || !self.fills.is_empty()
     }
 
+    /// Vrai si un coup de pattern ou de relance est probabiliste : son tirage dérive de la graine
+    /// d'accompagnement de l'air, qui est donc tirée.
+    pub(crate) fn has_chance(&self) -> bool {
+        let chance = |hits: &[PercussionHit]| hits.iter().any(|hit| hit.probability.is_some());
+        self.patterns.iter().chain(&self.cadence_patterns).any(|p| chance(&p.hits))
+            || self.fills.iter().flat_map(|fill| &fill.bars).any(|bar| chance(&bar.hits))
+    }
+
+    /// Vrai si la table tire de la graine d'accompagnement : phrases, relances ou coups
+    /// probabilistes.
+    pub(crate) fn needs_seed(&self) -> bool {
+        self.is_phrased() || self.has_chance()
+    }
+
     /// Découpage de la passe `window` de la partie `part` en phrases de batterie de la densité
     /// `density`, restreint aux étiquettes `tags` de l'arc (vide : toutes). Vide : aucune phrase
     /// déclarée à cette densité.
@@ -894,6 +952,7 @@ impl PercussionTable {
                     bars: phrase.patterns.len(),
                     weight: tagged_weight(phrase.weight, phrase.tag.as_deref(), tags),
                     at: phrase.at,
+                    side: phrase.clave,
                 },
             )
         })
@@ -942,6 +1001,7 @@ impl PercussionTable {
                         bars: fill.bars.len(),
                         weight: tagged_weight(fill.weight, fill.tag.as_deref(), tags),
                         at: fill.at,
+                        side: None,
                     })
                 },
             );
@@ -1219,6 +1279,8 @@ pub fn draw_percussion_humanize(
 /// - `table` : table de percussion ([`PercussionTable`]) portant les vélocités de base.
 /// - `pattern` : pattern choisi par [`PercussionPatternPlan::pattern`], cadence comprise.
 /// - `steps` : nombre de pas du profil ; `humanize` contient exactement ce nombre de valeurs.
+/// - `chance_seed` : graine de la mesure pour les coups probabilistes (`hit.probability`) ; sans
+///   tirage quand aucun coup n'en porte.
 ///
 /// # Retour
 /// Tuple `(grave_notes, aigu_notes)` :
@@ -1235,6 +1297,7 @@ pub fn percussion_notes(
     pattern: &PercussionPattern,
     steps: usize,
     humanize: &[i8],
+    chance_seed: u64,
 ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
     debug_assert_eq!(humanize.len(), steps);
 
@@ -1264,6 +1327,11 @@ pub fn percussion_notes(
             (hit.track, base, p)
         };
 
+        if let Some(probability) = hit.probability
+            && !hit_plays(chance_seed, hit.step, pitch, track, probability)
+        {
+            continue;
+        }
         let target_vec = match track {
             TrackId::PercussionLow => &mut percussion_low_notes,
             TrackId::PercussionHigh => &mut percussion_high_notes,
@@ -1291,6 +1359,22 @@ pub fn percussion_notes(
     (percussion_low_notes, percussion_high_notes)
 }
 
+/// Vrai si un coup de probabilité `probability` (millièmes) tombe : tirage sans état, fonction de
+/// la graine de la mesure, du pas, de la note et de la piste (un seek rejoue le même tirage).
+pub(crate) fn hit_plays(
+    seed: u64,
+    step: usize,
+    pitch: u8,
+    track: TrackId,
+    probability: u16,
+) -> bool {
+    let key = crate::ornaments::mix(
+        crate::ornaments::mix(seed, step as u64),
+        (u64::from(pitch) << 8) | u64::from(track.channel()),
+    );
+    (key >> 40) * 1000 < u64::from(probability) << 24
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1301,7 +1385,13 @@ mod tests {
         humanize: &[i8],
     ) -> (Vec<TimelineNote>, Vec<TimelineNote>) {
         let plan = PercussionPatternPlan::new(&TunePlan::default(), table, 0);
-        percussion_notes(table, plan.pattern(table, 0, 1, density, false), humanize.len(), humanize)
+        percussion_notes(
+            table,
+            plan.pattern(table, 0, 1, density, false),
+            humanize.len(),
+            humanize,
+            0,
+        )
     }
 
     #[test]
@@ -1657,6 +1747,7 @@ patterns = [
                     plan.pattern(&table, part, 1, density, false),
                     16,
                     &[0; 16],
+                    0,
                 )
             };
             let first = render(&plan, 0, 1);
@@ -1687,7 +1778,7 @@ patterns = [
         for seed in 0..128 {
             let plan = PercussionPatternPlan::new(&tune, &table, seed);
             let (_, notes) =
-                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16]);
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16], 0);
             observed[usize::from(notes[0].start_step == 7)] = true;
         }
         assert_eq!(observed, [true, true]);
@@ -1728,7 +1819,7 @@ cadence_patterns = [{density = 1, hits = [{step = 15, track = "PercussionHigh"}]
             let plan = PercussionPatternPlan::new(&tune, &table, seed);
             let restored_plan = PercussionPatternPlan::new(&tune, &restored, seed);
             let ordinary =
-                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16]);
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, false), 16, &[0; 16], 0);
             assert!([3, 5].contains(&ordinary.1.len()));
             assert_eq!(
                 ordinary,
@@ -1737,15 +1828,16 @@ cadence_patterns = [{density = 1, hits = [{step = 15, track = "PercussionHigh"}]
                     restored_plan.pattern(&restored, 0, 1, 1, false),
                     16,
                     &[0; 16],
+                    0,
                 )
             );
             let cadence =
-                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, true), 16, &[0; 16]);
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 1, true), 16, &[0; 16], 0);
             assert_eq!(cadence.1.len(), 1);
             assert_eq!(cadence.1[0].start_step, 15);
             assert_eq!(
-                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, true), 16, &[0; 16]),
-                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, false), 16, &[0; 16]),
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, true), 16, &[0; 16], 0),
+                percussion_notes(&table, plan.pattern(&table, 0, 1, 2, false), 16, &[0; 16], 0),
             );
         }
         let mut unique = PercussionTable::default();

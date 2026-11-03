@@ -21,7 +21,7 @@ use super::{
     percussion::{
         PercussionPattern, PercussionPatternPlan, draw_percussion_humanize, percussion_notes,
     },
-    phrase::{Slot, Window},
+    phrase::{Clave, Slot, Window},
     plan::{BarRole, ImposedRole, TunePlan},
     set::{KEY_DRAW_RANGE, SetPlan, TransitionKind, candidates},
     walking::{WalkingBar, walking_bar},
@@ -51,13 +51,22 @@ use crate::{
 /// corrélation entre les deux couches).
 const COMPING_PHRASES: u64 = 0x434D_5048;
 const PERCUSSION_PHRASES: u64 = 0x5052_5048;
+const PERCUSSION_CHANCE: u64 = 0x4348_414E;
+
+/// Graine des coups probabilistes de la mesure `bar` de l'air (0-based, tours compris) : sans
+/// état, tirée de la graine d'accompagnement ; un seek rejoue les mêmes coups.
+fn chance_seed(accompaniment_seed: u64, bar: u64) -> u64 {
+    crate::ornaments::mix(crate::ornaments::mix(accompaniment_seed, PERCUSSION_CHANCE), bar)
+}
 
 /// Passe de partie qui contient la mesure `performed_bar` de l'air (0-based), pour le
 /// découpage en phrases de la couche `layer` : la fenêtre, le rang de la mesure dans la passe
 /// et la partie. La graine ne dépend que de la graine d'accompagnement de l'air et de la
-/// première mesure de la passe : tout se recalcule sans état (seek).
+/// première mesure de la passe : tout se recalcule sans état (seek). `clave` : rang dans le
+/// cycle de la clave de la première mesure de la passe, pour les phrases qui portent un côté.
 fn phrasing_frame(
     form: &crate::style_profile::ProfileForm,
+    clave: Option<&Clave>,
     accompaniment_seed: u64,
     performed_bar: usize,
     layer: u64,
@@ -69,7 +78,8 @@ fn phrasing_frame(
         crate::ornaments::mix(accompaniment_seed, layer),
         (performed_bar - offset) as u64,
     );
-    (Window { seed, bars, chorus_end }, offset, part)
+    let clave_phase = clave.map(|clave| clave.phase(accompaniment_seed, performed_bar - offset));
+    (Window { seed, bars, chorus_end, clave_phase }, offset, part)
 }
 
 /// Découpage en phrases de comping de la passe qui contient `performed_bar` et rang de cette
@@ -77,12 +87,13 @@ fn phrasing_frame(
 fn comping_tiling(
     form: &crate::style_profile::ProfileForm,
     chords: &ChordVoice,
+    clave: Option<&Clave>,
     accompaniment_seed: u64,
     performed_bar: usize,
     tags: &[TagWeight],
 ) -> (Vec<Option<Slot>>, usize) {
     let (window, offset, part) =
-        phrasing_frame(form, accompaniment_seed, performed_bar, COMPING_PHRASES);
+        phrasing_frame(form, clave, accompaniment_seed, performed_bar, COMPING_PHRASES);
     if chords.phrases.is_empty() {
         return (Vec::new(), offset);
     }
@@ -472,7 +483,8 @@ impl TuneGenerator {
         let mut measure = Measure::new(bar_index, time_sig, tempo, steps);
         measure.pulse = self.profile.meter.pulse_spec();
         measure.position = Some(position);
-        measure.swing_ratio = self.musical_params.swing_ratio;
+        let swing = self.swing_for(tempo);
+        measure.swing_ratio = swing.grid;
         measure.state_snapshot = StateSnapshot {
             bpm: tempo,
             density: self.musical_params.rhythm_density,
@@ -610,6 +622,7 @@ impl TuneGenerator {
                 let (tiling, rank) = comping_tiling(
                     &self.profile.form,
                     &a.chords,
+                    self.profile.clave.as_ref(),
                     tune.accompaniment_seed,
                     self.performed_bar(&position),
                     tags,
@@ -664,8 +677,21 @@ impl TuneGenerator {
         if let Some(arc) = &arc {
             arc.apply_break(&mut measure);
         }
+        crate::swing::apply_track_swing(&mut measure, &swing);
 
         measure
+    }
+
+    /// Rapports de swing de la mesure au tempo `tempo` : un seul rapport (celui des paramètres)
+    /// sans courbe ou sous commande directe de l'hôte, sinon la courbe de chaque piste.
+    fn swing_for(&self, tempo: f32) -> crate::swing::ResolvedSwing {
+        let params = &self.musical_params;
+        match &self.profile.swing {
+            Some(curves) if !params.swing_explicit => {
+                curves.resolve(tempo, params.swing_ratio, self.profile.meter.default_swing_ratio)
+            }
+            _ => crate::swing::ResolvedSwing::uniform(params.swing_ratio),
+        }
     }
 
     fn apply_bass_passing(
@@ -867,11 +893,14 @@ impl TuneGenerator {
                         ),
                         false,
                     );
+                    let chance =
+                        chance_seed(tune.accompaniment_seed, (1u64 << 40) | intro_bar_idx as u64);
                     let (percussion_low_notes, percussion_high_notes) = percussion_notes(
                         &tuning.profile.percussion,
                         pattern,
                         steps,
                         &zero_humanize,
+                        chance,
                     );
                     if percussion_low_wanted {
                         for mut note in percussion_low_notes {
@@ -1273,8 +1302,13 @@ impl TuneGenerator {
             // Phrases de batterie de la passe de la partie et relance de fin de phrase : tirées
             // sans état depuis la graine d'accompagnement (la mesure se rejoue après un seek).
             let performed = self.performed_bar(position);
-            let (window, rank, part) =
-                phrasing_frame(form, tune.accompaniment_seed, performed, PERCUSSION_PHRASES);
+            let (window, rank, part) = phrasing_frame(
+                form,
+                self.profile.clave.as_ref(),
+                tune.accompaniment_seed,
+                performed,
+                PERCUSSION_PHRASES,
+            );
             let tiling = if table.is_phrased() {
                 table.phrase_tiling(window, &form.parts[part].name, density, tags)
             } else {
@@ -1325,14 +1359,16 @@ impl TuneGenerator {
                     cadence_pattern,
                 )
             });
+            let chance = chance_seed(tune.accompaniment_seed, performed as u64);
             let (mut percussion_low_notes, mut percussion_high_notes) =
-                percussion_notes(table, pattern, measure.steps, humanize);
+                percussion_notes(table, pattern, measure.steps, humanize, chance);
             if let Some((fill, bar)) = fill {
                 // La relance reprend le pattern à son pas de départ (première mesure) ou le
                 // remplace (mesures suivantes).
                 let from = if bar == 0 { fill.start_step } else { 0 };
                 let overlay = PercussionPattern::new(density, fill.bars[bar].hits.clone());
-                let (low, high) = percussion_notes(table, &overlay, measure.steps, humanize);
+                let (low, high) =
+                    percussion_notes(table, &overlay, measure.steps, humanize, chance);
                 for (notes, played) in
                     [(&mut percussion_low_notes, low), (&mut percussion_high_notes, high)]
                 {
@@ -1633,6 +1669,7 @@ impl TuneGenerator {
         let (tiling, rank) = comping_tiling(
             &self.profile.form,
             &harmony.chords,
+            self.profile.clave.as_ref(),
             tune.accompaniment_seed,
             bar_in_tour,
             tags,
@@ -1923,7 +1960,7 @@ impl TuneGenerator {
         // valeurs. Tirée après tout le reste de l'air : la mélodie, l'intro et les ornements
         // de cet air ne bougent pas.
         let accompaniment_seed =
-            if self.profile.accompaniment.is_some() || self.profile.percussion.is_phrased() {
+            if self.profile.accompaniment.is_some() || self.profile.percussion.needs_seed() {
                 let high = rng.next_range_u64(0..1 << 32);
                 (high << 32) | rng.next_range_u64(0..1 << 32)
             } else {

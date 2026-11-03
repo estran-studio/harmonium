@@ -1,7 +1,20 @@
 use crate::params::PlaybackParams;
 
-/// Ticks MIDI par pas de grille (480 par noire, 4 pas par noire).
+/// Ticks MIDI par pas d'une grille où la noire a quatre pas (480 par noire, 4 pas par noire).
 pub const MIDI_TICKS_PER_STEP: u32 = 120;
+
+/// Ticks MIDI par noire de l'export.
+pub const MIDI_TICKS_PER_QUARTER: u32 = 480;
+
+/// Ticks MIDI par pas d'une mesure de `steps` pas en `numerator/denominator` : la mesure dure
+/// toujours `480 × 4 × numérateur / dénominateur` ticks, quelle que soit sa grille (120 par pas
+/// quand la noire a quatre pas, 160 sur 12 pas en 4/4 : triolets). Exact en `f64` pour toutes
+/// les grilles distribuées.
+#[must_use]
+pub fn midi_ticks_per_step(numerator: u16, denominator: u16, steps: u16) -> f64 {
+    let bar = u64::from(MIDI_TICKS_PER_QUARTER) * 4 * u64::from(numerator.max(1));
+    bar as f64 / (u64::from(denominator.max(1)) * u64::from(steps.max(1))) as f64
+}
 
 // `UpdateMusicalParams` porte un `PlaybackParams` `Copy` volontairement en ligne : un `Box`
 // serait libéré sur le thread audio (allocation interdite dans le callback, principe III).

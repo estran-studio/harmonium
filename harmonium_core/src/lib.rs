@@ -15,6 +15,7 @@ pub mod performance;
 mod profile_source;
 pub mod report;
 pub mod style_profile;
+pub mod swing;
 pub mod theory;
 pub mod time_plan;
 pub mod timeline;

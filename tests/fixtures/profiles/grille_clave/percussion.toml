@@ -1,0 +1,215 @@
+# Batterie de la fixture clave : clave son de deux mesures (3-2 : mesure « trois » aux pas 0, 6, 12,
+# mesure « deux » aux pas 4, 8), tumbao de congas, cloche, shaker et bongos. Rôles percussion
+# latine du kit GM de GeneralUser GS (banque 128, programmes 0 et 32 : touches 56 cloche, 60-61
+# bongos, 62-64 congas, 65-66 timbales, 75 claves, 82 shaker) sur les deux pistes de percussion :
+# congas et timbale grave sur PercussionLow, le reste sur PercussionHigh. Valeurs d'exercice.
+low_note = 36
+high_note = 51
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 0
+
+[[voices]]
+name = "conga_low"
+note = 64
+velocity = 62
+track = "PercussionLow"
+
+[[voices]]
+name = "conga_open"
+note = 63
+velocity = 58
+track = "PercussionLow"
+
+[[voices]]
+name = "conga_mute"
+note = 62
+velocity = 52
+track = "PercussionLow"
+
+[[voices]]
+name = "timbale_low"
+note = 66
+velocity = 58
+track = "PercussionLow"
+
+[[voices]]
+name = "claves"
+note = 75
+velocity = 72
+track = "PercussionHigh"
+
+[[voices]]
+name = "cowbell"
+note = 56
+velocity = 60
+track = "PercussionHigh"
+
+[[voices]]
+name = "shaker"
+note = 82
+velocity = 40
+track = "PercussionHigh"
+
+[[voices]]
+name = "bongo_hi"
+note = 60
+velocity = 56
+track = "PercussionHigh"
+
+[[voices]]
+name = "bongo_lo"
+note = 61
+velocity = 56
+track = "PercussionHigh"
+
+[[voices]]
+name = "timbale_hi"
+note = 65
+velocity = 60
+track = "PercussionHigh"
+
+[[patterns]]
+density = 0
+weight = 1
+hits = [
+  { step = 0, voice = "claves" },
+  { step = 6, voice = "claves" },
+  { step = 12, voice = "claves" },
+]
+
+[[patterns]]
+density = 0
+weight = 1
+hits = [
+  { step = 4, voice = "claves" },
+  { step = 8, voice = "claves" },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+hits = [
+  { step = 0, voice = "claves" },
+  { step = 6, voice = "claves" },
+  { step = 12, voice = "claves" },
+  { step = 4, voice = "conga_mute" },
+  { step = 12, voice = "conga_mute" },
+  { step = 6, voice = "conga_open" },
+  { step = 14, voice = "conga_open" },
+  { step = 0, voice = "cowbell", delta_velocity = -10 },
+  { step = 8, voice = "cowbell", delta_velocity = -10 },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+hits = [
+  { step = 4, voice = "claves" },
+  { step = 8, voice = "claves" },
+  { step = 4, voice = "conga_mute" },
+  { step = 12, voice = "conga_mute" },
+  { step = 6, voice = "conga_open" },
+  { step = 14, voice = "conga_open" },
+  { step = 0, voice = "cowbell", delta_velocity = -10 },
+  { step = 8, voice = "cowbell", delta_velocity = -10 },
+]
+
+[[patterns]]
+density = 2
+weight = 1
+hits = [
+  { step = 0, voice = "claves" },
+  { step = 6, voice = "claves" },
+  { step = 12, voice = "claves" },
+  { step = 4, voice = "conga_mute" },
+  { step = 12, voice = "conga_mute" },
+  { step = 6, voice = "conga_open" },
+  { step = 14, voice = "conga_open" },
+  { step = 0, voice = "cowbell", delta_velocity = -10 },
+  { step = 8, voice = "cowbell", delta_velocity = -10 },
+  { step = 0, voice = "shaker", delta_velocity = -12 },
+  { step = 2, voice = "shaker", delta_velocity = -12 },
+  { step = 4, voice = "shaker", delta_velocity = -12 },
+  { step = 6, voice = "shaker", delta_velocity = -12 },
+  { step = 8, voice = "shaker", delta_velocity = -12 },
+  { step = 10, voice = "shaker", delta_velocity = -12 },
+  { step = 12, voice = "shaker", delta_velocity = -12 },
+  { step = 14, voice = "shaker", delta_velocity = -12 },
+  { step = 0, voice = "bongo_lo" },
+  { step = 8, voice = "bongo_lo" },
+  { step = 3, voice = "bongo_hi", delta_velocity = -8, probability = 0.25 },
+  { step = 11, voice = "bongo_hi", delta_velocity = -8, probability = 0.15 },
+  { step = 6, voice = "timbale_hi" },
+  { step = 14, voice = "timbale_low" },
+]
+
+[[patterns]]
+density = 2
+weight = 1
+hits = [
+  { step = 4, voice = "claves" },
+  { step = 8, voice = "claves" },
+  { step = 4, voice = "conga_mute" },
+  { step = 12, voice = "conga_mute" },
+  { step = 6, voice = "conga_open" },
+  { step = 14, voice = "conga_open" },
+  { step = 0, voice = "cowbell", delta_velocity = -10 },
+  { step = 8, voice = "cowbell", delta_velocity = -10 },
+  { step = 0, voice = "shaker", delta_velocity = -12 },
+  { step = 2, voice = "shaker", delta_velocity = -12 },
+  { step = 4, voice = "shaker", delta_velocity = -12 },
+  { step = 6, voice = "shaker", delta_velocity = -12 },
+  { step = 8, voice = "shaker", delta_velocity = -12 },
+  { step = 10, voice = "shaker", delta_velocity = -12 },
+  { step = 12, voice = "shaker", delta_velocity = -12 },
+  { step = 14, voice = "shaker", delta_velocity = -12 },
+  { step = 0, voice = "bongo_lo" },
+  { step = 8, voice = "bongo_lo" },
+  { step = 3, voice = "bongo_hi", delta_velocity = -8, probability = 0.25 },
+  { step = 11, voice = "bongo_hi", delta_velocity = -8, probability = 0.15 },
+  { step = 6, voice = "timbale_hi" },
+  { step = 14, voice = "timbale_low" },
+]
+
+
+# Phrases de batterie de deux mesures alignées sur la clave : les patterns de la mesure « trois »
+# (claves aux pas 0, 6, 12) et de la mesure « deux » (pas 4, 8) d'une clave son ; `clave = "three"`
+# fait commencer la phrase sur la mesure « trois » du cycle.
+[[phrases]]
+density = 0
+weight = 1
+patterns = [0, 1]
+clave = "three"
+
+[[phrases]]
+density = 0
+weight = 1
+patterns = [1, 0]
+clave = "two"
+
+[[phrases]]
+density = 1
+weight = 1
+patterns = [2, 3]
+clave = "three"
+
+[[phrases]]
+density = 1
+weight = 1
+patterns = [3, 2]
+clave = "two"
+
+[[phrases]]
+density = 2
+weight = 1
+patterns = [4, 5]
+clave = "three"
+
+[[phrases]]
+density = 2
+weight = 1
+patterns = [5, 4]
+clave = "two"
+

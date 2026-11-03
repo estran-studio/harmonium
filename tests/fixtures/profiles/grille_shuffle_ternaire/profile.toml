@@ -1,0 +1,169 @@
+# Fixture technique shuffle ternaire (4/4 sur 12 pas)
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+swing = "swing.toml"
+
+[meta]
+id = "grille_shuffle_ternaire"
+name = "Fixture technique shuffle ternaire (4/4 sur 12 pas)"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test", "accompagnement", "grille", "ternaire", "swing"]
+corpus = "Courbes de swing : Jazz Trio Database v0.2, MIT License, Copyright (c) Huw Cheston et al. (TISMIR 2024, https://doi.org/10.5334/tismir.186), régression robuste par piste, harmonium_lab references/jtd-swing-tempo/. Reste : valeurs d'exercice, aucune mesure de corpus."
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 12
+steps_per_unit = 3
+steps_per_pulse = 3
+pulses_per_bar = 4
+default_swing_ratio = 0.7213
+default_bpm = 100.0
+min_bpm = 60.0
+max_bpm = 285.0
+
+[fixed_tonality]
+key = 5
+mode = "ionian"
+
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Blues"
+melody_center_offset = 0
+phrase_ends = [12]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 4
+strong_units = [0, 2]
+weak_units = [1, 3]
+key_modes = [{ key = 5, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 3
+
+[harmony.parts.Blues]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 0, quality = "7", steps = 12 },
+  { semitones = 5, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 24 },
+  { semitones = 5, quality = "7", steps = 24 },
+  { semitones = 0, quality = "7", steps = 24 },
+  { semitones = 2, quality = "m7", steps = 12 },
+  { semitones = 7, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 6 },
+  { semitones = 7, quality = "7", steps = 6 },
+] }]
+
+[accompaniment]
+strong_steps = [0, 6]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 33
+walk_high = 50
+hits = [
+  { step = 0, degree = "root", duration = 2, velocity = 80 },
+  { step = 2, degree = "fifth", duration = 1, velocity = 70 },
+  { step = 3, degree = "fifth", duration = 2, velocity = 80 },
+  { step = 5, degree = "root", duration = 1, velocity = 70 },
+  { step = 6, degree = "root", duration = 2, velocity = 80 },
+  { step = 8, degree = "fifth", duration = 1, velocity = 70 },
+  { step = 9, degree = "fifth", duration = 2, velocity = 80 },
+  { step = 11, degree = "root", duration = 1, velocity = 70 },
+]
+
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 76
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 4, velocity = 66 }, { step = 6, direction = "block", duration = 4, velocity = 58 }] }]
+comping = [
+  { weight = 4, hits = [{ step = 0, duration = 4, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
+  { weight = 3, hits = [{ step = 3, duration = 2, velocity = 60 }, { step = 9, duration = 2, velocity = 56 }, { step = 11, duration = 1, velocity = 60, anticipate = true }] },
+  { weight = 2, hits = [{ step = 0, duration = 3, velocity = 62 }, { step = 6, duration = 3, velocity = 58 }, { step = 9, duration = 2, velocity = 54 }] },
+]
+
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 32
+
+[ornaments]
+rate_scale = 0.0
+
+# Micro-timing par voix de batterie (fractions de pas, grille de triolets : un pas = 1/3 de temps ;
+# valeurs d'exercice calées sur les médianes du Groove MIDI Dataset à 100 BPM : ride +9 ms sur le
+# temps et +14 ms hors temps, pédale −14 ms, caisse claire −4 ms, grosse caisse −5 ms).
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 51, on_beat = 0.045, off_beat = 0.07 },
+  { note = 44, on_beat = -0.07 },
+  { note = 38, on_beat = -0.02 },
+]
+[performance.tracks.PercussionLow]
+voices = [{ note = 36, on_beat = -0.025 }]
+
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.0
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -16.0
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

@@ -1,0 +1,324 @@
+# Batterie de la fixture valse jazz (3/4 sur 12 pas, 4 pas par temps), patterns étiquetés `ride` et
+# `hat` pour l'arc, phrases et relances (A1) : ride sur 1, 2, la croche de 2 et 3 ; pédale sur 2 et 3 ;
+# grosse caisse sur 1 ; notes fantômes probabilistes. Kit jazz de GeneralUser GS (banque 128,
+# programme 32). Valeurs d'exercice.
+low_note = 36
+high_note = 51
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 0
+fills_none_weight = 3
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 34
+track = "PercussionLow"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 58
+track = "PercussionHigh"
+
+[[voices]]
+name = "hat"
+note = 42
+velocity = 52
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 77
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 40
+track = "PercussionHigh"
+
+[[patterns]]
+density = 0
+weight = 3
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride" },
+  { step = 4, voice = "ride" },
+  { step = 6, voice = "ride" },
+  { step = 8, voice = "ride" },
+]
+
+[[patterns]]
+density = 0
+weight = 1
+tag = "hat"
+hits = [
+  { step = 0, voice = "hat" },
+  { step = 4, voice = "hat" },
+  { step = 8, voice = "hat" },
+]
+
+[[patterns]]
+density = 1
+weight = 3
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride" },
+  { step = 4, voice = "ride" },
+  { step = 6, voice = "ride" },
+  { step = 8, voice = "ride" },
+  { step = 4, voice = "pedal", delta_velocity = 10 },
+  { step = 8, voice = "pedal", delta_velocity = 10 },
+]
+
+[[patterns]]
+density = 1
+weight = 1
+tag = "hat"
+hits = [
+  { step = 0, voice = "hat" },
+  { step = 4, voice = "hat" },
+  { step = 8, voice = "hat" },
+  { step = 0, voice = "kick" },
+]
+
+[[patterns]]
+density = 2
+weight = 3
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride" },
+  { step = 4, voice = "ride" },
+  { step = 6, voice = "ride" },
+  { step = 8, voice = "ride" },
+  { step = 4, voice = "pedal", delta_velocity = 10 },
+  { step = 8, voice = "pedal", delta_velocity = 10 },
+  { step = 0, voice = "kick" },
+  { step = 4, voice = "snare", delta_velocity = 20 },
+  { step = 8, voice = "snare", delta_velocity = 20 },
+  { step = 6, voice = "snare", delta_velocity = -10, probability = 0.15 },
+  { step = 10, voice = "snare", delta_velocity = -10, probability = 0.1 },
+]
+
+[[patterns]]
+density = 2
+weight = 1
+tag = "hat"
+hits = [
+  { step = 0, voice = "hat" },
+  { step = 4, voice = "hat" },
+  { step = 8, voice = "hat" },
+  { step = 0, voice = "kick" },
+  { step = 4, voice = "snare", delta_velocity = 20 },
+  { step = 8, voice = "snare", delta_velocity = 20 },
+  { step = 6, voice = "snare", delta_velocity = -10, probability = 0.15 },
+  { step = 10, voice = "snare", delta_velocity = -10, probability = 0.1 },
+]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 3
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [0, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [0, 0]
+
+[[fills]]
+density = 0
+tag = "ride"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 0
+tag = "ride"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 3
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 2
+patterns = [1, 1]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [1, 1]
+
+[[fills]]
+density = 0
+tag = "hat"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 0
+tag = "hat"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 3
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [2, 2]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [2, 2]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 3
+patterns = [3, 3, 3, 3]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 2
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [3, 3]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 3
+patterns = [4, 4, 4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [4, 4]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 3
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 2
+patterns = [5, 5]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [5, 5]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 3
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 1
+at = "part_end"
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "snare" }, { step = 10, voice = "snare" }] }, { hits = [{ step = 0, voice = "kick" }] }]
+

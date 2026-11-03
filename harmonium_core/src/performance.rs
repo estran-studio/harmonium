@@ -51,6 +51,33 @@ pub struct TrackPerformance {
     /// Fraction de la dernière durée, soustraite après le gate.
     pub breath: f32,
     pub emotions: PerformanceEmotions,
+    /// Micro-timing par voix (note MIDI) : s'ajoute aux décalages de la piste. Pour la batterie,
+    /// une voix est une note du kit (ride, charleston, caisse claire, grosse caisse) : plusieurs
+    /// voix d'une même piste ne reçoivent plus le même décalage.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub voices: Vec<VoiceTiming>,
+}
+/// Décalage et dispersion d'une voix, en fractions de pas (indépendants du tempo).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VoiceTiming {
+    /// Note MIDI de la voix (kit GM : 36 grosse caisse, 38 caisse claire, 42 charleston fermé,
+    /// 44 pédale, 51 ride).
+    pub note: u8,
+    /// Décalage sur un temps (pas multiple de `steps_per_pulse`) ; négatif = en avance.
+    #[serde(default)]
+    pub on_beat: f32,
+    /// Décalage hors temps ; défaut : celui du temps.
+    #[serde(default)]
+    pub off_beat: Option<f32>,
+    /// Amplitude de la dispersion uniforme de cette voix ; défaut : celle de la piste.
+    #[serde(default)]
+    pub jitter: Option<f32>,
+}
+impl VoiceTiming {
+    fn is_neutral(&self) -> bool {
+        self.on_beat == 0.0 && self.off_beat.is_none_or(|x| x == 0.0) && self.jitter.is_none()
+    }
 }
 impl TrackPerformance {
     fn is_neutral(&self) -> bool {
@@ -62,6 +89,7 @@ impl TrackPerformance {
             && self.velocity_max == 0
             && self.emotions == PerformanceEmotions::default()
             && self.rules.iter().all(|rule| rule.shorten == 0.0 && rule.accent == 0.0)
+            && self.voices.iter().all(VoiceTiming::is_neutral)
     }
 }
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -131,6 +159,18 @@ impl Performance {
             }
             bounded(p.jitter, 0.0, 0.1, &format!("{field}.jitter"))?;
             bounded(p.breath, 0.0, 0.5, &format!("{field}.breath"))?;
+            for (i, voice) in p.voices.iter().enumerate() {
+                let f = format!("{field}.voices[{i}]");
+                if voice.note > 127 || p.voices[..i].iter().any(|other| other.note == voice.note) {
+                    return Err(ProfileError::new(
+                        format!("{f}.note"),
+                        "note MIDI 0..127, une seule entrée par note",
+                    ));
+                }
+                bounded(voice.on_beat, -0.2, 0.2, &format!("{f}.on_beat"))?;
+                bounded(voice.off_beat.unwrap_or(0.0), -0.2, 0.2, &format!("{f}.off_beat"))?;
+                bounded(voice.jitter.unwrap_or(0.0), 0.0, 0.1, &format!("{f}.jitter"))?;
+            }
             if p.velocity_min > p.velocity_max || p.velocity_max > 127 {
                 return Err(ProfileError::new(
                     format!("{field}.velocity_max"),
@@ -199,6 +239,7 @@ impl Performance {
         emotions: [f32; 4],
         rng: &mut dyn RngCore,
     ) {
+        let steps_per_pulse = usize::from(measure.pulse.steps_per_pulse).max(1);
         for track in TrackId::ALL {
             let name = track.name();
             let Some(p) = self.tracks.get(name) else { continue };
@@ -211,7 +252,13 @@ impl Performance {
             let mut index = 0;
             while index < notes.len() {
                 let step = notes[index].start_step;
-                let count = notes[index..].iter().take_while(|n| n.start_step == step).count();
+                // Une piste à voix décalées traite chaque note seule : plusieurs voix d'une même
+                // attaque (ride, caisse claire, charleston) ne partagent plus un décalage.
+                let count = if p.voices.is_empty() {
+                    notes[index..].iter().take_while(|n| n.start_step == step).count()
+                } else {
+                    1
+                };
                 let attack = &mut notes[index..index + count];
                 index += count;
                 // Le contexte porte sur la voix grave de l'attaque précédente, pas sur ses cordes.
@@ -246,10 +293,17 @@ impl Performance {
                     }
                 }
                 let [arousal, valence, density, tension] = emotions;
+                let voice = p.voices.iter().find(|v| v.note == note.pitch);
+                let amplitude = voice.and_then(|v| v.jitter).unwrap_or(p.jitter);
                 let jitter =
-                    if p.jitter > 0.0 { (rng.next_f32() * 2.0 - 1.0) * p.jitter } else { 0.0 };
-                let offset = p.offsets.get(note.start_step).copied().unwrap_or(0.0) + jitter
-                    - tension * p.emotions.tension_advance;
+                    if amplitude > 0.0 { (rng.next_f32() * 2.0 - 1.0) * amplitude } else { 0.0 };
+                let on_beat = note.start_step % steps_per_pulse == 0;
+                let voice_offset = voice.map_or(0.0, |v| {
+                    if on_beat { v.on_beat } else { v.off_beat.unwrap_or(v.on_beat) }
+                });
+                let offset =
+                    p.offsets.get(note.start_step).copied().unwrap_or(0.0) + voice_offset + jitter
+                        - tension * p.emotions.tension_advance;
                 note.performance.offset = (offset.clamp(-0.49, 0.49) * 1000.0).round() as i16;
                 let shorten = (shorten
                     + tension * p.emotions.tension_detach

@@ -275,9 +275,15 @@ pub struct MusicalParams {
     /// Swing ratio applied to pairs of eighth notes (unit = 4 steps, one
     /// quarter note). 0.5 = straight, ~0.6 ≈ marked swing. Bounded 0.5..=0.75 via
     /// [`MusicalParams::set_swing_ratio`]. Ignored in compound meter (a
-    /// dotted-quarter pulse of 6 steps).
+    /// dotted-quarter pulse of 6 steps). Avec une courbe de swing selon le tempo
+    /// (`StyleProfile::swing`), l'écart au défaut du profil décale la courbe de toutes les pistes.
     #[serde(default = "default_swing_ratio")]
     pub swing_ratio: f32,
+    /// Commande directe de l'hôte (`SetSwing`, `--swing`) : le rapport demandé gagne, pour toutes
+    /// les pistes, sur la courbe de swing selon le tempo du profil. `Reset` et le chargement d'un
+    /// profil le retirent.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub swing_explicit: bool,
 
     /// Dance pulse override. `None` = derived from `time_signature` (see
     /// [`MusicalParams::effective_pulse`]).
@@ -503,6 +509,7 @@ impl Default for MusicalParams {
             bpm_explicit: false,
             time_signature: profile.meter.time_signature,
             swing_ratio: profile.meter.default_swing_ratio,
+            swing_explicit: false,
             pulse: Some(profile.meter.pulse_spec()),
             master_volume: default_master_volume(),
             profile_id: default_profile_id(),
@@ -547,6 +554,7 @@ impl MusicalParams {
         self.bpm = meter.default_bpm;
         self.bpm_explicit = false;
         self.set_swing_ratio(meter.default_swing_ratio);
+        self.swing_explicit = false;
         self.time_signature = meter.time_signature;
         self.pulse = Some(meter.pulse_spec());
     }
