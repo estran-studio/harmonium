@@ -15,6 +15,7 @@ pub mod mode;
 pub mod percussion;
 mod phrase;
 pub mod plan;
+pub mod session;
 pub mod set;
 mod voicing;
 mod walking;
@@ -47,3 +48,6 @@ pub use percussion::{
 };
 pub use phrase::PhraseAt;
 pub use plan::{BarRole, ImposedRole, TunePlan};
+pub use session::{
+    DrawnVariant, InstrumentOverride, ProfileSession, SessionDraw, SessionTempo, SessionVariant,
+};

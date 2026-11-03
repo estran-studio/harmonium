@@ -39,6 +39,12 @@ pub enum AudioEvent {
         channel: u8,
         program: u8,
     },
+    /// Programmes de toutes les pistes (banque et programme du kit compris), annoncés par le
+    /// playhead à la première mesure dont l'orchestration diffère de celle déjà annoncée :
+    /// orchestration par session ou par chorus. `Copy`, sans allocation.
+    SetInstruments {
+        instruments: crate::style_profile::ProfileInstruments,
+    },
     TimingUpdate {
         samples_per_step: usize,
     },

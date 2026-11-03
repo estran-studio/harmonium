@@ -49,7 +49,7 @@ Phase 019, R1 : `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpou
 
 |---|---|
 | `[meta]` | `id` ASCII minuscule, `name`, `tradition` précise (région, époque), `tags`, `corpus` (référence au manifeste du labo et aux droits), `aliases` optionnels : noms courts pour `--style` (ex. `["gigue", "jig"]`), uniques parmi les profils distribués. Les tags ne servent pas à choisir un style. |
-| `[files]` | `cells`, `percussion`, `arrangement`, `dynamics`, `set` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
+| `[files]` | `cells`, `percussion`, `arrangement`, `dynamics`, `set`, `arc`, `session` : chemins relatifs au dossier, sans `..`. Omettre pour écrire les sections inline. |
 | `[meter]` | `time_signature = {numerator, denominator}`, `steps_per_bar`, `steps_per_unit` (unité des cellules), `steps_per_pulse`, `pulses_per_bar`, `default_swing_ratio`, `default_bpm`, `min_bpm`, `max_bpm`. Tempo à la noire ; pulse dansée indépendante. |
 | `[fixed_tonality]` | Optionnel : `key` (classe MIDI 0..11, do = 0) et `mode` (`ionian`, `mixolydian`, `dorian`, `aeolian`, `phrygian`, `harmonic_minor`) obligatoires. Verrouille la tonalité de tous les airs : priorité sur `melody.key_modes`, `dynamics.color`, pondération du set et bascules parallèles. Absent : comportement émotionnel inchangé. Voir « Tonalité verrouillée ». |
 | `[form]` | `sequence` : indices 0-based des parties jouées (AABB = `[0,0,1,1]`). Chaque `[[form.parts]]` donne `name`, `melody_center_offset` en demi-tons et `roles`, un rôle fixe ou pondéré par mesure (voir « Règles de phrase »), plus `tracks_off` optionnel : pistes tues sur cette partie (`["Bass", "PercussionLow", "PercussionHigh"]`, défaut : aucune), lues par la même porte que l'arrangement et la densité. |
@@ -64,6 +64,8 @@ Phase 019, R1 : `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpou
 | `[dynamics]` | Courbes par axe émotionnel : intensité, tempo, vélocités, densité, longueur de note et substitutions harmoniques ; seuils et frontière de changement de mode. Sans `fixed_tonality`, chaque mode atteignable (`key_modes`, `color`, `parallel_modes`) doit avoir sa bascule claire ↔ sombre : phrygien ↔ mixolydien, mineur harmonique ↔ ionien (majeur le plus proche, degrés altérés minimaux). Chaque courbe est une liste de points `[entrée, sortie]`, ordonnée ; extrémités constantes. Voir `dynamics.toml` pour les noms complets. |
 | `[mix]` | Gain de bus, salle, niveaux/placement/envois par piste et EQ stéréo ; schéma et bornes ci-dessous. |
 | `[set]` (`set.toml`) | Longueur, tonalités, raccords, clôture, rampe par air et mémoire signature ; section « Forme longue (set) » ci-dessous. |
+| `[arc]` (`arc.toml`) | Optionnel. Arc sur plusieurs chorus ; section « Arc sur plusieurs chorus ». |
+| `[session]` (`session.toml`) | Optionnel. Variantes tirées par graine (tempo, tonalité, instruments, voicings, swing, registre, tags, arc, Odin) ; section « Habillage par graine ». |
 
 Le chargeur vérifie les références, bornes, copies antérieures, métrique et banques
 avant l'installation. Les erreurs nomment le chemin du champ fautif. Un modèle
@@ -1751,8 +1753,113 @@ chorus) et `grille_phrases_aaba/` (AABA, `part_start`, `part_end`, `chorus_end`)
 `harmonium_core/tests/phrases_tests.rs`. Compte rendu :
 [`specs/019-bibliotheque-accompagnements/a1-phrases.md`](../specs/019-bibliotheque-accompagnements/a1-phrases.md).
 
+## Habillage par graine et orchestration par chorus (`[session]`, phase 019 A2)
 
+Une graine ne changeait que le rythme du comping et des notes de passage : tempo, tonalité,
+instruments, voicings, kit et arc étaient fixes par profil. `[session]` (ou `session.toml`,
+`[files] session = "session.toml"`) déclare des **variantes de session** pondérées, tirées **une
+fois par graine** (au premier air, avant sa construction), qui surchargent des réglages globaux
+**en liste blanche**. Section absente : aucun tirage, flux, dumps et rendus identiques à ceux
+d'avant. Aucun nom de style dans l'algorithme ; la musique est dans les données.
 
+```toml
+# session.toml
+[[variants]]
+group = "tempo"            # un tirage indépendant par groupe ; défaut « main »
+name = "lent"              # optionnel, publié avec la variante tirée
+weight = 1                 # défaut 1
+bpm = [100.0, 116.0]       # une valeur, ou une plage dont la graine tire un BPM entier
+swing = 0.70
+
+[[variants]]
+group = "comping"
+name = "guitare"
+instruments = { chords_program = 26 }
+
+[[variants]]
+group = "kit"
+name = "balais"
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+arc = "orchestre"           # arc nommé ci-dessous, à la place de [arc]
+
+[arcs.orchestre]            # même schéma que [arc] ; chemin d'erreur `session.arcs.orchestre…`
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [{ instruments = { percussion_program = 40 }, bass_feel = "two_feel" }]
+[[arcs.orchestre.stages]]
+variants = [{ instruments = { chords_program = 16 } }]
+```
+
+**Groupes.** Les variantes se rangent en groupes (`group`) ; chaque groupe tire **sa** variante, dans
+l'ordre où les groupes apparaissent, par un flux ChaCha8 dérivé de la graine de session. Neuf
+groupes de deux à quatre variantes donnent des milliers d'habillages sans les énumérer. **Deux
+groupes ne règlent jamais le même champ** (erreur de chargement, `session.variants[i].champ`) :
+l'ordre des groupes ne décide de rien. Deux variantes du même groupe le peuvent (une seule est
+tirée). Bornes : 64 variantes, 16 groupes, 16 arcs nommés.
+
+| Champ | Bornes | Effet |
+|---|---|---|
+| `weight` | ≥ 1, somme du groupe dans u32 | Poids dans le groupe |
+| `bpm` | valeur, ou `[bas, haut]` ordonné, dans `meter.min_bpm..max_bpm` | Tempo : remplace `default_bpm` comme **base** de la courbe `tempo` de `dynamics` (l'intensité s'y ajoute encore). Une plage tire un BPM entier |
+| `tonality` | `{ key = 0..11, mode }` ; `mode` atteignable par le profil (`reachable_modes`) | Tonalité et mode **du premier air** ; les airs suivants se tirent comme avant. Les accords relatifs à la tonique se transposent |
+| `instruments` | `melody_program`, `countermelody_program`, `chords_program`, `bass_program`, `percussion_bank`, `percussion_program` (tous optionnels) | Remplace ces champs de `[instruments]` ; une piste qui n'a pas de programme dans le profil ne peut pas en recevoir |
+| `odin` | comme `[odin]` (une piste à la fois) | Zones Odin qui remplacent celles de `[odin.<Piste>]` (jeux seulement ; sans `odin` compilé, la piste joue son programme) |
+| `voicing` | une famille de `accompaniment.chords.voicing` (`rootless`, `guide_tones`, `drop2`, …) | Famille de voicings du comping ; validée contre le profil (fenêtre `low..high`). Une famille ajoutée plus tard à l'énumération `ChordVoicing` est tirable sans autre changement |
+| `swing` | 0,5..=0,75 | Rapport de swing |
+| `register_octaves` | `{ Piste = -1..=1 }`, pistes mélodiques | Décale la piste d'octaves entières (les classes de hauteur ne changent pas) ; une note qui sortirait de `0..=127` garde sa hauteur |
+| `comping`, `percussion` | 0..=8 `{ tag, weight }` | Tags de repli pour le comping (motifs et phrases) et la batterie (patterns, phrases, relances) : le chorus d'un arc qui déclare les siens passe devant |
+| `arc` | nom d'un arc de `[arcs]` | Remplace `[arc]` pour la session |
+| `intensity`, `density` | 0..=2 | Multiplicateurs de base de l'intensité et de la densité lues par `dynamics`, comme ceux de l'arc (intensité × densité de session × celles du chorus) ; ni le tempo ni la mélodie |
+
+**Orchestration par chorus.** `instruments = { … }` dans une variante de **l'arc** (étape ou
+`fall`) remplace les programmes à partir de la première mesure du chorus, par-dessus ceux de la
+session ; un chorus qui n'en déclare pas **les rend** (le changement se défait au chorus
+suivant). La clôture du set garde les programmes de son chorus ; l'intro, ceux de la session.
+Les mesures publient leurs programmes (`MeasureSnapshot.instruments`, `Measure.instruments`) dès
+que le profil orchestre (une variante de session ou une variante d'arc règle `instruments`) ;
+sinon rien n'est publié et le contrat est celui d'avant.
+
+**Visible.** Chaque `MeasureSnapshot` d'une session à variantes porte `session` : une entrée par
+groupe (`group`, `index` dans `[[session.variants]]`, `name`) ; `instruments` : les programmes qui
+sonnent. Le tempo, le swing, la tonalité (`position.key`, `position.mode`) et les accords publiés
+sont ceux de la variante. Côté hôte : `TuneGenerator::session()` et `MusicComposer::session_variants()`
+(après la première mesure composée), `composition_bpm` des snapshots (tempo nominal de la variante).
+
+**Qui gagne, hôte contre variante.**
+
+| Réglage | Sans commande de l'hôte | Commande de l'hôte, qui l'emporte |
+|---|---|---|
+| tempo | celui de la variante (base de la courbe `tempo`) | `SetBpm` / `ScoreCommand::Tempo` : exactement la valeur de l'hôte, sur chaque mesure ; la rampe de set et la variante n'y touchent plus. `SetAudibleTempo` passe encore par-dessus au rendu |
+| tonalité et mode | ceux de la variante, au premier air | `[fixed_tonality]` du profil de l'hôte (donc une grille utilisateur transposée par lui) : la variante est **ignorée**, même si son mode n'est pas atteignable |
+| swing | celui de la variante | `SetSwing` (`MusicalParams::set_swing_ratio`, `swing_explicit`) jusqu'au prochain profil ou `Reset` |
+| programmes, voicings, registre, tags, arc, intensité, densité, Odin | ceux de la variante | aucune commande : un hôte qui ne veut pas d'une variante installe un profil sans `[session]` |
+
+**Programmes jusqu'au rendu.** Le playhead n'émet rien de plus : le playback copie
+`Measure.instruments` (`Copy`) au chargement de la mesure et annonce `AudioEvent::SetInstruments`
+au premier pas dont les programmes diffèrent de ceux déjà annoncés (aucune allocation dans le
+callback). Le renderer SoundFont change de programme (et de banque pour le kit) ; l'enregistreur
+MIDI écrit un `program_change` par piste qui change, à la barre (kit sur le canal GM 9) ;
+`timeline_to_midi` fait de même depuis les mesures. Les attaques anticipées de la mesure suivante
+(avant la barre) sonnent encore avec l'instrument précédent. Un `UpdateMusicalParams` ou un
+`ProgramChange` de l'hôte efface l'annonce : la mesure sous la tête la redonne au pas suivant.
+
+**Tirage et seek.** Deux entiers de 32 bits du RNG injecté, **seulement si le profil a des
+variantes** ; puis un flux ChaCha8 dérivé par groupe (et par groupe pour une plage de BPM). Le
+rejeu (`reset_to_initial`, `deterministic_seek`) retire la variante et la retire de nouveau, la
+même. Un changement de profil la retire aussi.
+
+**Erreurs** : chemin du champ (`session.variants[3].tonality.mode`, `session.arcs.orchestre.stages[0]
+.variants[0].instruments.bass_program`), fichier et ligne quand le profil vient de `session.toml`.
+Champ inconnu : refusé.
+
+Fixture de contrat : `tests/fixtures/profiles/grille_habillage/` (blues de douze mesures, quatre
+chorus, arc et phrases ; 23 variantes en neuf groupes, 3 456 habillages) ; tests :
+`harmonium_core/tests/session_variants_tests.rs`, `harmonium_host/tests/session_orchestration_tests.rs`.
+Compte rendu : [`specs/019-bibliotheque-accompagnements/a2-habillage.md`](../specs/019-bibliotheque-accompagnements/a2-habillage.md).
 
 ## Règles de phrase
 

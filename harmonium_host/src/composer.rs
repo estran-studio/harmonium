@@ -131,10 +131,7 @@ impl MusicComposer {
 
         let mut musical_params = MusicalParams::default();
         let meter = &tuning.profile.meter;
-        musical_params.bpm = meter.default_bpm;
-        musical_params.time_signature = meter.time_signature;
-        musical_params.pulse = Some(meter.pulse_spec());
-        musical_params.set_swing_ratio(meter.default_swing_ratio);
+        musical_params.apply_profile_meter(&tuning.profile);
         musical_params.profile_mix = tuning.profile.mix.prepare(sample_rate);
         let bpm = musical_params.bpm;
         let config = SessionConfig {
@@ -237,7 +234,7 @@ impl MusicComposer {
                 if let Some(existing) = self.writehead.timeline.get_measure(bar_idx) {
                     let mut snapshot =
                         harmonium_core::report::MeasureSnapshot::from_measure(existing);
-                    snapshot.composition_bpm = self.controls.emotion_mapped_bpm();
+                    snapshot.composition_bpm = self.composition_bpm();
                     self.pending_measure_snapshots.push(snapshot);
                 }
                 self.writehead.current_bar = bar_idx + 1;
@@ -253,7 +250,7 @@ impl MusicComposer {
             self.last_chord_is_minor = measure.chord_context.is_minor;
 
             let mut snapshot = harmonium_core::report::MeasureSnapshot::from_measure(&measure);
-            snapshot.composition_bpm = self.controls.emotion_mapped_bpm();
+            snapshot.composition_bpm = self.composition_bpm();
             self.pending_measure_snapshots.push(snapshot);
 
             self.writehead.commit_measure(measure);
@@ -825,11 +822,8 @@ impl MusicComposer {
         let Some(resources) = &self.host_resources else {
             return [None; harmonium_core::timeline::TrackId::ALL.len()];
         };
-        let mut patches = resources.odin.patches_for_zones(
-            &self.generator.tuning.profile.odin,
-            self.controls.emotions(),
-            zones,
-        );
+        let mut patches =
+            resources.odin.patches_for_zones(&self.odin_specs(), self.controls.emotions(), zones);
         // G7e : les motifs de basse sont l'unique source de Legato musical.
         // Décision hors callback ; sans Legato, le preset et sa polyphonie
         // restent strictement inchangés. Aucun nom de profil ici.
@@ -849,9 +843,39 @@ impl MusicComposer {
         patches
     }
 
+    /// Zones Odin en vigueur : celles du profil, une piste à la fois remplacée par la variante de
+    /// session tirée. La variante se tire à la première mesure composée : avant elle, les zones
+    /// sont celles du profil, et le `send_odin` suivant les remplace (un changement d'état est
+    /// toujours renvoyé au callback).
+    fn odin_specs(
+        &self,
+    ) -> std::borrow::Cow<
+        '_,
+        std::collections::BTreeMap<
+            harmonium_core::timeline::TrackId,
+            harmonium_core::odin::OdinTrackSpec,
+        >,
+    > {
+        let profile = &self.generator.tuning.profile.odin;
+        match self
+            .generator
+            .session()
+            .map(harmonium_core::compose::SessionDraw::odin_overrides)
+            .filter(|overrides| !overrides.is_empty())
+        {
+            Some(overrides) => {
+                let mut specs = profile.clone();
+                specs.extend(overrides.iter().map(|(track, spec)| (*track, spec.clone())));
+                std::borrow::Cow::Owned(specs)
+            }
+            None => std::borrow::Cow::Borrowed(profile),
+        }
+    }
+
     fn selected_odin_zones(&self) -> [Option<usize>; harmonium_core::timeline::TrackId::ALL.len()] {
+        let specs = self.odin_specs();
         harmonium_core::timeline::TrackId::ALL.map(|track| {
-            self.generator.tuning.profile.odin.get(&track).map(|spec| {
+            specs.get(&track).map(|spec| {
                 spec.select_zone(
                     self.controls.emotions(),
                     self.odin_selected[usize::from(track.channel())],
@@ -990,6 +1014,19 @@ impl MusicComposer {
     }
     pub fn emotion_mapped_bpm(&self) -> f32 {
         self.controls.emotion_mapped_bpm()
+    }
+    /// Tempo de composition publié dans les snapshots : le tempo nominal que la variante de
+    /// session tirée donne au profil, sinon celui des émotions ; jamais le tempo direct de l'hôte.
+    fn composition_bpm(&self) -> f32 {
+        self.generator
+            .session()
+            .and_then(harmonium_core::compose::SessionDraw::tempo)
+            .unwrap_or_else(|| self.controls.emotion_mapped_bpm())
+    }
+    /// Variantes de session tirées pour la graine courante (une par groupe), une fois les
+    /// premières mesures générées ; vide sans `[[session.variants]]` dans le profil.
+    pub fn session_variants(&self) -> &[harmonium_core::compose::DrawnVariant] {
+        self.generator.session().map_or(&[], harmonium_core::compose::SessionDraw::variants)
     }
     pub fn musical_params(&self) -> &MusicalParams {
         &self.musical_params

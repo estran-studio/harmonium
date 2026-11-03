@@ -46,6 +46,7 @@ use harmonium_core::{
     mix::PreparedMix,
     params::{PlaybackParams, TimeSignature},
     style_profile::ProfileInstruments,
+    timeline::TrackId,
 };
 
 use crate::backend::AudioRenderer;
@@ -117,6 +118,8 @@ pub struct RecorderBackend {
     bpm: f32,
     time_signature: TimeSignature,
     instruments: ProfileInstruments,
+    /// Programmes qui sonnent (ceux du profil, ou ceux que `SetInstruments` a annoncés).
+    sounding: ProfileInstruments,
     channel_programs: [u8; 16],
     mix: PreparedMix,
 }
@@ -201,6 +204,7 @@ impl RecorderBackend {
             bpm: defaults.bpm,
             time_signature: defaults.time_signature,
             instruments: defaults.instruments,
+            sounding: defaults.instruments,
             channel_programs,
             mix: defaults.mix,
         };
@@ -355,6 +359,13 @@ impl RecorderBackend {
                 program: self.channel_programs[channel as usize],
             });
         }
+        // Le kit de la mesure, quand une variante de session ou un chorus a changé celui du profil.
+        if self.sounding.percussion_program != self.instruments.percussion_program {
+            self.midi(MidiEvent::ProgramChange {
+                channel: map_midi_channel(TrackId::PercussionLow.channel()),
+                program: self.sounding.percussion_program,
+            });
+        }
         self.record_mix();
     }
 
@@ -428,9 +439,28 @@ impl AudioRenderer for RecorderBackend {
                     self.channel_programs[channel as usize] = program;
                 }
                 self.instruments = params.instruments;
+                self.sounding = params.instruments;
             }
             AudioEvent::MeasureTiming { bpm, time_signature, .. } => {
                 self.update_timing(*bpm, *time_signature);
+            }
+            AudioEvent::SetInstruments { instruments } => {
+                // Orchestration par session ou par chorus : un changement de programme à la
+                // barre pour chaque piste qui change, le kit sur le canal GM de percussion.
+                for (channel, program) in crate::voice_manager::gm_programs_for_profile(instruments)
+                {
+                    if self.channel_programs[channel as usize] != program {
+                        self.channel_programs[channel as usize] = program;
+                        self.midi(MidiEvent::ProgramChange { channel, program });
+                    }
+                }
+                if instruments.percussion_program != self.sounding.percussion_program {
+                    self.midi(MidiEvent::ProgramChange {
+                        channel: map_midi_channel(TrackId::PercussionLow.channel()),
+                        program: instruments.percussion_program,
+                    });
+                }
+                self.sounding = *instruments;
             }
             AudioEvent::ProgramChange { channel, program } => {
                 if (*channel as usize) < 16 {

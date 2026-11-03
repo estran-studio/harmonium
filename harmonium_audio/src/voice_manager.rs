@@ -355,6 +355,9 @@ impl VoiceManager {
             AudioEvent::UpdateMusicalParams { params } => {
                 self.apply_profile_programs(&params.instruments);
             }
+            AudioEvent::SetInstruments { instruments } => {
+                self.apply_profile_programs(&instruments);
+            }
             AudioEvent::TimingUpdate { .. }
             | AudioEvent::MidiClock { .. }
             | AudioEvent::MeasureTiming { .. }

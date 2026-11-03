@@ -1,0 +1,190 @@
+# Habillage par graine de la fixture (A2) : un tirage par groupe, les groupes se combinent. Valeurs
+# d'exercice, aucune mesure de corpus. Programmes General MIDI (GeneralUser GS, sans Odin) : piano
+# 0, orgue 16, guitare de jazz 26, contrebasse 32, basse électrique au doigt 33, kits de la banque
+# 128 : jazz 32 (baguettes), balais 40.
+#
+# 3 tempos × 4 tonalités × 3 comping × 2 basses × 2 kits × 3 voicings × 2 registres × 2 énergies
+# × 2 arcs = 3 456 habillages possibles en 23 variantes.
+
+# Tempo et swing ensemble (un swing marqué n'a pas de sens très vite) : un BPM entier tiré dans la
+# plage de la variante. Les plages sont séparées de plus de 8 BPM.
+[[variants]]
+group = "tempo"
+name = "lent"
+weight = 1
+bpm = [100.0, 116.0]
+swing = 0.70
+
+[[variants]]
+group = "tempo"
+name = "medium"
+weight = 1
+bpm = [136.0, 152.0]
+swing = 0.68
+
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [176.0, 196.0]
+swing = 0.62
+
+# Tonalité : le blues est écrit relativement à la tonique, la variante le transpose.
+[[variants]]
+group = "tonalite"
+name = "fa"
+weight = 2
+tonality = { key = 5, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "si_bemol"
+weight = 2
+tonality = { key = 10, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "mi_bemol"
+weight = 1
+tonality = { key = 3, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re_eolien"
+weight = 1
+tonality = { key = 2, mode = "aeolian" }
+
+# Instrument du comping.
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 1
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "guitare"
+weight = 1
+instruments = { chords_program = 26 }
+
+[[variants]]
+group = "comping"
+name = "orgue"
+weight = 1
+instruments = { chords_program = 16 }
+
+# Instrument de la basse.
+[[variants]]
+group = "basse"
+name = "contrebasse"
+weight = 1
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_electrique"
+weight = 1
+instruments = { bass_program = 33 }
+
+# Kit : baguettes (jazz) ou balais.
+[[variants]]
+group = "kit"
+name = "baguettes"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 32 }
+
+[[variants]]
+group = "kit"
+name = "balais"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+# Famille de voicings du comping.
+[[variants]]
+group = "voicing"
+name = "sans_fondamentale"
+weight = 1
+voicing = "rootless"
+
+[[variants]]
+group = "voicing"
+name = "notes_guides"
+weight = 1
+voicing = "guide_tones"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 1
+voicing = "drop2"
+
+# Registre du comping : une octave plus bas une fois sur trois.
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "registre"
+name = "grave"
+weight = 1
+register_octaves = { Chords = -1 }
+
+# Énergie de base (multiplicateurs de l'intensité et de la densité lues par `dynamics`).
+[[variants]]
+group = "energie"
+name = "doux"
+weight = 1
+intensity = 0.8
+density = 0.8
+
+[[variants]]
+group = "energie"
+name = "fort"
+weight = 1
+intensity = 1.15
+density = 1.1
+
+# Arc : celui de `arc.toml` (rien à surcharger) ou l'arc nommé « orchestre ».
+[[variants]]
+group = "arc"
+name = "exposition"
+weight = 1
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 1
+arc = "orchestre"
+
+# Arc « orchestre » : l'orchestration change à chaque frontière de chorus. Chorus 1 aux balais
+# (exposition, doux) ; chorus 2 retour au kit de la session ; chorus 3 l'orgue prend le comping ;
+# dernier chorus (retombée) aux balais, comping et basse de la session. Les programmes d'un chorus
+# remplacent ceux de la session ; un chorus qui n'en déclare pas les rend.
+[arcs.orchestre]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { instruments = { percussion_program = 40 }, intensity = 0.7, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { instruments = { chords_program = 16 }, intensity = 1.2, density = 1.2, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }] },
+]
+
+[[arcs.orchestre.fall]]
+instruments = { percussion_program = 40 }
+intensity = 0.5
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]

@@ -287,6 +287,14 @@ pub struct Measure {
     pub chord_changes: Vec<ChordChange>,
     /// State snapshot at generation time
     pub state_snapshot: StateSnapshot,
+    /// Programmes qui sonnent sur cette mesure, quand le profil orchestre (variante de session
+    /// ou arc avec `instruments`) ; `None` : ceux du profil, aucun changement. Le playback
+    /// applique un changement à la première mesure qui diffère de la précédente.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instruments: Option<crate::style_profile::ProfileInstruments>,
+    /// Variantes de session tirées (une par groupe) ; vide sans habillage par graine.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub session: Vec<crate::compose::DrawnVariant>,
     /// Notes per track
     pub tracks: HashMap<TrackId, Vec<TimelineNote>>,
     /// Cache de lecture préparé sur le thread principal, hors contrat sérialisé.
@@ -321,6 +329,8 @@ impl Measure {
             chord_context: ChordContext::default(),
             chord_changes: Vec::new(),
             state_snapshot: StateSnapshot::default(),
+            instruments: None,
+            session: Vec::new(),
             tracks,
             playback_events: Vec::new(),
         }

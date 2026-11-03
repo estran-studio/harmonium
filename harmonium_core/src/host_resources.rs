@@ -51,15 +51,33 @@ impl fmt::Display for MissingResource {
 }
 
 impl StyleProfile {
-    /// Ressources que ce profil désigne et que l'hôte n'a pas chargées.
+    /// Ressources que ce profil désigne et que l'hôte n'a pas chargées : celles de `[instruments]`
+    /// et de `[odin]`, et celles que ses variantes de session ou ses chorus peuvent mettre à leur
+    /// place (kit, presets Odin).
     #[must_use]
     pub fn missing_resources(&self, resources: &HostResources) -> Vec<MissingResource> {
         let mut missing = Vec::new();
-        let bank = self.instruments.percussion_bank;
-        if !resources.percussion_banks.contains(&bank) {
-            missing.push(MissingResource::PercussionBank { bank });
+        let arc_variants =
+            self.arc.iter().chain(self.session.arcs.values()).flat_map(|arc| {
+                arc.stages.iter().flat_map(|stage| &stage.variants).chain(&arc.fall)
+            });
+        let banks = std::iter::once(self.instruments.percussion_bank)
+            .chain(
+                self.session
+                    .variants
+                    .iter()
+                    .filter_map(|variant| variant.instruments.and_then(|i| i.percussion_bank)),
+            )
+            .chain(arc_variants.filter_map(|v| v.instruments.and_then(|i| i.percussion_bank)));
+        for bank in banks {
+            if !resources.percussion_banks.contains(&bank)
+                && !missing.contains(&MissingResource::PercussionBank { bank })
+            {
+                missing.push(MissingResource::PercussionBank { bank });
+            }
         }
-        for (track, spec) in &self.odin {
+        let odin_specs = self.odin.iter().chain(self.session.variants.iter().flat_map(|v| &v.odin));
+        for (track, spec) in odin_specs {
             for zone in &spec.zones {
                 if !resources.odin.contains(&zone.preset) && !missing.iter().any(|resource| {
                     matches!(resource, MissingResource::OdinPreset { track: missing_track, preset }

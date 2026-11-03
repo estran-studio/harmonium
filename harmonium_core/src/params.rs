@@ -278,6 +278,10 @@ pub struct MusicalParams {
     /// dotted-quarter pulse of 6 steps).
     #[serde(default = "default_swing_ratio")]
     pub swing_ratio: f32,
+    /// Swing commandé par l'hôte (`set_swing_ratio`) : il l'emporte sur le swing tiré par une
+    /// variante de session. Faux au profil par défaut.
+    #[serde(default)]
+    pub swing_explicit: bool,
 
     /// Dance pulse override. `None` = derived from `time_signature` (see
     /// [`MusicalParams::effective_pulse`]).
@@ -503,6 +507,7 @@ impl Default for MusicalParams {
             bpm_explicit: false,
             time_signature: profile.meter.time_signature,
             swing_ratio: profile.meter.default_swing_ratio,
+            swing_explicit: false,
             pulse: Some(profile.meter.pulse_spec()),
             master_volume: default_master_volume(),
             profile_id: default_profile_id(),
@@ -546,7 +551,8 @@ impl MusicalParams {
         let meter = &profile.meter;
         self.bpm = meter.default_bpm;
         self.bpm_explicit = false;
-        self.set_swing_ratio(meter.default_swing_ratio);
+        self.swing_ratio = meter.default_swing_ratio.clamp(0.5, 0.75);
+        self.swing_explicit = false;
         self.time_signature = meter.time_signature;
         self.pulse = Some(meter.pulse_spec());
     }
@@ -587,9 +593,12 @@ impl MusicalParams {
             .unwrap_or_else(|| PulseSpec::from_time_signature(self.time_signature, ticks_per_beat))
     }
 
-    /// Set the swing ratio, clamped to the valid range 0.5..=0.75.
+    /// Set the swing ratio, clamped to the valid range 0.5..=0.75. Commande de l'hôte : elle
+    /// l'emporte sur le swing d'une variante de session (`swing_explicit`) jusqu'au prochain
+    /// profil ou `Reset`.
     pub fn set_swing_ratio(&mut self, ratio: f32) {
         self.swing_ratio = ratio.clamp(0.5, 0.75);
+        self.swing_explicit = true;
     }
 
     /// Définit la densité de percussion, bornée à `0..=2`.

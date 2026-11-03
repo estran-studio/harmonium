@@ -11,7 +11,7 @@ use rand_chacha::ChaCha8Rng;
 use super::{
     accomp::{BassMotifPlan, ChordPlayer, bass_bar, bass_motif_bar, first_bass_target},
     accomp_profile::ChordVoice,
-    arc::{ArcBar, TagWeight},
+    arc::{ArcBar, ChorusArc, TagWeight},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     bass_template::{TemplateBar, bass_template_bar},
     cells::Cell,
@@ -23,6 +23,7 @@ use super::{
     },
     phrase::{Slot, Window},
     plan::{BarRole, ImposedRole, TunePlan},
+    session::SessionDraw,
     set::{KEY_DRAW_RANGE, SetPlan, TransitionKind, candidates},
     walking::{WalkingBar, walking_bar},
 };
@@ -44,7 +45,7 @@ use crate::{
         Articulation, ChordChange, ChordContext, Measure, NoteId, StateSnapshot, TimelineNote,
         TrackId,
     },
-    tuning::{MelodyParams, TuningParams},
+    tuning::{AccompanimentParams, MelodyParams, TuningParams},
 };
 
 /// Flux de découpage en phrases du comping et de la batterie (graines distinctes, aucune
@@ -72,6 +73,25 @@ fn phrasing_frame(
     (Window { seed, bars, chorus_end }, offset, part)
 }
 
+/// Accompagnement joué : celui que la variante de session tirée a habillé (famille de voicings),
+/// sinon celui du profil.
+fn dressed<'a>(
+    session: &'a Option<Arc<SessionDraw>>,
+    profile: &'a Option<AccompanimentParams>,
+) -> Option<&'a AccompanimentParams> {
+    session.as_deref().and_then(SessionDraw::accompaniment).or(profile.as_ref())
+}
+
+/// Arc en vigueur : celui que la variante de session nomme, sinon `[arc]`.
+fn chorus_arc_of<'a>(
+    profile: &'a crate::style_profile::StyleProfile,
+    session: Option<&SessionDraw>,
+) -> Option<&'a ChorusArc> {
+    session
+        .and_then(SessionDraw::arc_name)
+        .and_then(|name| profile.session.arcs.get(name))
+        .or(profile.arc.as_ref())
+}
 /// Découpage en phrases de comping de la passe qui contient `performed_bar` et rang de cette
 /// mesure dans la passe ; vide si `chords` n'a pas de phrase.
 fn comping_tiling(
@@ -174,6 +194,10 @@ pub struct TuneGenerator {
     current_bar: usize,
     /// Air à terminer sur demande du jeu, indépendant de la fin de set.
     ending_tune: Option<usize>,
+    /// Variantes de session tirées pour la graine (`None` : pas encore tirées, ou profil sans
+    /// variantes). Tirage unique, avant le premier air ; remis à zéro par le rejeu et par un
+    /// changement de profil.
+    session: Option<Arc<SessionDraw>>,
 }
 
 impl TuneGenerator {
@@ -189,6 +213,7 @@ impl TuneGenerator {
             sets: Vec::new(),
             next_note_id: 1,
             current_bar: 0,
+            session: None,
             ending_tune,
         }
     }
@@ -257,7 +282,30 @@ impl TuneGenerator {
             self.tuning = tuning;
             self.tunes.clear();
             self.sets.clear();
+            self.session = None;
         }
+    }
+
+    /// Variantes de session tirées pour la graine ; `None` tant qu'aucune mesure n'est générée
+    /// et pour un profil sans `[[session.variants]]`.
+    #[must_use]
+    pub fn session(&self) -> Option<&SessionDraw> {
+        self.session.as_deref()
+    }
+
+    fn chorus_arc(&self) -> Option<&ChorusArc> {
+        chorus_arc_of(&self.profile, self.session.as_deref())
+    }
+
+    /// Tire les variantes de session avant le premier air : deux entiers de 32 bits du RNG
+    /// injecté, seulement si le profil a des variantes (sans elles le flux est celui d'avant).
+    fn ensure_session(&mut self, rng: &mut dyn RngCore) {
+        if self.session.is_some() || self.profile.session.variants.is_empty() {
+            return;
+        }
+        let high = rng.next_range_u64(0..1 << 32);
+        let seed = (high << 32) | rng.next_range_u64(0..1 << 32);
+        self.session = Some(Arc::new(self.profile.session.draw(&self.profile, seed)));
     }
 
     /// Réinitialise le générateur à son état initial pour le seek déterministe.
@@ -268,6 +316,7 @@ impl TuneGenerator {
     pub fn reset_to_initial(&mut self) {
         self.tunes.clear();
         self.sets.clear();
+        self.session = None;
         self.ending_tune = self.musical_params.end_after_tour.then_some(0);
         self.current_bar = 0;
     }
@@ -407,14 +456,18 @@ impl TuneGenerator {
         if params.bpm_explicit {
             return params.bpm;
         }
+        // Tempo de la variante de session : base de la courbe de `dynamics` à la place du
+        // tempo nominal du profil ; le tempo direct de l'hôte (ci-dessus) gagne.
+        let nominal =
+            self.session.as_ref().and_then(|session| session.tempo()).unwrap_or(params.bpm);
         let dynamics = &self.profile.dynamics;
-        let game_tempo = dynamics.tempo_for(params.bpm, params.intensity);
+        let game_tempo = dynamics.tempo_for(nominal, params.intensity);
         let Some((ramp, progress)) = self.ramp_progress(tune_index) else {
             return game_tempo;
         };
         let ceiling = ramp.ceiling_bpm.unwrap_or(self.profile.meter.max_bpm);
         let base = dynamics
-            .tempo_for(params.bpm, self.effective_intensity(tune_index))
+            .tempo_for(nominal, self.effective_intensity(tune_index))
             .max(game_tempo)
             .min(ceiling.max(game_tempo));
         let lift = ramp.tempo_bpm.eval(progress) * ramp.gate.eval(params.intensity);
@@ -472,7 +525,14 @@ impl TuneGenerator {
         let mut measure = Measure::new(bar_index, time_sig, tempo, steps);
         measure.pulse = self.profile.meter.pulse_spec();
         measure.position = Some(position);
-        measure.swing_ratio = self.musical_params.swing_ratio;
+        measure.swing_ratio = match self.session.as_ref().and_then(|session| session.swing()) {
+            // `SetSwing` de l'hôte gagne sur la variante de session.
+            Some(swing) if !self.musical_params.swing_explicit => swing,
+            _ => self.musical_params.swing_ratio,
+        };
+        if let Some(session) = &self.session {
+            measure.session = session.variants().to_vec();
+        }
         measure.state_snapshot = StateSnapshot {
             bpm: tempo,
             density: self.musical_params.rhythm_density,
@@ -500,18 +560,38 @@ impl TuneGenerator {
         let held =
             last_bar && self.transition_for(position.tune_index + 1).0 == TransitionKind::Held;
         let is_outro = last_bar && (self.musical_params.end_after_tour || set_outro || held);
-        // L'arc ne touche ni l'intro ni la mesure de clôture. Le profil est cloné (un compteur
-        // de références) pour que l'état de l'arc ne garde pas `self` emprunté.
-        let arc_profile = (!is_intro && !is_outro)
-            .then(|| self.profile.arc.as_ref().map(|_| Arc::clone(&self.profile)))
-            .flatten();
-        let arc = arc_profile.as_ref().and_then(|profile| {
-            profile.arc.as_ref()?.at(
+        // L'arc ne touche ni l'intro ni la mesure de clôture, dont les programmes restent ceux
+        // de leur chorus. Le profil et la session sont clonés (un compteur de références) pour
+        // que l'état de l'arc ne garde pas `self` emprunté.
+        let session = self.session.clone();
+        let arc_profile = Arc::clone(&self.profile);
+        let chorus_arc = chorus_arc_of(&arc_profile, session.as_deref());
+        let base = session.as_deref().and_then(SessionDraw::base);
+        let arc_state = if is_intro {
+            None
+        } else if let Some(arc) = chorus_arc {
+            arc.at(
                 self.arc_seed(position.tune_index),
                 &position,
-                profile.form.bars_per_tour(),
+                arc_profile.form.bars_per_tour(),
+                base,
             )
-        });
+        } else {
+            base.zip(session.as_deref())
+                .map(|(base, session)| ArcBar::base_only(base, session.seed(), position.chorus()))
+        };
+        let arc = arc_state.filter(|_| !is_outro);
+        if session.as_deref().is_some_and(|session| session.instruments().is_some())
+            || chorus_arc.is_some_and(ChorusArc::has_instruments)
+        {
+            let base = session
+                .as_deref()
+                .and_then(SessionDraw::instruments)
+                .unwrap_or(self.profile.instruments);
+            measure.instruments = Some(
+                arc_state.and_then(|state| state.instruments()).map_or(base, |o| o.apply(base)),
+            );
+        }
 
         if is_intro {
             self.fill_intro_measure(&tune, &position, &mut measure);
@@ -663,6 +743,9 @@ impl TuneGenerator {
         }
         if let Some(arc) = &arc {
             arc.apply_break(&mut measure);
+        }
+        if let Some(session) = &session {
+            session.shift_registers(&mut measure);
         }
 
         measure
@@ -916,7 +999,9 @@ impl TuneGenerator {
                         *next_note_id += 1;
                         id
                     };
-                    if let Some(accompaniment) = &tuning.profile.accompaniment {
+                    if let Some(accompaniment) =
+                        dressed(&self.session, &tuning.profile.accompaniment)
+                    {
                         let mut chord_player = ChordPlayer::new();
                         for note in chord_player.chord_bar(
                             &chords,
@@ -1623,7 +1708,7 @@ impl TuneGenerator {
     ) -> Vec<TimelineNote> {
         let (_, _, offset) = self.profile.form.position(bar_in_tour);
         let part_pass_start = bar_in_tour - offset;
-        let Some(harmony) = self.tuning.profile.accompaniment.as_ref() else {
+        let Some(harmony) = dressed(&self.session, &self.tuning.profile.accompaniment) else {
             return Vec::new();
         };
         let d = &self.tuning.profile.dynamics;
@@ -1688,6 +1773,7 @@ impl TuneGenerator {
         let cycle = self.profile.form.bars_per_tour() * tours;
         let mut cumulative_start = 1usize; // 1-based start of current tune's intro
         let mut tune_idx = 0usize;
+        self.ensure_session(rng);
 
         loop {
             // La demande du jeu termine l'air courant, pas nécessairement l'air de session 0.
@@ -1774,7 +1860,7 @@ impl TuneGenerator {
         };
         // Graine de l'arc : un tirage par air, seulement si le profil a un arc (les profils
         // sans arc gardent le même flux). Celle du premier air du set sert à tout le set.
-        let arc_seed = if self.profile.arc.is_some() {
+        let arc_seed = if self.chorus_arc().is_some() {
             let high = rng.next_range_u64(0..1 << 32);
             (high << 32) | rng.next_range_u64(0..1 << 32)
         } else {
@@ -1982,6 +2068,14 @@ impl TuneGenerator {
         valence: f32,
         rng: &mut dyn RngCore,
     ) -> (PitchClass, Mode) {
+        // Variante de session : tonalité du premier air. Le verrou du profil (`[fixed_tonality]`,
+        // donc une grille utilisateur transposée par lui) gagne : la variante est ignorée.
+        if tune_index == 0
+            && self.tuning.profile.fixed_tonality.is_none()
+            && let Some(tonality) = self.session.as_ref().and_then(|session| session.tonality())
+        {
+            return (tonality.key, tonality.mode);
+        }
         let candidates = candidates(&self.tuning.profile, valence);
         let set = &self.tuning.profile.set;
         let planned = self
