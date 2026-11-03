@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     algo::RngCore,
     compose::{
-        arc::{TagWeight, tag_weight},
+        arc::{TagWeight, tagged_weight},
         dynamics::Curve,
+        phrase::{Candidate, MAX_PHRASE_BARS, MAX_PHRASES, PhraseAt, Slot, Window, tile},
     },
     ornaments::mix,
     style_profile::ProfileError,
@@ -307,6 +308,32 @@ pub struct CompingMotif {
     pub tag: Option<String>,
 }
 
+fn is_any(at: &PhraseAt) -> bool {
+    matches!(at, PhraseAt::Any)
+}
+
+/// Phrase de comping : une suite de motifs de mesure (indices dans `comping`) jouée sur
+/// plusieurs mesures. Chaque passe de partie se découpe en phrases tirées par poids, sans état
+/// d'une mesure à l'autre (voir `phrase.rs`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompingPhrase {
+    #[serde(default = "default_motif_weight")]
+    pub weight: u32,
+    /// Portée optionnelle : la phrase ne concourt que pour cette partie (`form.parts[].name`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub part: Option<String>,
+    /// Étiquette que `[arc]` nomme pour choisir parmi les phrases.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    /// Emplacement dans la passe de la partie : `any`, `part_start`, `part_end` (mise en place
+    /// avant un changement de section) ou `chorus_end`.
+    #[serde(default, skip_serializing_if = "is_any")]
+    pub at: PhraseAt,
+    /// Un motif par mesure : indices dans `comping`. 1 à 8 mesures.
+    pub motifs: Vec<usize>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChordPattern {
@@ -323,6 +350,10 @@ pub struct ChordVoice {
     /// Rythmes tirés par mesure (poids) ; remplacent le choix du motif par intensité.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comping: Vec<CompingMotif>,
+    /// Phrases de plusieurs mesures, suites de motifs de `comping` ; remplacent le tirage d'un
+    /// motif par mesure là où une phrase tient dans la passe de la partie.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub phrases: Vec<CompingPhrase>,
     #[serde(default = "triad_note_count")]
     pub note_count: u8,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -418,25 +449,50 @@ impl ChordVoice {
             })
     }
 
-    /// Attaques de la mesure : un motif de comping tiré par poids avec `seed` (une mesure
-    /// se rejoue à l'identique), sinon le motif choisi par l'intensité (`offset`). `tags` (l'arc
-    /// du chorus) restreint le tirage aux motifs qui portent un de ses tags, au poids du motif
-    /// fois celui du tag ; aucun motif ne concourt, ou `tags` vide : le tirage du profil.
-    pub(crate) fn bar_hits(&self, offset: f32, seed: u64, tags: &[TagWeight]) -> &[ChordHit] {
-        let weight = |motif: &CompingMotif| {
-            let weight = u64::from(motif.weight);
-            if tags.is_empty() {
-                weight
-            } else {
-                weight.saturating_mul(tag_weight(tags, motif.tag.as_deref()))
-            }
-        };
+    /// Découpage de la passe `window` de la partie `part` en phrases de comping, restreint aux
+    /// étiquettes `tags` de l'arc du chorus (vide : toutes). Vide : le profil n'a pas de phrase
+    /// (ou aucune ne concourt) ; chaque mesure se tire alors seule (`bar_hits`).
+    pub(crate) fn phrase_tiling(
+        &self,
+        window: Window,
+        part: &str,
+        tags: &[TagWeight],
+    ) -> Vec<Option<Slot>> {
+        if self.phrases.is_empty() {
+            return Vec::new();
+        }
+        tile(window, self.phrases.len(), |index| {
+            let phrase = &self.phrases[index];
+            phrase.part.as_deref().is_none_or(|p| p == part).then(|| Candidate {
+                bars: phrase.motifs.len(),
+                weight: tagged_weight(phrase.weight, phrase.tag.as_deref(), tags),
+                at: phrase.at,
+            })
+        })
+    }
+
+    /// Attaques de la mesure : celles du motif que `slot` (la phrase qui couvre la mesure)
+    /// désigne ; sinon un motif de comping tiré par poids avec `seed` (une mesure se rejoue à
+    /// l'identique), sinon le motif choisi par l'intensité (`offset`). `tags` (l'arc du chorus)
+    /// restreint le tirage aux motifs qui portent un de ses tags, au poids du motif fois celui
+    /// du tag ; aucun motif ne concourt, ou `tags` vide : le tirage du profil.
+    pub(crate) fn bar_hits(
+        &self,
+        offset: f32,
+        seed: u64,
+        tags: &[TagWeight],
+        slot: Option<Slot>,
+    ) -> &[ChordHit] {
+        if let Some(slot) = slot {
+            return &self.comping[self.phrases[slot.index].motifs[slot.bar]].hits;
+        }
+        let weight = |motif: &CompingMotif| tagged_weight(motif.weight, motif.tag.as_deref(), tags);
         let total: u64 = self.comping.iter().map(weight).fold(0, u64::saturating_add);
         if total == 0 {
             return if tags.is_empty() {
                 &self.pattern(offset).hits
             } else {
-                self.bar_hits(offset, seed, &[])
+                self.bar_hits(offset, seed, &[], None)
             };
         }
         let mut pick = ChaCha8Rng::seed_from_u64(mix(seed, 0x434F_4D50)).next_range_u64(0..total);
@@ -1122,6 +1178,32 @@ impl AccompanimentParams {
             "accompaniment.chords.comping",
             "somme des poids positive requise",
         )?;
+        require(
+            c.phrases.len() <= MAX_PHRASES,
+            "accompaniment.chords.phrases",
+            "au plus 256 phrases de comping",
+        )?;
+        for (i, phrase) in c.phrases.iter().enumerate() {
+            let field = format!("accompaniment.chords.phrases[{i}]");
+            require(phrase.weight > 0, format!("{field}.weight"), "poids positif requis")?;
+            require(
+                (1..=MAX_PHRASE_BARS).contains(&phrase.motifs.len()),
+                format!("{field}.motifs"),
+                "1 à 8 mesures requises",
+            )?;
+            require(
+                phrase.part.as_deref().is_none_or(|name| parts.iter().any(|p| p.name == name)),
+                format!("{field}.part"),
+                "partie inconnue dans form.parts",
+            )?;
+            for (j, &motif) in phrase.motifs.iter().enumerate() {
+                require(
+                    motif < c.comping.len(),
+                    format!("{field}.motifs[{j}]"),
+                    "motif inconnu dans accompaniment.chords.comping",
+                )?;
+            }
+        }
         require(c.center <= 127, "accompaniment.chords.center", "registre MIDI requis")?;
         require(c.max_drift <= 127, "accompaniment.chords.max_drift", "registre MIDI requis")?;
         require(

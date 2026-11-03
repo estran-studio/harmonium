@@ -1467,6 +1467,8 @@ impl StyleProfile {
                 "partie inconnue dans form.parts",
             )?;
         }
+        let part_names: Vec<&str> = self.form.parts.iter().map(|p| p.name.as_str()).collect();
+        self.percussion.validate_phrasing(m.steps_per_bar, &part_names)?;
         check(
             self.percussion.low_note <= 127 && self.percussion.high_note <= 127,
             "percussion.low_note",

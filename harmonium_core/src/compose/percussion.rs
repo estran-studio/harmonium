@@ -15,9 +15,18 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::plan::TunePlan;
+use super::{
+    accomp_profile::require,
+    arc::{TagWeight, tagged_weight},
+    phrase::{
+        Candidate, MAX_FILL_BARS, MAX_PHRASE_BARS, MAX_PHRASES, PhraseAt, Slot, Window, pick_fill,
+        tile,
+    },
+    plan::TunePlan,
+};
 use crate::{
     algo::RngCore,
+    style_profile::ProfileError,
     timeline::{Articulation, TimelineNote, TrackId},
 };
 
@@ -348,6 +357,74 @@ impl Serialize for PercussionPattern {
     }
 }
 
+const fn is_any(at: &PhraseAt) -> bool {
+    matches!(at, PhraseAt::Any)
+}
+
+/// Phrase de batterie : une suite de patterns de même densité jouée sur plusieurs mesures
+/// (`[[phrases]]`). Le découpage de chaque passe de partie en phrases est tiré par poids, sans
+/// état d'une mesure à l'autre (voir `phrase.rs`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PercussionPhrase {
+    /// Niveau de densité (`0`, `1` ou `2`) : la phrase ne concourt qu'à cette densité.
+    pub density: u8,
+    /// Poids strictement positif du tirage.
+    #[serde(default = "default_pattern_weight")]
+    pub weight: u32,
+    /// Portée optionnelle : la phrase ne concourt que pour cette partie (`form.parts[].name`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub part: Option<String>,
+    /// Étiquette que `[arc]` nomme pour choisir parmi les phrases.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    /// Emplacement dans la passe de la partie.
+    #[serde(default, skip_serializing_if = "is_any")]
+    pub at: PhraseAt,
+    /// Un pattern par mesure : indices dans `[[patterns]]`, de la densité de la phrase, sans
+    /// portée `part` ni `tour`. 1 à 8 mesures.
+    pub patterns: Vec<usize>,
+}
+
+/// Mesure d'une relance.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FillBar {
+    #[serde(default)]
+    pub hits: Vec<PercussionHit>,
+}
+
+/// Relance (fill) de fin de phrase (`[[fills]]`) : de 1 à 4 mesures qui s'achèvent avec la
+/// phrase. Dans la première mesure de la relance, le pattern ordinaire joue jusqu'au pas
+/// `start_step` (p. ex. 12 : levée au temps 4), la relance reprend à partir de là ; les mesures
+/// suivantes sont celles de la relance seule.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PercussionFill {
+    /// Niveau de densité (`0`, `1` ou `2`) : la relance ne concourt qu'à cette densité.
+    pub density: u8,
+    /// Poids strictement positif du tirage.
+    #[serde(default = "default_pattern_weight")]
+    pub weight: u32,
+    /// Étiquette que `[arc]` nomme pour choisir parmi les relances.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    /// Fins de phrase concernées : toutes (`any`), celles qui ferment la passe d'une partie
+    /// (`part_end` : mise en place avant un changement de section) ou celle du chorus
+    /// (`chorus_end`).
+    #[serde(default, skip_serializing_if = "is_any")]
+    pub at: PhraseAt,
+    /// Pas de la première mesure où la relance prend la place du pattern ordinaire.
+    #[serde(default)]
+    pub start_step: usize,
+    /// Les mesures de la relance, 1 à 4 ; les coups de la première sont à `start_step` ou après.
+    pub bars: Vec<FillBar>,
+}
+
+const fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
 const fn default_low_note() -> u8 {
     36
 }
@@ -407,6 +484,12 @@ struct RawPercussionTable {
     densities: Vec<PercussionPattern>,
     #[serde(default)]
     cadence_patterns: Vec<PercussionPattern>,
+    #[serde(default)]
+    phrases: Vec<PercussionPhrase>,
+    #[serde(default)]
+    fills: Vec<PercussionFill>,
+    #[serde(default)]
+    fills_none_weight: u32,
 }
 
 /// Table de percussion portée en données (D9, constitution V).
@@ -447,6 +530,16 @@ pub struct PercussionTable {
     /// Patterns de coups optionnels pour les cadences / fins de phrase.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cadence_patterns: Vec<PercussionPattern>,
+    /// Phrases de plusieurs mesures (suites de patterns de même densité).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub phrases: Vec<PercussionPhrase>,
+    /// Banque pondérée de relances de fin de phrase ; remplace `cadence_patterns` aux densités
+    /// qu'elle déclare.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fills: Vec<PercussionFill>,
+    /// Poids de « pas de relance » dans le tirage d'une fin de phrase.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub fills_none_weight: u32,
 }
 
 impl<'de> Deserialize<'de> for PercussionTable {
@@ -464,6 +557,9 @@ impl<'de> Deserialize<'de> for PercussionTable {
             intro_tracks: raw.intro_tracks,
             patterns,
             cadence_patterns: raw.cadence_patterns,
+            phrases: raw.phrases,
+            fills: raw.fills,
+            fills_none_weight: raw.fills_none_weight,
         })
     }
 }
@@ -593,6 +689,9 @@ impl Default for PercussionTable {
             intro_tracks: None,
             patterns: Vec::new(),
             cadence_patterns: Vec::new(),
+            phrases: Vec::new(),
+            fills: Vec::new(),
+            fills_none_weight: 0,
         })
     }
 }
@@ -727,6 +826,12 @@ impl PercussionTable {
             }
         }
 
+        for fill in &self.fills {
+            for hit in fill.bars.iter().flat_map(|bar| &bar.hits) {
+                validate_hit(fill.density, hit)?;
+            }
+        }
+
         for required in 0..=2u8 {
             if !seen_densities.contains(&required) {
                 return Err(PercussionTableError::MissingDensity(required));
@@ -754,6 +859,183 @@ impl PercussionTable {
     /// Vrai si une mesure de relance remplace le pattern ordinaire à la densité `density`.
     pub(crate) fn has_cadence_pattern(&self, density: u8) -> bool {
         self.cadence_patterns.iter().any(|pattern| pattern.density == density.min(2))
+    }
+
+    /// Vrai si une banque de relances est déclarée à la densité `density` : elle remplace alors
+    /// le pattern de cadence de cette densité.
+    pub(crate) fn has_fills(&self, density: u8) -> bool {
+        self.fills.iter().any(|fill| fill.density == density.min(2))
+    }
+
+    /// Vrai si la table a des phrases ou des relances : leurs tirages dérivent de la graine
+    /// d'accompagnement de l'air, qui est donc tirée.
+    pub(crate) fn is_phrased(&self) -> bool {
+        !self.phrases.is_empty() || !self.fills.is_empty()
+    }
+
+    /// Découpage de la passe `window` de la partie `part` en phrases de batterie de la densité
+    /// `density`, restreint aux étiquettes `tags` de l'arc (vide : toutes). Vide : aucune phrase
+    /// déclarée à cette densité.
+    pub(crate) fn phrase_tiling(
+        &self,
+        window: Window,
+        part: &str,
+        density: u8,
+        tags: &[TagWeight],
+    ) -> Vec<Option<Slot>> {
+        let density = density.min(2);
+        if !self.phrases.iter().any(|phrase| phrase.density == density) {
+            return Vec::new();
+        }
+        tile(window, self.phrases.len(), |index| {
+            let phrase = &self.phrases[index];
+            (phrase.density == density && phrase.part.as_deref().is_none_or(|p| p == part)).then(
+                || Candidate {
+                    bars: phrase.patterns.len(),
+                    weight: tagged_weight(phrase.weight, phrase.tag.as_deref(), tags),
+                    at: phrase.at,
+                },
+            )
+        })
+    }
+
+    /// Pattern de la mesure couverte par `slot` (phrase de la table).
+    pub(crate) fn phrase_pattern(&self, slot: Slot) -> &PercussionPattern {
+        &self.patterns[self.phrases[slot.index].patterns[slot.bar]]
+    }
+
+    /// Relance qui couvre la mesure `offset` de la passe `window`, avec le rang de la mesure
+    /// dans la relance. Une relance se tire à la fin de chaque phrase : fin de la phrase de
+    /// `tiling` qui couvre la mesure, sinon `form_phrase_len(mesure)` (longueur de la phrase de
+    /// la forme qui s'achève à cette mesure, `None` : pas de fin de phrase). Une relance ne
+    /// déborde jamais de la phrase qu'elle clôt. Seules les relances de la densité `density`
+    /// et des étiquettes `tags` de l'arc (vide : toutes) concourent.
+    pub(crate) fn fill_covering(
+        &self,
+        window: Window,
+        offset: usize,
+        density: u8,
+        tags: &[TagWeight],
+        tiling: &[Option<Slot>],
+        form_phrase_len: impl Fn(usize) -> Option<usize>,
+    ) -> Option<(&PercussionFill, usize)> {
+        let density = density.min(2);
+        for ahead in 0..MAX_FILL_BARS {
+            let end = offset + ahead;
+            if end >= window.bars {
+                break;
+            }
+            let available = match tiling.get(end).copied().flatten() {
+                Some(slot) => slot.is_last().then_some(slot.bars),
+                None => form_phrase_len(end),
+            };
+            let Some(available) = available else { continue };
+            let picked = pick_fill(
+                window,
+                end,
+                available,
+                self.fills.len(),
+                self.fills_none_weight,
+                |index| {
+                    let fill = &self.fills[index];
+                    (fill.density == density).then(|| Candidate {
+                        bars: fill.bars.len(),
+                        weight: tagged_weight(fill.weight, fill.tag.as_deref(), tags),
+                        at: fill.at,
+                    })
+                },
+            );
+            if let Some(index) = picked {
+                let fill = &self.fills[index];
+                if fill.bars.len() > ahead {
+                    return Some((fill, fill.bars.len() - 1 - ahead));
+                }
+            }
+        }
+        None
+    }
+
+    /// Valide `[[phrases]]` et `[[fills]]` contre le profil (`steps` : pas par mesure, `parts` :
+    /// noms de `form.parts`) ; les erreurs portent le chemin du champ.
+    pub(crate) fn validate_phrasing(
+        &self,
+        steps: usize,
+        parts: &[&str],
+    ) -> Result<(), ProfileError> {
+        require(self.phrases.len() <= MAX_PHRASES, "percussion.phrases", "au plus 256 phrases")?;
+        require(self.fills.len() <= MAX_PHRASES, "percussion.fills", "au plus 256 relances")?;
+        for (i, phrase) in self.phrases.iter().enumerate() {
+            let field = format!("percussion.phrases[{i}]");
+            require(phrase.density <= 2, format!("{field}.density"), "densité 0, 1 ou 2 requise")?;
+            require(phrase.weight > 0, format!("{field}.weight"), "poids positif requis")?;
+            require(
+                (1..=MAX_PHRASE_BARS).contains(&phrase.patterns.len()),
+                format!("{field}.patterns"),
+                "1 à 8 mesures requises",
+            )?;
+            require(
+                phrase.part.as_deref().is_none_or(|name| parts.contains(&name)),
+                format!("{field}.part"),
+                "partie inconnue dans form.parts",
+            )?;
+            for (j, &index) in phrase.patterns.iter().enumerate() {
+                let field = format!("{field}.patterns[{j}]");
+                let Some(pattern) = self.patterns.get(index) else {
+                    return Err(ProfileError::new(
+                        field,
+                        "pattern inconnu dans percussion.patterns",
+                    ));
+                };
+                require(
+                    pattern.density == phrase.density,
+                    &field,
+                    "le pattern doit avoir la densité de la phrase",
+                )?;
+                require(
+                    pattern.part.is_none() && pattern.tour.is_none(),
+                    &field,
+                    "un pattern à portée (part, tour) est refusé dans une phrase",
+                )?;
+            }
+        }
+        for (i, fill) in self.fills.iter().enumerate() {
+            let field = format!("percussion.fills[{i}]");
+            require(fill.density <= 2, format!("{field}.density"), "densité 0, 1 ou 2 requise")?;
+            require(
+                !self.has_cadence_pattern(fill.density),
+                format!("{field}.density"),
+                "cadence_patterns déclare déjà cette densité : les relances la remplacent, \
+                 en garder une seule des deux",
+            )?;
+            require(fill.weight > 0, format!("{field}.weight"), "poids positif requis")?;
+            require(
+                fill.at != PhraseAt::PartStart,
+                format!("{field}.at"),
+                "any, part_end ou chorus_end requis pour une relance",
+            )?;
+            require(
+                (1..=MAX_FILL_BARS).contains(&fill.bars.len()),
+                format!("{field}.bars"),
+                "1 à 4 mesures requises",
+            )?;
+            require(
+                fill.start_step < steps,
+                format!("{field}.start_step"),
+                "pas dans la mesure requis",
+            )?;
+            for (b, bar) in fill.bars.iter().enumerate() {
+                for (h, hit) in bar.hits.iter().enumerate() {
+                    let field = format!("{field}.bars[{b}].hits[{h}].step");
+                    require(hit.step < steps, &field, "pas dans la mesure requis")?;
+                    require(
+                        b > 0 || hit.step >= fill.start_step,
+                        &field,
+                        "les coups de la première mesure commencent à start_step",
+                    )?;
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Pattern de la densité `density` tiré parmi ceux qui portent un tag de `tags` (poids du

@@ -10,14 +10,18 @@ use rand_chacha::ChaCha8Rng;
 
 use super::{
     accomp::{BassMotifPlan, ChordPlayer, bass_bar, bass_motif_bar, first_bass_target},
-    arc::ArcBar,
+    accomp_profile::ChordVoice,
+    arc::{ArcBar, TagWeight},
     arrangement::{IntroConfig, IntroInfo, IntroRole, TunePosition},
     bass_template::{TemplateBar, bass_template_bar},
     cells::Cell,
     harmony::{ChordDegree, ChordQuality, DegreeChord, TuneHarmony},
     melody::{MelodyLine, same_cell_up_to_octave, tonic_midi_for_key},
     mode::Mode,
-    percussion::{PercussionPatternPlan, draw_percussion_humanize, percussion_notes},
+    percussion::{
+        PercussionPattern, PercussionPatternPlan, draw_percussion_humanize, percussion_notes,
+    },
+    phrase::{Slot, Window},
     plan::{BarRole, ImposedRole, TunePlan},
     set::{KEY_DRAW_RANGE, SetPlan, TransitionKind, candidates},
     walking::{WalkingBar, walking_bar},
@@ -42,6 +46,48 @@ use crate::{
     },
     tuning::{MelodyParams, TuningParams},
 };
+
+/// Flux de découpage en phrases du comping et de la batterie (graines distinctes, aucune
+/// corrélation entre les deux couches).
+const COMPING_PHRASES: u64 = 0x434D_5048;
+const PERCUSSION_PHRASES: u64 = 0x5052_5048;
+
+/// Passe de partie qui contient la mesure `performed_bar` de l'air (0-based), pour le
+/// découpage en phrases de la couche `layer` : la fenêtre, le rang de la mesure dans la passe
+/// et la partie. La graine ne dépend que de la graine d'accompagnement de l'air et de la
+/// première mesure de la passe : tout se recalcule sans état (seek).
+fn phrasing_frame(
+    form: &crate::style_profile::ProfileForm,
+    accompaniment_seed: u64,
+    performed_bar: usize,
+    layer: u64,
+) -> (Window, usize, usize) {
+    let (part, _, offset) = form.position(performed_bar);
+    let bars = form.parts[part].roles.len();
+    let chorus_end = performed_bar % form.bars_per_tour() - offset + bars == form.bars_per_tour();
+    let seed = crate::ornaments::mix(
+        crate::ornaments::mix(accompaniment_seed, layer),
+        (performed_bar - offset) as u64,
+    );
+    (Window { seed, bars, chorus_end }, offset, part)
+}
+
+/// Découpage en phrases de comping de la passe qui contient `performed_bar` et rang de cette
+/// mesure dans la passe ; vide si `chords` n'a pas de phrase.
+fn comping_tiling(
+    form: &crate::style_profile::ProfileForm,
+    chords: &ChordVoice,
+    accompaniment_seed: u64,
+    performed_bar: usize,
+    tags: &[TagWeight],
+) -> (Vec<Option<Slot>>, usize) {
+    let (window, offset, part) =
+        phrasing_frame(form, accompaniment_seed, performed_bar, COMPING_PHRASES);
+    if chords.phrases.is_empty() {
+        return (Vec::new(), offset);
+    }
+    (chords.phrase_tiling(window, &form.parts[part].name, tags), offset)
+}
 
 // ---------------------------------------------------------------------------
 // ActiveTune
@@ -75,9 +121,11 @@ pub struct ActiveTune {
     /// écrite et ses ornements ne dépendent pas de la graine d'accompagnement).
     pub material_seed: u64,
     /// Graine de l'accompagnement (comping, marche et notes de passage de la basse, motifs
-    /// de basse), tirée une fois par air dans le RNG injecté, **après** la mélodie, l'intro et
-    /// le matériel (0 et aucun tirage sans `[accompaniment]`). Chaque mesure en dérive sa graine
-    /// par son seul indice (`mix(graine, mesure)`), sans état d'une mesure à l'autre.
+    /// de basse, phrases de comping et de batterie), tirée une fois par air dans le RNG injecté,
+    /// **après** la mélodie, l'intro et le matériel (0 et aucun tirage sans `[accompaniment]`
+    /// ni phrases ou relances de batterie). Chaque mesure en dérive sa graine par son seul
+    /// indice (`mix(graine, mesure)`), chaque passe de partie la sienne par l'indice de sa
+    /// première mesure : aucun état d'une mesure à l'autre.
     pub accompaniment_seed: u64,
     /// Graine de l'arc sur plusieurs chorus, tirée une fois par air (0 si le profil n'a pas
     /// d'arc) ; l'arc d'un set lit celle de son premier air.
@@ -558,7 +606,15 @@ impl TuneGenerator {
             let hits = if is_intro {
                 &a.chords.pattern(0.0).hits
             } else {
-                a.chords.bar_hits(offset, seed, arc.as_ref().map_or(&[][..], ArcBar::comping_tags))
+                let tags = arc.as_ref().map_or(&[][..], ArcBar::comping_tags);
+                let (tiling, rank) = comping_tiling(
+                    &self.profile.form,
+                    &a.chords,
+                    tune.accompaniment_seed,
+                    self.performed_bar(&position),
+                    tags,
+                );
+                a.chords.bar_hits(offset, seed, tags, tiling.get(rank).copied().flatten())
             };
             super::chord_spread::apply(&mut measure, &a.chords, hits, seed);
         }
@@ -1212,28 +1268,79 @@ impl TuneGenerator {
                 self.arc_intensity(position.tune_index, arc),
                 self.arc_density(arc),
             );
-            // Une mesure de relance garde son pattern ; ailleurs l'arc restreint le choix aux
-            // patterns de ses tags.
-            let replaced = is_cadence && table.has_cadence_pattern(density);
-            let tagged = arc.filter(|_| !replaced).and_then(|arc| {
+            let tags = arc.map_or(&[][..], ArcBar::percussion_tags);
+            let form = &self.profile.form;
+            // Phrases de batterie de la passe de la partie et relance de fin de phrase : tirées
+            // sans état depuis la graine d'accompagnement (la mesure se rejoue après un seek).
+            let performed = self.performed_bar(position);
+            let (window, rank, part) =
+                phrasing_frame(form, tune.accompaniment_seed, performed, PERCUSSION_PHRASES);
+            let tiling = if table.is_phrased() {
+                table.phrase_tiling(window, &form.parts[part].name, density, tags)
+            } else {
+                Vec::new()
+            };
+            let has_fills = table.has_fills(density);
+            // Une relance de la forme (fin de phrase du profil) mesure la distance à la fin de
+            // phrase précédente ; elle ne sert qu'aux mesures hors des phrases de la table.
+            let form_phrase_end = |end: usize| {
+                form.phrase_end(part, end, tune.plan.bar_role(performed - rank + end).role)
+            };
+            let fill = has_fills
+                .then(|| {
+                    table.fill_covering(window, rank, density, tags, &tiling, |end| {
+                        form_phrase_end(end).then(|| {
+                            let start =
+                                (0..end).rev().find(|&e| form_phrase_end(e)).map_or(0, |e| e + 1);
+                            end + 1 - start
+                        })
+                    })
+                })
+                .flatten();
+            // Une mesure de cadence garde son pattern ; ailleurs la phrase de la table, puis
+            // l'arc (patterns de ses tags), puis le choix ordinaire. Une banque de relances
+            // remplace le pattern de cadence de la densité.
+            let cadence_pattern = is_cadence && !has_fills;
+            let replaced = cadence_pattern && table.has_cadence_pattern(density);
+            let phrased = tiling
+                .get(rank)
+                .copied()
+                .flatten()
+                .filter(|_| !replaced)
+                .map(|slot| table.phrase_pattern(slot));
+            let tagged = arc.filter(|_| !replaced && phrased.is_none()).and_then(|arc| {
                 table.tagged_pattern(
-                    &self.profile.form.parts[position.part.0].name,
+                    &form.parts[position.part.0].name,
                     density,
                     arc.percussion_tags(),
                     arc.percussion_seed(position.part.0, density.min(2)),
                 )
             });
-            let pattern = tagged.unwrap_or_else(|| {
+            let pattern = phrased.or(tagged).unwrap_or_else(|| {
                 tune.percussion_plan.pattern(
                     table,
                     position.part.0,
                     position.tour,
                     density,
-                    is_cadence,
+                    cadence_pattern,
                 )
             });
-            let (percussion_low_notes, percussion_high_notes) =
+            let (mut percussion_low_notes, mut percussion_high_notes) =
                 percussion_notes(table, pattern, measure.steps, humanize);
+            if let Some((fill, bar)) = fill {
+                // La relance reprend le pattern à son pas de départ (première mesure) ou le
+                // remplace (mesures suivantes).
+                let from = if bar == 0 { fill.start_step } else { 0 };
+                let overlay = PercussionPattern::new(density, fill.bars[bar].hits.clone());
+                let (low, high) = percussion_notes(table, &overlay, measure.steps, humanize);
+                for (notes, played) in
+                    [(&mut percussion_low_notes, low), (&mut percussion_high_notes, high)]
+                {
+                    notes.retain(|note| note.start_step < from);
+                    notes.extend(played);
+                    notes.sort_by_key(|note| note.start_step);
+                }
+            }
             if percussion_low_active {
                 for mut note in percussion_low_notes {
                     note.id = self.alloc_note_id();
@@ -1523,6 +1630,13 @@ impl TuneGenerator {
         let chord_offset = d.chords_intensity.eval(self.arc_intensity(tune.tune_index, arc))
             + d.density_chords.eval(self.arc_density(arc));
         let tags = arc.map_or(&[][..], ArcBar::comping_tags);
+        let (tiling, rank) = comping_tiling(
+            &self.profile.form,
+            &harmony.chords,
+            tune.accompaniment_seed,
+            bar_in_tour,
+            tags,
+        );
         let mut chord_player = ChordPlayer::new();
         for b in part_pass_start..bar_in_tour {
             let c = self.chords_for_bar(tune, b);
@@ -1533,7 +1647,12 @@ impl TuneGenerator {
                 tune.plan.key,
                 tune.plan.mode,
                 harmony,
-                harmony.chords.bar_hits(chord_offset, seed, tags),
+                harmony.chords.bar_hits(
+                    chord_offset,
+                    seed,
+                    tags,
+                    tiling.get(b - part_pass_start).copied().flatten(),
+                ),
                 self.profile.harmony.steps_per_chord,
                 seed,
             );
@@ -1541,6 +1660,8 @@ impl TuneGenerator {
         let chords = self.chords_for_bar(tune, bar_in_tour);
         let next_first = self.next_bar_first_chord(tune, bar_in_tour);
         let seed = crate::ornaments::mix(tune.accompaniment_seed, bar_in_tour as u64);
+        let hits =
+            harmony.chords.bar_hits(chord_offset, seed, tags, tiling.get(rank).copied().flatten());
         let next_note_id = &mut self.next_note_id;
         let mut next_id = || {
             let id = *next_note_id;
@@ -1553,7 +1674,7 @@ impl TuneGenerator {
             tune.plan.key,
             tune.plan.mode,
             harmony,
-            harmony.chords.bar_hits(chord_offset, seed, tags),
+            hits,
             self.profile.harmony.steps_per_chord,
             seed,
             &mut next_id,
@@ -1795,17 +1916,19 @@ impl TuneGenerator {
             0
         };
         // Graine de l'accompagnement : un tirage par air dès que le profil a un accompagnement
-        // (sans lui, le flux est celui d'avant), qu'une couche en tire ou non : ajouter ou
-        // retirer une couche ne décale ainsi aucun autre tirage. Elle vient du RNG injecté,
-        // donc de la graine de session, et non de la mélodie écrite, que la banque de cellules
-        // d'un profil sous grille fixe réduit à deux valeurs. Tirée après tout le reste de
-        // l'air : la mélodie, l'intro et les ornements de cet air ne bougent pas.
-        let accompaniment_seed = if self.profile.accompaniment.is_some() {
-            let high = rng.next_range_u64(0..1 << 32);
-            (high << 32) | rng.next_range_u64(0..1 << 32)
-        } else {
-            0
-        };
+        // ou des phrases et des relances de batterie (sans eux, le flux est celui d'avant),
+        // qu'une couche en tire ou non : ajouter ou retirer une couche ne décale ainsi aucun
+        // autre tirage. Elle vient du RNG injecté, donc de la graine de session, et non de la
+        // mélodie écrite, que la banque de cellules d'un profil sous grille fixe réduit à deux
+        // valeurs. Tirée après tout le reste de l'air : la mélodie, l'intro et les ornements
+        // de cet air ne bougent pas.
+        let accompaniment_seed =
+            if self.profile.accompaniment.is_some() || self.profile.percussion.is_phrased() {
+                let high = rng.next_range_u64(0..1 << 32);
+                (high << 32) | rng.next_range_u64(0..1 << 32)
+            } else {
+                0
+            };
         let bass_plan = if let Some(source) = source {
             source.bass_plan.clone()
         } else if let Some(a) = &self.profile.accompaniment

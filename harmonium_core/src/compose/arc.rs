@@ -83,6 +83,16 @@ pub(crate) fn tag_weight(tags: &[TagWeight], tag: Option<&str>) -> u64 {
     tag.map_or(0, |tag| tags.iter().filter(|t| t.tag == tag).map(|t| u64::from(t.weight)).sum())
 }
 
+/// Poids d'un candidat sous les tags de l'arc : son poids seul si `tags` est vide, sinon son
+/// poids fois celui de son tag (0 s'il n'en porte pas un nommé).
+pub(crate) fn tagged_weight(weight: u32, tag: Option<&str>, tags: &[TagWeight]) -> u64 {
+    if tags.is_empty() {
+        u64::from(weight)
+    } else {
+        u64::from(weight).saturating_mul(tag_weight(tags, tag))
+    }
+}
+
 /// Silence ou stop-time sur une fenêtre de mesures du chorus.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -143,11 +153,13 @@ pub struct ArcVariant {
     /// Feel de la basse ; exige `accompaniment.bass.walking`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bass_feel: Option<BassFeel>,
-    /// Tags des motifs de comping autorisés (`accompaniment.chords.comping[].tag`), pondérés.
+    /// Tags des motifs (`accompaniment.chords.comping[].tag`) et des phrases de comping
+    /// (`accompaniment.chords.phrases[].tag`) autorisés, pondérés.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comping: Vec<TagWeight>,
-    /// Tags des patterns de batterie autorisés (`percussion.patterns[].tag`), pondérés ; les
-    /// mesures de relance (`cadence_patterns`) ne changent pas.
+    /// Tags des patterns (`percussion.patterns[].tag`), des phrases (`percussion.phrases[].tag`)
+    /// et des relances (`percussion.fills[].tag`) de batterie autorisés, pondérés ; les mesures
+    /// de relance de `cadence_patterns` ne changent pas.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub percussion: Vec<TagWeight>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -353,11 +365,22 @@ impl ChorusArc {
         let comping_tags: HashSet<&str> = profile
             .accompaniment
             .iter()
-            .flat_map(|a| &a.chords.comping)
-            .filter_map(|motif| motif.tag.as_deref())
+            .flat_map(|a| {
+                a.chords
+                    .comping
+                    .iter()
+                    .filter_map(|motif| motif.tag.as_deref())
+                    .chain(a.chords.phrases.iter().filter_map(|phrase| phrase.tag.as_deref()))
+            })
             .collect();
-        let percussion_tags: HashSet<&str> =
-            profile.percussion.patterns.iter().filter_map(|p| p.tag.as_deref()).collect();
+        let percussion_tags: HashSet<&str> = profile
+            .percussion
+            .patterns
+            .iter()
+            .filter_map(|p| p.tag.as_deref())
+            .chain(profile.percussion.phrases.iter().filter_map(|p| p.tag.as_deref()))
+            .chain(profile.percussion.fills.iter().filter_map(|f| f.tag.as_deref()))
+            .collect();
         let mut total = 0u64;
         for (v, variant) in variants.iter().enumerate() {
             let field = format!("{field}[{v}]");
@@ -377,8 +400,18 @@ impl ChorusArc {
                 "le feel de basse demande accompaniment.bass.walking",
             )?;
             for (name, tags, known, bank) in [
-                ("comping", &variant.comping, &comping_tags, "accompaniment.chords.comping"),
-                ("percussion", &variant.percussion, &percussion_tags, "percussion.patterns"),
+                (
+                    "comping",
+                    &variant.comping,
+                    &comping_tags,
+                    "accompaniment.chords (comping, phrases)",
+                ),
+                (
+                    "percussion",
+                    &variant.percussion,
+                    &percussion_tags,
+                    "percussion (patterns, phrases, fills)",
+                ),
             ] {
                 require(tags.len() <= MAX_TAGS, format!("{field}.{name}"), "au plus 8 tags")?;
                 let mut seen = HashSet::new();

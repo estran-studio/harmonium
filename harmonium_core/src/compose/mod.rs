@@ -13,6 +13,7 @@ pub mod harmony;
 pub mod melody;
 pub mod mode;
 pub mod percussion;
+mod phrase;
 pub mod plan;
 pub mod set;
 mod voicing;
@@ -40,8 +41,9 @@ pub use melody::{
 };
 pub use mode::{Mode, degree_to_diatonic_step, diatonic_step_to_degree};
 pub use percussion::{
-    DEFAULT_PERCUSSION_TOML, PercussionHit, PercussionPattern, PercussionPatternPlan,
-    PercussionTable, PercussionTableError, PercussionVoice, draw_percussion_humanize,
-    percussion_notes,
+    DEFAULT_PERCUSSION_TOML, FillBar, PercussionFill, PercussionHit, PercussionPattern,
+    PercussionPatternPlan, PercussionPhrase, PercussionTable, PercussionTableError,
+    PercussionVoice, draw_percussion_humanize, percussion_notes,
 };
+pub use phrase::PhraseAt;
 pub use plan::{BarRole, ImposedRole, TunePlan};
