@@ -1,0 +1,426 @@
+# Profil `gmd_funk` (phase 019, B4) : accompagnement funk / doubles croches droites sous une grille
+# d'accords.
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le style `funk` du Groove
+# MIDI Dataset v1.0.0 (36 fichiers `beat` de 4 batteurs, fiabilité « assez » ; 41 fichiers `fill`
+# de 2 batteurs, « juste »). La batterie (patterns, phrases, relances) vient de là ; la basse est
+# calibrée sur le sous-ensemble `rhythmfeel = FUNK` de la Weimar Jazz Database v2.1 (20 solos, 16
+# avec mesures valides, « juste ») pour ce qui y est mesurable : registre, parts d'approche,
+# rythme harmonique ; le reste (croches syncopées, fondamentale-octave, comping en doubles croches
+# et accords tenus) est écrit par règles de métier, documentées dans `README.md`, car aucune
+# source ouverte ne le mesure (les croches de la basse ne sont pas dans WJazzD, pas de corpus de
+# comping). Valeurs et mesures : `README.md`, table « mesure → valeur ».
+#
+# Ce profil est fait pour jouer sous une grille fournie par l'utilisateur : basse, comping et
+# batterie ne dépendent que de l'accord publié. Les cinq grilles par défaut, quand l'utilisateur
+# n'en fournit pas, sont des formes communes écrites ici (pas des partitions) : vamps à un ou deux
+# accords de seize mesures. Tonique mi pour toutes : la tonalité est verrouillée, la grille s'écrit
+# relative. Aucune réharmonisation (D4) : les accords publiés ne changent jamais.
+#
+# Aucune mélodie (piste `Melody` absente de l'arrangement). Tout sonne avec GeneralUser GS (guitare
+# claire, basse aux doigts, kit standard) : aucune banque ni preset Odin.
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+
+[meta]
+id = "gmd_funk"
+name = "Funk, doubles croches droites (Groove MIDI Dataset, funk)"
+tradition = "Groove MIDI Dataset v1.0.0, style funk : 36 fichiers beat et 41 fills, 4 batteurs, kit électronique Roland TD-11 ; basse : Weimar Jazz Database v2.1, sous-ensemble rhythmfeel = FUNK (20 solos, 1969 à 2009)"
+tags = ["funk", "accompagnement", "grille", "doubles-croches"]
+corpus = """\
+Groove MIDI Dataset v1.0.0 (Google LLC), CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ : Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman, « Learning to Groove with Inverse Sequence Transformations », ICML 2019 ; probabilités par pas, groupes de mesures, phrases et relances de la batterie funk, agrégés, jamais un enregistrement. \
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL) 1.0, https://opendatacommons.org/licenses/odbl/1-0/ ; individual contents under the Database Contents License (DbCL) 1.0, https://opendatacommons.org/licenses/dbcl/1-0/. \
+Statistiques agrégées seulement (registre de basse, approches du quatrième temps, rythme harmonique, tempos, formes) ; aucune note de solo ni de ligne de basse copiée. \
+Manifestes et mesures : harmonium_lab corpus/gmd, corpus/wjazzd, references/gmd-funk/, references/wjazzd-funk/. Grilles par défaut : formes communes écrites pour ce profil (voir README)."""
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+# Feel droit en 16 pas : doubles croches égales (GMD funk, 34 fichiers sur 36 « straight », rapport
+# de swing médian 0,500, p10 0,480).
+default_swing_ratio = 0.5
+# GMD funk (beat, 4/4 droit, 34 fichiers) : tempo p10 80, p50 96, p90 112 BPM ; WJazzD FUNK :
+# 84 à 159, médiane 117,8. Défaut = médiane GMD, bas = p10 GMD, haut = 130 (au-dessus des deux
+# médianes et du p90 GMD, sous le p75 de WJazzD, 144,9).
+default_bpm = 96.0
+min_bpm = 80.0
+max_bpm = 130.0
+
+[fixed_tonality]
+key = 4
+mode = "dorian"
+
+# Une partie de seize mesures : un chorus. WJazzD FUNK : 24 chorus complets, longueurs 16 mesures
+# (7), 12 (5), autres (12) ; GMD : files de phrases de 2 et 4 mesures.
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Grille"
+melody_center_offset = 0
+phrase_ends = [4, 8, 12, 16]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que `wjazzd_swing`.
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 4, mode = "dorian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles relatives à la tonique (mi) ; un créneau de quatre pas (une noire). WJazzD FUNK : le
+# changement d'accord tombe sur le temps 1 dans 74 % des cas et sur le temps 3 dans 25 %, 82 % des
+# mesures n'ont qu'un accord (IC 61 à 97 %), la durée d'un accord est de deux temps (49 %) ou
+# quatre (46 %) : les grilles ci-dessous changent d'accord à la mesure, une fois à la blanche.
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+[harmony.parts.Grille]
+kind = "chord_loop"
+loops = [
+  # Vamp sur un accord de neuvième : seize mesures de I9.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "9", steps = 256 },
+  ] },
+  # Vamp I9 avec relance sur IV9 : 4 + 4 + 4 + 2 + 2 mesures.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "9", steps = 64 },
+    { semitones = 5, quality = "9", steps = 64 },
+    { semitones = 0, quality = "9", steps = 64 },
+    { semitones = 5, quality = "9", steps = 32 },
+    { semitones = 0, quality = "9", steps = 32 },
+  ] },
+  # Vamp mineur dorien : Im7, IV7, retour, bVII7.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "m7", steps = 64 },
+    { semitones = 5, quality = "7", steps = 64 },
+    { semitones = 0, quality = "m7", steps = 64 },
+    { semitones = 5, quality = "7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 32 },
+  ] },
+  # Deux accords alternés, deux mesures chacun : Im7 et bVII7.
+  { weight = 2, chords = [
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 32 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 32 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 32 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 32 },
+  ] },
+  # Huit mesures répétées : Im7 (2), IVm7 (2), Im7 (2), bVII7 (1), V7 à la blanche (1, changement
+  # au temps 3).
+  { weight = 2, chords = [
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 5, quality = "m7", steps = 32 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 10, quality = "7", steps = 8 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 5, quality = "m7", steps = 32 },
+    { semitones = 0, quality = "m7", steps = 32 },
+    { semitones = 10, quality = "7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 10, quality = "7", steps = 8 },
+  ] },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Basse : riffs de une ou deux mesures (croches et doubles croches syncopées, fondamentale-octave,
+# quinte et septième mineure), écrits par règles de métier : WJazzD ne donne que la hauteur à la
+# noire, aucune croche. Les intervalles sont sans tierce (la tierce dépend de la qualité de
+# l'accord, que le riff ignore). Ce qui est mesuré :
+# - registre : hauteur de basse de WJazzD FUNK, centiles 1 à 99 = 31..51, étendue 28..53 ; la
+#   fondamentale se place dans 30..41, l'octave monte à 53 ;
+# - approche du temps 4 avant un changement d'accord à la barre : aucune 68 %, chromatique 22 %
+#   (IC 17 à 28 %), diatonique 10 % : poids de `passing` ci-dessous (`none_weight` 68, chromatique
+#   22, degré de gamme 10).
+[accompaniment.bass]
+low = 30
+high = 41
+walk_low = 28
+walk_high = 53
+motifs = [
+  # 1. Un-et-octave : la fondamentale sur le un, une croche fantôme, l'octave en contretemps.
+  { bars = 1, weight = 5, reference = "chord_root", notes = [
+    { step = 0, duration = 3, semitones = 0, velocity = 104 },
+    { step = 3, duration = 1, semitones = 0, velocity = 70 },
+    { step = 6, duration = 2, semitones = 0, octave = 1, velocity = 90 },
+    { step = 8, duration = 3, semitones = 0, velocity = 100 },
+    { step = 12, duration = 2, semitones = 0, velocity = 86 },
+    { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 84 },
+  ] },
+  # 2. Croches : fondamentale et octave en alternance.
+  { bars = 1, weight = 4, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 100 },
+    { step = 2, duration = 2, semitones = 0, velocity = 78 },
+    { step = 4, duration = 2, semitones = 0, octave = 1, velocity = 88 },
+    { step = 6, duration = 2, semitones = 0, velocity = 78 },
+    { step = 8, duration = 2, semitones = 0, velocity = 96 },
+    { step = 10, duration = 2, semitones = 0, velocity = 78 },
+    { step = 12, duration = 2, semitones = 0, octave = 1, velocity = 88 },
+    { step = 14, duration = 2, semitones = 0, velocity = 80 },
+  ] },
+  # 3. Tenue puis relance : une blanche sur le un, la quinte au temps 4.
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 8, semitones = 0, velocity = 104 },
+    { step = 8, duration = 3, semitones = 0, velocity = 90 },
+    { step = 11, duration = 1, semitones = 0, velocity = 68 },
+    { step = 12, duration = 2, semitones = 7, velocity = 88 },
+    { step = 14, duration = 2, semitones = 0, velocity = 82 },
+  ] },
+  # 4. Trois-trois-deux : la fondamentale sur les pas 0, 3, 6 puis 8, 11, 14 (septième mineure à la fin).
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 3, semitones = 0, velocity = 104 },
+    { step = 3, duration = 3, semitones = 0, velocity = 92 },
+    { step = 6, duration = 2, semitones = 0, octave = 1, velocity = 88 },
+    { step = 8, duration = 3, semitones = 0, velocity = 98 },
+    { step = 11, duration = 3, semitones = 0, velocity = 90 },
+    { step = 14, duration = 2, semitones = 10, velocity = 84 },
+  ] },
+  # 5. Doubles croches : notes fantômes entre les accents.
+  { bars = 1, weight = 2, reference = "chord_root", notes = [
+    { step = 0, duration = 1, semitones = 0, velocity = 100 },
+    { step = 1, duration = 1, semitones = 0, velocity = 62 },
+    { step = 3, duration = 1, semitones = 0, velocity = 70 },
+    { step = 4, duration = 2, semitones = 0, octave = 1, velocity = 92 },
+    { step = 7, duration = 1, semitones = 0, velocity = 72 },
+    { step = 8, duration = 1, semitones = 0, velocity = 96 },
+    { step = 10, duration = 1, semitones = 0, velocity = 66 },
+    { step = 11, duration = 1, semitones = 0, octave = 1, velocity = 80 },
+    { step = 12, duration = 2, semitones = 0, velocity = 90 },
+    { step = 15, duration = 1, semitones = 7, velocity = 70 },
+  ] },
+  # 6. Deux mesures : riff syncopé puis réponse à la quinte et à la septième mineure.
+  { bars = 2, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 3, semitones = 0, velocity = 104 },
+    { step = 3, duration = 1, semitones = 0, velocity = 70 },
+    { step = 4, duration = 2, semitones = 0, octave = 1, velocity = 88 },
+    { step = 8, duration = 3, semitones = 0, velocity = 98 },
+    { step = 12, duration = 2, semitones = 0, velocity = 86 },
+    { step = 16, duration = 3, semitones = 0, velocity = 102 },
+    { step = 19, duration = 1, semitones = 0, velocity = 68 },
+    { step = 22, duration = 2, semitones = 7, velocity = 88 },
+    { step = 24, duration = 3, semitones = 0, velocity = 98 },
+    { step = 28, duration = 2, semitones = 10, velocity = 86 },
+    { step = 30, duration = 2, semitones = 0, velocity = 84 },
+  ] },
+  # 7. Pédale tenue : une ronde (chorus clairsemé).
+  { bars = 1, weight = 2, reference = "chord_root", notes = [
+    { step = 0, duration = 16, semitones = 0, velocity = 98 },
+  ] },
+  # 8. Deux mesures : fondamentale, quinte et octave, croches décalées d'une mesure à l'autre.
+  { bars = 2, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 3, semitones = 0, velocity = 104 },
+    { step = 3, duration = 3, semitones = 0, velocity = 90 },
+    { step = 6, duration = 2, semitones = 7, velocity = 86 },
+    { step = 8, duration = 4, semitones = 0, velocity = 98 },
+    { step = 14, duration = 2, semitones = 0, octave = 1, velocity = 84 },
+    { step = 16, duration = 4, semitones = 0, velocity = 102 },
+    { step = 20, duration = 2, semitones = 0, velocity = 76 },
+    { step = 22, duration = 2, semitones = 0, octave = 1, velocity = 88 },
+    { step = 24, duration = 3, semitones = 0, velocity = 96 },
+    { step = 27, duration = 1, semitones = 0, velocity = 68 },
+    { step = 28, duration = 2, semitones = 10, velocity = 84 },
+    { step = 30, duration = 2, semitones = 7, velocity = 84 },
+  ] },
+]
+
+# Approche d'un changement d'accord, un temps avant la cible : parts mesurées de WJazzD FUNK
+# (changement à la barre, 494 événements, 12 solos) ; une règle par mouvement, `none_weight` pour
+# « aucune ». Pas de passage sur un coup du riff : la part jouée est inférieure à la part mesurée
+# quand le riff attaque le pas 12 (README, limites).
+[accompaniment.bass.passing]
+none_weight = 68
+# Au rythme harmonique neutre (0,5) les poids sont ceux mesurés (multiplicateur 1) ; l'arc les
+# monte ou les descend (densité de l'arc 0,5 à 1,3 : 0,6 à 1,26).
+density = [[0.0, 0.2], [0.5, 1.0], [1.0, 1.8]]
+phrase = [[0.0, 1.0], [1.0, 1.0]]
+avoid_melody_intervals = []
+rules = [
+  { when = "next_target_differs", before = [4], motion = "chromatic", weight = 22, duration = 2, velocity_delta = -14, min_leap = 0 },
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 10, duration = 2, velocity_delta = -14, min_leap = 0 },
+]
+
+# Comping : guitare claire (GeneralUser GS 27) en notes guides (tierce, septième, tension) sur des
+# rythmes de doubles croches (« chicken scratch ») et d'accords tenus. Règles de métier : aucun
+# corpus ouvert de comping (décision F3 de 018). Étiquettes `sparse` / `medium` / `dense` : l'arc
+# nomme celles d'un chorus.
+[accompaniment.chords]
+center = 64
+max_drift = 6
+default_pattern = 0
+voicing = "guide_tones"
+low = 52
+high = 76
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 66 }] }]
+comping = [
+  # 0-3 : clairsemé, accords tenus.
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 14, velocity = 70 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 72 }, { step = 8, duration = 8, velocity = 64 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 4, velocity = 76 }, { step = 10, duration = 2, velocity = 62 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { weight = 1, tag = "sparse", hits = [] },
+  # 4-7 : médian, croches décalées.
+  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 70, direction = "up" }, { step = 6, duration = 1, velocity = 66, direction = "up" }, { step = 10, duration = 1, velocity = 70, direction = "up" }, { step = 14, duration = 1, velocity = 66, direction = "up" }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 78, direction = "down" }, { step = 3, duration = 1, velocity = 58, direction = "up" }, { step = 6, duration = 1, velocity = 64, direction = "up" }, { step = 8, duration = 2, velocity = 74, direction = "down" }, { step = 11, duration = 1, velocity = 58, direction = "up" }, { step = 14, duration = 2, velocity = 70, direction = "down", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 2, velocity = 78, direction = "down" }, { step = 7, duration = 1, velocity = 60, direction = "up" }, { step = 10, duration = 2, velocity = 72, direction = "down" }, { step = 12, duration = 1, velocity = 64, direction = "up" }, { step = 15, duration = 1, velocity = 62, direction = "up" }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 76, direction = "block" }, { step = 6, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 3, velocity = 72, direction = "down" }, { step = 14, duration = 1, velocity = 64, direction = "up" }] },
+  # 8-11 : dense, doubles croches, notes fantômes à probabilité réduite.
+  { weight = 4, tag = "dense", hits = [
+    { step = 0, duration = 1, velocity = 80, direction = "down" }, { step = 1, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 2, duration = 1, velocity = 64, direction = "down" }, { step = 3, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 4, duration = 1, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 6, duration = 1, velocity = 64, direction = "down" }, { step = 7, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 8, duration = 1, velocity = 80, direction = "down" }, { step = 9, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 10, duration = 1, velocity = 64, direction = "down" }, { step = 11, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 12, duration = 1, velocity = 80, direction = "down" }, { step = 13, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 14, duration = 1, velocity = 64, direction = "down" }, { step = 15, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+  ] },
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 2, velocity = 84, direction = "down" }, { step = 2, duration = 1, velocity = 62, direction = "up" },
+    { step = 3, duration = 1, velocity = 56, direction = "up" }, { step = 4, duration = 1, velocity = 76, direction = "down" },
+    { step = 6, duration = 1, velocity = 62, direction = "up" }, { step = 7, duration = 1, velocity = 56, direction = "up", probability = 0.7 },
+    { step = 8, duration = 2, velocity = 82, direction = "down" }, { step = 10, duration = 1, velocity = 62, direction = "up" },
+    { step = 11, duration = 1, velocity = 56, direction = "up" }, { step = 12, duration = 1, velocity = 76, direction = "down" },
+    { step = 14, duration = 1, velocity = 66, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", probability = 0.7 },
+  ] },
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 1, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 62, direction = "up" },
+    { step = 4, duration = 1, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 52, direction = "up", probability = 0.5 },
+    { step = 7, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 1, velocity = 82, direction = "down" },
+    { step = 10, duration = 1, velocity = 64, direction = "up" }, { step = 11, duration = 1, velocity = 62, direction = "down" },
+    { step = 12, duration = 1, velocity = 80, direction = "down" }, { step = 13, duration = 1, velocity = 52, direction = "up", probability = 0.5 },
+    { step = 15, duration = 1, velocity = 64, direction = "up", anticipate = true },
+  ] },
+  { weight = 2, tag = "dense", hits = [
+    { step = 0, duration = 3, velocity = 86, direction = "down" }, { step = 3, duration = 1, velocity = 64, direction = "up" },
+    { step = 4, duration = 1, velocity = 62, direction = "up" }, { step = 6, duration = 1, velocity = 70, direction = "down" },
+    { step = 8, duration = 3, velocity = 84, direction = "down" }, { step = 11, duration = 1, velocity = 64, direction = "up" },
+    { step = 12, duration = 1, velocity = 62, direction = "up" }, { step = 14, duration = 2, velocity = 74, direction = "down", anticipate = true },
+  ] },
+]
+# Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de
+# métier (aucune phrase de comping dans un corpus ouvert) : deux mesures du même rythme puis une
+# variation, mise en place de la fin de chorus (`part_end`) plus dense ou en tenue.
+phrases = [
+  { weight = 3, tag = "sparse", motifs = [0, 0, 1, 0] },
+  { weight = 3, tag = "sparse", motifs = [1, 1, 2, 1] },
+  { weight = 2, tag = "sparse", motifs = [0, 3] },
+  { weight = 2, tag = "sparse", motifs = [2, 2] },
+  { weight = 3, tag = "sparse", at = "part_end", motifs = [1, 1, 2, 0] },
+  { weight = 3, tag = "medium", motifs = [4, 4, 5, 4] },
+  { weight = 3, tag = "medium", motifs = [5, 6, 5, 6] },
+  { weight = 2, tag = "medium", motifs = [4, 7, 4, 7] },
+  { weight = 2, tag = "medium", motifs = [6, 6] },
+  { weight = 2, tag = "medium", motifs = [4, 5] },
+  { weight = 3, tag = "medium", at = "part_end", motifs = [4, 4, 5, 7] },
+  { weight = 3, tag = "dense", motifs = [8, 8, 9, 8] },
+  { weight = 3, tag = "dense", motifs = [9, 10, 9, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 11, 8, 11] },
+  { weight = 2, tag = "dense", motifs = [10, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 9] },
+  { weight = 3, tag = "dense", at = "part_end", motifs = [8, 8, 9, 11] },
+]
+
+# Gratté de la guitare (cordes du bas au haut, quelques millisecondes d'écart) : valeurs de départ
+# des profils à guitare, aucune mesure de funk.
+[accompaniment.chords.spread]
+down_gap_ms = 6.0
+up_gap_ms = 4.0
+up_note_count = 2
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 96.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 4
+
+[instruments]
+melody_program = 0
+chords_program = 27
+bass_program = 33
+percussion_bank = 128
+percussion_program = 0
+
+[ornaments]
+rate_scale = 0.0
+
+# Micro-timing de la batterie : médianes du GMD funk (écart à la grille, en pas) : charleston
+# −0,04 (on et off), grosse caisse −0,04 (off) à −0,07 (on), caisse claire −0,02 à −0,07. Le
+# GMD est joué sur un kit électronique contre un métronome : les batteurs jouent légèrement en
+# avant ; dispersion 0,13 à 0,20 pas, bornée par le moteur à 0,1.
+[performance.tracks.PercussionLow]
+offsets = [-0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05]
+jitter = 0.08
+[performance.tracks.PercussionHigh]
+offsets = [-0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04, -0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04]
+jitter = 0.08
+[performance.tracks.Bass]
+jitter = 0.04
+[performance.tracks.Chords]
+jitter = 0.05
+
+# Mixage de service (rien de mesuré sur un corpus) : réglé sur le LUFS en solo de chaque piste,
+# voir README.
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.25
+damping = 0.6
+width = 0.5
+level = 0.1
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -17.0
+pan = -0.3
+reverb_send = 0.1
+[mix.tracks.Bass]
+level_db = -18.5
+pan = 0.0
+reverb_send = 0.03
+[mix.tracks.PercussionLow]
+level_db = -19.0
+pan = 0.0
+reverb_send = 0.06
+[mix.tracks.PercussionHigh]
+level_db = -19.0
+pan = 0.0
+reverb_send = 0.06
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

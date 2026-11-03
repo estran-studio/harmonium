@@ -1,0 +1,39 @@
+# Arc de `gmd_funk` sur plusieurs chorus (A3) : valeurs de métier, aucune mesure de corpus (le GMD
+# isole beat et fill, WJazzD ne donne pas la dynamique d'un chorus). Un chorus = une passe de la
+# grille de seize mesures ; cinq chorus par air, nombre connu, donc la retombée joue au dernier :
+#   1      exposition : comping clairsemé ou médian, batterie claire, doux ;
+#   2-3    corps : comping médian ou dense, batterie médiane ou dense, un break de guitare à
+#          mi-chorus (batterie et basse continuent) ou un break de la guitare et de la basse
+#          avant le chorus suivant (la batterie seule) ;
+#   4      sommet : dense, plus fort, stop-time sur les deux dernières mesures une fois sur deux ;
+#   5      retombée : clairsemé, doux, stop-time sur le un des deux dernières mesures ;
+# au-delà (plus de cinq chorus ou set sans fin) : le sommet puis le corps et le sommet en boucle
+# (`repeat_from`), sans retombée.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.7, density = 0.6, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }] },
+  { weight = 1, intensity = 0.8, density = 0.7, comping = [{ tag = "medium" }], percussion = [{ tag = "medium" }] },
+]
+
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], breaks = [{ start = 9, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, intensity = 1.15, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "dense" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.3, comping = [{ tag = "dense" }], percussion = [{ tag = "dense" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.6
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "sparse" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
