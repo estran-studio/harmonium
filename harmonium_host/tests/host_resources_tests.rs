@@ -129,8 +129,8 @@ fn emotion_zones_without_odin_keep_the_soundfont_audio_unchanged() {
         composer.set_profile(profile).unwrap();
         composer.use_emotion_mode();
         composer.set_emotions(0.5, 0.3, 0.5, 0.85);
-        if let Some((bar, _)) = composer.take_pending_drop() {
-            commands.push(PlaybackCommand::DropFrom { bar }).unwrap();
+        if let Some((bar, epoch)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar, epoch }).unwrap();
         }
         commands
             .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))

@@ -27,8 +27,8 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
     composer.use_emotion_mode();
     composer.set_emotions(0.5, 0.4, 0.5, 0.3);
     composer.invalidate_future();
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| "drop queue full")?;
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        tx.push(PlaybackCommand::DropFrom { bar, epoch }).map_err(|_| "drop queue full")?;
     }
     composer.generate_bars(16);
     let original = composer.take_snapshots();
@@ -67,9 +67,10 @@ fn mode_changes_at_phrase_boundary_without_restarting_the_pulse() -> Result<(), 
         if let Some((valence, boundary, dark)) = change {
             composer.set_emotions(0.5, valence, 0.5, 0.3);
             composer.invalidate_future();
-            let (drop_bar, _) = composer.take_pending_drop().ok_or("drop absent")?;
+            let (drop_bar, drop_epoch) = composer.take_pending_drop().ok_or("drop absent")?;
             assert_eq!(drop_bar, current.position.bar + 1);
-            tx.push(PlaybackCommand::DropFrom { bar: drop_bar }).map_err(|_| "drop queue full")?;
+            tx.push(PlaybackCommand::DropFrom { bar: drop_bar, epoch: drop_epoch })
+                .map_err(|_| "drop queue full")?;
             composer.generate_bars(12);
             let regenerated = composer.take_snapshots();
             let next = regenerated.iter().find(|s| s.index == boundary).ok_or("boundary absent")?;

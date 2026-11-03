@@ -96,16 +96,32 @@ pub struct TransportPosition {
     pub beat: f32,
 }
 
+/// Bit of the packed step set while the playhead sits on a barline with no
+/// measure loaded (startup, after a seek, after an underflow): the measure
+/// of that bar has not sounded yet, so the composer may still replace it.
+const UNLOADED: u64 = 1 << 31;
+
 /// Pack a transport position into one 64-bit value: bar in the high 32
-/// bits, step in the low 32 bits. One atomic, one load — a pair read this
-/// way is coherent by construction (spec 006, R3).
+/// bits, step in the low 31 bits, the [`UNLOADED`] flag above them (clear:
+/// the measure under the playhead is loaded). One atomic, one load — a pair
+/// read this way is coherent by construction (spec 006, R3).
 pub const fn pack(bar: usize, step: usize) -> u64 {
-    ((bar as u64) << 32) | (step as u64 & 0xFFFF_FFFF)
+    ((bar as u64) << 32) | (step as u64 & !UNLOADED & 0xFFFF_FFFF)
+}
+
+/// [`pack`] for a playhead at the start of `bar` with no measure loaded.
+pub const fn pack_unloaded(bar: usize) -> u64 {
+    pack(bar, 0) | UNLOADED
 }
 
 /// Unpack a packed transport position into `(bar, step)`.
 pub const fn unpack(packed: u64) -> (usize, usize) {
-    ((packed >> 32) as usize, (packed & 0xFFFF_FFFF) as usize)
+    ((packed >> 32) as usize, (packed & !UNLOADED & 0xFFFF_FFFF) as usize)
+}
+
+/// Whether a packed transport position carries the [`UNLOADED`] flag.
+pub const fn is_unloaded(packed: u64) -> bool {
+    packed & UNLOADED != 0
 }
 
 impl TransportPosition {
@@ -144,12 +160,16 @@ pub enum PlaybackCommand {
     Seek(usize),
     SeekPlayhead(usize),
     /// Evict every staged measure with `index >= bar`, handing the boxes
-    /// back to the composer through the return ring. Sent by the main thread
-    /// after `invalidate_future` / `invalidate_after_preview` / `reset` /
-    /// `reset_timeline` / seek, before the composer publishes replacements
-    /// (epoch tags make the order irrelevant for correctness).
+    /// back to the composer through the return ring, and announce the
+    /// composer's generation `epoch`: boxes of an older epoch — in the window
+    /// or still queued in the staged ring — are never loaded. Boxes below
+    /// `bar` are unchanged by contract and move to the new epoch. Sent by the
+    /// main thread after `invalidate_future` / `invalidate_after_preview` /
+    /// `reset` / `reset_timeline` / seek (`MusicComposer::take_pending_drop`
+    /// returns both fields).
     DropFrom {
         bar: usize,
+        epoch: u64,
     },
     SetLoop {
         start_bar: usize,
@@ -781,7 +801,7 @@ impl PlaybackEngine {
                     self.evict_held();
                 }
                 self.playhead.seek_to_bar(start_bar);
-                self.transport_position.store(pack(start_bar, 0), Ordering::Relaxed);
+                self.publish_jump(start_bar);
             }
         }
 
@@ -906,10 +926,14 @@ impl PlaybackEngine {
     /// (gameplay truth, alongside the pulse fields).
     fn complete_step(&mut self) {
         // Update shared transport position at grid resolution, after the tick.
-        self.transport_position.store(
-            pack(self.playhead.current_bar(), self.playhead.position.step_in_bar(TICKS_PER_BEAT)),
-            Ordering::Relaxed,
-        );
+        let (bar, step) =
+            (self.playhead.current_bar(), self.playhead.position.step_in_bar(TICKS_PER_BEAT));
+        let packed = if self.playhead.needs_measure() {
+            pack_unloaded(bar) | step as u64
+        } else {
+            pack(bar, step)
+        };
+        self.transport_position.store(packed, Ordering::Relaxed);
 
         // Publish the clock once per step (position + pulse fields).
         self.publish_clock();
@@ -1017,16 +1041,20 @@ impl PlaybackEngine {
     }
 
     /// Drain the staged ring into the window. Must run under [`RtGuard`]:
-    /// pointer moves only. Stops draining while the window is full (the
-    /// composer sees ring backpressure and retries later).
+    /// pointer moves only. Boxes of an older epoch than the composer's last
+    /// announced one (`DropFrom`) or adopted one are handed back whatever the
+    /// window holds, so stale boxes never occupy the ring; valid boxes wait
+    /// while the window is full (the composer sees ring backpressure and
+    /// retries later).
     fn drain_staged(&mut self) {
-        while self.window.len() < MEASURE_WINDOW_CAP {
-            let item = match self.measure_rx.pop() {
-                Ok(item) => item,
-                Err(_) => break,
-            };
-            // Adopt newer epochs on sight: boxes staged before an
-            // invalidation carry an older epoch and are stale.
+        while let Ok(head) = self.measure_rx.peek() {
+            let stale = head.epoch < self.epoch;
+            if !stale && self.window.len() >= MEASURE_WINDOW_CAP {
+                break;
+            }
+            let Ok(item) = self.measure_rx.pop() else { break };
+            // Adopt newer epochs on sight (a producer that does not send
+            // `DropFrom`): older boxes are stale.
             if item.epoch > self.epoch {
                 self.epoch = item.epoch;
             }
@@ -1179,6 +1207,8 @@ impl PlaybackEngine {
 
             self.playhead.load_measure(slot.measure);
             self.loaded_epoch = Some(slot.epoch);
+            // The bar under the playhead sounds from here on.
+            self.transport_position.fetch_and(!UNLOADED, Ordering::Relaxed);
 
             // The opening pulse is NOT frozen here: `enter_step` freezes the
             // entered step's pulse before it renders — including this freshly
@@ -1190,6 +1220,13 @@ impl PlaybackEngine {
         } else {
             false
         }
+    }
+
+    /// Publish the playhead's new position after a jump (seek, loop wrap):
+    /// start of `bar`, flagged unloaded while no measure is held for it.
+    fn publish_jump(&self, bar: usize) {
+        let packed = if self.playhead.needs_measure() { pack_unloaded(bar) } else { pack(bar, 0) };
+        self.transport_position.store(packed, Ordering::Relaxed);
     }
 
     /// Hand a box back to the composer. Must run under [`RtGuard`]. The
@@ -1319,7 +1356,7 @@ impl PlaybackEngine {
                         self.evict_for_seek(target_bar, false);
                     }
                     self.playhead.seek_to_bar(target_bar);
-                    self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
+                    self.publish_jump(target_bar);
                     // A jump cuts the in-flight step: drop its remainder and its
                     // pending completion publication, so the next entry starts
                     // the target bar from step 0.
@@ -1339,28 +1376,39 @@ impl PlaybackEngine {
                         self.evict_for_seek(target_bar, true);
                     }
                     self.playhead.seek_to_bar(target_bar);
-                    self.transport_position.store(pack(target_bar, 0), Ordering::Relaxed);
+                    self.publish_jump(target_bar);
                     // Same cut as `Seek` above: fresh entry at the target bar.
                     self.sample_counter = 0;
                     self.step_open = false;
                 }
-                PlaybackCommand::DropFrom { bar } => {
+                PlaybackCommand::DropFrom { bar, epoch } => {
                     let bar = bar.max(1);
-                    // The finished box was already played: always hand it back.
-                    // Window boxes at or past the cut are stale by definition.
                     let _rt = RtGuard::enter();
+                    // The composer's epoch is known from now on, whatever the
+                    // staged ring still holds: older boxes never load.
+                    self.epoch = self.epoch.max(epoch);
+                    // The finished box was already played: always hand it back.
                     if let Some(measure) = self.playhead.take_finished() {
                         let epoch = self.loaded_epoch.take().unwrap_or(self.epoch);
                         self.stage_return(epoch, measure);
                     }
+                    // Window boxes at or past the cut are stale by definition;
+                    // those below it are unchanged and follow the new epoch
+                    // (the composer does not stage them again).
                     let mut i = 0;
                     while i < self.window.len() {
                         if self.window[i].measure.index >= bar {
                             let slot = self.window.remove(i);
                             self.stage_return(slot.epoch, slot.measure);
                         } else {
+                            self.window[i].epoch = self.window[i].epoch.max(epoch);
                             i += 1;
                         }
+                    }
+                    if self.playhead.current_bar() < bar
+                        && let Some(loaded) = &mut self.loaded_epoch
+                    {
+                        *loaded = (*loaded).max(epoch);
                     }
                 }
                 PlaybackCommand::SetLoop { start_bar, end_bar } => {
@@ -1498,9 +1546,18 @@ mod transport_position_tests {
 
     #[test]
     fn pack_unpack_at_bounds() {
-        // Step is masked to 32 bits; bar keeps its own bits.
-        assert_eq!(unpack(pack(7, u32::MAX as usize)), (7, u32::MAX as usize));
+        // Step is masked to 31 bits (bit 31 is the unloaded flag); bar keeps its own bits.
+        assert_eq!(unpack(pack(7, i32::MAX as usize)), (7, i32::MAX as usize));
         assert_eq!(unpack(pack(0, 0)), (0, 0));
+    }
+
+    #[test]
+    fn unloaded_flag_is_independent_of_bar_and_step() {
+        assert!(!is_unloaded(pack(9, 3)));
+        assert!(is_unloaded(pack_unloaded(9)));
+        assert_eq!(unpack(pack_unloaded(9)), (9, 0));
+        assert_eq!(unpack(pack_unloaded(9) | 5), (9, 5));
+        assert_eq!(TransportPosition::from_packed(pack_unloaded(4)).bar, 4);
     }
 
     #[test]

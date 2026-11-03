@@ -378,7 +378,9 @@ impl LiveHost {
             // === Style ===
             EngineCommand::SetStyleProfile(profile) => {
                 self.composer.set_profile(*profile)?;
-                self.publish()
+                self.publish()?;
+                self.stage_after_seek();
+                Ok(())
             }
             EngineCommand::SetPercussionDensity(density) => {
                 self.composer.set_percussion_density(density);
@@ -419,9 +421,11 @@ impl LiveHost {
                 // (`DropFrom`), then the playhead jumps (`Seek`): no stale
                 // measure can play after the seek.
                 let bar = bar.max(1);
-                self.composer.deterministic_seek(bar);
+                self.composer.seek(bar);
                 self.publish()?;
-                self.send(PlaybackCommand::Seek(bar))
+                self.send(PlaybackCommand::Seek(bar))?;
+                self.composer.stage_playhead_bar();
+                Ok(())
             }
             EngineCommand::SeekPlayhead(bar) => {
                 // Staged measures stay valid — playback reads by index, and a
@@ -505,13 +509,26 @@ impl LiveHost {
     /// they are composed again with the new parameters.
     fn invalidate_future(&mut self) -> Result<(), String> {
         self.composer.invalidate_future();
-        self.publish()
+        self.publish()?;
+        self.stage_after_seek();
+        Ok(())
+    }
+
+    /// While a seek is in flight the audio callback may start at its target
+    /// at any buffer: the bar a command just replaced must be staged again
+    /// now. Otherwise the pump does it, ahead of any playback start.
+    fn stage_after_seek(&mut self) {
+        if self.composer.seek_in_flight() {
+            self.composer.stage_playhead_bar();
+        }
     }
 
     /// Back to bar 1 (new seed, or reset): evict, then move the playhead.
     fn restart_session(&mut self) -> Result<(), String> {
         self.publish()?;
-        self.send(PlaybackCommand::Seek(1))
+        self.send(PlaybackCommand::Seek(1))?;
+        self.composer.stage_playhead_bar();
+        Ok(())
     }
 
     /// After a change to the composer: forward the pending eviction (if the
@@ -522,8 +539,8 @@ impl LiveHost {
     /// replacement bars irrelevant for correctness; evicting first keeps the
     /// window from filling with stale boxes.
     fn publish(&mut self) -> Result<(), String> {
-        if let Some((bar, _)) = self.composer.take_pending_drop() {
-            self.send(PlaybackCommand::DropFrom { bar })?;
+        if let Some((bar, epoch)) = self.composer.take_pending_drop() {
+            self.send(PlaybackCommand::DropFrom { bar, epoch })?;
         }
         for (channel, program) in self.composer.take_pending_program_changes() {
             self.send(PlaybackCommand::ProgramChange { channel, program })?;

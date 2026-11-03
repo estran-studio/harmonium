@@ -95,8 +95,8 @@ pub fn run(
     }
     composer.invalidate_future();
 
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        let _ = playback_cmd_tx.push(PlaybackCommand::DropFrom { bar });
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        let _ = playback_cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
     }
     for (channel, program) in composer.take_pending_program_changes() {
         let _ = playback_cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });
@@ -235,10 +235,10 @@ pub fn run(
                 if has_next && current_bar != prepared_after {
                     automation.apply(current_bar + 1, &mut composer, initial_emotions);
                     composer.send_odin(&mut playback_cmd_tx).map_err(anyhow::Error::msg)?;
-                    if let Some((bar, _)) = composer.take_pending_drop() {
-                        playback_cmd_tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| {
-                            anyhow::anyhow!("file de commandes pleine pendant l'automation")
-                        })?;
+                    if let Some((bar, epoch)) = composer.take_pending_drop() {
+                        playback_cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch }).map_err(
+                            |_| anyhow::anyhow!("file de commandes pleine pendant l'automation"),
+                        )?;
                     }
                     prepared_after = current_bar;
                 }

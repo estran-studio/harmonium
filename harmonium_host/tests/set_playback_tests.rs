@@ -31,8 +31,8 @@ fn beat_info_crosses_every_transition_and_set_gap_without_a_hole() -> Result<(),
         composer.set_profile(profile)?;
         composer.set_seed(3);
         composer.sync_generator();
-        if let Some((bar, _)) = composer.take_pending_drop() {
-            commands.push(PlaybackCommand::DropFrom { bar }).map_err(|_| "file pleine")?;
+        if let Some((bar, epoch)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar, epoch }).map_err(|_| "file pleine")?;
         }
         composer.set_writehead_lookahead(16);
         composer.generate_bars(8);
