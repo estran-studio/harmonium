@@ -1,0 +1,924 @@
+# Batterie du profil `gmd_neworleans_funk_secondline` : GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b47_batterie.py gmd_neworleans_funk_secondline`
+# depuis le Groove MIDI Dataset v1.0.0 (CC BY 4.0, Gillick, Roberts, Engel, Eck, Bamman, ICML 2019 ;
+# Google LLC), gmd_neworleans_funk_secondline : GMD `neworleans/funk` (8 fichiers beat, 4 batteurs ; 40 fills) et `neworleans/secondline` (3 fichiers beat, 2 batteurs).
+# Chaque pattern est construit sur les probabilités PAR PAS d'un groupe de mesures de même
+# configuration (grosse caisse, caisse claire, charleston ou ride) : k-moyennes, groupes d'au moins
+# 20 mesures, 3 fichiers et 2 batteurs ; aucun n'est une mesure d'un enregistrement.
+# Seuils : densité 0 timekeeper ≥ 0,5 et grosse caisse / caisse claire ≥ 0,75 ; densité 1 tous ≥ 0,5 ;
+# densité 2 grosse caisse, caisse claire, cross-stick ≥ 0,3 (notes fantômes), le reste ≥ 0,5.
+# Poids = effectif de mesures du groupe ; étiquette = tiers d'activité (sparse, medium, dense).
+# Les phrases sont les suites de groupes vues ≥ 3 fois sur ≥ 2 batteurs ; les relances sont les
+# fichiers `fill`, groupés par longueur et départ, coups de probabilité ≥ 0,3.
+# Kit : kit standard de GeneralUser GS (banque 128, programme 0). Vélocités ramenées au kit par un gain par rôle, calé sur le LUFS en solo (voir le script).
+low_note = 36
+high_note = 42
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 4
+# Poids de « pas de relance » dans le tirage d'une fin de phrase : 0,8 × le poids total des relances
+# d'une densité, soit 44 % de fins de phrase sans relance (valeur de service : le GMD isole les
+# relances, la part de fins de phrase sans relance n'y est pas mesurable).
+fills_none_weight = 29
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 86
+track = "PercussionLow"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 69
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 66
+track = "PercussionHigh"
+
+[[voices]]
+name = "sidestick"
+note = 37
+velocity = 68
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 68
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_high"
+note = 48
+velocity = 48
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_low"
+note = 43
+velocity = 60
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_mid"
+note = 45
+velocity = 55
+track = "PercussionHigh"
+
+[[patterns]]
+density = 0
+weight = 180
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "snare", delta_velocity = 22 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 3, voice = "snare", delta_velocity = 16 },
+  { step = 4, voice = "snare", delta_velocity = -21 },
+  { step = 6, voice = "snare", delta_velocity = 36 },
+  { step = 8, voice = "snare", delta_velocity = 4 },
+  { step = 9, voice = "snare", delta_velocity = 9 },
+  { step = 10, voice = "snare", delta_velocity = -13 },
+  { step = 12, voice = "snare", delta_velocity = 42 },
+  { step = 13, voice = "snare", delta_velocity = 1 },
+  { step = 14, voice = "snare", delta_velocity = 12 },
+  { step = 15, voice = "snare", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 0
+weight = 89
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 23 },
+  { step = 0, voice = "ride", delta_velocity = 10 },
+  { step = 4, voice = "ride", delta_velocity = 16 },
+  { step = 6, voice = "pedal", delta_velocity = 40 },
+  { step = 6, voice = "ride", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 0
+weight = 72
+tag = "medium"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 14 },
+  { step = 0, voice = "snare", delta_velocity = 33 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 2, voice = "pedal", delta_velocity = 22 },
+  { step = 2, voice = "snare", delta_velocity = -1 },
+  { step = 3, voice = "kick", delta_velocity = -8 },
+  { step = 3, voice = "snare", delta_velocity = 19 },
+  { step = 4, voice = "snare", delta_velocity = -13 },
+  { step = 5, voice = "snare", delta_velocity = -5 },
+  { step = 6, voice = "kick", delta_velocity = 2 },
+  { step = 6, voice = "pedal", delta_velocity = 18 },
+  { step = 6, voice = "snare", delta_velocity = 40 },
+  { step = 7, voice = "snare", delta_velocity = -21 },
+  { step = 9, voice = "snare", delta_velocity = 27 },
+  { step = 10, voice = "pedal", delta_velocity = 20 },
+  { step = 10, voice = "snare", delta_velocity = -11 },
+  { step = 11, voice = "snare", delta_velocity = 9 },
+  { step = 12, voice = "snare", delta_velocity = 35 },
+  { step = 13, voice = "snare", delta_velocity = -8 },
+  { step = 14, voice = "kick", delta_velocity = -2 },
+  { step = 14, voice = "pedal", delta_velocity = 14 },
+  { step = 15, voice = "snare", delta_velocity = -13 },
+]
+
+[[patterns]]
+density = 0
+weight = 95
+tag = "dense"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 34 },
+  { step = 0, voice = "snare", delta_velocity = 52 },
+  { step = 1, voice = "snare", delta_velocity = -21 },
+  { step = 2, voice = "pedal", delta_velocity = -23 },
+  { step = 2, voice = "snare", delta_velocity = 15 },
+  { step = 3, voice = "kick", delta_velocity = -13 },
+  { step = 3, voice = "snare", delta_velocity = 52 },
+  { step = 4, voice = "kick", delta_velocity = 34 },
+  { step = 5, voice = "snare", delta_velocity = -6 },
+  { step = 6, voice = "pedal", delta_velocity = -22 },
+  { step = 6, voice = "snare", delta_velocity = 52 },
+  { step = 7, voice = "kick", delta_velocity = -16 },
+  { step = 7, voice = "snare", delta_velocity = -13 },
+  { step = 8, voice = "kick", delta_velocity = 34 },
+  { step = 8, voice = "snare", delta_velocity = -13 },
+  { step = 9, voice = "snare", delta_velocity = 52 },
+  { step = 10, voice = "pedal", delta_velocity = -25 },
+  { step = 10, voice = "snare", delta_velocity = 52 },
+  { step = 11, voice = "kick", delta_velocity = 6 },
+  { step = 12, voice = "kick", delta_velocity = 34 },
+  { step = 13, voice = "snare", delta_velocity = 16 },
+  { step = 14, voice = "pedal", delta_velocity = -26 },
+  { step = 14, voice = "tom_low" },
+  { step = 15, voice = "kick", delta_velocity = -10 },
+  { step = 15, voice = "snare", delta_velocity = -11 },
+]
+
+[[patterns]]
+density = 1
+weight = 180
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "snare", delta_velocity = 22 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 2, voice = "pedal", delta_velocity = 20 },
+  { step = 2, voice = "snare", delta_velocity = 7 },
+  { step = 3, voice = "snare", delta_velocity = 16 },
+  { step = 4, voice = "kick", delta_velocity = -10 },
+  { step = 4, voice = "snare", delta_velocity = -21 },
+  { step = 5, voice = "snare", delta_velocity = 14 },
+  { step = 6, voice = "pedal", delta_velocity = 14 },
+  { step = 6, voice = "snare", delta_velocity = 36 },
+  { step = 7, voice = "snare", delta_velocity = -11 },
+  { step = 8, voice = "kick", delta_velocity = -5 },
+  { step = 8, voice = "snare", delta_velocity = 4 },
+  { step = 9, voice = "snare", delta_velocity = 9 },
+  { step = 10, voice = "pedal", delta_velocity = 20 },
+  { step = 10, voice = "snare", delta_velocity = -13 },
+  { step = 11, voice = "snare", delta_velocity = 25 },
+  { step = 12, voice = "snare", delta_velocity = 42 },
+  { step = 13, voice = "snare", delta_velocity = 1 },
+  { step = 14, voice = "pedal", delta_velocity = 22 },
+  { step = 14, voice = "snare", delta_velocity = 12 },
+  { step = 15, voice = "snare", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 1
+weight = 89
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 23 },
+  { step = 0, voice = "ride", delta_velocity = 10 },
+  { step = 2, voice = "pedal", delta_velocity = 51 },
+  { step = 2, voice = "snare", delta_velocity = -10 },
+  { step = 3, voice = "kick", delta_velocity = -2 },
+  { step = 4, voice = "ride", delta_velocity = 16 },
+  { step = 4, voice = "snare", delta_velocity = 21 },
+  { step = 5, voice = "snare" },
+  { step = 6, voice = "pedal", delta_velocity = 40 },
+  { step = 6, voice = "ride", delta_velocity = -4 },
+  { step = 7, voice = "snare", delta_velocity = -15 },
+  { step = 8, voice = "kick", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -23 },
+  { step = 10, voice = "pedal", delta_velocity = 47 },
+  { step = 10, voice = "snare", delta_velocity = -3 },
+  { step = 12, voice = "snare", delta_velocity = 36 },
+  { step = 14, voice = "pedal", delta_velocity = 47 },
+  { step = 14, voice = "snare", delta_velocity = 34 },
+  { step = 15, voice = "snare", delta_velocity = -15 },
+]
+
+[[patterns]]
+density = 1
+weight = 72
+tag = "medium"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 14 },
+  { step = 0, voice = "snare", delta_velocity = 33 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 2, voice = "pedal", delta_velocity = 22 },
+  { step = 2, voice = "snare", delta_velocity = -1 },
+  { step = 3, voice = "kick", delta_velocity = -8 },
+  { step = 3, voice = "snare", delta_velocity = 19 },
+  { step = 4, voice = "snare", delta_velocity = -13 },
+  { step = 5, voice = "snare", delta_velocity = -5 },
+  { step = 6, voice = "kick", delta_velocity = 2 },
+  { step = 6, voice = "pedal", delta_velocity = 18 },
+  { step = 6, voice = "snare", delta_velocity = 40 },
+  { step = 7, voice = "snare", delta_velocity = -21 },
+  { step = 9, voice = "kick", delta_velocity = -24 },
+  { step = 9, voice = "snare", delta_velocity = 27 },
+  { step = 10, voice = "pedal", delta_velocity = 20 },
+  { step = 10, voice = "snare", delta_velocity = -11 },
+  { step = 11, voice = "snare", delta_velocity = 9 },
+  { step = 12, voice = "snare", delta_velocity = 35 },
+  { step = 13, voice = "snare", delta_velocity = -8 },
+  { step = 14, voice = "kick", delta_velocity = -2 },
+  { step = 14, voice = "pedal", delta_velocity = 14 },
+  { step = 15, voice = "snare", delta_velocity = -13 },
+]
+
+[[patterns]]
+density = 1
+weight = 95
+tag = "dense"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 34 },
+  { step = 0, voice = "pedal", delta_velocity = -37 },
+  { step = 0, voice = "snare", delta_velocity = 52 },
+  { step = 1, voice = "snare", delta_velocity = -21 },
+  { step = 2, voice = "pedal", delta_velocity = -23 },
+  { step = 2, voice = "snare", delta_velocity = 15 },
+  { step = 3, voice = "kick", delta_velocity = -13 },
+  { step = 3, voice = "snare", delta_velocity = 52 },
+  { step = 4, voice = "kick", delta_velocity = 34 },
+  { step = 4, voice = "snare", delta_velocity = -20 },
+  { step = 5, voice = "snare", delta_velocity = -6 },
+  { step = 6, voice = "pedal", delta_velocity = -22 },
+  { step = 6, voice = "snare", delta_velocity = 52 },
+  { step = 7, voice = "kick", delta_velocity = -16 },
+  { step = 7, voice = "snare", delta_velocity = -13 },
+  { step = 8, voice = "kick", delta_velocity = 34 },
+  { step = 8, voice = "snare", delta_velocity = -13 },
+  { step = 9, voice = "snare", delta_velocity = 52 },
+  { step = 10, voice = "pedal", delta_velocity = -25 },
+  { step = 10, voice = "snare", delta_velocity = 52 },
+  { step = 11, voice = "kick", delta_velocity = 6 },
+  { step = 11, voice = "snare", delta_velocity = -15 },
+  { step = 12, voice = "kick", delta_velocity = 34 },
+  { step = 12, voice = "pedal", delta_velocity = -33 },
+  { step = 12, voice = "snare", delta_velocity = 32 },
+  { step = 12, voice = "tom_low" },
+  { step = 13, voice = "snare", delta_velocity = 16 },
+  { step = 14, voice = "pedal", delta_velocity = -26 },
+  { step = 14, voice = "snare", delta_velocity = 11 },
+  { step = 14, voice = "tom_low" },
+  { step = 15, voice = "kick", delta_velocity = -10 },
+  { step = 15, voice = "snare", delta_velocity = -11 },
+]
+
+[[patterns]]
+density = 2
+weight = 180
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "snare", delta_velocity = 22 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 2, voice = "pedal", delta_velocity = 20 },
+  { step = 2, voice = "snare", delta_velocity = 7 },
+  { step = 3, voice = "snare", delta_velocity = 16 },
+  { step = 4, voice = "kick", delta_velocity = -10 },
+  { step = 4, voice = "snare", delta_velocity = -21 },
+  { step = 5, voice = "snare", delta_velocity = 14 },
+  { step = 6, voice = "pedal", delta_velocity = 14 },
+  { step = 6, voice = "snare", delta_velocity = 36 },
+  { step = 7, voice = "snare", delta_velocity = -11 },
+  { step = 8, voice = "kick", delta_velocity = -5 },
+  { step = 8, voice = "snare", delta_velocity = 4 },
+  { step = 9, voice = "snare", delta_velocity = 9 },
+  { step = 10, voice = "pedal", delta_velocity = 20 },
+  { step = 10, voice = "snare", delta_velocity = -13 },
+  { step = 11, voice = "snare", delta_velocity = 25 },
+  { step = 12, voice = "kick", delta_velocity = -5 },
+  { step = 12, voice = "snare", delta_velocity = 42 },
+  { step = 13, voice = "snare", delta_velocity = 1 },
+  { step = 14, voice = "pedal", delta_velocity = 22 },
+  { step = 14, voice = "snare", delta_velocity = 12 },
+  { step = 15, voice = "snare", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 2
+weight = 89
+tag = "sparse"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 23 },
+  { step = 0, voice = "ride", delta_velocity = 10 },
+  { step = 1, voice = "snare", delta_velocity = -35 },
+  { step = 2, voice = "pedal", delta_velocity = 51 },
+  { step = 2, voice = "snare", delta_velocity = -10 },
+  { step = 3, voice = "kick", delta_velocity = -2 },
+  { step = 4, voice = "ride", delta_velocity = 16 },
+  { step = 4, voice = "snare", delta_velocity = 21 },
+  { step = 5, voice = "snare" },
+  { step = 6, voice = "kick", delta_velocity = 14 },
+  { step = 6, voice = "pedal", delta_velocity = 40 },
+  { step = 6, voice = "ride", delta_velocity = -4 },
+  { step = 6, voice = "snare", delta_velocity = 15 },
+  { step = 7, voice = "snare", delta_velocity = -15 },
+  { step = 8, voice = "kick", delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 18 },
+  { step = 9, voice = "snare", delta_velocity = -23 },
+  { step = 10, voice = "kick" },
+  { step = 10, voice = "pedal", delta_velocity = 47 },
+  { step = 10, voice = "snare", delta_velocity = -3 },
+  { step = 11, voice = "kick", delta_velocity = -16 },
+  { step = 11, voice = "snare" },
+  { step = 12, voice = "kick", delta_velocity = 7 },
+  { step = 12, voice = "snare", delta_velocity = 36 },
+  { step = 13, voice = "snare", delta_velocity = 20 },
+  { step = 14, voice = "pedal", delta_velocity = 47 },
+  { step = 14, voice = "snare", delta_velocity = 34 },
+  { step = 15, voice = "snare", delta_velocity = -15 },
+]
+
+[[patterns]]
+density = 2
+weight = 72
+tag = "medium"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 14 },
+  { step = 0, voice = "snare", delta_velocity = 33 },
+  { step = 1, voice = "snare", delta_velocity = -23 },
+  { step = 2, voice = "pedal", delta_velocity = 22 },
+  { step = 2, voice = "snare", delta_velocity = -1 },
+  { step = 3, voice = "kick", delta_velocity = -8 },
+  { step = 3, voice = "snare", delta_velocity = 19 },
+  { step = 4, voice = "snare", delta_velocity = -13 },
+  { step = 5, voice = "snare", delta_velocity = -5 },
+  { step = 6, voice = "kick", delta_velocity = 2 },
+  { step = 6, voice = "pedal", delta_velocity = 18 },
+  { step = 6, voice = "snare", delta_velocity = 40 },
+  { step = 7, voice = "snare", delta_velocity = -21 },
+  { step = 8, voice = "kick", delta_velocity = 3 },
+  { step = 8, voice = "sidestick", delta_velocity = -1 },
+  { step = 8, voice = "snare", delta_velocity = 3 },
+  { step = 9, voice = "kick", delta_velocity = -24 },
+  { step = 9, voice = "snare", delta_velocity = 27 },
+  { step = 10, voice = "pedal", delta_velocity = 20 },
+  { step = 10, voice = "snare", delta_velocity = -11 },
+  { step = 11, voice = "kick", delta_velocity = -12 },
+  { step = 11, voice = "snare", delta_velocity = 9 },
+  { step = 12, voice = "kick", delta_velocity = 2 },
+  { step = 12, voice = "snare", delta_velocity = 35 },
+  { step = 13, voice = "snare", delta_velocity = -8 },
+  { step = 14, voice = "kick", delta_velocity = -2 },
+  { step = 14, voice = "pedal", delta_velocity = 14 },
+  { step = 14, voice = "snare", delta_velocity = 22 },
+  { step = 15, voice = "snare", delta_velocity = -13 },
+]
+
+[[patterns]]
+density = 2
+weight = 95
+tag = "dense"
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 34 },
+  { step = 0, voice = "pedal", delta_velocity = -37 },
+  { step = 0, voice = "snare", delta_velocity = 52 },
+  { step = 1, voice = "snare", delta_velocity = -21 },
+  { step = 2, voice = "pedal", delta_velocity = -23 },
+  { step = 2, voice = "snare", delta_velocity = 15 },
+  { step = 3, voice = "kick", delta_velocity = -13 },
+  { step = 3, voice = "snare", delta_velocity = 52 },
+  { step = 4, voice = "kick", delta_velocity = 34 },
+  { step = 4, voice = "snare", delta_velocity = -20 },
+  { step = 5, voice = "snare", delta_velocity = -6 },
+  { step = 6, voice = "pedal", delta_velocity = -22 },
+  { step = 6, voice = "snare", delta_velocity = 52 },
+  { step = 7, voice = "kick", delta_velocity = -16 },
+  { step = 7, voice = "snare", delta_velocity = -13 },
+  { step = 8, voice = "kick", delta_velocity = 34 },
+  { step = 8, voice = "snare", delta_velocity = -13 },
+  { step = 9, voice = "snare", delta_velocity = 52 },
+  { step = 10, voice = "pedal", delta_velocity = -25 },
+  { step = 10, voice = "snare", delta_velocity = 52 },
+  { step = 11, voice = "kick", delta_velocity = 6 },
+  { step = 11, voice = "snare", delta_velocity = -15 },
+  { step = 12, voice = "kick", delta_velocity = 34 },
+  { step = 12, voice = "pedal", delta_velocity = -33 },
+  { step = 12, voice = "snare", delta_velocity = 32 },
+  { step = 12, voice = "tom_low" },
+  { step = 13, voice = "snare", delta_velocity = 16 },
+  { step = 14, voice = "pedal", delta_velocity = -26 },
+  { step = 14, voice = "snare", delta_velocity = 11 },
+  { step = 14, voice = "tom_low" },
+  { step = 15, voice = "kick", delta_velocity = -10 },
+  { step = 15, voice = "snare", delta_velocity = -11 },
+]
+
+[[phrases]]
+density = 0
+weight = 70
+tag = "sparse"
+patterns = [0, 0]
+
+[[phrases]]
+density = 0
+weight = 30
+tag = "sparse"
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 0
+weight = 30
+tag = "sparse"
+patterns = [1, 1]
+
+[[phrases]]
+density = 0
+weight = 26
+tag = "medium"
+patterns = [2, 2]
+
+[[phrases]]
+density = 0
+weight = 13
+tag = "sparse"
+patterns = [1, 0]
+
+[[phrases]]
+density = 0
+weight = 13
+tag = "sparse"
+at = "part_end"
+patterns = [1, 0]
+
+[[phrases]]
+density = 0
+weight = 11
+tag = "sparse"
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 0
+weight = 10
+tag = "medium"
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+weight = 5
+tag = "medium"
+patterns = [2, 0]
+
+[[phrases]]
+density = 0
+weight = 5
+tag = "medium"
+at = "part_end"
+patterns = [2, 0]
+
+[[phrases]]
+density = 0
+weight = 3
+tag = "medium"
+patterns = [2, 1]
+
+[[phrases]]
+density = 0
+weight = 3
+tag = "medium"
+at = "part_end"
+patterns = [2, 1]
+
+[[phrases]]
+density = 1
+weight = 70
+tag = "sparse"
+patterns = [4, 4]
+
+[[phrases]]
+density = 1
+weight = 30
+tag = "sparse"
+patterns = [4, 4, 4, 4]
+
+[[phrases]]
+density = 1
+weight = 30
+tag = "sparse"
+patterns = [5, 5]
+
+[[phrases]]
+density = 1
+weight = 26
+tag = "medium"
+patterns = [6, 6]
+
+[[phrases]]
+density = 1
+weight = 13
+tag = "sparse"
+patterns = [5, 4]
+
+[[phrases]]
+density = 1
+weight = 13
+tag = "sparse"
+at = "part_end"
+patterns = [5, 4]
+
+[[phrases]]
+density = 1
+weight = 11
+tag = "sparse"
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 1
+weight = 10
+tag = "medium"
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 1
+weight = 5
+tag = "medium"
+patterns = [6, 4]
+
+[[phrases]]
+density = 1
+weight = 5
+tag = "medium"
+at = "part_end"
+patterns = [6, 4]
+
+[[phrases]]
+density = 1
+weight = 3
+tag = "medium"
+patterns = [6, 5]
+
+[[phrases]]
+density = 1
+weight = 3
+tag = "medium"
+at = "part_end"
+patterns = [6, 5]
+
+[[phrases]]
+density = 2
+weight = 70
+tag = "sparse"
+patterns = [8, 8]
+
+[[phrases]]
+density = 2
+weight = 30
+tag = "sparse"
+patterns = [8, 8, 8, 8]
+
+[[phrases]]
+density = 2
+weight = 30
+tag = "sparse"
+patterns = [9, 9]
+
+[[phrases]]
+density = 2
+weight = 26
+tag = "medium"
+patterns = [10, 10]
+
+[[phrases]]
+density = 2
+weight = 13
+tag = "sparse"
+patterns = [9, 8]
+
+[[phrases]]
+density = 2
+weight = 13
+tag = "sparse"
+at = "part_end"
+patterns = [9, 8]
+
+[[phrases]]
+density = 2
+weight = 11
+tag = "sparse"
+patterns = [9, 9, 9, 9]
+
+[[phrases]]
+density = 2
+weight = 10
+tag = "medium"
+patterns = [10, 10, 10, 10]
+
+[[phrases]]
+density = 2
+weight = 5
+tag = "medium"
+patterns = [10, 8]
+
+[[phrases]]
+density = 2
+weight = 5
+tag = "medium"
+at = "part_end"
+patterns = [10, 8]
+
+[[phrases]]
+density = 2
+weight = 3
+tag = "medium"
+patterns = [10, 9]
+
+[[phrases]]
+density = 2
+weight = 3
+tag = "medium"
+at = "part_end"
+patterns = [10, 9]
+
+[[fills]]
+density = 1
+weight = 5
+tag = "sparse"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "tom_high", delta_velocity = -3 },
+    { step = 0, voice = "tom_low", delta_velocity = -12 },
+    { step = 1, voice = "tom_high", delta_velocity = 8 },
+    { step = 2, voice = "tom_high", delta_velocity = -33 },
+    { step = 2, voice = "tom_low", delta_velocity = -21 },
+    { step = 4, voice = "kick", delta_velocity = -7 },
+    { step = 4, voice = "tom_high", delta_velocity = -27 },
+    { step = 4, voice = "tom_low", delta_velocity = -17 },
+    { step = 6, voice = "tom_high", delta_velocity = -3 },
+    { step = 7, voice = "tom_high", delta_velocity = -6 },
+    { step = 8, voice = "tom_high", delta_velocity = -4 },
+    { step = 8, voice = "tom_low", delta_velocity = -29 },
+    { step = 9, voice = "tom_low", delta_velocity = -16 },
+    { step = 10, voice = "tom_low", delta_velocity = -9 },
+    { step = 11, voice = "tom_high", delta_velocity = -3 },
+    { step = 12, voice = "snare", delta_velocity = 38 },
+    { step = 12, voice = "tom_low", delta_velocity = -23 },
+    { step = 13, voice = "kick", delta_velocity = 9 },
+    { step = 13, voice = "snare", delta_velocity = 52 },
+  ] },
+]
+
+[[fills]]
+density = 1
+weight = 4
+tag = "sparse"
+start_step = 15
+bars = [
+  { hits = [
+    { step = 15, voice = "snare", delta_velocity = -16 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 40 },
+    { step = 1, voice = "snare", delta_velocity = -6 },
+    { step = 2, voice = "snare", delta_velocity = 52 },
+    { step = 3, voice = "snare", delta_velocity = -21 },
+    { step = 4, voice = "snare", delta_velocity = 27 },
+    { step = 5, voice = "snare", delta_velocity = 15 },
+    { step = 6, voice = "snare", delta_velocity = 9 },
+    { step = 6, voice = "tom_high", delta_velocity = 5 },
+    { step = 7, voice = "snare", delta_velocity = 1 },
+    { step = 7, voice = "tom_mid", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = 27 },
+    { step = 8, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "snare", delta_velocity = -30 },
+    { step = 10, voice = "snare", delta_velocity = 36 },
+    { step = 11, voice = "snare", delta_velocity = 3 },
+    { step = 12, voice = "snare", delta_velocity = 52 },
+    { step = 13, voice = "snare", delta_velocity = 52 },
+    { step = 14, voice = "tom_low", delta_velocity = -2 },
+  ] },
+]
+
+[[fills]]
+density = 1
+weight = 16
+tag = "medium"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 25 },
+    { step = 1, voice = "snare", delta_velocity = 1 },
+    { step = 2, voice = "snare" },
+    { step = 3, voice = "kick", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = -5 },
+    { step = 4, voice = "snare", delta_velocity = 13 },
+    { step = 4, voice = "tom_high", delta_velocity = 4 },
+    { step = 5, voice = "snare", delta_velocity = -13 },
+    { step = 6, voice = "snare", delta_velocity = 13 },
+    { step = 7, voice = "snare", delta_velocity = 15 },
+    { step = 8, voice = "snare", delta_velocity = 24 },
+    { step = 9, voice = "kick", delta_velocity = -8 },
+    { step = 9, voice = "snare", delta_velocity = 11 },
+    { step = 10, voice = "snare", delta_velocity = 14 },
+    { step = 10, voice = "tom_low", delta_velocity = -16 },
+    { step = 11, voice = "snare", delta_velocity = 10 },
+    { step = 12, voice = "snare", delta_velocity = 44 },
+    { step = 12, voice = "tom_high", delta_velocity = 7 },
+    { step = 13, voice = "snare", delta_velocity = 45 },
+    { step = 14, voice = "tom_low", delta_velocity = -10 },
+  ] },
+]
+
+[[fills]]
+density = 1
+weight = 11
+tag = "dense"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 52 },
+    { step = 1, voice = "snare", delta_velocity = 14 },
+    { step = 2, voice = "snare", delta_velocity = 52 },
+    { step = 3, voice = "snare", delta_velocity = -12 },
+    { step = 4, voice = "snare", delta_velocity = 12 },
+    { step = 5, voice = "snare", delta_velocity = -17 },
+    { step = 6, voice = "snare", delta_velocity = 11 },
+    { step = 7, voice = "snare", delta_velocity = -21 },
+    { step = 8, voice = "snare", delta_velocity = 41 },
+    { step = 9, voice = "snare", delta_velocity = 6 },
+    { step = 10, voice = "snare", delta_velocity = 44 },
+    { step = 11, voice = "snare", delta_velocity = -17 },
+    { step = 12, voice = "snare", delta_velocity = 16 },
+    { step = 13, voice = "snare", delta_velocity = 22 },
+    { step = 14, voice = "snare", delta_velocity = 30 },
+    { step = 15, voice = "snare", delta_velocity = 9 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 52 },
+    { step = 2, voice = "snare", delta_velocity = 33 },
+    { step = 2, voice = "tom_high", delta_velocity = 15 },
+    { step = 3, voice = "snare", delta_velocity = -17 },
+    { step = 4, voice = "snare", delta_velocity = 43 },
+    { step = 5, voice = "snare", delta_velocity = 5 },
+    { step = 6, voice = "snare", delta_velocity = 52 },
+    { step = 7, voice = "snare", delta_velocity = -6 },
+    { step = 8, voice = "snare", delta_velocity = 32 },
+    { step = 9, voice = "snare", delta_velocity = 41 },
+    { step = 10, voice = "snare", delta_velocity = 52 },
+    { step = 11, voice = "snare" },
+    { step = 11, voice = "tom_high", delta_velocity = 6 },
+    { step = 12, voice = "snare", delta_velocity = 40 },
+    { step = 12, voice = "tom_mid", delta_velocity = -1 },
+    { step = 13, voice = "snare", delta_velocity = 22 },
+    { step = 14, voice = "tom_low", delta_velocity = -4 },
+  ] },
+]
+
+[[fills]]
+density = 2
+weight = 5
+tag = "sparse"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "tom_high", delta_velocity = -3 },
+    { step = 0, voice = "tom_low", delta_velocity = -12 },
+    { step = 1, voice = "tom_high", delta_velocity = 8 },
+    { step = 2, voice = "tom_high", delta_velocity = -33 },
+    { step = 2, voice = "tom_low", delta_velocity = -21 },
+    { step = 4, voice = "kick", delta_velocity = -7 },
+    { step = 4, voice = "tom_high", delta_velocity = -27 },
+    { step = 4, voice = "tom_low", delta_velocity = -17 },
+    { step = 6, voice = "tom_high", delta_velocity = -3 },
+    { step = 7, voice = "tom_high", delta_velocity = -6 },
+    { step = 8, voice = "tom_high", delta_velocity = -4 },
+    { step = 8, voice = "tom_low", delta_velocity = -29 },
+    { step = 9, voice = "tom_low", delta_velocity = -16 },
+    { step = 10, voice = "tom_low", delta_velocity = -9 },
+    { step = 11, voice = "tom_high", delta_velocity = -3 },
+    { step = 12, voice = "snare", delta_velocity = 38 },
+    { step = 12, voice = "tom_low", delta_velocity = -23 },
+    { step = 13, voice = "kick", delta_velocity = 9 },
+    { step = 13, voice = "snare", delta_velocity = 52 },
+  ] },
+]
+
+[[fills]]
+density = 2
+weight = 4
+tag = "sparse"
+start_step = 15
+bars = [
+  { hits = [
+    { step = 15, voice = "snare", delta_velocity = -16 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 40 },
+    { step = 1, voice = "snare", delta_velocity = -6 },
+    { step = 2, voice = "snare", delta_velocity = 52 },
+    { step = 3, voice = "snare", delta_velocity = -21 },
+    { step = 4, voice = "snare", delta_velocity = 27 },
+    { step = 5, voice = "snare", delta_velocity = 15 },
+    { step = 6, voice = "snare", delta_velocity = 9 },
+    { step = 6, voice = "tom_high", delta_velocity = 5 },
+    { step = 7, voice = "snare", delta_velocity = 1 },
+    { step = 7, voice = "tom_mid", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = 27 },
+    { step = 8, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "snare", delta_velocity = -30 },
+    { step = 10, voice = "snare", delta_velocity = 36 },
+    { step = 11, voice = "snare", delta_velocity = 3 },
+    { step = 12, voice = "snare", delta_velocity = 52 },
+    { step = 13, voice = "snare", delta_velocity = 52 },
+    { step = 14, voice = "tom_low", delta_velocity = -2 },
+  ] },
+]
+
+[[fills]]
+density = 2
+weight = 16
+tag = "medium"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 25 },
+    { step = 1, voice = "snare", delta_velocity = 1 },
+    { step = 2, voice = "snare" },
+    { step = 3, voice = "kick", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = -5 },
+    { step = 4, voice = "snare", delta_velocity = 13 },
+    { step = 4, voice = "tom_high", delta_velocity = 4 },
+    { step = 5, voice = "snare", delta_velocity = -13 },
+    { step = 6, voice = "snare", delta_velocity = 13 },
+    { step = 7, voice = "snare", delta_velocity = 15 },
+    { step = 8, voice = "snare", delta_velocity = 24 },
+    { step = 9, voice = "kick", delta_velocity = -8 },
+    { step = 9, voice = "snare", delta_velocity = 11 },
+    { step = 10, voice = "snare", delta_velocity = 14 },
+    { step = 10, voice = "tom_low", delta_velocity = -16 },
+    { step = 11, voice = "snare", delta_velocity = 10 },
+    { step = 12, voice = "snare", delta_velocity = 44 },
+    { step = 12, voice = "tom_high", delta_velocity = 7 },
+    { step = 13, voice = "snare", delta_velocity = 45 },
+    { step = 14, voice = "tom_low", delta_velocity = -10 },
+  ] },
+]
+
+[[fills]]
+density = 2
+weight = 11
+tag = "dense"
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 52 },
+    { step = 1, voice = "snare", delta_velocity = 14 },
+    { step = 2, voice = "snare", delta_velocity = 52 },
+    { step = 3, voice = "snare", delta_velocity = -12 },
+    { step = 4, voice = "snare", delta_velocity = 12 },
+    { step = 5, voice = "snare", delta_velocity = -17 },
+    { step = 6, voice = "snare", delta_velocity = 11 },
+    { step = 7, voice = "snare", delta_velocity = -21 },
+    { step = 8, voice = "snare", delta_velocity = 41 },
+    { step = 9, voice = "snare", delta_velocity = 6 },
+    { step = 10, voice = "snare", delta_velocity = 44 },
+    { step = 11, voice = "snare", delta_velocity = -17 },
+    { step = 12, voice = "snare", delta_velocity = 16 },
+    { step = 13, voice = "snare", delta_velocity = 22 },
+    { step = 14, voice = "snare", delta_velocity = 30 },
+    { step = 15, voice = "snare", delta_velocity = 9 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 52 },
+    { step = 2, voice = "snare", delta_velocity = 33 },
+    { step = 2, voice = "tom_high", delta_velocity = 15 },
+    { step = 3, voice = "snare", delta_velocity = -17 },
+    { step = 4, voice = "snare", delta_velocity = 43 },
+    { step = 5, voice = "snare", delta_velocity = 5 },
+    { step = 6, voice = "snare", delta_velocity = 52 },
+    { step = 7, voice = "snare", delta_velocity = -6 },
+    { step = 8, voice = "snare", delta_velocity = 32 },
+    { step = 9, voice = "snare", delta_velocity = 41 },
+    { step = 10, voice = "snare", delta_velocity = 52 },
+    { step = 11, voice = "snare" },
+    { step = 11, voice = "tom_high", delta_velocity = 6 },
+    { step = 12, voice = "snare", delta_velocity = 40 },
+    { step = 12, voice = "tom_mid", delta_velocity = -1 },
+    { step = 13, voice = "snare", delta_velocity = 22 },
+    { step = 14, voice = "tom_low", delta_velocity = -4 },
+  ] },
+]
