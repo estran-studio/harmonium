@@ -10,8 +10,11 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : `rewrite_functional` rend basse et accords par les voix communes (E5/E6).
-pub const TUNING_VERSION: u32 = 24;
+/// Version du contrat : R1 (019) intègre les propositions P1/P2 aux profils `nt_desert`,
+/// `isaac_basement`, `isaac_burning` et `isaac_downpour` (accords, basse, batterie : les notes
+/// de ces quatre profils changent) ; `rewrite_functional` rend basse et accords par les voix
+/// communes (E5/E6).
+pub const TUNING_VERSION: u32 = 25;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

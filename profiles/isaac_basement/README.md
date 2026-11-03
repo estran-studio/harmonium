@@ -69,6 +69,28 @@ chaque couche. Ces propositions s'appuient sur les longueurs et grilles
 des §3 et §6 des références du labo : pédale mineure harmonique,
 voisines phrygiennes locales, stomp ou demi-temps, charleston parcimonieux.
 
+## Alternatives du labo (R1, phase 019)
+
+Propositions P2 (`harmonium_lab/references/p2-variete.md`) intégrées après
+écoute du propriétaire (2026-11-02), `TUNING_VERSION` 25 :
+
+- **`isaac_basement`** : deux boucles d'A2 extraites de *Diptera Sonata* et de
+  *Periculum* (poids 1 chacune, à côté des deux écrites) ; un motif de basse
+  d'A1 (poids 3 = total des écrits). Batterie inchangée : les patterns de P2
+  coûtaient −17,9 contre *Periculum* (aucune portée par partie dans P2).
+- **`isaac_burning`** : accords et basse de P1 (boucles générées de C et C2
+  dans la gamme du mode, gabarits de basse avec relance vers l'accord suivant)
+  et de P2 (boucle de C, trois motifs de basse) ; batterie : le groove de
+  densité 1 de P2 seulement, sans les grooves par portée de partie de P1.
+- **`isaac_downpour`** : une boucle de C et deux motifs de basse d'A de P2 ;
+  batterie : le groove de densité 1 seulement.
+- **`isaac_cellar`** : inchangé (rien d'exploitable dans les propositions).
+
+Chaque ajout porte sa provenance en commentaire TOML (piste, minutage,
+confiance). `isaac_burning` et `isaac_downpour` n'ont pas de README propre :
+leur en-tête de `profile.toml` et ce paragraphe tiennent lieu. Mesures
+avant/après : `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md`.
+
 
 ## Timbres
 

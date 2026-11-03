@@ -74,6 +74,25 @@ hits = [
   { step = 14, track = "PercussionLow", delta_velocity = -20 },
 ]
 
+# R1 (phase 019), P2 `isaac_burning` (proposals/isaac_burning.toml) : groove de densité 1
+# extrait de 36_fundamentum (mesures 1 et 3 ; 0:03,2 / 0:06,6), soutien 2 sur 4 fenêtres,
+# confiance 0,443 (marge de classification moyenne), grosse caisse aux pas 0, 2 et 6.
+# Poids 3 = total des patterns de densité 1 écrits (rééquilibré). Le pattern de densité 0
+# (0S 4H 8S 12H, sans grosse caisse, confiance 0,58) n'est pas retenu, ni les grooves
+# par portée de partie de P1 (couche −2,4 sur C2) : décision du propriétaire du 2026-11-02.
+[[patterns]]
+density = 1
+weight = 3
+hits = [
+  { step = 0, track = "PercussionLow", delta_velocity = 0 },
+  { step = 2, track = "PercussionLow", delta_velocity = -16 },
+  { step = 4, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 6, track = "PercussionLow", delta_velocity = -16 },
+  { step = 8, track = "PercussionHigh", delta_velocity = 0 },
+  { step = 12, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+  { step = 15, track = "PercussionHigh", note = 42, delta_velocity = -40 },
+]
+
 [[cadence_patterns]]
 density = 0
 hits = [

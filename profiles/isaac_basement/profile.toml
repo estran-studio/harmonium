@@ -98,6 +98,12 @@ steps_per_chord = 16
 [harmony.parts.A1]
 kind = "pedal"
 degree = 1
+# R1 (phase 019), P2 `isaac_basement` (références labo isaac-basement,
+# proposals/isaac_basement.toml) : les deux dernières boucles d'A2 sont extraites, poids 1
+# chacune (rééquilibrées au total des écrites, 2). Boucle 3 : 02_diptera_sonata, mesures
+# 8-12 (0:14,4-0:21,2), confiance 0,806, similarité 0,88, soutien 1 sur 2 fenêtres.
+# Boucle 4 : 21_periculum, mesures 48-52 (1:22,8-1:29,6), confiance 0,874, similarité
+# 0,75, soutien 1 sur 2 fenêtres (un accord mineur tenu quatre mesures).
 [harmony.parts.A2]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -108,6 +114,13 @@ loops = [{ weight = 1, chords = [
   { semitones = 0, quality = "m", steps = 32 },
   { semitones = 5, quality = "m", steps = 16 },
   { semitones = 7, quality = "", steps = 16 },
+] }, { weight = 1, chords = [
+  { semitones = 0, quality = "m", bass = 3, steps = 16 },
+  { semitones = 5, quality = "", steps = 16 },
+  { semitones = 0, quality = "m", bass = 7, steps = 16 },
+  { semitones = 0, quality = "m", steps = 16 },
+] }, { weight = 1, chords = [
+  { semitones = 0, quality = "m", steps = 64 },
 ] }]
 [harmony.parts.D]
 kind = "chord_loop"
@@ -236,6 +249,21 @@ reference = "chord_root"
 notes = [
   { step = 0, duration = 28, semitones = 0, octave = 1, velocity = 82, legato = true },
   { step = 28, duration = 4, semitones = -1, octave = 1, velocity = 76, legato = true },
+]
+
+# R1 (phase 019), P2 `isaac_basement` (références labo isaac-basement,
+# proposals/isaac_basement.toml) : motif d'A1 extrait de 02_diptera_sonata (mesures 0-2,
+# 0:00,7-0:04,1), soutien 2 sur 7 fenêtres, confiance 0,886 (part de trames voisées).
+# Poids rééquilibré au total des motifs d'A1 écrits (3). Variété de basse d'A1 :
+# 4,92 → 6,25 signatures distinctes par partie, distance de couche −0,2.
+[[accompaniment.bass.motifs]]
+part = "A1"
+bars = 2
+weight = 3
+reference = "tonic"
+notes = [
+  { step = 0, duration = 15, semitones = 0, velocity = 96 },
+  { step = 16, duration = 16, semitones = 0, velocity = 96 },
 ]
 
 # Nappe sombre liée : un plaqué tenu par mesure, médium (center 60).
