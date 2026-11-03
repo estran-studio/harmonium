@@ -104,7 +104,13 @@ fn profile(spec: &Spec) -> TestResult<StyleProfile> {
     Ok(StyleProfile::named(spec.id)?)
 }
 
-fn stream(spec: &Spec, seed: u64, bars: usize, intensity: f32, density: u8) -> TestResult<Vec<MeasureSnapshot>> {
+fn stream(
+    spec: &Spec,
+    seed: u64,
+    bars: usize,
+    intensity: f32,
+    density: u8,
+) -> TestResult<Vec<MeasureSnapshot>> {
     let p = profile(spec)?;
     let params = MusicalParams {
         bpm: p.meter.default_bpm,
@@ -117,7 +123,9 @@ fn stream(spec: &Spec, seed: u64, bars: usize, intensity: f32, density: u8) -> T
     };
     let mut g = TuneGenerator::new(params, TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    Ok((1..=bars).map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng))).collect())
+    Ok((1..=bars)
+        .map(|bar| MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng)))
+        .collect())
 }
 
 /// Les cinq chorus de l'air, intensité et densité neutres.
@@ -171,14 +179,11 @@ fn expected_changes(chords: Loop) -> Vec<Vec<(usize, u8)>> {
     let mut start = 0;
     for &(degree, steps) in &flat {
         let (bar, step) = (start / 16, start % 16);
-        if step == 0 {
-            bars[bar].push((0, degree));
-        } else {
-            bars[bar].push((step, degree));
-        }
+        bars[bar].push((step, degree));
         // Une mesure traversée par un accord long publie quand même son pas 0.
-        for crossed in (start / 16 + 1)..((start + steps).div_ceil(16)) {
-            bars[crossed].push((0, degree));
+        let crossed = (start + steps).div_ceil(16);
+        for later in bars.iter_mut().take(crossed).skip(bar + 1) {
+            later.push((0, degree));
         }
         start += steps;
     }
@@ -197,12 +202,19 @@ fn sequence(flow: &[MeasureSnapshot], f: impl Fn(&MeasureSnapshot) -> String) ->
 }
 
 #[test]
-fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plusieurs() -> TestResult {
+fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plusieurs() -> TestResult
+{
     for spec in [&FUNK, &NEW_ORLEANS] {
         let expected: Vec<Vec<Vec<(usize, u8)>>> =
             spec.loops.iter().map(|l| expected_changes(l)).collect();
         for e in &expected {
-            assert_eq!(e.len(), spec.bars, "{} : une boucle écrite fait {} mesures", spec.id, spec.bars);
+            assert_eq!(
+                e.len(),
+                spec.bars,
+                "{} : une boucle écrite fait {} mesures",
+                spec.id,
+                spec.bars
+            );
         }
         let mut seen = BTreeSet::new();
         for seed in 1..=16u64 {
@@ -226,7 +238,8 @@ fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plus
 }
 
 #[test]
-fn la_basse_arrive_sur_la_basse_publiee_a_chaque_changement_dans_la_fenetre_du_profil() -> TestResult {
+fn la_basse_arrive_sur_la_basse_publiee_a_chaque_changement_dans_la_fenetre_du_profil() -> TestResult
+{
     for spec in [&FUNK, &NEW_ORLEANS] {
         for seed in SEEDS {
             let flow = air(spec, seed)?;
@@ -239,16 +252,17 @@ fn la_basse_arrive_sur_la_basse_publiee_a_chaque_changement_dans_la_fenetre_du_p
                 let broken = in_chorus >= spec.bars - 2 && s.index > spec.bars;
                 for note in &bass {
                     assert!(
-                        (spec.root_window.0.saturating_sub(2)..=spec.bass_ceiling).contains(&note.pitch),
+                        (spec.root_window.0.saturating_sub(2)..=spec.bass_ceiling)
+                            .contains(&note.pitch),
                         "{ctx} : hauteur {} hors de la fenêtre de basse",
                         note.pitch
                     );
                 }
                 for change in s.chord_changes.iter().filter(|c| !broken || c.start_step == 0) {
-                    let arrival = bass
-                        .iter()
-                        .find(|n| n.start_step == change.start_step)
-                        .ok_or_else(|| format!("{ctx} pas {} : pas d'attaque de basse", change.start_step))?;
+                    let arrival =
+                        bass.iter().find(|n| n.start_step == change.start_step).ok_or_else(
+                            || format!("{ctx} pas {} : pas d'attaque de basse", change.start_step),
+                        )?;
                     assert_eq!(
                         arrival.pitch % 12,
                         change.context.bass_pc,
@@ -289,7 +303,13 @@ fn la_basse_ne_joue_que_la_fondamentale_la_quinte_la_septieme_ou_une_approche() 
                     // Sinon c'est une approche : à un ou deux demi-tons de la note de basse suivante
                     // (de la mesure suivante pour la dernière).
                     let next = bass.get(rank + 1).map(|n| n.pitch).or_else(|| {
-                        flow.get(index + 1).and_then(|n| track(n, BASS).iter().map(|b| (b.start_step, b.pitch)).min().map(|b| b.1))
+                        flow.get(index + 1).and_then(|n| {
+                            track(n, BASS)
+                                .iter()
+                                .map(|b| (b.start_step, b.pitch))
+                                .min()
+                                .map(|b| b.1)
+                        })
                     });
                     let next = next.ok_or("cible d'approche")?;
                     let distance = note.pitch.abs_diff(next);
@@ -332,19 +352,19 @@ fn le_comping_ne_joue_que_des_notes_de_l_accord_publie() -> TestResult {
                     // l'accord de la mesure suivante.
                     let ahead = (step + duration == 16).then(|| flow.get(index + 1)).flatten();
                     let played = pcs(&pitches);
-                    let fits = |c: &ChordContext| played.iter().all(|pc| c.pitch_classes.contains(pc));
+                    let fits =
+                        |c: &ChordContext| played.iter().all(|pc| c.pitch_classes.contains(pc));
                     let sounding = if fits(here) {
                         here
                     } else {
-                        ahead
-                            .map(|a| &a.chord_changes[0].context)
-                            .filter(|c| fits(c))
-                            .ok_or_else(|| {
+                        ahead.map(|a| &a.chord_changes[0].context).filter(|c| fits(c)).ok_or_else(
+                            || {
                                 format!(
                                     "{ctx} : {played:?} hors de {} {:?}",
                                     here.chord_name, here.pitch_classes
                                 )
-                            })?
+                            },
+                        )?
                     };
                     if !spec.comping_plays_root {
                         assert!(!played.contains(&sounding.root_pc), "{ctx} : fondamentale jouée");
@@ -357,7 +377,11 @@ fn le_comping_ne_joue_que_des_notes_de_l_accord_publie() -> TestResult {
                     attack_count += 1;
                 }
             }
-            assert!(attack_count > 100, "{} graine {seed} : {attack_count} attaques de comping", spec.id);
+            assert!(
+                attack_count > 100,
+                "{} graine {seed} : {attack_count} attaques de comping",
+                spec.id
+            );
         }
     }
     Ok(())
@@ -380,14 +404,19 @@ fn la_batterie_reste_dans_le_kit_et_pose_un_backbeat_sur_les_temps_2_et_4() -> T
                 );
                 kick += usize::from(notes.iter().any(|n| n.pitch == KICK));
                 if notes.iter().any(|n| {
-                    (n.pitch == SNARE || n.pitch == SIDESTICK) && (n.start_step == 4 || n.start_step == 12)
+                    (n.pitch == SNARE || n.pitch == SIDESTICK)
+                        && (n.start_step == 4 || n.start_step == 12)
                 }) {
                     backbeat += 1;
                 }
             }
             // Le groupe de mesures d'un pattern retenu a une grosse caisse, et pour le funk une caisse
             // claire au temps 2 ou 4 ; seules les relances (fins de phrase) les remplacent.
-            assert!(kick * 100 >= flow.len() * 70, "{} graine {seed} : grosse caisse sur {kick} mesures", spec.id);
+            assert!(
+                kick * 100 >= flow.len() * 70,
+                "{} graine {seed} : grosse caisse sur {kick} mesures",
+                spec.id
+            );
             if spec.comping_plays_root {
                 continue;
             }
@@ -406,7 +435,12 @@ fn la_batterie_reste_dans_le_kit_et_pose_un_backbeat_sur_les_temps_2_et_4() -> T
 fn le_feel_est_droit_en_seize_pas_et_le_tempo_reste_dans_la_plage() -> TestResult {
     for spec in [&FUNK, &NEW_ORLEANS] {
         let p = profile(spec)?;
-        assert_eq!((p.meter.min_bpm, p.meter.default_bpm, p.meter.max_bpm), spec.bpm, "{}", spec.id);
+        assert_eq!(
+            (p.meter.min_bpm, p.meter.default_bpm, p.meter.max_bpm),
+            spec.bpm,
+            "{}",
+            spec.id
+        );
         assert!((p.meter.default_swing_ratio - 0.5).abs() < 1e-6, "{} : feel droit", spec.id);
         for intensity in [0.0f32, 0.25, 0.5, 0.75, 1.0] {
             let flow = stream(spec, 1, spec.bars + 2, intensity, 1)?;
@@ -420,7 +454,12 @@ fn le_feel_est_droit_en_seize_pas_et_le_tempo_reste_dans_la_plage() -> TestResul
                     spec.bpm.0,
                     spec.bpm.2
                 );
-                assert!((s.swing_ratio - 0.5).abs() < 1e-6, "{} : swing {}", spec.id, s.swing_ratio);
+                assert!(
+                    (s.swing_ratio - 0.5).abs() < 1e-6,
+                    "{} : swing {}",
+                    spec.id,
+                    s.swing_ratio
+                );
             }
         }
         // Doubles croches : à la densité 2 une mesure au moins attaque un pas impair (le 16ᵉ).
@@ -446,8 +485,16 @@ fn l_arc_creuse_l_ecart_entre_l_exposition_le_sommet_et_la_retombee() -> TestRes
                     .sum()
             };
             let (first, peak, fall) = (notes(1), notes(4), notes(5));
-            assert!(first < peak, "{} graine {seed} : exposition {first} contre sommet {peak}", spec.id);
-            assert!(fall < peak, "{} graine {seed} : retombée {fall} contre sommet {peak}", spec.id);
+            assert!(
+                first < peak,
+                "{} graine {seed} : exposition {first} contre sommet {peak}",
+                spec.id
+            );
+            assert!(
+                fall < peak,
+                "{} graine {seed} : retombée {fall} contre sommet {peak}",
+                spec.id
+            );
             // Retombée : stop-time sur les deux dernières mesures, accords et basse sur le un seulement.
             for s in chorus(&flow, spec, CHORUSES).iter().rev().take(2) {
                 for id in [CHORDS, BASS] {
@@ -459,7 +506,12 @@ fn l_arc_creuse_l_ecart_entre_l_exposition_le_sommet_et_la_retombee() -> TestRes
                         attacks(s, id)
                     );
                 }
-                assert!(!percussion(s).is_empty(), "{} mesure {} : la batterie continue", spec.id, s.index);
+                assert!(
+                    !percussion(s).is_empty(),
+                    "{} mesure {} : la batterie continue",
+                    spec.id,
+                    s.index
+                );
             }
         }
     }
@@ -467,7 +519,8 @@ fn l_arc_creuse_l_ecart_entre_l_exposition_le_sommet_et_la_retombee() -> TestRes
 }
 
 #[test]
-fn la_graine_change_le_comping_la_batterie_et_la_basse_et_la_meme_graine_rejoue_pareil() -> TestResult {
+fn la_graine_change_le_comping_la_batterie_et_la_basse_et_la_meme_graine_rejoue_pareil()
+-> TestResult {
     for spec in [&FUNK, &NEW_ORLEANS] {
         let a = air(spec, 1)?;
         let again = air(spec, 1)?;
@@ -478,17 +531,39 @@ fn la_graine_change_le_comping_la_batterie_et_la_basse_et_la_meme_graine_rejoue_
         for seed in 1..=16u64 {
             let flow = air(spec, seed)?;
             comping.insert(sequence(&flow, |s| {
-                track(s, CHORDS).iter().map(|n| format!("{}", n.start_step)).collect::<Vec<_>>().join(",")
+                track(s, CHORDS)
+                    .iter()
+                    .map(|n| format!("{}", n.start_step))
+                    .collect::<Vec<_>>()
+                    .join(",")
             }));
             drums.insert(sequence(&flow, |s| {
-                percussion(s).iter().map(|n| format!("{}.{}", n.start_step, n.pitch)).collect::<Vec<_>>().join(",")
+                percussion(s)
+                    .iter()
+                    .map(|n| format!("{}.{}", n.start_step, n.pitch))
+                    .collect::<Vec<_>>()
+                    .join(",")
             }));
             bass.insert(sequence(&flow, |s| {
-                track(s, BASS).iter().map(|n| format!("{}.{}", n.start_step, n.pitch)).collect::<Vec<_>>().join(",")
+                track(s, BASS)
+                    .iter()
+                    .map(|n| format!("{}.{}", n.start_step, n.pitch))
+                    .collect::<Vec<_>>()
+                    .join(",")
             }));
         }
-        assert!(comping.len() >= 14, "{} : {} comping distincts sur 16 graines", spec.id, comping.len());
-        assert!(drums.len() >= 14, "{} : {} batteries distinctes sur 16 graines", spec.id, drums.len());
+        assert!(
+            comping.len() >= 14,
+            "{} : {} comping distincts sur 16 graines",
+            spec.id,
+            comping.len()
+        );
+        assert!(
+            drums.len() >= 14,
+            "{} : {} batteries distinctes sur 16 graines",
+            spec.id,
+            drums.len()
+        );
         assert!(bass.len() >= 12, "{} : {} basses distinctes sur 16 graines", spec.id, bass.len());
     }
     Ok(())

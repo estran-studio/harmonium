@@ -92,7 +92,7 @@ VOICES = {
     "tom_low": ("tom_low", 43, "PercussionHigh"),
 }
 #: LUFS intégré en solo (4 coups par mesure, 96 BPM, 16 mesures, kit 128/0 de GeneralUser GS,
-#: mixage du profil `gmd_funk` : `/tmp/b47/calibrate.py`, `ffmpeg ebur128`) à vélocité 50 puis 100.
+#: mixage du profil `gmd_funk` : `b47_calibrage_kit.py`, `ffmpeg ebur128`) à vélocité 50 puis 100.
 CALIBRATION = {
     "kick": (-32.8, -20.4), "snare": (-28.3, -16.2), "sidestick": (-33.6, -23.2),
     "hat_closed": (-44.0, -28.4), "hat_pedal": (-48.4, -32.5), "hat_open": (-33.2, -23.1),

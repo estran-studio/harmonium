@@ -42,7 +42,7 @@ dans le dépôt. Mesures du labo : `harmonium_lab/references/gmd-funk/`, `refere
 | `fills_none_weight` | 29 (44 % de fins de phrase sans relance) | valeur de service : le GMD isole les relances, la part de fins de phrase sans relance n'y est pas mesurable |
 | `performance.tracks.Percussion*` | décalage −0,04 à −0,07 pas, sans `jitter` | GMD funk, médianes de l'écart à la grille : charleston −0,04, grosse caisse −0,04 (hors temps) à −0,07 (sur le temps), caisse claire −0,02 à −0,07 |
 | Niveau de chaque voix de batterie | gain par rôle, voir le script | LUFS en solo mesuré sur le kit 128/0 de GeneralUser GS à vélocité 50 et 100, droite en log2 de la vélocité, niveau visé par rôle |
-| `mix.tracks` | accords −17 dB, basse −18,5 dB, percussion −19 dB, maître +25 dB | LUFS intégrés en solo, graine 1, 40 mesures : accords −26,2, basse −24,9, batterie haute −25,0, grosse caisse −31,8, mix −21,0 |
+| `mix.tracks` | accords −17 dB, basse −18,5 dB, percussion −19 dB, maître +25 dB | LUFS intégrés en solo, graine 1, 40 mesures : accords −25,6, basse −25,0, batterie haute −25,7, grosse caisse −31,6, mix −21,2 |
 
 Valeurs de métier, aucune mesure (listées dans les commentaires du `profile.toml`) : les riffs de basse
 (croches et doubles croches syncopées, fondamentale-octave, quinte et septième mineure, sans tierce

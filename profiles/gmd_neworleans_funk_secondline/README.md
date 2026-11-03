@@ -37,7 +37,7 @@ seule).
 | `fills_none_weight` | 29 | valeur de service (44 % de fins de phrase sans relance) |
 | `performance.tracks.Percussion*` | sur le temps −0,08 à −0,09 pas, contretemps +0,03 à +0,075, sans `jitter` | GMD neworleans/funk, médianes de l'écart à la grille (grosse caisse −0,08 sur le temps, +0,075 hors temps ; caisse claire −0,08 et +0,05 ; charleston −0,08 et ≈ 0 ; pédale −0,12 et ≈ 0) |
 | Niveau de chaque voix de batterie | gain par rôle, voir le script | LUFS en solo mesuré sur le kit 128/0 de GeneralUser GS (même mesure que `gmd_funk`) |
-| `mix.tracks` | accords −19 dB, basse −11 dB, percussion −19 dB, maître +24,5 dB | LUFS intégrés en solo, graine 1, 36 mesures : accords −26,0, basse −25,0, batterie haute −24,2, grosse caisse −30,0 |
+| `mix.tracks` | accords −19 dB, basse −11 dB, percussion −19 dB, maître +24,5 dB | LUFS intégrés en solo, graine 1, 36 mesures : accords −26,4, basse −24,2, batterie haute −25,0, grosse caisse −30,3, mix −20,3 |
 
 Valeurs de métier, aucune mesure : les cinq grilles, les riffs de tuba, les rythmes de comping et leurs
 phrases, l'approche de la basse (`none_weight` 60, chromatique 28, degré de gamme 12), l'arc, le mixage.
