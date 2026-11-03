@@ -431,6 +431,10 @@ pub struct CompingPhrase {
     pub at: PhraseAt,
     /// Un motif par mesure : indices dans `comping`. 1 à 8 mesures.
     pub motifs: Vec<usize>,
+    /// Côté de la clave (cycle de deux mesures, `[clave]` du profil) où la phrase commence :
+    /// `three` ou `two`. Absent : n'importe où.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clave: Option<super::phrase::ClaveSide>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -621,6 +625,7 @@ impl ChordVoice {
                 bars: phrase.motifs.len(),
                 weight: tagged_weight(phrase.weight, phrase.tag.as_deref(), tags),
                 at: phrase.at,
+                side: phrase.clave,
             })
         })
     }

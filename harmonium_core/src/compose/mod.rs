@@ -49,7 +49,7 @@ pub use percussion::{
     PercussionPatternPlan, PercussionPhrase, PercussionTable, PercussionTableError,
     PercussionVoice, draw_percussion_humanize, percussion_notes,
 };
-pub use phrase::PhraseAt;
+pub use phrase::{Clave, ClaveDirection, ClaveSide, PhraseAt};
 pub use plan::{BarRole, ImposedRole, TunePlan};
 pub use session::{
     DrawnVariant, InstrumentOverride, ProfileSession, SessionDraw, SessionTempo, SessionVariant,

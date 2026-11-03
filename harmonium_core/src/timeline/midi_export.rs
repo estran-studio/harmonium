@@ -16,9 +16,6 @@ use super::{Measure, ScoreTimeline, TrackId};
 /// Ticks per quarter note in the output MIDI file.
 const TICKS_PER_QUARTER: u16 = 480;
 
-/// MIDI ticks per timeline step (480 PPQ / 4 ticks_per_beat = 120).
-const TICKS_PER_STEP: u32 = 120;
-
 /// Default MIDI velocity for notes with velocity 0 (trigger events).
 const DEFAULT_TRIGGER_VELOCITY: u8 = 80;
 
@@ -189,7 +186,7 @@ fn build_instrument_track(
     for measure in measures {
         let base_tick = measure_start(measure);
         for note in measure.notes_for_track(track_id) {
-            let (on_tick, off_tick) = note_ticks(base_tick, note);
+            let (on_tick, off_tick) = note_ticks(base_tick, measure, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             // Même gate explicite que la lecture ; arrondi au tick MIDI.
             if note.articulation == super::Articulation::Tied
@@ -295,7 +292,7 @@ fn build_drum_track(
 
         // PercussionLow
         for note in measure.notes_for_track(TrackId::PercussionLow) {
-            let (on_tick, off_tick) = note_ticks(base_tick, note);
+            let (on_tick, off_tick) = note_ticks(base_tick, measure, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_SNARE };
             events.push((
@@ -316,7 +313,7 @@ fn build_drum_track(
 
         // PercussionHigh
         for note in measure.notes_for_track(TrackId::PercussionHigh) {
-            let (on_tick, off_tick) = note_ticks(base_tick, note);
+            let (on_tick, off_tick) = note_ticks(base_tick, measure, note);
             let vel = if note.velocity == 0 { DEFAULT_TRIGGER_VELOCITY } else { note.velocity };
             let key = if note.pitch != 0 { note.pitch } else { GM_HIHAT };
             events.push((
@@ -410,14 +407,26 @@ fn program_changes(
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn note_ticks(base: u32, note: &super::TimelineNote) -> (u32, u32) {
+fn note_ticks(base: u32, measure: &Measure, note: &super::TimelineNote) -> (u32, u32) {
+    // Millièmes de tick : un millième de pas vaut `ticks par pas` millièmes de tick.
+    let per_step = ticks_per_step(measure);
+    let scaled = |milli_steps: i64| (milli_steps as f64 * per_step).round() as i64;
     let start = i64::from(base) * 1000
-        + (note.start_step as i64 * 1000 + i64::from(note.performance.offset))
-            * i64::from(TICKS_PER_STEP);
-    let end = start + note.performance.duration(note.duration_steps) * i64::from(TICKS_PER_STEP);
+        + scaled(note.start_step as i64 * 1000 + i64::from(note.performance.offset));
+    let end = start + scaled(note.performance.duration(note.duration_steps));
     let on = ((start + 500) / 1000).max(0) as u32;
     let off = (((end + 500) / 1000).max(0) as u32).max(on + 1);
     (on, off)
+}
+
+/// Ticks par pas de la grille de la mesure : 480 par noire, soit 120 quand la noire a quatre pas,
+/// 160 sur 12 pas en 4/4 (triolets).
+fn ticks_per_step(measure: &Measure) -> f64 {
+    crate::events::midi_ticks_per_step(
+        measure.time_signature.numerator as u16,
+        measure.time_signature.denominator as u16,
+        measure.steps as u16,
+    )
 }
 
 /// Calculate the absolute MIDI tick for the start of a measure.
@@ -427,7 +436,10 @@ fn note_ticks(base: u32, note: &super::TimelineNote) -> (u32, u32) {
 /// For now assumes all preceding measures have the same step count (simple case).
 /// TODO: Handle mixed time signatures by accumulating from measure 0.
 fn measure_start(measure: &Measure) -> u32 {
-    ((measure.index - 1) as u32) * (measure.steps as u32) * TICKS_PER_STEP
+    let bar_ticks =
+        crate::events::MIDI_TICKS_PER_QUARTER * 4 * measure.time_signature.numerator as u32
+            / measure.time_signature.denominator.max(1) as u32;
+    ((measure.index - 1) as u32) * bar_ticks
 }
 
 /// Convert BPM to microseconds per quarter note for MIDI tempo meta event.

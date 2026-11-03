@@ -694,6 +694,15 @@ pub struct StyleProfile {
     /// arcs nommés qu'elles peuvent choisir. Absent : la graine ne change pas l'habillage.
     #[serde(default, skip_serializing_if = "crate::compose::ProfileSession::is_empty")]
     pub session: crate::compose::ProfileSession,
+    /// Swing selon le tempo, par piste (`[swing]`, ou `swing.toml` via `[files]`) : le rapport
+    /// de chaque piste suit une courbe tempo → rapport mesurée ; la piste de référence fixe celui
+    /// de la grille. Absent : un seul rapport (`meter.default_swing_ratio`) pour toutes les pistes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swing: Option<crate::swing::SwingByTempo>,
+    /// Clave (`[clave]`) : cycle de deux mesures, 3-2, 2-3 ou tiré par air, qui contraint le
+    /// début des phrases de comping et de batterie portant `clave = "three"` ou `"two"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clave: Option<crate::compose::Clave>,
 }
 impl StyleProfile {
     /// Vrai si la ligne mélodique se compose mesure par mesure sur tous les tours (reprises
@@ -903,6 +912,7 @@ impl StyleProfile {
                     "set" => "set",
                     "arc" => "arc",
                     "session" => "session",
+                    "swing" => "swing",
                     _ => return Err(ProfileError::new(format!("files.{key}"), "banque inconnue")),
                 };
                 let name = filename
@@ -1683,6 +1693,26 @@ impl StyleProfile {
                         .all(|gain| gain.is_finite()),
                     &format!("{field}.morph"),
                     "gains de morphing finis",
+                )?;
+            }
+        }
+        if let Some(swing) = &self.swing {
+            swing.validate()?;
+        }
+        if self.clave.is_none() {
+            let chords = self.accompaniment.iter().flat_map(|a| a.chords.phrases.iter());
+            for (i, phrase) in chords.enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("accompaniment.chords.phrases[{i}].clave"),
+                    "section [clave] requise",
+                )?;
+            }
+            for (i, phrase) in self.percussion.phrases.iter().enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("percussion.phrases[{i}].clave"),
+                    "section [clave] requise",
                 )?;
             }
         }

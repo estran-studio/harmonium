@@ -1012,16 +1012,20 @@ impl PlaybackEngine {
         }
         self.step_count = steps_per_pulse;
 
-        // Nominal step (the MIDI backend's TimingUpdate) and recorder cadence:
-        // the pulse spans exactly `steps × 120` ticks over its frames.
+        // Nominal step (the MIDI backend's TimingUpdate) and recorder cadence: the pulse spans
+        // exactly `steps × ticks per step` ticks over its frames (480 ticks per quarter note).
         let pulse_frames = (previous - start).max(1);
         let samples_per_step = (pulse_frames / steps_per_pulse as u64).max(1) as usize;
         if samples_per_step != self.samples_per_step {
             self.samples_per_step = samples_per_step;
             self.renderer.handle_event(AudioEvent::TimingUpdate { samples_per_step });
         }
-        let ticks_per_frame =
-            f64::from(MIDI_TICKS_PER_STEP) * steps_per_pulse as f64 / pulse_frames as f64;
+        let ticks_per_step = harmonium_core::events::midi_ticks_per_step(
+            timing.numerator,
+            timing.denominator,
+            timing.steps,
+        );
+        let ticks_per_frame = ticks_per_step * steps_per_pulse as f64 / pulse_frames as f64;
         if ticks_per_frame != self.midi_ticks_per_frame {
             self.midi_ticks_per_frame = ticks_per_frame;
             self.renderer.handle_event(AudioEvent::MidiClock { ticks_per_frame });

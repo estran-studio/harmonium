@@ -46,6 +46,73 @@ pub enum PhraseAt {
     ChorusEnd,
 }
 
+const CLAVE_STREAM: u64 = 0x434C_4156;
+
+/// Côté de la clave où commence une phrase : la clave est un cycle de deux mesures, la mesure
+/// « trois » (trois attaques) et la mesure « deux ».
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaveSide {
+    Three,
+    Two,
+}
+
+impl ClaveSide {
+    /// Rang du côté dans le cycle de la clave (0 : mesure « trois » d'une 3-2).
+    const fn phase(self) -> usize {
+        match self {
+            Self::Three => 0,
+            Self::Two => 1,
+        }
+    }
+}
+
+/// Sens de la clave : 3-2 (la mesure « trois » d'abord), 2-3, ou tiré une fois par air dans la
+/// graine d'accompagnement.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaveDirection {
+    #[default]
+    ThreeTwo,
+    TwoThree,
+    Either,
+}
+
+/// Clave : cycle de deux mesures qui contraint le début des phrases de comping et de batterie
+/// (`clave = "three"` ou `"two"` sur la phrase). Le cycle se poursuit d'un chorus à l'autre : la
+/// mesure `n` de l'air (0-based, tours compris) est « trois » quand `n` est pair dans une 3-2,
+/// impair dans une 2-3. Absente du profil, aucune phrase ne peut porter de côté.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Clave {
+    #[serde(default)]
+    pub direction: ClaveDirection,
+}
+
+impl Clave {
+    /// Rang dans le cycle (0 : « trois », 1 : « deux ») de la mesure `performed_bar` de l'air
+    /// dont la graine d'accompagnement est `accompaniment_seed`.
+    #[must_use]
+    pub fn phase(&self, accompaniment_seed: u64, performed_bar: usize) -> usize {
+        let shift = match self.direction {
+            ClaveDirection::ThreeTwo => 0,
+            ClaveDirection::TwoThree => 1,
+            ClaveDirection::Either => (mix(accompaniment_seed, CLAVE_STREAM) & 1) as usize,
+        };
+        (performed_bar + shift) % 2
+    }
+
+    /// Côté de la mesure `performed_bar` de l'air.
+    #[must_use]
+    pub fn side(&self, accompaniment_seed: u64, performed_bar: usize) -> ClaveSide {
+        if self.phase(accompaniment_seed, performed_bar) == 0 {
+            ClaveSide::Three
+        } else {
+            ClaveSide::Two
+        }
+    }
+}
+
 /// Passe d'une partie, pour le découpage en phrases.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Window {
@@ -55,6 +122,18 @@ pub(crate) struct Window {
     pub bars: usize,
     /// Vrai si la passe est celle de la dernière partie du chorus.
     pub chorus_end: bool,
+    /// Rang dans le cycle de la clave de la première mesure de la passe ; `None` : pas de clave.
+    pub clave_phase: Option<usize>,
+}
+
+impl Window {
+    /// Vrai si une phrase de côté `side` peut commencer à la mesure `at` de la passe.
+    fn fits(&self, side: Option<ClaveSide>, at: usize) -> bool {
+        match (side, self.clave_phase) {
+            (Some(side), Some(phase)) => (phase + at) % 2 == side.phase(),
+            _ => true,
+        }
+    }
 }
 
 /// Une phrase candidate au tirage : longueur, poids effectif (0 : exclue) et emplacement.
@@ -63,6 +142,8 @@ pub(crate) struct Candidate {
     pub bars: usize,
     pub weight: u64,
     pub at: PhraseAt,
+    /// Côté de la clave où la phrase commence ; `None` : n'importe lequel.
+    pub side: Option<ClaveSide>,
 }
 
 /// Phrase qui couvre une mesure : indice dans la banque, rang de la mesure dans la phrase et
@@ -125,7 +206,11 @@ pub(crate) fn tile(
     };
     // Fin de passe : la classe la plus précise qui a un candidat l'emporte.
     let mut end = window.bars;
-    let closing = |at: PhraseAt| candidates.iter().filter(move |(_, c)| c.at == at);
+    let closing = |at: PhraseAt| {
+        candidates
+            .iter()
+            .filter(move |(_, c)| c.at == at && window.fits(c.side, window.bars - c.bars))
+    };
     let class = if window.chorus_end && closing(PhraseAt::ChorusEnd).next().is_some() {
         PhraseAt::ChorusEnd
     } else {
@@ -142,7 +227,9 @@ pub(crate) fn tile(
     while pos < end {
         let rest = end - pos;
         let open = candidates.iter().filter(|(_, c)| {
-            c.bars <= rest && (c.at == PhraseAt::Any || (c.at == PhraseAt::PartStart && pos == 0))
+            c.bars <= rest
+                && (c.at == PhraseAt::Any || (c.at == PhraseAt::PartStart && pos == 0))
+                && window.fits(c.side, pos)
         });
         let Some((index, c)) = draw(mix(mix(window.seed, OPEN_STREAM), pos as u64), open) else {
             break;
@@ -181,7 +268,8 @@ pub(crate) fn pick_fill(
         .into_iter()
         .find(|at| candidates.iter().any(|(_, c)| c.at == *at))?;
     // « Pas de relance » concourt comme un candidat de plus (indice hors banque).
-    let none = (count, Candidate { bars: 0, weight: u64::from(none_weight), at: class });
+    let none =
+        (count, Candidate { bars: 0, weight: u64::from(none_weight), at: class, side: None });
     let pool = candidates.iter().filter(|(_, c)| c.at == class).chain(std::iter::once(&none));
     let (index, _) = draw(mix(mix(window.seed, FILL_STREAM), end as u64), pool)?;
     (index < count).then_some(index)

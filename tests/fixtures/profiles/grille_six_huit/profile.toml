@@ -1,0 +1,225 @@
+# Fixture technique 6/8 sous grille (12 pas, pulse composée)
+[files]
+arc = "arc.toml"
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+
+[meta]
+id = "grille_six_huit"
+name = "Fixture technique 6/8 sous grille (12 pas, pulse composée)"
+tradition = "Exercice synthétique de contrat, non destiné à la distribution"
+tags = ["test", "accompagnement", "grille", "six_huit", "arc", "phrases"]
+corpus = "Courbes de swing : Jazz Trio Database v0.2, MIT License, Copyright (c) Huw Cheston et al. (TISMIR 2024, https://doi.org/10.5334/tismir.186), régression robuste par piste, harmonium_lab references/jtd-swing-tempo/. Reste : valeurs d'exercice, aucune mesure de corpus."
+
+[meter]
+time_signature = { numerator = 6, denominator = 8 }
+steps_per_bar = 12
+steps_per_unit = 2
+steps_per_pulse = 6
+pulses_per_bar = 2
+default_swing_ratio = 0.5
+default_bpm = 100.0
+min_bpm = 60.0
+max_bpm = 285.0
+
+[fixed_tonality]
+key = 5
+mode = "ionian"
+
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Blues"
+melody_center_offset = 0
+phrase_ends = [12]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+[melody]
+cell_units = 6
+strong_units = [0, 3]
+weak_units = [1, 2, 4, 5]
+key_modes = [{ key = 5, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 6
+
+[harmony.parts.Blues]
+kind = "chord_loop"
+loops = [{ weight = 1, chords = [
+  { semitones = 0, quality = "7", steps = 12 },
+  { semitones = 5, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 24 },
+  { semitones = 5, quality = "7", steps = 24 },
+  { semitones = 0, quality = "7", steps = 24 },
+  { semitones = 2, quality = "m7", steps = 12 },
+  { semitones = 7, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 12 },
+  { semitones = 0, quality = "7", steps = 6 },
+  { semitones = 7, quality = "7", steps = 6 },
+] }]
+
+[accompaniment]
+strong_steps = [0, 6]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+[accompaniment.bass]
+low = 36
+high = 47
+walk_low = 33
+walk_high = 50
+[accompaniment.bass.walking]
+velocity = 78
+accent = 6
+duration = 6
+max_leap = 11
+toward_target_weight = 2
+keep_direction_weight = 1
+approach = { none_weight = 60, chromatic_weight = 8, diatonic_weight = 8 }
+passing = { chord_tone_weight = 35, scale_step_weight = 65 }
+
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 76
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 4, velocity = 66 }, { step = 6, direction = "block", duration = 4, velocity = 58 }] }]
+comping = [
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
+  { weight = 3, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 60 }, { step = 6, duration = 2, velocity = 56 }, { step = 10, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 62 }, { step = 6, duration = 2, velocity = 58 }, { step = 10, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 6, duration = 4, velocity = 58 }, { step = 10, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 1, tag = "sparse", hits = [{ step = 6, duration = 6, velocity = 60 }] },
+  { weight = 1, tag = "sparse", hits = [] },
+]
+
+
+# Phrases de comping (A1) : suites de motifs de `comping` (indices 0 à 5 : medium, dense, dense,
+# medium, sparse, silence), mêmes étiquettes que les motifs pour que l'arc restreigne les phrases.
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "sparse"
+motifs = [4, 5, 4, 5]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "sparse"
+motifs = [4, 4, 5, 4]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "sparse"
+motifs = [5, 4]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "sparse"
+at = "part_end"
+motifs = [5, 4]
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "medium"
+motifs = [0, 3, 0, 3]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "medium"
+motifs = [0, 0, 3, 0]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "medium"
+motifs = [3, 0]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "medium"
+at = "part_end"
+motifs = [0, 3]
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "dense"
+motifs = [1, 2, 1, 2]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "dense"
+motifs = [2, 1, 1, 2]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "dense"
+motifs = [1, 2]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "dense"
+at = "part_end"
+motifs = [1, 2]
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 32
+
+[ornaments]
+rate_scale = 0.0
+
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.0
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -16.0
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

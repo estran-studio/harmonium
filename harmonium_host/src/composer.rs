@@ -588,9 +588,12 @@ impl MusicComposer {
 
     /// Set the swing ratio (clamped 0.5..=0.75). Takes effect on the next
     /// generated measure: the caller invalidates and regenerates ahead, like
-    /// the other structural setters.
+    /// the other structural setters. Commande directe de l'hôte : le rapport gagne sur la
+    /// courbe de swing selon le tempo du profil (`MusicalParams::swing_explicit`), pour toutes
+    /// les pistes, jusqu'à `reset` ou au chargement d'un profil.
     pub fn set_swing_ratio(&mut self, ratio: f32) {
         self.musical_params.set_swing_ratio(ratio);
+        self.musical_params.swing_explicit = true;
     }
 
     /// Applique les défauts du profil actif.

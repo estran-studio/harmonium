@@ -255,28 +255,42 @@ impl BarTiming {
         ) as u64
     }
 
-    /// Pas par noire quand le swing s'applique : grille entière et paire, pulse faite de
-    /// noires entières, swing non droit. Mesure composée ou grille impaire : pas de swing.
+    /// Pas par noire quand la grille se découpe en noires entières d'au moins deux pas, que la
+    /// pulse est faite de noires entières et que le swing n'est pas droit. Mesure composée
+    /// (pulse qui n'est pas un nombre entier de noires, 6/8 sur 12 pas) : pas de swing.
     const fn swing_quarter_steps(&self) -> Option<u32> {
+        if self.swing.0 <= Swing::STRAIGHT.0 {
+            return None;
+        }
+        self.swing_unit_steps()
+    }
+
+    /// Pas par noire de l'unité que le swing partage : la grille tombe sur des noires entières
+    /// (`steps × dénominateur` multiple de `numérateur × 4`), la noire a au moins deux pas et la
+    /// pulse en contient un nombre entier. Pair (4 pas : croches), la croche de contretemps tombe
+    /// au milieu ; impair (3 pas : triolets, grille de 12 pas en 4/4), elle tombe au deuxième pas
+    /// des trois, sa place droite étant `2/3` de la noire : `swing = 0,6667` ne change donc rien
+    /// et `0,5` laisse la grille telle quelle. `None` : cette grille ne swingue pas, quel que
+    /// soit le rapport (mesure composée, noire d'un seul pas).
+    #[must_use]
+    pub const fn swing_unit_steps(&self) -> Option<u32> {
         let numerator = if self.numerator == 0 { 1 } else { self.numerator as u32 };
         let denominator = self.denominator as u32;
         let grid = self.steps() * denominator;
-        if self.swing.0 <= Swing::STRAIGHT.0 || !grid.is_multiple_of(numerator * 4) {
+        if !grid.is_multiple_of(numerator * 4) {
             return None;
         }
         let quarter_steps = grid / (numerator * 4);
-        if quarter_steps == 0
-            || !quarter_steps.is_multiple_of(2)
-            || !self.steps_per_pulse().is_multiple_of(quarter_steps)
-        {
+        if quarter_steps < 2 || !self.steps_per_pulse().is_multiple_of(quarter_steps) {
             return None;
         }
         Some(quarter_steps)
     }
 
     /// Début du pas `k` (`0..=steps_per_pulse`) relativement au début de sa pulse, à
-    /// `tempo`. Droit : `k × pulse / pas`. Swing : chaque noire est partagée, la première
-    /// croche durant `swing × noire` ; la noire et la pulse gardent leur longueur exacte.
+    /// `tempo`. Droit : `k × pulse / pas`. Swing : chaque noire est partagée en deux segments
+    /// de pas égaux, le premier (jusqu'au pas `⌈pas par noire / 2⌉`) durant `swing × noire` ;
+    /// la noire et la pulse gardent leur longueur exacte.
     #[must_use]
     pub const fn step_offset(&self, tempo: Tempo, k: u32) -> u64 {
         let spp = self.steps_per_pulse();
@@ -293,16 +307,23 @@ impl BarTiming {
             return unit_start as u64;
         }
         let unit_length = div_round((unit + 1) * pulse, quarters) - unit_start;
-        let half = (quarter_steps / 2) as u128;
+        let knot = quarter_steps.div_ceil(2) as u128;
+        let after = quarter_steps as u128 - knot;
         let long = self.swing.0 as u128;
         let within = within as u128;
-        let share = if within <= half {
-            within * long
+        let (share, whole) = if within <= knot {
+            (within * long, Swing::UNIT * knot)
         } else {
-            half * long + (within - half) * (Swing::UNIT - long)
+            (knot_share(long, after, within - knot), Swing::UNIT * after)
         };
-        (unit_start + div_round(unit_length * share, Swing::UNIT * half)) as u64
+        (unit_start + div_round(unit_length * share, whole)) as u64
     }
+}
+
+/// Part de la noire (sur `UNIT × pas après le nœud`) atteinte `beyond` pas après le nœud, quand
+/// le premier segment dure `long` dix-millièmes : `long × après + beyond × (UNIT − long)`.
+const fn knot_share(long: u128, after: u128, beyond: u128) -> u128 {
+    long * after + beyond * (Swing::UNIT - long)
 }
 
 /// Mesure placée dans le plan : son début, sa longueur, l'origine de sa rampe éventuelle.
@@ -538,6 +559,55 @@ mod tests {
         assert_eq!(Flicks(bar.step_offset(tempo, 2)).to_frames(44_100), 13_230);
         assert_eq!(bar.step_offset(tempo, 4), quarter);
         assert_eq!(bar.step_offset(tempo, 8), 2 * quarter);
+    }
+
+    /// Grille de triolets (12 pas en 4/4, 3 pas par noire) : le pas 2 des trois se place à
+    /// `swing × noire`, le pas 1 à mi-chemin ; `2/3` ne change rien et un swing droit laisse
+    /// la grille. Les noires restent exactes.
+    #[test]
+    fn swing_moves_the_last_triplet_step_on_an_odd_grid() {
+        let ternary = |swing| BarTiming {
+            tempo: Tempo::from_milli_bpm(120_000),
+            swing: Swing::from_ten_thousandths(swing),
+            numerator: 4,
+            denominator: 4,
+            steps: 12,
+            steps_per_pulse: 3,
+            pulses_per_bar: 4,
+            ramp_in: false,
+        };
+        let quarter = Tempo::from_milli_bpm(120_000).quarter().0;
+        let bar = ternary(6_000);
+        assert_eq!(bar.swing_unit_steps(), Some(3));
+        let at = |k| bar.step_offset(bar.tempo, k);
+        assert_eq!(at(2), quarter * 6 / 10);
+        assert_eq!(at(1), quarter * 3 / 10);
+        assert_eq!(at(3), quarter);
+        let straight = ternary(5_000);
+        assert_eq!(straight.step_offset(straight.tempo, 2), quarter * 2 / 3);
+        let triplet = ternary(6_667);
+        assert!(triplet.step_offset(triplet.tempo, 2).abs_diff(quarter * 2 / 3) < quarter / 1000);
+    }
+
+    /// Mesure composée (6/8 sur 12 pas : pulse de six pas, noire de quatre) : aucun rapport ne
+    /// la swingue ; la grille reste droite.
+    #[test]
+    fn a_compound_pulse_never_swings() {
+        let compound = BarTiming {
+            tempo: Tempo::from_milli_bpm(120_000),
+            swing: Swing::from_ten_thousandths(7_000),
+            numerator: 6,
+            denominator: 8,
+            steps: 12,
+            steps_per_pulse: 6,
+            pulses_per_bar: 2,
+            ramp_in: false,
+        };
+        assert_eq!(compound.swing_unit_steps(), None);
+        let pulse = compound.pulse_length(compound.tempo);
+        for k in 0..=6 {
+            assert_eq!(compound.step_offset(compound.tempo, k), (u64::from(k) * pulse + 3) / 6);
+        }
     }
 
     #[test]

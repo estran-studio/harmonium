@@ -275,12 +275,15 @@ pub struct MusicalParams {
     /// Swing ratio applied to pairs of eighth notes (unit = 4 steps, one
     /// quarter note). 0.5 = straight, ~0.6 ≈ marked swing. Bounded 0.5..=0.75 via
     /// [`MusicalParams::set_swing_ratio`]. Ignored in compound meter (a
-    /// dotted-quarter pulse of 6 steps).
+    /// dotted-quarter pulse of 6 steps). Avec une courbe de swing selon le tempo
+    /// (`StyleProfile::swing`), l'écart au défaut du profil décale la courbe de toutes les pistes.
     #[serde(default = "default_swing_ratio")]
     pub swing_ratio: f32,
-    /// Swing commandé par l'hôte (`set_swing_ratio`) : il l'emporte sur le swing tiré par une
-    /// variante de session. Faux au profil par défaut.
-    #[serde(default)]
+    /// Commande directe de l'hôte (`SetSwing`, `--swing`, posée par le compositeur de l'hôte) :
+    /// le rapport demandé gagne, pour toutes les pistes, sur la courbe de swing selon le tempo du
+    /// profil et sur le swing tiré par une variante de session. `Reset` et le chargement d'un
+    /// profil le retirent.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub swing_explicit: bool,
 
     /// Dance pulse override. `None` = derived from `time_signature` (see
@@ -551,7 +554,7 @@ impl MusicalParams {
         let meter = &profile.meter;
         self.bpm = meter.default_bpm;
         self.bpm_explicit = false;
-        self.swing_ratio = meter.default_swing_ratio.clamp(0.5, 0.75);
+        self.set_swing_ratio(meter.default_swing_ratio);
         self.swing_explicit = false;
         self.time_signature = meter.time_signature;
         self.pulse = Some(meter.pulse_spec());
@@ -593,12 +596,12 @@ impl MusicalParams {
             .unwrap_or_else(|| PulseSpec::from_time_signature(self.time_signature, ticks_per_beat))
     }
 
-    /// Set the swing ratio, clamped to the valid range 0.5..=0.75. Commande de l'hôte : elle
-    /// l'emporte sur le swing d'une variante de session (`swing_explicit`) jusqu'au prochain
-    /// profil ou `Reset`.
+    /// Set the swing ratio, clamped to the valid range 0.5..=0.75. Ne marque pas le swing comme
+    /// commandé : c'est la commande de l'hôte (`MusicComposer::set_swing_ratio`) qui pose
+    /// `swing_explicit`, pour qu'un réglage interne (défauts du profil) ne fasse pas taire la
+    /// courbe de swing ni le swing d'une variante de session.
     pub fn set_swing_ratio(&mut self, ratio: f32) {
         self.swing_ratio = ratio.clamp(0.5, 0.75);
-        self.swing_explicit = true;
     }
 
     /// Définit la densité de percussion, bornée à `0..=2`.
