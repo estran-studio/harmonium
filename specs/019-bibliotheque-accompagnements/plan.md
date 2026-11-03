@@ -103,6 +103,24 @@ nom générique (« jazz », « latin »).
   seek ni le seuil). Les tâches A ajoutent du travail par mesure : mesurer la durée du seek à
   chaque fusion et revenir au propriétaire si elle monte.
 
+## Demandes de training (spec 010, reçues le 2026-11-02)
+
+Source : `harmonium_training/specs/010-lecture-impro/demandes-moteur.md` (symptômes, diagnostic,
+acceptation proposée). Hors du périmètre d'origine de 019, ajoutées sur demande du propriétaire ;
+aucune n'est bloquante pour la v1 de training (chacune débloque une étape repoussée).
+
+| Tâche | Contenu | Priorité | Vague |
+|---|---|---|---|
+| **E13** | **Défaut** : après un changement de séance (pièce, graine, `NewMelody`, tempo ou swing à l'arrêt), des mesures de l'ancien epoch restent dans la file composer → playback et sont jouées (notes parasites au départ d'une piste). Diagnostic de training : `harmonium_host/src/composer.rs` (`bump_epoch`, `clear_staged`, `stage_bar`), `playback.rs` (`drain_staged`, `try_load`, `DropFrom`). Correction : rejet des boîtes d'epoch antérieur (ou purge), sans allocation ni verrou dans le callback ; test de contrat du scénario de training ; liste de ce que training peut retirer de `prepare_playback` | haute | 2, en parallèle d'A1 (`harmonium_host`) |
+| **E10** | Difficulté de la mélodie en données : filtre générique sur le tirage et l'enchaînement des cellules (plus grand saut en demi-tons y compris entre cellules et aux frontières de phrase, densité rythmique, plus petite durée, altérations hors gamme, ambitus). Mesuré par training : au niveau 1 la mélodie saute encore de 7 à 11 demi-tons, seuls 6 styles sur 15 deviennent plus difficiles du niveau 1 au 4 | moyenne | 3 (mélodie, en parallèle d'A2) |
+| **E11** | Question-réponse : alternance déclarée dans `[arrangement]` (période et phase par piste, même chemin que `entries`) ; mesures muettes sans notes `Melody` dans le snapshot, autres pistes inchangées | basse | 3 |
+| **E12** | Vraie mélodie jazz pour `wjazzd_swing` : banque de cellules tirée de WJazzD (ODbL ; statistiques agrégées, aucune phrase de solo copiée, principe VII), rôles swing (croches swing, anticipations, notes cibles sur les temps forts), coupable par `EnableMelody(false)` | basse | 4, avec B1 (même profil) |
+
+Limites signalées sans demande : `SetLoop` borné à 16 mesures (un chorus AABA de 32 ne se boucle
+pas) ; démarrage de `LiveHost::start_paused` ≈ 4,5 s avec MuseScore General `.sf3` (38 Mo) — avec
+GeneralUser GS, banque retenue par le propriétaire (L1, option C : 7,6 Mo en SF3 q. 4, chargement
+SF2 0,4 s mesuré par L1), le délai devrait baisser : à signaler à training.
+
 ## Ordre
 
 ```mermaid
@@ -120,11 +138,12 @@ flowchart LR
 ```
 
 Vague 1 : **A3** (moteur, seul sur `harmonium_core`), **L1** (recherche), **L2 + V0** (labo).
-Vague 2 : **S0** (graine du comping, constat V0), puis **A1**, puis **A2** (moteur, à la suite).
-Vague 3 : **A4 + A5** (un agent) et **A6**
-(fichiers distincts ; l'orchestrateur gère les conflits). Vague 4 : profils **B1–B8** en
-parallèle (données, un dossier de profil par agent ; un manque moteur découvert est signalé et
-traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
+Vague 2 : **S0** (graine du comping, constat V0), puis **A1** (moteur, `harmonium_core`) en
+parallèle d'**E13** (défaut de training, `harmonium_host`). Vague 3 : **A2** ; **E10** et **E11**
+(mélodie et arrangement) ; **A4 + A5** (un agent) et **A6** (fichiers distincts ; l'orchestrateur
+gère les conflits). Vague 4 : profils **B1–B8** en parallèle (données, un dossier de profil par
+agent ; un manque moteur découvert est signalé et traité par un seul agent moteur), **E12** avec
+B1. Vague 5 : **V2**, **T1**.
 
 ## Acceptation commune (toute tâche moteur)
 
@@ -180,12 +199,14 @@ traité par un seul agent moteur). Vague 5 : **V2**, **T1**.
 | Tâche | État | Compte rendu |
 |---|---|---|
 | Reprise 018 (écoutes, seek) | **close** (2026-11-02). Seek : rien à changer. Écoute E5/E6, E7 : **validée** (« un jazz très très basique et statique » : base acceptée, la variance de 019 est le manque). P1/P2 : **intégration demandée** selon les recommandations → tâche **R1** | — |
-| **R1** | intégration P1/P2 aux profils de jeu (`nt_desert`, `isaac_basement`, `isaac_burning`, `isaac_downpour` ; rien pour `isaac_cellar`) : **fusionnable, rupture `TUNING_VERSION` 25** (quatre profils changent : 24 dumps sur 98 ; les douze autres profils identiques à `main` ; natif = wasm 98 / 98 ; seek 25,2 → 25,1 ms). Variété en hausse sur chaque couche intégrée (basse d'`isaac_downpour` : par mesure seulement) ; distance dans la tolérance partout **sauf l'audio d'`isaac_downpour` (−2,1, imputé à son groove de batterie de densité 1, gardé sur décision du propriétaire)**. Écoute : `#phase-019-r1` | [`r1-integration-p1-p2.md`](r1-integration-p1-p2.md) |
+| **R1** | **fusionnée** (2026-11-02, `TUNING_VERSION` 25 puis 26 avec S0) : intégration P1/P2 aux profils de jeu (`nt_desert`, `isaac_basement`, `isaac_burning`, `isaac_downpour` ; rien pour `isaac_cellar`). Revérifié par l'orchestrateur contre sa base : dumps (24 sur 98) et WAV changés pour ces quatre profils seulement, douze autres identiques. Variété en hausse sur chaque couche intégrée ; distance dans la tolérance partout **sauf l'audio d'`isaac_downpour` (−2,1, imputé à son groove de batterie de densité 1)** : gardé par défaut, **à trancher à l'écoute par le propriétaire** (studio ou `#phase-019-r1` ; retrait = supprimer le `[[patterns]]` « R1 » de `isaac_downpour/percussion.toml`) | [`r1-integration-p1-p2.md`](r1-integration-p1-p2.md) |
 | L1 | terminée ; **choix du propriétaire : C, GeneralUser GS conservée** (aucune différence entendue entre A, B, C ; sons de GeneralUser GS préférés) | [`l1-banques-soundfont.md`](l1-banques-soundfont.md) (écoute : `#phase-019-l1`) |
 | L2 | fusionnée au labo (`0ad313e`) : GMD complet par style, WJazzD `BALLAD`/`TWOBEAT`/`LATIN`/`FUNK`, JTD swing par tempo (0,720 → 0,591 de < 120 à > 240 BPM) ; manques moteur listés (§ 6) pour A1/A6 | `harmonium_lab/references/l2-ingestion.md` |
 | V0 | fusionnée au labo (`d01d684`) : `seed-variety --chorus`, ligne de base sur 8 profils, seuils V2 proposés | `harmonium_lab/references/v0-variance/README.md` |
 | A3 | **fusionnée** (2026-11-02). `[arc]` optionnel : étapes de chorus pondérées par graine, retombée, breaks et stop-time, feel deux temps, `tag` de comping et de batterie ; numéro de chorus = `TunePosition::chorus()` / `choruses()` (aucun champ sérialisé ajouté). Revérifié par l'orchestrateur : dumps 98/98 et 32 WAV (16 profils × 2 graines) identiques à `main`, natif = wasm 98/98, 806 workspace, 118 odin, 11 Bevy, studio, clippy identique à `main`, fmt ; seek 26,0–26,7 ms (main 25,9–26,2). **À écouter par le propriétaire** : `#phase-019-a3` (fixtures `grille_arc_chorus`, `grille_arc_chorus_aaba`) | [Compte rendu](a3-arc-chorus.md) |
-| **S0** | **terminée sur la branche `wquintal/s0-graine-accomp`, en attente de fusion** (2026-11-02). Cause vérifiée : comping, marche, notes de passage et plan de motifs de basse tiraient leur graine de `material_seed` (dérivée de la mélodie écrite), qui ne prend que 2 valeurs sur 16 graines sous grille fixe ; correction : `accompaniment_seed` tirée une fois par air dans le RNG de session, après la mélodie (ornements et hétérophonie gardent `material_seed`). Variété inter-graines sur 16 graines : comping 2 → 16, basse 2 → 16 (`wjazzd_swing`, sa copie sous grille utilisateur de 8 mesures, `grille_arc_chorus`). **Rupture : `TUNING_VERSION` 26** (25 réservée à R1) ; 15 profils distribués sur 16 changent d'accompagnement, `marche_britannique_coloniale` (sans accompagnement) identique à l'octet, mélodie identique dans les 98 dumps. Seek 25,5 ms (main 25,1 à 25,5). Batterie non touchée (11 / 3 / 7 séquences sur 16). **À écouter par le propriétaire** : `#phase-019-s0` | [Compte rendu](s0-graine-accompagnement.md) |
-| A1, A2, A4, A5, A6 | en attente | — |
+| **S0** | **fusionnée** (2026-11-02, `f7cf57c`). Cause vérifiée : comping, marche, notes de passage et plan de motifs de basse tiraient leur graine de `material_seed` (dérivée de la mélodie écrite), qui ne prend que 2 valeurs sur 16 graines sous grille fixe ; correction : `accompaniment_seed` tirée une fois par air dans le RNG de session, après la mélodie (ornements et hétérophonie gardent `material_seed`). Variété inter-graines sur 16 graines : comping 2 → 16, basse 2 → 16. **Rupture : `TUNING_VERSION` 26** ; 15 profils distribués sur 16 changent d'accompagnement (revérifié : dumps et WAV), `marche_britannique_coloniale` (sans accompagnement) identique. Après fusion R1 + S0 : 810 workspace, 118 odin, 11 Bevy, studio, natif = wasm 98/98, clippy identique, fmt. **À écouter par le propriétaire** : `#phase-019-s0`, et les trads dans le studio (accompagnement retiré autrement) | [Compte rendu](s0-graine-accompagnement.md) |
+| A1 | lancée le 2026-11-02 (vague 2) | — |
+| E13 | lancée le 2026-11-02 (vague 2, en parallèle d'A1) | — |
+| A2, A4, A5, A6, E10, E11, E12 | en attente | — |
 | B1–B8 | en attente | — |
 | V2, T1 | en attente | — |
