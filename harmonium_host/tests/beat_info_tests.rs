@@ -69,8 +69,8 @@ fn run_prediction(time_sig: TimeSignature, buffer_size: usize, swing_ratio: f32)
 
     composer.set_bpm(BPM2 as f32);
     composer.invalidate_future();
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
     }
     composer.generate_bars(N_BARS);
 
@@ -280,8 +280,8 @@ fn time_signature_transition_preserves_pulses_per_bar_consistency() {
             composer.set_bpm(120.0);
             composer.set_swing_ratio(0.5);
             composer.invalidate_future();
-            if let Some((bar, _)) = composer.take_pending_drop() {
-                let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
+            if let Some((bar, epoch)) = composer.take_pending_drop() {
+                let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
             }
             composer.generate_ahead();
             transition_sent = true;

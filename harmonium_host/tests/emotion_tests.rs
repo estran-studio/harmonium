@@ -43,8 +43,8 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         composer.use_emotion_mode();
         composer.set_emotions(0.5, 0.3, 0.5, 0.3);
         composer.invalidate_future();
-        if let Some((bar, _)) = composer.take_pending_drop() {
-            tx.push(PlaybackCommand::DropFrom { bar }).map_err(|_| "drop queue full")?;
+        if let Some((bar, epoch)) = composer.take_pending_drop() {
+            tx.push(PlaybackCommand::DropFrom { bar, epoch }).map_err(|_| "drop queue full")?;
         }
         composer.generate_bars(8);
         let before = composer.take_snapshots();
@@ -59,9 +59,10 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         };
         composer.set_emotions(axes[0], axes[1], axes[2], axes[3]);
         composer.invalidate_future();
-        let (drop_bar, _) = composer.take_pending_drop().ok_or("drop absent")?;
+        let (drop_bar, drop_epoch) = composer.take_pending_drop().ok_or("drop absent")?;
         assert_eq!(drop_bar, 2, "{name}: la mesure audible ne doit pas être invalidée");
-        tx.push(PlaybackCommand::DropFrom { bar: drop_bar }).map_err(|_| "drop queue full")?;
+        tx.push(PlaybackCommand::DropFrom { bar: drop_bar, epoch: drop_epoch })
+            .map_err(|_| "drop queue full")?;
         composer.generate_bars(8);
         let after = composer.take_snapshots();
         let next = after.iter().find(|b| b.index == 2).ok_or("mesure 2 absente")?;

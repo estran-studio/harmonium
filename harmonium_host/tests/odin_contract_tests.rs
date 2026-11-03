@@ -273,8 +273,8 @@ fn render_track_inner(
     composer.use_emotion_mode();
     composer.set_emotions(emotions[0], emotions[1], emotions[2], emotions[3]);
     composer.invalidate_future();
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        cmd_tx.push(PlaybackCommand::DropFrom { bar }).unwrap();
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch }).unwrap();
     }
     cmd_tx
         .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))
@@ -473,8 +473,8 @@ fn render_seconds(
     let mut audio = Vec::with_capacity(buffers * BUFFER_FRAMES * 2);
     let mut buffer = [0.0; BUFFER_FRAMES * 2];
     for _ in 0..buffers {
-        if let Some((bar, _)) = composer.take_pending_drop() {
-            commands.push(PlaybackCommand::DropFrom { bar }).unwrap();
+        if let Some((bar, epoch)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar, epoch }).unwrap();
         }
         composer.generate_ahead();
         composer.send_odin(commands).unwrap();
@@ -552,8 +552,8 @@ fn runtime_switches_and_queued_presets_recover_from_backpressure_without_orphan_
             create_offline_engine(font, None, &sources, SAMPLE_RATE).unwrap();
         composer.set_seed(1);
         composer.set_profile(soundfont.clone()).unwrap();
-        if let Some((bar, _)) = composer.take_pending_drop() {
-            commands.push(PlaybackCommand::DropFrom { bar }).unwrap();
+        if let Some((bar, epoch)) = composer.take_pending_drop() {
+            commands.push(PlaybackCommand::DropFrom { bar, epoch }).unwrap();
         }
         commands
             .push(PlaybackCommand::UpdateMusicalParams(composer.musical_params().playback_params()))

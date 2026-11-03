@@ -55,8 +55,8 @@ fn render(
         composer.set_swing_ratio(ratio);
     }
     composer.invalidate_future();
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar });
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        let _ = cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
     }
     for (channel, program) in composer.take_pending_program_changes() {
         let _ = cmd_tx.push(PlaybackCommand::ProgramChange { channel, program });

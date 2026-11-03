@@ -56,8 +56,8 @@ struct RenderedStep {
 }
 
 fn forward_drop(composer: &mut MusicComposer, commands: &mut rtrb::Producer<PlaybackCommand>) {
-    if let Some((bar, _)) = composer.take_pending_drop() {
-        assert!(commands.push(PlaybackCommand::DropFrom { bar }).is_ok());
+    if let Some((bar, epoch)) = composer.take_pending_drop() {
+        assert!(commands.push(PlaybackCommand::DropFrom { bar, epoch }).is_ok());
     }
 }
 

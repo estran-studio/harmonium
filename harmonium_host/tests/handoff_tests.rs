@@ -226,8 +226,8 @@ fn seek_then_invalidate_never_plays_stale_bar() {
     h.composer.deterministic_seek(5);
     let pending = h.composer.take_pending_drop();
     assert!(matches!(pending, Some((5, _))), "seek must request an eviction from 5");
-    if let Some((drop_bar, _)) = pending {
-        let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar: drop_bar });
+    if let Some((drop_bar, drop_epoch)) = pending {
+        let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar: drop_bar, epoch: drop_epoch });
     }
     let _ = h.cmd_tx.push(PlaybackCommand::Seek(5));
 
@@ -241,8 +241,8 @@ fn seek_then_invalidate_never_plays_stale_bar() {
     h.composer.invalidate_future();
     let pending = h.composer.take_pending_drop();
     assert!(matches!(pending, Some((8, _))), "invalidate must request an eviction from 8");
-    if let Some((drop_bar, _)) = pending {
-        let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar: drop_bar });
+    if let Some((drop_bar, drop_epoch)) = pending {
+        let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar: drop_bar, epoch: drop_epoch });
     }
     h.composer.generate_bars(8);
 
@@ -327,8 +327,8 @@ fn control_storm_stays_rt_clean() {
         h.composer.generate_ahead();
         if i % 8 == 0 {
             h.composer.invalidate_after_preview(2);
-            if let Some((bar, _)) = h.composer.take_pending_drop() {
-                let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar });
+            if let Some((bar, epoch)) = h.composer.take_pending_drop() {
+                let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
             }
         }
         if i % 16 == 8 {
@@ -342,8 +342,8 @@ fn control_storm_stays_rt_clean() {
         }
         if i == 48 {
             h.composer.reset_timeline();
-            if let Some((bar, _)) = h.composer.take_pending_drop() {
-                let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar });
+            if let Some((bar, epoch)) = h.composer.take_pending_drop() {
+                let _ = h.cmd_tx.push(PlaybackCommand::DropFrom { bar, epoch });
             }
             let _ = h.cmd_tx.push(PlaybackCommand::Seek(1));
         }

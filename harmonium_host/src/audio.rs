@@ -14,7 +14,8 @@ use crate::{
     composer::MusicComposer,
     live_notes::LiveNoteSender,
     playback::{
-        MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure, pack,
+        MEASURE_RING_CAP, PlaybackCommand, PlaybackEngine, RETURN_RING_CAP, TaggedMeasure,
+        pack_unloaded,
     },
 };
 
@@ -66,8 +67,8 @@ pub(crate) fn build_engine(
     // composer returned boxes (deallocated on the main thread).
     let (measure_tx, measure_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(MEASURE_RING_CAP);
     let (return_tx, return_rx) = rtrb::RingBuffer::<TaggedMeasure>::new(RETURN_RING_CAP);
-    // Shared transport position, packed (bar, step) — initial (1, 0)
-    let transport_position = Arc::new(AtomicU64::new(pack(1, 0)));
+    // Shared transport position, packed (bar, step) — initial (1, 0), nothing loaded
+    let transport_position = Arc::new(AtomicU64::new(pack_unloaded(1)));
 
     // Predictive clock: single writer (audio callback) → lock-free reader.
     let initial_clock = TransportClock::initial(sample_rate as u32);
