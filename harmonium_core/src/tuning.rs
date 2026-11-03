@@ -10,11 +10,11 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : R1 (019) intègre les propositions P1/P2 aux profils `nt_desert`,
-/// `isaac_basement`, `isaac_burning` et `isaac_downpour` (accords, basse, batterie : les notes
-/// de ces quatre profils changent) ; `rewrite_functional` rend basse et accords par les voix
-/// communes (E5/E6).
-pub const TUNING_VERSION: u32 = 25;
+/// Version du contrat : la graine de l'accompagnement (comping, marche et notes de passage de
+/// la basse, motifs de basse) vient de la graine de session, tirée une fois par air après la
+/// mélodie, et non plus de la mélodie écrite (S0, 26) ; R1 (019, 25) intègre les propositions
+/// P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpour`.
+pub const TUNING_VERSION: u32 = 26;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

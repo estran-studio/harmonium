@@ -32,6 +32,11 @@ extensions, notes de l'accord) ; les notes ne changent pas. Contrat décrit dans
 `profiles/README.md`, « Identité d'accord publiée dans le snapshot ».
 `TUNING_VERSION = 24` : `rewrite_functional` rend basse et accords par les mêmes voix que
 `loop` et `melody_functional` (E5/E6) ; ses notes changent, celles des autres modèles non.
+`TUNING_VERSION = 26` (S0) : la graine de l'accompagnement (comping, marche et notes de passage de
+la basse, motifs de basse) est tirée une fois par air dans le RNG de session, après la mélodie,
+l'intro et le matériel, au lieu d'être dérivée de la mélodie écrite ; tout profil dont
+l'accompagnement tire au sort change de notes d'accompagnement, la mélodie et les ornements du
+premier air non (`specs/019-bibliotheque-accompagnements/s0-graine-accompagnement.md`).
 
 ## Modules
 
