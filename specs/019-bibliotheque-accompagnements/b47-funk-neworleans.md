@@ -201,7 +201,19 @@ attrapé des défauts avant livraison : `profile_files_tests` (embarqué = disqu
 
 ### Vérifications d'acceptation
 
-VERIFICATION
+| Vérification | Résultat |
+|---|---|
+| `harmonium_determinism`, dumps de la branche contre ceux de `main` (cache de l'orchestrateur, base `0fe8b52`) | les 98 fichiers existants identiques octet pour octet ; 12 fichiers ajoutés (2 profils × 3 graines × 2 émotions), tous des nouveaux profils |
+| WAV `--export --bars 16 --style <profil> --seed {1,7}` des 16 profils existants (CLI lancé depuis `~/Project/bascanada/harmonium`), binaire de la branche contre celui de `main` | 32 / 32 `cmp` identiques |
+| `TUNING_VERSION`, goldens, `profile_d2_main.json` | inchangés (aucun code moteur modifié : le diff se limite aux deux dossiers de profil, à un fichier de test, aux scripts et aux documents) |
+| `cargo test --workspace -q --no-fail-fast` | 863 réussis, 0 échec, 2 ignorés (106 binaires de test, dont les 8 de `gmd_funk_neworleans_profile_tests`) |
+| `cargo test -p harmonium --features odin` ; `cargo test -p harmonium_bevy` | tous réussis (0 échec) ; 11 réussis |
+| `cargo check -p harmonium_studio` ; `cargo check --target wasm32-unknown-unknown` (`harmonium_core`, `harmonium_audio`, `harmonium`, avec et sans `odin` ; `harmonium_bevy --no-default-features`, avec et sans `odin`) | passent |
+| `WASM_BINDGEN=/tmp/harmonium-019/wb/bin/wasm-bindgen harmonium_determinism/scripts/run.sh` | natif = wasm : **110 / 110** fichiers identiques (98 + 12) |
+| `cargo clippy -p harmonium_core -p harmonium -p harmonium-cli --all-targets` | aucun avertissement dans `gmd_funk_neworleans_profile_tests.rs` (deux corrigés) ; les autres sont ceux de `main` |
+| `cargo +nightly fmt --all --check` | propre |
+| `seek_to_bar_64_under_50ms` (profil par défaut, build de test, trois passages) | 26,3 et 26,4 ms, puis 56,8 ms pendant que la machine était saturée par les autres worktrees (le test passe aux trois essais) ; code moteur inchangé, seuil inchangé |
+| Studio | les profils sont listés par `StyleProfile::distributed()` (compilés par `build.rs`) ; `profile_files_tests` (embarqué = disque) et `every_profile_directory_is_distributed` passent |
 
 ## Ce qui ne s'exprime pas dans le schéma (L2 § 6)
 
