@@ -1595,6 +1595,26 @@ impl StyleProfile {
             arc.validate(self, "arc")?;
         }
         self.session.validate(self)?;
+        if let Some(swing) = &self.swing {
+            swing.validate()?;
+        }
+        if self.clave.is_none() {
+            let chords = self.accompaniment.iter().flat_map(|a| a.chords.phrases.iter());
+            for (i, phrase) in chords.enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("accompaniment.chords.phrases[{i}].clave"),
+                    "section [clave] requise",
+                )?;
+            }
+            for (i, phrase) in self.percussion.phrases.iter().enumerate() {
+                check(
+                    phrase.clave.is_none(),
+                    &format!("percussion.phrases[{i}].clave"),
+                    "section [clave] requise",
+                )?;
+            }
+        }
         Ok(())
     }
 }
@@ -1693,26 +1713,6 @@ impl StyleProfile {
                         .all(|gain| gain.is_finite()),
                     &format!("{field}.morph"),
                     "gains de morphing finis",
-                )?;
-            }
-        }
-        if let Some(swing) = &self.swing {
-            swing.validate()?;
-        }
-        if self.clave.is_none() {
-            let chords = self.accompaniment.iter().flat_map(|a| a.chords.phrases.iter());
-            for (i, phrase) in chords.enumerate() {
-                check(
-                    phrase.clave.is_none(),
-                    &format!("accompaniment.chords.phrases[{i}].clave"),
-                    "section [clave] requise",
-                )?;
-            }
-            for (i, phrase) in self.percussion.phrases.iter().enumerate() {
-                check(
-                    phrase.clave.is_none(),
-                    &format!("percussion.phrases[{i}].clave"),
-                    "section [clave] requise",
                 )?;
             }
         }

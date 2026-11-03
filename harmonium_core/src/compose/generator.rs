@@ -792,15 +792,10 @@ impl TuneGenerator {
         if params.swing_explicit {
             return crate::swing::ResolvedSwing::uniform(params.swing_ratio);
         }
-        let ratio = self
-            .session
-            .as_ref()
-            .and_then(|session| session.swing())
-            .unwrap_or(params.swing_ratio);
+        let ratio =
+            self.session.as_ref().and_then(|session| session.swing()).unwrap_or(params.swing_ratio);
         match &self.profile.swing {
-            Some(curves) => {
-                curves.resolve(tempo, ratio, self.profile.meter.default_swing_ratio)
-            }
+            Some(curves) => curves.resolve(tempo, ratio, self.profile.meter.default_swing_ratio),
             None => crate::swing::ResolvedSwing::uniform(ratio),
         }
     }

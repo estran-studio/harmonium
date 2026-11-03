@@ -296,9 +296,11 @@ fn la_commande_de_l_hote_gagne_sur_la_variante() -> TestResult {
             24,
         )?;
         assert!(flow.iter().all(|s| s.tempo == 133.0), "graine {seed}");
-        // Swing commandé : celui de l'hôte, pas celui de la variante.
+        // Swing commandé (`SetSwing` : le compositeur de l'hôte règle le rapport et le marque
+        // explicite) : celui de l'hôte, pas celui de la variante.
         let mut host = params(&p);
         host.set_swing_ratio(0.55);
+        host.swing_explicit = true;
         let flow = stream_with(&p, host, seed, 12)?;
         assert!(flow.iter().all(|s| (s.swing_ratio - 0.55).abs() < 1e-6), "graine {seed}");
         // Le reste de la variante tient : les instruments sont ceux de la graine.
