@@ -1,0 +1,535 @@
+# Fixture AABA : mêmes banques que `grille_phrases`, plus deux relances `chorus_end` (fin du
+# chorus, qui l'emportent sur les relances `part_end` à cet endroit).
+# Fixture technique des phrases sur plusieurs mesures (A1) : batterie de la fixture de l'arc (A3,
+# copie de `wjazzd_swing`, E7), patterns étiquetés `ride` (les originaux) et `hat` (ajoutés),
+# plus des phrases et une banque de relances (valeurs d'exercice, aucune mesure de corpus) ;
+# origine des mesures des patterns : README du profil.
+# Batterie du profil `wjazzd_swing` (E7) : GENÉRÉ par `python -m harmonium_lab.backing.engine_values
+# --percussion` depuis `references/wjazzd-swing/measures-drums.json` (Groove MIDI Dataset v1.0.0,
+# CC BY 4.0, Gillick et al., ICML 2019 : jazz et jazz/swing, 4/4, mesures `beat` et `fill`).
+# Chaque pattern est construit sur les probabilités PAR PAS d'un groupe de mesures de même figure
+# de ride ramenées à la grille 16 pas swinguée ; aucun n'est une mesure d'un enregistrement.
+# Voix : ride (51) et charleston pédale (44), caisse claire (38), tom (43) sur PercussionHigh,
+# grosse caisse (36) sur PercussionLow ; kit jazz de GeneralUser GS (banque 128, programme 32).
+# Poids = effectif de mesures du groupe. Densité 0 : ride ; 1 : + pédale 2 et 4 ; 2 : + caisse
+# claire (ghost notes) et grosse caisse. Les relances de fin de phrase (`[[fills]]`) remplacent le
+# pattern de cadence de la fixture de l'arc.
+low_note = 36
+high_note = 51
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 3
+# Poids de « pas de relance » dans le tirage d'une fin de phrase.
+fills_none_weight = 3
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 34
+track = "PercussionLow"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 58
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 77
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 23
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom"
+note = 43
+velocity = 40
+track = "PercussionHigh"
+
+[[voices]]
+name = "hat"
+note = 42
+velocity = 52
+track = "PercussionHigh"
+
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 300
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 4, voice = "ride", delta_velocity = 15 },
+  { step = 6, voice = "ride", delta_velocity = -8 },
+  { step = 8, voice = "ride", delta_velocity = -7 },
+  { step = 12, voice = "ride", delta_velocity = 15 },
+  { step = 14, voice = "ride", delta_velocity = -9 },
+]
+
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 73
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 4, voice = "ride", delta_velocity = 7 },
+  { step = 8, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "ride", delta_velocity = 3 },
+]
+
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 30
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 19 },
+  { step = 2, voice = "ride", delta_velocity = -19 },
+  { step = 4, voice = "ride", delta_velocity = 23 },
+  { step = 6, voice = "ride", delta_velocity = -12 },
+  { step = 8, voice = "ride", delta_velocity = 14 },
+  { step = 10, voice = "ride", delta_velocity = -18 },
+  { step = 12, voice = "ride", delta_velocity = 18 },
+  { step = 14, voice = "ride", delta_velocity = -12 },
+  { step = 15, voice = "ride", delta_velocity = -12 },
+]
+
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 154
+hits = [
+  { step = 0, voice = "ride" },
+  { step = 4, voice = "ride", delta_velocity = 8 },
+  { step = 6, voice = "ride", delta_velocity = -1 },
+  { step = 8, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "ride", delta_velocity = 10 },
+  { step = 14, voice = "ride", delta_velocity = -12 },
+]
+
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 146
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 4, voice = "pedal", delta_velocity = 17 },
+  { step = 4, voice = "ride", delta_velocity = 15 },
+  { step = 6, voice = "ride", delta_velocity = -8 },
+  { step = 8, voice = "ride", delta_velocity = -7 },
+  { step = 12, voice = "pedal", delta_velocity = 20 },
+  { step = 12, voice = "ride", delta_velocity = 15 },
+  { step = 14, voice = "ride", delta_velocity = -9 },
+]
+
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 73
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 4, voice = "pedal", delta_velocity = 23 },
+  { step = 4, voice = "ride", delta_velocity = 7 },
+  { step = 8, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "pedal", delta_velocity = 23 },
+  { step = 12, voice = "ride", delta_velocity = 3 },
+]
+
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 30
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 19 },
+  { step = 2, voice = "ride", delta_velocity = -19 },
+  { step = 4, voice = "ride", delta_velocity = 23 },
+  { step = 6, voice = "ride", delta_velocity = -12 },
+  { step = 8, voice = "ride", delta_velocity = 14 },
+  { step = 10, voice = "ride", delta_velocity = -18 },
+  { step = 12, voice = "ride", delta_velocity = 18 },
+  { step = 14, voice = "ride", delta_velocity = -12 },
+  { step = 15, voice = "ride", delta_velocity = -12 },
+]
+
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 154
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -4 },
+  { step = 0, voice = "ride" },
+  { step = 2, voice = "snare", delta_velocity = -14 },
+  { step = 4, voice = "ride", delta_velocity = 8 },
+  { step = 6, voice = "ride", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = -8 },
+  { step = 8, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "ride", delta_velocity = 10 },
+  { step = 14, voice = "ride", delta_velocity = -12 },
+  { step = 14, voice = "snare", delta_velocity = -9 },
+]
+
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 146
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -10 },
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 4, voice = "pedal", delta_velocity = 17 },
+  { step = 4, voice = "ride", delta_velocity = 15 },
+  { step = 6, voice = "ride", delta_velocity = -8 },
+  { step = 6, voice = "snare", delta_velocity = -10 },
+  { step = 8, voice = "ride", delta_velocity = -7 },
+  { step = 12, voice = "pedal", delta_velocity = 20 },
+  { step = 12, voice = "ride", delta_velocity = 15 },
+  { step = 14, voice = "ride", delta_velocity = -9 },
+]
+
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 73
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -1 },
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 4, voice = "pedal", delta_velocity = 23 },
+  { step = 4, voice = "ride", delta_velocity = 7 },
+  { step = 6, voice = "snare", delta_velocity = -6 },
+  { step = 8, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "pedal", delta_velocity = 23 },
+  { step = 12, voice = "ride", delta_velocity = 3 },
+  { step = 14, voice = "snare" },
+]
+
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 30
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -8 },
+  { step = 0, voice = "ride", delta_velocity = 19 },
+  { step = 2, voice = "ride", delta_velocity = -19 },
+  { step = 4, voice = "kick", delta_velocity = -10 },
+  { step = 4, voice = "ride", delta_velocity = 23 },
+  { step = 6, voice = "ride", delta_velocity = -12 },
+  { step = 8, voice = "kick", delta_velocity = -11 },
+  { step = 8, voice = "ride", delta_velocity = 14 },
+  { step = 10, voice = "ride", delta_velocity = -18 },
+  { step = 12, voice = "kick", delta_velocity = -11 },
+  { step = 12, voice = "ride", delta_velocity = 18 },
+  { step = 14, voice = "ride", delta_velocity = -12 },
+  { step = 15, voice = "ride", delta_velocity = -12 },
+]
+
+# Patterns d'exercice de l'arc (tag hat) : charleston seul, sans ride.
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 100
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -8 },
+  { step = 4, voice = "hat", delta_velocity = 6 },
+  { step = 8, voice = "hat", delta_velocity = -8 },
+  { step = 12, voice = "hat", delta_velocity = 6 },
+]
+
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 100
+hits = [
+  { step = 0, voice = "hat", delta_velocity = -8 },
+  { step = 4, voice = "hat", delta_velocity = 6 },
+  { step = 4, voice = "pedal", delta_velocity = 10 },
+  { step = 8, voice = "hat", delta_velocity = -8 },
+  { step = 12, voice = "hat", delta_velocity = 6 },
+  { step = 12, voice = "pedal", delta_velocity = 10 },
+]
+
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 100
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -10 },
+  { step = 0, voice = "hat", delta_velocity = -8 },
+  { step = 4, voice = "hat", delta_velocity = 6 },
+  { step = 4, voice = "pedal", delta_velocity = 10 },
+  { step = 6, voice = "snare", delta_velocity = -10 },
+  { step = 8, voice = "hat", delta_velocity = -8 },
+  { step = 12, voice = "hat", delta_velocity = 6 },
+  { step = 12, voice = "pedal", delta_velocity = 10 },
+  { step = 14, voice = "snare", delta_velocity = -10 },
+]
+
+# Phrases de batterie (A1) : suites de patterns `ride` de même densité (indices dans `[[patterns]]` :
+# 0 à 2 densité 0, 3 à 6 densité 1, 7 à 10 densité 2). Pas de phrase `hat` : sous l'arc du charleston,
+# la batterie garde son pattern par chorus et seules les relances `hat` jouent.
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 3
+patterns = [0, 0, 0, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 1
+patterns = [0, 1, 0, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [0, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [0, 2]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 3
+patterns = [3, 4, 3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 1
+patterns = [4, 3, 4, 6]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [3, 5]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 3
+patterns = [7, 8, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 1
+patterns = [8, 7, 9, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [7, 9]
+
+# Relances de fin de phrase (A1) : remplacent le pattern de cadence unique de la fixture de l'arc
+# (reprise ici comme première relance de la densité 2). `start_step` : pas de la première mesure où
+# la relance prend la place du pattern ordinaire (12 : levée au temps 4).
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 12 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -6 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 5 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 8 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 18 },
+  { step = 13, voice = "snare", delta_velocity = 7 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+# Levée au temps 4 : le pattern joue jusqu'au pas 11, la relance reprend au pas 12.
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 8 },
+  { step = 13, voice = "snare", delta_velocity = -2 },
+  { step = 14, voice = "snare", delta_velocity = 10 },
+  { step = 14, voice = "tom", delta_velocity = 4 },
+  { step = 15, voice = "snare", delta_velocity = 14 },
+] }]
+
+# Mise en place avant un changement de section : deux mesures (levée dès le temps 3 de la
+# première, puis un coup d'ouverture et le ride qui reprend), seulement en fin de partie.
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+at = "part_end"
+start_step = 8
+bars = [
+  { hits = [
+    { step = 8, voice = "kick", delta_velocity = -2 },
+    { step = 8, voice = "snare", delta_velocity = 4 },
+    { step = 10, voice = "snare", delta_velocity = 6 },
+    { step = 12, voice = "tom", delta_velocity = 6 },
+    { step = 13, voice = "snare", delta_velocity = 8 },
+    { step = 14, voice = "snare", delta_velocity = 12 },
+    { step = 15, voice = "snare", delta_velocity = 16 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 16 },
+    { step = 0, voice = "tom", delta_velocity = 4 },
+    { step = 0, voice = "kick", delta_velocity = -2 },
+    { step = 4, voice = "ride", delta_velocity = 8 },
+    { step = 8, voice = "ride", delta_velocity = -5 },
+    { step = 12, voice = "ride", delta_velocity = 15 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 3
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = -6 },
+  { step = 14, voice = "snare", delta_velocity = -2 },
+  { step = 15, voice = "tom", delta_velocity = 2 },
+] }]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+start_step = 8
+bars = [
+  { hits = [
+    { step = 8, voice = "snare", delta_velocity = -4 },
+    { step = 12, voice = "snare", delta_velocity = 2 },
+    { step = 14, voice = "snare", delta_velocity = 6 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 10 },
+    { step = 0, voice = "kick", delta_velocity = -2 },
+    { step = 4, voice = "ride", delta_velocity = 8 },
+    { step = 8, voice = "ride", delta_velocity = -5 },
+    { step = 12, voice = "ride", delta_velocity = 10 },
+  ] },
+]
+
+[[fills]]
+density = 0
+tag = "ride"
+weight = 2
+start_step = 14
+bars = [{ hits = [
+  { step = 14, voice = "snare", delta_velocity = -12 },
+  { step = 15, voice = "snare", delta_velocity = -8 },
+] }]
+
+# Relances du charleston seul (arc : chorus d'exposition et retombée).
+[[fills]]
+density = 0
+tag = "hat"
+weight = 1
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "pedal", delta_velocity = 4 },
+  { step = 14, voice = "hat", delta_velocity = -2 },
+] }]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 1
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "pedal", delta_velocity = 10 },
+  { step = 14, voice = "snare", delta_velocity = -10 },
+  { step = 15, voice = "hat", delta_velocity = 2 },
+] }]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 1
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "pedal", delta_velocity = 10 },
+  { step = 14, voice = "snare", delta_velocity = -4 },
+  { step = 15, voice = "snare", delta_velocity = 4 },
+] }]
+
+# Fin du chorus : deux mesures plus chargées (A1), seulement à la dernière passe de la forme.
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+at = "chorus_end"
+start_step = 8
+bars = [
+  { hits = [
+    { step = 8, voice = "snare", delta_velocity = 8 },
+    { step = 10, voice = "snare", delta_velocity = 10 },
+    { step = 11, voice = "tom", delta_velocity = 8 },
+    { step = 12, voice = "snare", delta_velocity = 14 },
+    { step = 13, voice = "tom", delta_velocity = 10 },
+    { step = 14, voice = "snare", delta_velocity = 18 },
+    { step = 15, voice = "kick", delta_velocity = 4 },
+  ] },
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 20 },
+    { step = 0, voice = "kick", delta_velocity = 6 },
+    { step = 0, voice = "tom", delta_velocity = 8 },
+    { step = 6, voice = "snare", delta_velocity = 4 },
+    { step = 8, voice = "ride", delta_velocity = 10 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 3
+at = "chorus_end"
+start_step = 10
+bars = [{ hits = [
+  { step = 10, voice = "snare", delta_velocity = -2 },
+  { step = 12, voice = "snare", delta_velocity = 4 },
+  { step = 14, voice = "snare", delta_velocity = 8 },
+  { step = 15, voice = "kick", delta_velocity = 2 },
+] }]
