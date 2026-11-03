@@ -1751,7 +1751,141 @@ chorus) et `grille_phrases_aaba/` (AABA, `part_start`, `part_end`, `chorus_end`)
 `harmonium_core/tests/phrases_tests.rs`. Compte rendu :
 [`specs/019-bibliotheque-accompagnements/a1-phrases.md`](../specs/019-bibliotheque-accompagnements/a1-phrases.md).
 
+## Swing, métriques et feels latins (phase 019, A6)
 
+Tout est **optionnel en données** : un profil sans `[swing]`, sans `[clave]`, sans `voices` ni
+`probability` garde exactement ses dumps, ses WAV et son MIDI (`TUNING_VERSION` inchangé).
+
+### Swing selon le tempo et par piste (`[swing]`, ou `swing.toml` via `[files]`)
+
+```toml
+reference = "PercussionHigh"            # piste dont le rapport est celui de la grille (défaut)
+[tracks.PercussionHigh]                  # une courbe par piste : points [BPM, rapport]
+points = [[140.0, 0.7213], [299.3089, 0.5658]]
+[tracks.Bass]
+points = [[130.0, 0.7148], [299.3089, 0.6405]]
+[tracks.Chords]
+points = [[150.0, 0.7021], [299.3089, 0.5934]]
+```
+
+- **Courbe** : interpolation linéaire entre points (1 à 16, BPM strictement croissants dans
+  20..400, rapport dans `0.5..0.75`), **valeur de l'extrémité** hors des points : aucune
+  extrapolation hors des tempos mesurés (JTD : 102 à 299 BPM). Les valeurs ci-dessus sont celles
+  de `references/jtd-swing-tempo` du labo (`a6_table.curve`, régression robuste, plateau puis
+  décroissance) : batterie charnière 140 BPM, pente −0,0976 par 100 BPM ; basse 130 BPM, −0,0439 ;
+  piano (comping) 150 BPM, −0,0728. Les bornes `0.5..0.75` du rapport suffisent aux mesures
+  (0,566 à 0,721) : elles ne sont pas élargies.
+- **Grille et pistes** : le rapport de la piste `reference` est celui de la **grille**
+  (`Measure::swing_ratio`, lu par le lecteur : `BarTiming::step_offset`, `time_plan`). Une autre
+  piste dont le rapport diffère est replacée par un décalage de chaque attaque en millièmes de pas
+  (`performance.offset`) calculé en inversant la géométrie du swing : sa croche de contretemps
+  tombe exactement à son rapport, les temps ne bougent pas, la grille et la longueur des mesures
+  non plus. Écart maximal à la référence : 0,12 (le décalage reste sous le demi-pas que borne
+  l'interprétation). Une piste sans courbe suit la grille. Le décalage est celui du rapport, pas
+  du tempo : seek, export MIDI et plan partagé le reproduisent.
+- **Priorité de l'hôte** : `SetSwing` (REPL, `--swing`, API `MusicComposer::set_swing_ratio`)
+  pose `MusicalParams::swing_explicit` : le rapport demandé s'applique à **toutes** les pistes et
+  **la courbe est ignorée**, jusqu'à `reset` ou au chargement d'un profil. Sans commande directe,
+  l'écart entre le rapport demandé (`MusicalParams::swing_ratio`) et `meter.default_swing_ratio`
+  décale toutes les courbes (un dosage tiré par graine, A2, passe par là). Un seul point d'entrée :
+  `SwingByTempo::resolve`, appelé par `TuneGenerator::swing_for`.
+- **Tempo lu** : le tempo de la mesure à la génération (`tempo_for`) ; un `SetTempo` audible qui
+  ne régénère pas les mesures ne déplace pas le swing déjà publié.
+
+Mesures sur le MIDI exporté (`specs/019-bibliotheque-accompagnements/a6-mesure-swing.py`,
+compte rendu `a6-swing-metriques.md`) : le rapport de chaque piste suit sa courbe JTD à ±0,003.
+
+### Grilles ternaires et métriques
+
+Le swing partage chaque noire en deux segments, jusqu'au pas `⌈pas par noire / 2⌉` : le milieu sur
+quatre pas par noire (croches), **le troisième pas sur trois** (grille de 12 pas en 4/4, triolets :
+`steps_per_bar = 12`, `steps_per_unit = 3`, `steps_per_pulse = 3`). Sur une grille de triolets, `0,6667`
+ne change rien et `0.5` laisse la grille telle quelle ; un rapport entre les deux la resserre, un
+rapport plus grand la durcit (shuffle 12/8 par tempo). Une grille qui ne tombe pas sur des noires
+entières, une noire d'un seul pas ou une pulse qui n'est pas un nombre entier de noires (6/8 sur
+12 pas, pulse de six pas ; 12/8 sur 24 pas) **ne swingue jamais**, quel que soit le rapport : le
+ternaire est la grille (aucune mesure de swing composé n'existe dans JTD). 3/4 sur 12 pas (quatre
+pas par noire) swingue comme le 4/4. `BarTiming::swing_unit_steps` dit si une grille swingue.
+
+Le MIDI enregistré et l'export `timeline_to_midi` comptent **480 ticks par noire** quelle que soit la
+grille (`events::midi_ticks_per_step` : 120 par pas sur quatre pas par noire, 160 sur 12 pas en
+4/4) ; avant A6 ils comptaient 120 ticks par pas, soit une mesure de 12 pas en 4/4 de 1440 ticks
+au lieu de 1920. Hors de ce cas, rien ne change. Limites : l'export MusicXML (`divisions = 4`) et le
+champ `beat` du transport (`TICKS_PER_BEAT = 4`) supposent encore quatre pas par noire.
+
+### Micro-timing par voix de batterie (`performance.tracks.<piste>.voices`)
+
+```toml
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 51, on_beat = 0.045, off_beat = 0.07 },   # ride
+  { note = 44, on_beat = -0.07 },                    # pédale
+  { note = 38, on_beat = -0.02, jitter = 0.03 },     # caisse claire
+]
+```
+
+Une voix est une **note MIDI** de la piste (note GM du kit). Son décalage (fraction de pas, −0,2..0,2)
+s'ajoute aux `offsets` et au `jitter` de la piste ; `on_beat` vaut sur un pas multiple de
+`steps_per_pulse`, `off_beat` ailleurs (défaut : `on_beat`) ; `jitter` (0..0,1) remplace celui de la
+piste pour cette voix. Une piste qui déclare des voix traite chaque note seule : le ride, la pédale
+et la caisse claire d'un même pas ne partagent plus un décalage (GMD : ride +9 ms sur le temps et
++14 ms hors temps, charleston fermé −7 ms, pédale −14 ms, caisse claire et grosse caisse −3 à
+−6 ms ; L2 § 6 point 3). Une note par entrée, une seule entrée par note.
+
+### Coup probabiliste (`probability`)
+
+`{ step = 5, voice = "snare", delta_velocity = -10, probability = 0.2 }` : le coup joue avec la
+probabilité donnée (0 exclu, 1 inclus), dans un pattern ordinaire ou une relance. Le tirage est **sans
+état** : fonction de la graine d'accompagnement de l'air, de la mesure, du pas, de la note et de la
+piste (`percussion::hit_plays`), donc stable par graine et identique après un seek. La graine
+d'accompagnement est tirée dès qu'un coup est probabiliste (même règle que les phrases). Notes
+fantômes du GMD : 5 à 25 % (L2 § 6 point 5).
+
+### Clave (`[clave]`, `clave = "three" | "two"` sur les phrases)
+
+```toml
+[clave]
+direction = "either"     # "three_two" (défaut), "two_three", ou "either" : tiré une fois par air
+[[percussion.phrases]]   # ou [[accompaniment.chords.phrases]]
+density = 1
+patterns = [2, 3]        # mesure « trois » puis mesure « deux »
+clave = "three"          # la phrase commence sur une mesure « trois » du cycle
+```
+
+La clave est un cycle de **deux mesures** (« trois » aux trois attaques, « deux » aux deux), continu
+d'un chorus à l'autre : la mesure `n` de l'air (0-based, tours compris) est « trois » quand `n` est
+pair dans une 3-2, impair dans une 2-3 ; `either` tire le sens de la graine d'accompagnement. Une
+phrase qui porte `clave` ne peut **commencer** que sur une mesure de ce côté (y compris la phrase de
+fin de passe) : les phrases de comping et de batterie d'A1 restent alignées sur la clave, mesure par
+mesure, quel que soit le découpage. `clave` sans `[clave]` est refusé (chemin du champ). La clave
+elle-même est écrite en données : patterns de la voix `claves` (son 3-2 : mesure « trois » aux pas
+0, 6, 12, mesure « deux » aux pas 4, 8 sur 16 pas).
+
+Montuno et bossa s'expriment avec les mécanismes existants : comping anticipé (`anticipate = true`,
+l'attaque joue l'accord en vigueur à la fin de sa durée) et basse anticipée (gabarit avec
+`pickup = { when = "bar_end", ... }` : note de la basse de l'accord suivant `lead` pas avant la
+barre). Fixture `grille_clave`.
+
+### Rôles de percussion latine (kit GM de GeneralUser GS)
+
+Les rôles sont des `[[voices]]` de `percussion.toml` sur les deux pistes existantes, par note GM du
+kit (banque 128, programmes 0, 32 et 40 : vérifié sur `GeneralUser-GS.sf2`, instruments « Accessory
+Drums 1 », « Accessory Drums 2 », « Agogo », « Wood Block_1 ») :
+
+| Rôle | Note | Piste de la fixture |
+|---|---|---|
+| cloche (cowbell) | 56 | `PercussionHigh` |
+| bongo aigu / grave | 60 / 61 | `PercussionHigh` |
+| conga sourde / ouverte / grave | 62 / 63 / 64 | `PercussionLow` |
+| timbale aiguë / grave | 65 / 66 | `PercussionHigh` / `PercussionLow` |
+| cabasa, maracas | 69, 70 | au choix |
+| claves | 75 | `PercussionHigh` |
+| shaker | 82 | `PercussionHigh` |
+
+Fixtures de contrat, sans Odin (`tests/fixtures/profiles/`) : `grille_shuffle_ternaire` (4/4 sur 12
+pas, micro-timing de voix, coups probabilistes), `grille_valse_jazz` (3/4, arc et phrases),
+`grille_six_huit` (6/8, arc et phrases), `grille_clave` (clave, montuno, tumbao). Tests :
+`harmonium_core/tests/swing_metriques_tests.rs`, `harmonium_host/tests/midi_grille_ternaire_tests.rs`.
 
 
 ## Règles de phrase
