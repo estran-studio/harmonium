@@ -1,0 +1,485 @@
+# Habillage par graine de `wjazzd_swing` (phase 019, B1, mécanisme A2) : « New seed » doit s'entendre.
+# Une graine tire UNE variante par groupe, une fois, au premier air ; les groupes se combinent. Sept
+# groupes, 19 656 combinaisons (13 × 7 × 3 × 2 × 6 × 2 × 3). Programmes General MIDI de
+# GeneralUser GS (sans Odin, D1), 0-based : piano 0 (« Grand Piano »), guitare de jazz 26 (« Jazz
+# Guitar »), orgue 17 (« Percussive Organ »), contrebasse 32 (« Acoustic Bass »), basse aux doigts 33
+# (« Finger Bass »), kits de la banque 128 : jazz 32 (baguettes), balais 40 (« Brush »).
+#
+# Ce qui est mesuré : les plages de tempo (distribution des tempos moyens par solo de WJazzD, sous-ensemble
+# swing : centiles 10 / 25 / 50 / 75 / 90 = 93 / 132 / 177,5 / 242,6 / 284,5 BPM, `references/wjazzd-swing/`
+# README ; la ballade, sous 100 BPM, est le profil B2) et leurs poids (à peu près les parts des solos,
+# aplaties pour que chaque classe s'entende). Le rapport de swing n'est PAS tiré ici : il suit le tempo
+# piste par piste (`swing.toml`, JTD). Ce qui est règle de métier, sans corpus : tonalités courantes du
+# répertoire, instruments, voicings, énergie, arcs (aucune mesure de la dynamique d'un chorus).
+#
+# Un hôte qui impose son tempo (`SetBpm`) ou sa tonalité (`[fixed_tonality]` de son profil, grille de
+# training) gagne sur la variante ; le kit et l'arc restent ceux de la graine (T1 : le choix du profil par
+# tempo, `README.md`, « Swing rapide »).
+
+# ── Tempo, kit et arc, ensemble (un kit aux balais n'a de sens qu'à tempo lent ou modéré ; un arc à deux
+# temps, pas à 230) : un seul groupe pour que le poids des balais suive le tempo. Plages séparées de plus
+# de 8 BPM. Cinq classes : lent (100-118, balais en majorité), medium (122-142), medium-up (148-186),
+# up (192-225), très rapide (232-265).
+[[variants]]
+group = "rythme"
+name = "lent_balais_exposition"
+weight = 2
+bpm = [100.0, 118.0]
+instruments = { percussion_bank = 128, percussion_program = 40 }
+arc = "exposition_balais"
+
+[[variants]]
+group = "rythme"
+name = "lent_balais_directe"
+weight = 1
+bpm = [100.0, 118.0]
+instruments = { percussion_bank = 128, percussion_program = 40 }
+arc = "directe_balais"
+
+[[variants]]
+group = "rythme"
+name = "lent_orchestre"
+weight = 1
+bpm = [100.0, 118.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "orchestre"
+
+[[variants]]
+group = "rythme"
+name = "lent_baguettes_exposition"
+weight = 1
+bpm = [100.0, 118.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "exposition_baguettes"
+
+[[variants]]
+group = "rythme"
+name = "medium_baguettes_exposition"
+weight = 3
+bpm = [122.0, 142.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "exposition_baguettes"
+
+[[variants]]
+group = "rythme"
+name = "medium_baguettes_directe"
+weight = 2
+bpm = [122.0, 142.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "directe_baguettes"
+
+[[variants]]
+group = "rythme"
+name = "medium_balais_exposition"
+weight = 1
+bpm = [122.0, 142.0]
+instruments = { percussion_bank = 128, percussion_program = 40 }
+arc = "exposition_balais"
+
+[[variants]]
+group = "rythme"
+name = "medium_orchestre"
+weight = 1
+bpm = [122.0, 142.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "orchestre"
+
+[[variants]]
+group = "rythme"
+name = "medium_up_baguettes_directe"
+weight = 3
+bpm = [148.0, 186.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "directe_baguettes"
+
+[[variants]]
+group = "rythme"
+name = "medium_up_baguettes_exposition"
+weight = 3
+bpm = [148.0, 186.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "exposition_baguettes"
+
+[[variants]]
+group = "rythme"
+name = "medium_up_orchestre"
+weight = 1
+bpm = [148.0, 186.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "orchestre"
+
+[[variants]]
+group = "rythme"
+name = "up_rapide"
+weight = 5
+bpm = [192.0, 225.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "rapide"
+
+[[variants]]
+group = "rythme"
+name = "tres_rapide"
+weight = 3
+bpm = [232.0, 265.0]
+instruments = { percussion_bank = 128, percussion_program = 32 }
+arc = "rapide"
+
+# ── Tonalité : le blues et l'AABA sont écrits relativement à la tonique, la variante les transpose.
+# Tonalités courantes du répertoire de jazz (fa, si♭, mi♭, do, sol, la♭, ré), majeures.
+[[variants]]
+group = "tonalite"
+name = "fa"
+weight = 3
+tonality = { key = 5, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "si_bemol"
+weight = 3
+tonality = { key = 10, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "mi_bemol"
+weight = 3
+tonality = { key = 3, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "do"
+weight = 3
+tonality = { key = 0, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "sol"
+weight = 2
+tonality = { key = 7, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "la_bemol"
+weight = 1
+tonality = { key = 8, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re"
+weight = 1
+tonality = { key = 2, mode = "ionian" }
+
+# ── Comping : piano, guitare de jazz ou orgue (l'arc « orchestre » en change au sommet).
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 4
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "guitare"
+weight = 3
+instruments = { chords_program = 26 }
+
+[[variants]]
+group = "comping"
+name = "orgue"
+weight = 2
+instruments = { chords_program = 17 }
+
+# ── Basse : contrebasse, ou (rare) basse électrique aux doigts.
+[[variants]]
+group = "basse"
+name = "contrebasse"
+weight = 14
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_electrique"
+weight = 1
+instruments = { bass_program = 33 }
+
+# ── Famille de voicings du comping (`color` et `register_drift` : `profile.toml`).
+[[variants]]
+group = "voicing"
+name = "sans_fondamentale"
+weight = 4
+voicing = "rootless"
+
+[[variants]]
+group = "voicing"
+name = "notes_guides"
+weight = 2
+voicing = "guide_tones"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 2
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "drop_3"
+weight = 1
+voicing = "drop3"
+
+[[variants]]
+group = "voicing"
+name = "quartes"
+weight = 1
+voicing = "fourths"
+
+[[variants]]
+group = "voicing"
+name = "coquille"
+weight = 1
+voicing = "shell"
+
+# ── Registre du comping : une octave plus bas une fois sur cinq.
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 4
+
+[[variants]]
+group = "registre"
+name = "grave"
+weight = 1
+register_octaves = { Chords = -1 }
+
+# ── Énergie de base (multiplicateurs de l'intensité et de la densité lues par `dynamics`).
+[[variants]]
+group = "energie"
+name = "doux"
+weight = 1
+intensity = 0.85
+density = 0.85
+
+[[variants]]
+group = "energie"
+name = "neutre"
+weight = 2
+intensity = 1.0
+density = 1.0
+
+[[variants]]
+group = "energie"
+name = "fort"
+weight = 1
+intensity = 1.12
+density = 1.1
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# Arcs nommés (A3) : un chorus = une passe de la forme (44 mesures par défaut, une grille d'hôte sinon).
+# Quatre chorus par air par défaut (`arrangement.toml`) : exposition, corps, sommet, retombée ; au-delà
+# (une grille d'hôte à plus de chorus), le corps et le sommet reprennent en boucle (`repeat_from`), sans
+# retombée avant le dernier chorus. Valeurs de métier, aucune mesure de corpus (WJazzD ne donne pas la
+# dynamique d'un chorus, le GMD ne donne que des mesures isolées). Étiquettes : comping `sparse` / `medium`
+# / `dense` (profile.toml), batterie `spang` (spang-a-lang) / `quarters` (ride aux noires) / `brush`
+# (balais, percussion.toml). Breaks : une mesure avant le chorus suivant (accords et basse se taisent, la
+# batterie continue) ; stop-time : accords et basse ne jouent que le premier temps, deux mesures.
+#
+#   exposition_*  chorus 1 à deux temps (comping clairsemé, ride aux noires ou balais), puis la marche ;
+#   directe_*     la marche dès le chorus 1 (le jeu des disques de quartet, sans exposition) ;
+#   orchestre     le kit et le comping changent à la frontière des chorus (balais, baguettes, orgue) ;
+#   rapide        à partir de 190 BPM : comping plus clairsemé, jamais plus de deux attaques d'accords.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+
+[arcs.exposition_baguettes]
+repeat_from = 1
+
+[[arcs.exposition_baguettes.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.65, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "quarters" }] },
+  { weight = 1, intensity = 0.75, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "quarters" }] },
+]
+
+[[arcs.exposition_baguettes.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium", weight = 3 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "spang" }] },
+  { weight = 2, intensity = 1.1, density = 1.1, bass_feel = "walking", comping = [{ tag = "medium" }, { tag = "dense", weight = 2 }], percussion = [{ tag = "spang" }], breaks = [{ start = -1, bars = 1, chance = 0.4, tracks = ["Chords", "Bass"] }] },
+  { weight = 1, intensity = 0.95, density = 0.9, bass_feel = "walking", comping = [{ tag = "sparse" }, { tag = "medium", weight = 2 }], percussion = [{ tag = "spang", weight = 2 }, { tag = "quarters" }] },
+]
+
+[[arcs.exposition_baguettes.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.25, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.exposition_baguettes.fall]]
+intensity = 0.55
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "quarters" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.directe_baguettes]
+repeat_from = 1
+
+[[arcs.directe_baguettes.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.85, density = 0.8, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "sparse" }], percussion = [{ tag = "spang" }] },
+  { weight = 1, intensity = 0.8, density = 0.7, bass_feel = "walking", comping = [{ tag = "sparse" }], percussion = [{ tag = "spang", weight = 2 }, { tag = "quarters" }] },
+]
+
+[[arcs.directe_baguettes.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 2 }], percussion = [{ tag = "spang" }] },
+  { weight = 2, intensity = 1.1, density = 1.1, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }], breaks = [{ start = -4, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+]
+
+[[arcs.directe_baguettes.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.25, density = 1.2, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+  { weight = 1, intensity = 1.35, density = 1.3, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }] },
+]
+
+[[arcs.directe_baguettes.fall]]
+intensity = 0.6
+density = 0.55
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "quarters" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+# Balais : tags `brush` d'un bout à l'autre ; au sommet les baguettes reprennent (le kit de la session
+# revient à la retombée, qui ne déclare pas de kit).
+[arcs.exposition_balais]
+repeat_from = 1
+
+[[arcs.exposition_balais.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.6, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "brush" }] },
+  { weight = 1, intensity = 0.7, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "brush" }] },
+]
+
+[[arcs.exposition_balais.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium", weight = 3 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "brush" }] },
+  { weight = 1, intensity = 0.9, density = 0.9, bass_feel = "walking", comping = [{ tag = "sparse" }, { tag = "medium", weight = 2 }], percussion = [{ tag = "brush" }], breaks = [{ start = -1, bars = 1, chance = 0.4, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.exposition_balais.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.2, density = 1.2, bass_feel = "walking", instruments = { percussion_program = 32 }, comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.exposition_balais.fall]]
+intensity = 0.5
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "brush" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.directe_balais]
+repeat_from = 1
+
+[[arcs.directe_balais.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.8, density = 0.7, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "sparse" }], percussion = [{ tag = "brush" }] },
+  { weight = 1, intensity = 0.75, density = 0.7, bass_feel = "two_feel", comping = [{ tag = "sparse" }], percussion = [{ tag = "brush" }] },
+]
+
+[[arcs.directe_balais.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium" }, { tag = "dense" }], percussion = [{ tag = "brush" }] },
+  { weight = 2, intensity = 1.05, density = 1.05, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "brush" }], breaks = [{ start = -1, bars = 1, chance = 0.4, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.directe_balais.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.2, density = 1.15, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "brush" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.directe_balais.fall]]
+intensity = 0.5
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "brush" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+# Orchestre : la graine joue aux baguettes ; l'exposition et la retombée aux balais (un chorus qui ne
+# déclare pas de kit rend celui de la session), le comping passe à l'orgue ou à la guitare au corps ou au
+# sommet (un chorus qui n'en déclare pas rend celui de la session).
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, instruments = { percussion_program = 40 }, intensity = 0.6, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "brush" }] },
+  { weight = 1, instruments = { percussion_program = 40 }, intensity = 0.7, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "brush" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense" }], percussion = [{ tag = "spang" }] },
+  { weight = 2, instruments = { chords_program = 26 }, bass_feel = "walking", comping = [{ tag = "medium" }, { tag = "dense", weight = 2 }], percussion = [{ tag = "spang" }], breaks = [{ start = -1, bars = 1, chance = 0.4, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, instruments = { chords_program = 17 }, intensity = 1.25, density = 1.2, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+  { weight = 1, intensity = 1.3, density = 1.25, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "spang" }] },
+]
+
+[[arcs.orchestre.fall]]
+instruments = { percussion_program = 40 }
+intensity = 0.5
+density = 0.5
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "brush" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+# Rapide (à partir de 190 BPM) : marche dès le chorus 1, comping de une ou deux attaques,
+# stop-time au sommet ; la retombée reste en marche.
+[arcs.rapide]
+repeat_from = 1
+
+[[arcs.rapide.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.8, density = 0.7, bass_feel = "walking", comping = [{ tag = "sparse", weight = 2 }, { tag = "medium", weight = 2 }], percussion = [{ tag = "spang" }] },
+  { weight = 1, intensity = 0.7, density = 0.6, bass_feel = "walking", comping = [{ tag = "sparse" }], percussion = [{ tag = "quarters" }] },
+]
+
+[[arcs.rapide.stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "sparse" }, { tag = "medium", weight = 2 }], percussion = [{ tag = "spang" }] },
+  { weight = 2, intensity = 1.1, density = 1.1, bass_feel = "walking", comping = [{ tag = "medium" }], percussion = [{ tag = "spang" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.rapide.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.25, density = 1.2, bass_feel = "walking", comping = [{ tag = "medium" }], percussion = [{ tag = "spang" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.rapide.fall]]
+intensity = 0.7
+density = 0.6
+bass_feel = "walking"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "quarters" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
