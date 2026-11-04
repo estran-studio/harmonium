@@ -1,0 +1,181 @@
+{
+  "fichiers": 2,
+  "mesures": 631,
+  "batteurs": 1,
+  "bpm": [
+    127,
+    127
+  ],
+  "groupes": {
+    "charleston_croches": {
+      "mesures": 21,
+      "fichiers": 2,
+      "batteurs": 1
+    },
+    "ride_croches": {
+      "mesures": 244,
+      "fichiers": 2,
+      "batteurs": 1
+    },
+    "ride_noires": {
+      "mesures": 46,
+      "fichiers": 2,
+      "batteurs": 1
+    }
+  },
+  "patterns": 9,
+  "phrases": 30,
+  "phrases_mesurees": [
+    {
+      "mesures": 2,
+      "suite": [
+        "ride_croches",
+        "ride_croches"
+      ],
+      "occurrences": 67,
+      "fichiers": 2
+    },
+    {
+      "mesures": 4,
+      "suite": [
+        "ride_croches",
+        "ride_croches",
+        "ride_croches",
+        "ride_croches"
+      ],
+      "occurrences": 18,
+      "fichiers": 1
+    },
+    {
+      "mesures": 2,
+      "suite": [
+        "ride_noires",
+        "ride_croches"
+      ],
+      "occurrences": 16,
+      "fichiers": 2
+    },
+    {
+      "mesures": 2,
+      "suite": [
+        "charleston_croches",
+        "charleston_croches"
+      ],
+      "occurrences": 4,
+      "fichiers": 1
+    },
+    {
+      "mesures": 2,
+      "suite": [
+        "ride_croches",
+        "ride_noires"
+      ],
+      "occurrences": 2,
+      "fichiers": 2
+    },
+    {
+      "mesures": 4,
+      "suite": [
+        "ride_croches",
+        "ride_croches",
+        "ride_noires",
+        "ride_croches"
+      ],
+      "occurrences": 2,
+      "fichiers": 1
+    },
+    {
+      "mesures": 4,
+      "suite": [
+        "ride_noires",
+        "ride_croches",
+        "ride_croches",
+        "ride_croches"
+      ],
+      "occurrences": 2,
+      "fichiers": 1
+    }
+  ],
+  "phrases_groove_tenu": 9,
+  "relances": 8,
+  "micro_timing_p50_pas": {
+    "kick": {
+      "note": 36,
+      "piste": "PercussionLow",
+      "on_beat": 0.0333,
+      "off_beat": -0.1667,
+      "n_on": 1157,
+      "n_off": 1679
+    },
+    "sidestick": {
+      "note": 37,
+      "piste": "PercussionHigh",
+      "on_beat": -0.0583,
+      "off_beat": -0.0667,
+      "n_on": 371,
+      "n_off": 371
+    },
+    "snare": {
+      "note": 38,
+      "piste": "PercussionHigh",
+      "on_beat": -0.0833,
+      "off_beat": -0.1083,
+      "n_on": 727,
+      "n_off": 1644
+    },
+    "hat": {
+      "note": 42,
+      "piste": "PercussionHigh",
+      "on_beat": -0.0917,
+      "off_beat": -0.1083,
+      "n_on": 195,
+      "n_off": 229
+    },
+    "pedal": {
+      "note": 44,
+      "piste": "PercussionHigh",
+      "on_beat": -0.2,
+      "off_beat": 0.225,
+      "n_on": 1593,
+      "n_off": 313
+    },
+    "ride": {
+      "note": 51,
+      "piste": "PercussionHigh",
+      "on_beat": -0.0417,
+      "off_beat": -0.0583,
+      "n_on": 1627,
+      "n_off": 1611
+    },
+    "tom_mid": {
+      "note": 47,
+      "piste": "PercussionHigh",
+      "on_beat": -0.1417,
+      "off_beat": -0.1458,
+      "n_on": 99,
+      "n_off": 194
+    }
+  },
+  "timekeeper": {
+    "hat_closed": {
+      "n": 60,
+      "share": 0.0951
+    },
+    "hat_open": {
+      "n": 6,
+      "share": 0.0095
+    },
+    "none": {
+      "n": 91,
+      "share": 0.1442
+    },
+    "ride": {
+      "n": 473,
+      "share": 0.7496
+    },
+    "ride_bell": {
+      "n": 1,
+      "share": 0.0016
+    }
+  }
+}
