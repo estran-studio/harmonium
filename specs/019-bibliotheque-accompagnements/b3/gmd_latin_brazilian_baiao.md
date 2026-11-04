@@ -217,8 +217,8 @@ sortie » n'a pas de mutation de profil possible (seul un moteur non déterminis
    approche, plus d'approches dans la mesure).
 3. **Une boucle de grille ne dépend pas de la tonalité tirée** : la variante `tonality` change la tonique et l'étiquette du mode,
    pas les accords (un vamp dorien i7 / IV ne peut pas être tiré au lieu du mixolydien I7 / bVII).
-4. **Tempo de l'habillage et émotions** : la plage d'une variante est un tempo de base ; `tempo_offset` (arousal) s'y ajoute. Pour
-   rester dans les 95..110 de la source, la courbe est plate : l'arousal ne change pas le tempo.
+4. **Tempo de l'habillage et émotions** : la plage d'une variante est un tempo de base ; `tempo_offset` (arousal) s'y ajoute. La courbe est
+   limitée à ± 4 BPM, non écrêtée (le contrat générique `time_plan_playback_tests` exige qu'une commande d'émotion déplace le tempo) : un arousal extrême sort donc de 4 BPM au plus de la plage de la variante.
 5. **Niveau par kit** : un seul `level_db` par piste ; les quatre kits de l'habillage (0, 8, 32, 40) n'ont pas le même niveau
    (2,5 dB mesurés entre deux graines), réglé sur le kit standard seulement.
 6. **Micro-timing** : médianes par voix bornées à ±0,2 pas, sans dispersion (un `jitter` de batterie déplace les tirages de

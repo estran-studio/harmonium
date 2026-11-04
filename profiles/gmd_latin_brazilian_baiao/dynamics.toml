@@ -1,5 +1,5 @@
 # Courbes de service : aucune mesure de corpus ne relie une émotion à un paramètre (README du profil).
-# Tempo plat : la source n'a que 95..110 BPM, la plage de chaque variante de session est donc respectée.
+# Tempo : arousal ± 4 BPM seulement, non écrêté aux bornes du profil (95..110, étendue de la source).
 # Pas de `fixed_tonality` : la variante de session fixe la tonalité ; seuils de bascule écartés de la valence neutre
 # (0,3) pour que le mode tiré (mixolydien, clair ; dorien, sombre) ne bascule pas de lui-même.
 neutral_valence = 0.3
@@ -10,7 +10,7 @@ bright_above = 0.9
 parallel_modes = [{ bright = "mixolydian", dark = "dorian", weight = 1 }]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
-tempo_offset = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, -4.0], [0.5, 0.0], [1.0, 4.0]]
 melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
 chords_velocity = [[0.0, 0.7], [0.5, 1.0], [1.0, 1.25]]
 bass_velocity = [[0.0, 0.8], [0.5, 1.0], [1.0, 1.2]]

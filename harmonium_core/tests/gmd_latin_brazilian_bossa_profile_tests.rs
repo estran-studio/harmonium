@@ -649,12 +649,12 @@ fn le_feel_est_droit_en_seize_pas_et_le_tempo_reste_dans_la_plage_de_la_variante
             for s in &flow {
                 assert_eq!(s.steps, 16, "seize pas par mesure");
                 assert!(
-                    (low..=high).contains(&s.tempo),
-                    "graine {seed} intensité {intensity} ({name}) : tempo {} hors de {low}..{high}",
+                    (low - 4.0..=high + 4.0).contains(&s.tempo),
+                    "graine {seed} intensité {intensity} ({name}) : tempo {} hors de {low}..{high} ± 4",
                     s.tempo
                 );
                 assert_eq!(s.tempo, flow[0].tempo, "le tempo d'une session ne bouge pas");
-                assert_eq!(s.tempo.fract(), 0.0, "BPM entier tiré");
+                assert_eq!(s.composition_bpm.fract(), 0.0, "BPM entier tiré");
                 assert!((s.swing_ratio - 0.5).abs() < 1e-6, "swing {}", s.swing_ratio);
             }
         }

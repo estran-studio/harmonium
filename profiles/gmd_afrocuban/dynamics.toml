@@ -1,5 +1,5 @@
-# Courbes de service ; aucun lien émotion/style mesuré. Le tempo ne bouge pas avec l'arousal : il est celui de la session
-# (105 à 128, plage mesurée) ; les vélocités par piste sont élargies (0,6 à 1,3) pour que l'arc s'entende.
+# Courbes de service ; aucun lien émotion/style mesuré. Le tempo suit l'arousal de ± 4 BPM seulement (non écrêté aux bornes
+# du profil, 105 à 128 : un arousal extrême sort de 4 BPM de la plage mesurée) ; vélocités par piste élargies (0,6 à 1,3) pour que l'arc s'entende.
 # Aucune bascule de mode : le mode tiré n'est qu'une étiquette (les accords s'écrivent relatifs à la tonique).
 neutral_valence = 0.3
 valence_range = [-1.0, 1.0]
@@ -9,7 +9,7 @@ bright_above = 0.9
 parallel_modes = [{ bright = "ionian", dark = "aeolian", weight = 1 }]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
-tempo_offset = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, -4.0], [0.5, 0.0], [1.0, 4.0]]
 melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
 chords_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.3]]
 bass_velocity = [[0.0, 0.75], [0.5, 1.0], [1.0, 1.2]]

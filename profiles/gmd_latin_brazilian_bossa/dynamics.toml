@@ -1,8 +1,8 @@
 # Pilotage par les quatre émotions. Aucune mesure de corpus ne relie une émotion à un paramètre du jeu : les
 # courbes sont des réglages de service (README du profil).
 # Arousal : la vélocité et le niveau de densité de la batterie (0 : timekeeper, grosse caisse et pédale ; 1, neutre :
-# tous les rôles à 0,5, cross-stick probabiliste ; 2 : caisse claire fantôme, toms, shaker). Le TEMPO n'en dépend
-# pas (`tempo_offset` nul) : il est celui de la variante de session (plages tirées de la source) ou de l'hôte.
+# tous les rôles à 0,5, cross-stick probabiliste ; 2 : caisse claire fantôme, toms, shaker). Le TEMPO en dépend de ± 4 BPM
+# seulement (`tempo_offset`) : la base est la variante de session (plages tirées de la source) ou l'hôte.
 # Vélocités par piste élargies (0,6 à 1,3) : l'arc (`arc.toml`) multiplie l'intensité (0,35 à 0,65 au neutre) et
 # l'écart entre l'exposition, le sommet et la retombée doit s'entendre (réglage de service, aucune mesure).
 # Aucune bascule de mode en pratique : valence neutre 0,5 entre `dark_below` 0,1 et `bright_above` 0,9 ; le mode est celui
@@ -15,7 +15,7 @@ bright_above = 0.9
 parallel_modes = [{ bright = "ionian", dark = "aeolian", weight = 1 }]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
-tempo_offset = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, -4.0], [0.5, 0.0], [1.0, 4.0]]
 melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
 chords_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.3]]
 bass_velocity = [[0.0, 0.75], [0.5, 1.0], [1.0, 1.2]]
