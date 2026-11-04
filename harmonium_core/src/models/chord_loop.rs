@@ -15,11 +15,25 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct LoopHarmony {
     plan: TunePlan,
-    chords: Vec<Vec<DegreeChord>>,
+    /// Une table de mesures par tirage harmonique (`harmony.tour_variants`).
+    chords: Vec<Vec<Vec<DegreeChord>>>,
 }
 impl LoopHarmony {
     /// Le profil du plan doit avoir été validé avant la construction.
     pub fn new(plan: TunePlan, seed: u64) -> Self {
+        let variants = usize::from(plan.profile.harmony.tour_variants.max(1));
+        let chords = (0..variants)
+            .map(|variant| {
+                // Le premier tirage garde la graine de l'air : un profil à un seul tirage ne change pas.
+                let seed =
+                    if variant == 0 { seed } else { crate::ornaments::mix(seed, variant as u64) };
+                Self::draw(&plan, seed)
+            })
+            .collect();
+        Self { plan, chords }
+    }
+    /// Mesures de matériau d'un tirage harmonique.
+    fn draw(plan: &TunePlan, seed: u64) -> Vec<Vec<DegreeChord>> {
         let steps_per_bar = plan.profile.meter.steps_per_bar;
         let period = plan.profile.harmony.steps_per_chord;
         let slots = steps_per_bar / period;
@@ -35,14 +49,28 @@ impl LoopHarmony {
                     part,
                     std::iter::once(*weight).chain(alternatives.iter().map(|a| a.weight)),
                 ),
-                HarmonyPart::ChordLoop { loops, generated } => draw_alternative(
-                    seed,
-                    part,
-                    loops
+                HarmonyPart::ChordLoop { loops, generated } => {
+                    let modes: Vec<&[Mode]> = loops
                         .iter()
-                        .map(|alternative| alternative.weight)
-                        .chain(generated.iter().map(|alternative| alternative.weight)),
-                ),
+                        .map(|alternative| alternative.modes.as_slice())
+                        .chain(generated.iter().map(|alternative| alternative.modes.as_slice()))
+                        .collect();
+                    // Alternatives du mode de l'air ; à défaut, toutes.
+                    let fits = |modes: &[Mode]| modes.is_empty() || modes.contains(&plan.mode);
+                    let any_fits = modes.iter().any(|m| fits(m));
+                    draw_alternative(
+                        seed,
+                        part,
+                        loops
+                            .iter()
+                            .map(|alternative| alternative.weight)
+                            .chain(generated.iter().map(|alternative| alternative.weight))
+                            .zip(modes)
+                            .map(
+                                |(weight, modes)| if !any_fits || fits(modes) { weight } else { 0 },
+                            ),
+                    )
+                }
             })
             .collect();
         // Boucles générées : tirées une fois par partie (graine, partie, alternative), puis
@@ -77,7 +105,7 @@ impl LoopHarmony {
                 Some(one.iter().cycle().take(one.len() * (part_bars / bars)).cloned().collect())
             })
             .collect();
-        let chords = (0..plan.material_bars())
+        (0..plan.material_bars())
             .map(|material| {
                 let (part, _, offset, _) = plan.position(plan.representative_bar(material));
                 let name = &plan.profile.form.parts[part].name;
@@ -133,11 +161,12 @@ impl LoopHarmony {
                     }
                 }
             })
-            .collect();
-        Self { plan, chords }
+            .collect()
     }
+    /// Accords de la mesure `bar` de l'air : le tirage du chorus qui la contient.
     pub fn chords_for_bar(&self, bar: usize) -> &[DegreeChord] {
-        &self.chords[self.plan.material_index(bar)]
+        let variant = (bar / self.plan.total_bars()) % self.chords.len();
+        &self.chords[variant][self.plan.material_index(bar)]
     }
 }
 /// Alternative tirée parmi `weights` avec le flux de la partie ; un candidat unique n'entraîne
@@ -203,6 +232,14 @@ fn validate_root(
 /// Validation appelée par le chargeur public de profils, avant toute génération.
 pub(crate) fn validate(profile: &StyleProfile) -> Result<(), ProfileError> {
     let harmony = &profile.harmony;
+    if !(1..=16).contains(&harmony.tour_variants)
+        || (harmony.model != "loop" && harmony.tour_variants != 1)
+    {
+        return Err(ProfileError::new(
+            "harmony.tour_variants",
+            "1..16 tirages requis (le modèle loop seul en accepte plus d'un)",
+        ));
+    }
     if harmony.model != "loop" {
         return if harmony.parts.is_empty() {
             Ok(())

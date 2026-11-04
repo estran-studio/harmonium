@@ -803,7 +803,7 @@ liste strictement décroissante de distances en pas avant la prochaine cible
 de basse, y compris au-delà de la barre. `scale_step` : voisin diatonique
 de la cible côté départ ; `chromatic` : demi-ton ; `scale_walk` : voisins
 successifs dans le mode actif. Aucun détour ni répétition de hauteur.
-`chord_change_inside_bar` restreint la règle à un changement d'accord intérieur.
+`chord_change_inside_bar` restreint la règle à un changement d'accord intérieur ; `chord_change_at_bar` à un changement d'accord à la barre (phase 019 A7).
 Les durées ne recouvrent ni la note suivante ni la cible ; le coup précédent
 est écourté si nécessaire. Pas de passage sur un coup de basse ni un temps
 fort. Le veto contre les intervalles modulo 12 lit la mélodie qui sonne ;
@@ -1710,7 +1710,7 @@ breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] 
 | `weight` | ≥ 1 (défaut 1) | Poids du tirage de la variante |
 | `intensity` | 0..=2, défaut 1 | Multiplicateur de l'intensité lue par les courbes de `dynamics` (vélocités par piste, choix du motif de comping par intensité, niveau de densité de la batterie), borné à 0..1 après le produit. **Ne change pas le tempo** |
 | `density` | 0..=2, défaut 1 | Multiplicateur de la densité rythmique lue par `density_percussion`, `density_chords` et les notes de passage de la basse (`accompaniment.bass.passing`), borné à 0..1. N'ouvre ni ne ferme une piste (`density_tracks`) |
-| `bass_feel` | `walking` ou `two_feel`, absent : le profil | Exige `accompaniment.bass.walking`. `two_feel` : une attaque toutes les deux pulsations (temps 1 et 3 en 4/4), tenue jusqu'à l'attaque suivante, plus une arrivée à chaque changement d'accord |
+| `bass_feel` | `walking`, `two_feel`, `three_feel` ou `bar_feel`, absent : le profil | Exige `accompaniment.bass.walking`. `two_feel` : une attaque toutes les deux pulsations (temps 1 et 3 en 4/4), tenue jusqu'à l'attaque suivante, plus une arrivée à chaque changement d'accord |
 | `comping` | 0..=8 `{ tag, weight }` | Restreint le tirage du comping aux motifs de `accompaniment.chords.comping` et aux phrases de `accompaniment.chords.phrases` dont le `tag` est nommé, au poids du motif (ou de la phrase) × le poids du tag. Aucun motif concerné : le tirage du profil ; aucune phrase concernée : les mesures se tirent une à une |
 | `percussion` | 0..=8 `{ tag, weight }` | Même mécanisme sur les `[[patterns]]`, les `[[phrases]]` et les `[[fills]]` de `percussion.toml` (de la densité et de la partie de la mesure) ; les mesures de relance de `[[cadence_patterns]]` gardent leur pattern |
 | `breaks` | 0..=8 | Voir ci-dessous |
@@ -2094,6 +2094,71 @@ Fixture de contrat : `tests/fixtures/profiles/grille_habillage/` (blues de douze
 chorus, arc et phrases ; 23 variantes en neuf groupes, 3 456 habillages) ; tests :
 `harmonium_core/tests/session_variants_tests.rs`, `harmonium_host/tests/session_orchestration_tests.rs`.
 Compte rendu : [`specs/019-bibliotheque-accompagnements/a2-habillage.md`](../specs/019-bibliotheque-accompagnements/a2-habillage.md).
+
+## Manques de schéma comblés (phase 019, A7)
+
+Tous optionnels : un profil qui n'en déclare aucun donne exactement le flux de snapshots d'avant
+(aucun tirage de plus). Contrats : `harmonium_core/tests/schema_gaps_tests.rs`. Compte rendu et
+inventaire des manques restants : [`specs/019-bibliotheque-accompagnements/a7-manques-schema.md`](../specs/019-bibliotheque-accompagnements/a7-manques-schema.md).
+
+**Motifs et gabarits de basse étiquetés, plan de basse par chorus.** `accompaniment.bass.motifs[].tag`
+et `templates[].tag` (une étiquette), `bass = [{ tag, weight }]` dans une variante d'arc
+(`[[stages]].variants[]`, `[[fall]]`) ou dans une variante de session (la variante d'arc passe devant).
+Sous des tags, **chaque chorus tire son plan de basse** (flux dérivé de la graine de basse et du numéro
+de chorus : le seek rejoue le même plan) parmi les motifs et gabarits qui portent un de ces tags, au
+poids du motif fois celui du tag. Une partie sans candidat étiqueté retombe sur le tirage du profil
+(jamais de partie sans basse). Sans tag (ni dans l'arc ni dans la session), le plan est celui de l'air,
+rejoué à chaque chorus. Un tag inconnu est refusé (`arc.stages[0].variants[0].bass[0].tag`).
+
+```toml
+[[accompaniment.bass.motifs]]
+tag = "sparse"
+bars = 1
+notes = [{ step = 0, duration = 16, semitones = 0, velocity = 92 }]
+# arc.toml
+variants = [{ bass = [{ tag = "sparse", weight = 3 }, { tag = "medium" }] }]
+```
+
+**Un tirage de grille par chorus** (`harmony.tour_variants`, `1..=16`, modèle `loop`). Le chorus `n`
+joue le tirage `n mod tour_variants` : le premier est celui de l'air (profil à un tirage inchangé), les
+suivants tirent leurs boucles, pédales et boucles générées avec une graine dérivée. Les accords publiés
+changent donc d'un chorus au suivant. `loops[].modes` et `generated[].modes` (liste de modes) : la boucle
+ne concourt que si le mode de l'air en fait partie, ce qui lie la grille à la tonalité tirée par la
+session (si aucune boucle de la partie ne convient, toutes concourent).
+
+**Accord de puissance** (qualité `"5"`, `ChordType::Power`) : fondamentale et quinte, jouées en trois voix
+avec l'octave par les voicings serrés (`close_triad` ; tous les voicings de comping, `fixed_triad` excepté
+qui refuse les qualités typées, retombent sur le serré pour cette qualité).
+
+**Feels de basse** `bass_feel = "three_feel"` (une attaque toutes les trois pulsations : blanche
+pointée d'un 3/4) et `"bar_feel"` (une attaque par mesure, plus une arrivée à chaque changement
+d'accord), à côté de `walking` et `two_feel`.
+
+**Niveau de densité de batterie par variante** : `percussion_density = 0 | 1 | 2` dans une variante
+d'arc ou de session (la variante d'arc passe devant) **remplace** l'arrondi de la densité du jeu,
+de `percussion_intensity` et de `density_percussion` : il choisit directement les patterns, phrases
+et relances de ce niveau, quelle que soit la densité demandée par l'hôte.
+
+**Relances et phrases à plusieurs étiquettes** : `percussion.fills[].tags` et `phrases[].tags` (à côté
+de `tag`) ; l'élément concourt sous chacune, au poids du tag le plus fort. Plus de recopie par étiquette.
+
+**Approche à la barre** : `bass.passing.rules[].when = "chord_change_at_bar"` : l'approche de la
+première basse de la mesure suivante n'a lieu que si le dernier accord de la mesure n'est pas le
+premier de la suivante (`chord_change_inside_bar` couvre seulement le changement intérieur).
+
+**Break hors du chorus** : `breaks[].start` et `bars` ne sont plus comparés à la longueur de la forme au
+chargement (l'hôte remplace la forme par une grille plus courte) : la fenêtre est bornée au chorus joué, et
+ignorée si elle commence au-delà de sa dernière mesure.
+
+**Décalage de tempo** : `dynamics.tempo_offset` accepte `-120..=120` BPM (`-30..=30` avant) ; le
+tempo reste borné à 40..300.
+
+**Imposer une variante de session** : `EngineCommand::ForceSessionVariant { group, index }` (indice de
+`[[session.variants]]`, refusé si inconnu ou d'un autre groupe), `ForceSessionVariantNamed { group, name }` (par
+nom : tempo, kit et arc d'une variante de groupe que `SetBpm` seul n'impose pas, p. ex. le groupe `rythme` de
+`wjazzd_swing`) et `ClearSessionVariants` ; REPL : `variant <groupe> <indice|nom>`, `variant clear`. Le groupe garde la variante imposée quelle que soit la
+graine ; les autres groupes gardent leur tirage (flux dérivés par groupe) ; rejeu depuis la mesure 1.
+Un changement de profil retire les variantes imposées.
 
 ## Difficulté de la mélodie (`[melody.difficulty]`, phase 019 E10)
 

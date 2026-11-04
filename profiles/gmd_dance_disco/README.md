@@ -204,6 +204,14 @@ Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `re
   inutilisables avec des riffs, feel de basse et étiquettes d'arc pour les motifs de basse (`bass_feel` exige la marche),
   groupes de session indépendants (un kit « power » avec un tempo lent n'est pas exclu), boucle de grille fixe par air.
 
+## Grille par chorus (A7, `harmony.tour_variants = 4`)
+
+La grille tirée une fois par air et tenue à chaque chorus (0 % de mesures d'accord changées d'un chorus au suivant) est
+remplacée par un tirage par chorus : le chorus `n` joue le tirage `n mod 4` (le premier est celui de l'air). Mesuré par
+`harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus ; avant → après) : accords changés d'un chorus au suivant
+0 % → 59 %, paires de chorus identiques 100 % → 7 %, suites d'accords distinctes sur 16 graines 8 / 16 → 16 / 16 ;
+basse changée (elle suit la fondamentale des accords) 7 % → 61 %. Poids et progressions de métier, aucun corpus de grilles.
+
 ## Régénérer
 
 `percussion.toml` est généré : `{venv du labo}/bin/python specs/019-bibliotheque-accompagnements/b8/generer.py gmd_dance_disco`

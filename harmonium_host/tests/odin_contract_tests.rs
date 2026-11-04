@@ -810,6 +810,7 @@ fn bass_profile(notes: Vec<BassMotifNote>, motif_bars: usize, glide_ms: f32) -> 
         bars: motif_bars,
         weight: 1,
         part: None,
+        tag: None,
         reference: BassReference::Tonic,
         notes,
     }];

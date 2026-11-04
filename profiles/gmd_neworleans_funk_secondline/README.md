@@ -145,3 +145,11 @@ tempo 82..124, arc, variété sur 16 graines). Variété et distance au corpus :
   mesures. Relances : 4 groupes, 2 batteurs, `fills_none_weight` est un réglage.
 - **Habillage par graine** (R2) : groupes indépendants, aucun lien entre kit, tempo et instruments (un kit « power » peut tomber avec le tempo le plus lent) ; tonalités, instruments, kits, voicings, registre, énergie et arcs sont de métier, jugés par des preuves chiffrées seulement (D5). Les options de marche d'A4 (notes fantômes, croches, notes répétées, arrivée) sont exclusives de `motifs` et de `passing` : la basse garde ses riffs.
 - **Mixage** : réglé au LUFS en solo (graine 1), aucune écoute.
+
+## Grille par chorus (A7, `harmony.tour_variants = 4`)
+
+La grille tirée une fois par air et tenue à chaque chorus (0 % de mesures d'accord changées d'un chorus au suivant) est
+remplacée par un tirage par chorus : le chorus `n` joue le tirage `n mod 4` (le premier est celui de l'air). Mesuré par
+`harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus ; avant → après) : accords changés d'un chorus au suivant
+0 % → 40 %, paires de chorus identiques 100 % → 33 %, suites d'accords distinctes sur 16 graines 4 / 16 → 15 / 16 ;
+basse changée (elle suit la fondamentale des accords) 42 % → 61 %. Poids et progressions de métier, aucun corpus de grilles.

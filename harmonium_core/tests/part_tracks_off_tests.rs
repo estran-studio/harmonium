@@ -166,6 +166,7 @@ fn validation_piste_inconnue_doublon_et_motif_sans_emploi() -> TestResult {
         bars: 4,
         weight: 1,
         part: Some(String::new()),
+        tag: None,
         reference: Default::default(),
         notes: vec![BassMotifNote {
             step: 0,

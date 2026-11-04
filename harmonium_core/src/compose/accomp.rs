@@ -10,6 +10,7 @@ use super::{
         BassCandidate, BassDegree, BassDoubling, BassMotifNote, BassReference, BassSource,
         BassVoice, ChordHit, ChordVoicing,
     },
+    arc::{TagWeight, tagged_weight},
     harmony::DegreeChord,
     mode::Mode,
     plan::{ImposedRole, TunePlan},
@@ -166,34 +167,57 @@ fn draw_bass_motif(
     bass: &BassVoice,
     part_name: &str,
     remaining_bars: usize,
+    tags: &[TagWeight],
     rng: &mut dyn RngCore,
 ) -> Option<BassSource> {
+    let weight = |c: &BassCandidate<'_>| tagged_weight(c.weight, c.tag, tags);
     let eligible = |c: &BassCandidate<'_>, specific: bool| {
-        c.weight > 0
+        weight(c) > 0
             && c.bars <= remaining_bars
             && if specific { c.part == Some(part_name) } else { c.part.is_none() }
     };
-    let specific_total: u32 = bass.sources().filter(|c| eligible(c, true)).map(|c| c.weight).sum();
+    let specific_total: u64 =
+        bass.sources().filter(|c| eligible(c, true)).map(|c| weight(&c)).sum();
     let use_specific = specific_total > 0;
-    let total: u32 = if use_specific {
+    let total: u64 = if use_specific {
         specific_total
     } else {
-        bass.sources().filter(|c| eligible(c, false)).map(|c| c.weight).sum()
+        bass.sources().filter(|c| eligible(c, false)).map(|c| weight(&c)).sum()
     };
     if total == 0 {
         return None;
     }
-    let mut pick = rng.next_range_u64(0..u64::from(total)) as u32;
+    let mut pick = rng.next_range_u64(0..total);
     for candidate in bass.sources() {
         if !eligible(&candidate, use_specific) {
             continue;
         }
-        if pick < candidate.weight {
+        let weight = weight(&candidate);
+        if pick < weight {
             return Some(candidate.source);
         }
-        pick -= candidate.weight;
+        pick -= weight;
     }
     None
+}
+
+/// Tirage sous les tags de l'arc : un motif entier, puis (`truncate`) un motif tronqué à la fin
+/// de la partie ; si aucun candidat ne porte les tags pour cette partie, le tirage du profil
+/// (jamais de partie sans basse).
+fn draw_bass_motif_tagged(
+    bass: &BassVoice,
+    part_name: &str,
+    remaining_bars: usize,
+    tags: &[TagWeight],
+    truncate: bool,
+    rng: &mut dyn RngCore,
+) -> Option<BassSource> {
+    let mut attempt = |tags: &[TagWeight]| {
+        draw_bass_motif(bass, part_name, remaining_bars, tags, rng).or_else(|| {
+            truncate.then(|| draw_bass_motif(bass, part_name, usize::MAX, tags, rng)).flatten()
+        })
+    };
+    attempt(tags).or_else(|| if tags.is_empty() { None } else { attempt(&[]) })
 }
 
 impl BassMotifPlan {
@@ -204,7 +228,12 @@ impl BassMotifPlan {
     /// Un motif qui ne tient pas dans la fin de partie est tronqué à cette frontière.
     /// Aucun tirage si `bass.motifs` est vide.
     #[must_use]
-    pub(crate) fn new(plan: &TunePlan, bass: &BassVoice, rng: &mut dyn RngCore) -> Self {
+    pub(crate) fn new(
+        plan: &TunePlan,
+        bass: &BassVoice,
+        tags: &[TagWeight],
+        rng: &mut dyn RngCore,
+    ) -> Self {
         if !bass.uses_plan() {
             return Self::default();
         }
@@ -236,10 +265,14 @@ impl BassMotifPlan {
                     None => {
                         // Préférer un motif entier ; faute de candidat assez court,
                         // tronquer un motif éligible plutôt que laisser une fin vide.
-                        let Some(source) =
-                            draw_bass_motif(bass, &part.name, roles.len() - bar, rng)
-                                .or_else(|| draw_bass_motif(bass, &part.name, usize::MAX, rng))
-                        else {
+                        let Some(source) = draw_bass_motif_tagged(
+                            bass,
+                            &part.name,
+                            roles.len() - bar,
+                            tags,
+                            true,
+                            rng,
+                        ) else {
                             unreachable!("chaque partie validée dispose d'un motif de basse");
                         };
                         let slice = BassMotifSlice { source, bar_in_motif: 0 };
@@ -270,7 +303,7 @@ impl BassMotifPlan {
                     }
                     // Une seconde fin ne démarre jamais un motif multi-mesures :
                     // tirer une mesure entière ou rejouer la tranche finale d'origine.
-                    _ => draw_bass_motif(bass, &part.name, 1, rng)
+                    _ => draw_bass_motif_tagged(bass, &part.name, 1, tags, false, rng)
                         .map(|source| BassMotifSlice { source, bar_in_motif: 0 })
                         .or_else(|| chosen.last().copied()),
                 }
@@ -467,7 +500,9 @@ fn close_voicings(
     if foreign.is_some() {
         tones = chord.voicing_tones(4);
     }
-    let inversions = if tones.len() < 3 { 1 } else { tones.len() };
+    // Une pédale ou une dyade n'a pas de renversement ; l'accord de puissance (racine, quinte,
+    // octave) garde sa fondamentale en bas.
+    let inversions = if tones.len() < 3 || tones.contains(&12) { 1 } else { tones.len() };
     (0..=10u8).flat_map(move |octave| {
         let tones = tones.clone();
         (0..inversions).filter_map(move |inversion| {

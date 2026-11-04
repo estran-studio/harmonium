@@ -10,7 +10,10 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : 32 ajoute E12 (019 : mélodie jazz de `wjazzd_swing`, banque de cellules
+/// Version du contrat : 33 ajoute A7 (019 : motifs de basse étiquetés et plan de basse tiré à
+/// chaque chorus sous les tags de l'arc, grille tirée par chorus, accords de puissance, niveau
+/// de densité de batterie par variante d'arc ; `gmd_rock` active ces mécanismes, les autres
+/// profils gardent leurs notes). 32 ajoute E12 (019 : mélodie jazz de `wjazzd_swing`, banque de cellules
 /// synthétisée depuis des statistiques de la Weimar Jazz Database, rôles de phrase, registre des
 /// solos ; les autres profils gardent leurs notes). R2-trad (019, 31) habille par graine les dix
 /// profils trad (tempo dans la plage de la tradition, tonalité, instrument de mélodie, comping,
@@ -22,7 +25,7 @@ use crate::{
 /// probabilistes. S0 (26) tire la graine d'accompagnement une fois par air après la mélodie ;
 /// R1 (25) intègre P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et
 /// `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 32;
+pub const TUNING_VERSION: u32 = 33;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

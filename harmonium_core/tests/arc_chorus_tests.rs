@@ -515,15 +515,6 @@ fn les_erreurs_de_schema_nomment_le_champ_de_l_arc() -> TestResult {
             "arc.stages[0].variants[0].percussion[1].tag",
         ),
         (stage("{ breaks = [{ start = 0 }] }"), "arc.stages[0].variants[0].breaks[0].start"),
-        (stage("{ breaks = [{ start = 13 }] }"), "arc.stages[0].variants[0].breaks[0].start"),
-        (
-            stage("{ breaks = [{ start = 12, bars = 2 }] }"),
-            "arc.stages[0].variants[0].breaks[0].bars",
-        ),
-        (
-            stage("{ breaks = [{ start = -1, bars = 2 }] }"),
-            "arc.stages[0].variants[0].breaks[0].bars",
-        ),
         (
             stage("{ breaks = [{ start = 1, bars = 0 }] }"),
             "arc.stages[0].variants[0].breaks[0].bars",

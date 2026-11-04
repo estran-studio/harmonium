@@ -219,7 +219,7 @@ impl StyleDynamics {
         for (name, curve, min, max) in [
             ("arousal_intensity", &self.arousal_intensity, 0.0, 1.0),
             ("tension_intensity", &self.tension_intensity, -1.0, 1.0),
-            ("tempo_offset", &self.tempo_offset, -30.0, 30.0),
+            ("tempo_offset", &self.tempo_offset, -120.0, 120.0),
             ("melody_velocity", &self.melody_velocity, 0.1, 2.0),
             ("chords_velocity", &self.chords_velocity, 0.1, 2.0),
             ("bass_velocity", &self.bass_velocity, 0.1, 2.0),

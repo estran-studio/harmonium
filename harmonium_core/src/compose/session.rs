@@ -203,6 +203,10 @@ pub struct SessionVariant {
     /// s'il en déclare, passe devant.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub percussion: Vec<TagWeight>,
+    /// Tags de basse autorisés, pondérés (motifs et gabarits) ; l'arc du chorus, s'il en
+    /// déclare, passe devant. Sous des tags, le plan de basse se tire à chaque chorus.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bass: Vec<TagWeight>,
     /// Arc nommé (`[session.arcs.<nom>]`) qui remplace `[arc]` pour la session.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arc: Option<String>,
@@ -213,6 +217,10 @@ pub struct SessionVariant {
     /// Multiplicateur de base de la densité rythmique.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub density: Option<f32>,
+    /// Niveau de densité de batterie (`0..=2`) imposé à la session ; celui du chorus de l'arc,
+    /// s'il en déclare un, passe devant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percussion_density: Option<u8>,
 }
 
 impl Default for SessionVariant {
@@ -232,9 +240,11 @@ impl Default for SessionVariant {
             register_octaves: BTreeMap::new(),
             comping: Vec::new(),
             percussion: Vec::new(),
+            bass: Vec::new(),
             arc: None,
             intensity: None,
             density: None,
+            percussion_density: None,
         }
     }
 }
@@ -274,6 +284,9 @@ impl SessionVariant {
         if !self.percussion.is_empty() {
             claim("percussion", "percussion".into());
         }
+        if !self.bass.is_empty() {
+            claim("bass", "bass".into());
+        }
         if self.arc.is_some() {
             claim("arc", "arc".into());
         }
@@ -282,6 +295,9 @@ impl SessionVariant {
         }
         if self.density.is_some() {
             claim("density", "density".into());
+        }
+        if self.percussion_density.is_some() {
+            claim("percussion_density", "percussion_density".into());
         }
         claims
     }
@@ -316,6 +332,8 @@ pub(crate) struct SessionBase {
     pub(crate) density: f32,
     pub(crate) comping: Vec<TagWeight>,
     pub(crate) percussion: Vec<TagWeight>,
+    pub(crate) bass: Vec<TagWeight>,
+    pub(crate) percussion_density: Option<u8>,
     pub(crate) neutral: ArcVariant,
 }
 
@@ -456,6 +474,57 @@ impl ProfileSession {
     /// Profil validé : aucune erreur possible.
     #[must_use]
     pub fn draw(&self, profile: &StyleProfile, seed: u64) -> SessionDraw {
+        self.draw_forced(profile, seed, &[])
+    }
+
+    /// Vérifie qu'une variante imposée (`index` dans `[[session.variants]]`) existe et
+    /// appartient au groupe `group`.
+    ///
+    /// # Errors
+    /// Indice hors de la liste ou variante d'un autre groupe.
+    pub fn check_forced(&self, group: &str, index: usize) -> Result<(), String> {
+        match self.variants.get(index) {
+            None => Err(format!(
+                "variante {index} inconnue : le profil en compte {}",
+                self.variants.len()
+            )),
+            Some(variant) if variant.group != group => Err(format!(
+                "la variante {index} est du groupe « {} », pas de « {group} »",
+                variant.group
+            )),
+            Some(_) => Ok(()),
+        }
+    }
+
+    /// Indice de la variante nommée `name` du groupe `group` (la première de ce nom).
+    ///
+    /// # Errors
+    /// Aucune variante de ce nom dans ce groupe ; le message liste les noms du groupe.
+    pub fn resolve_named(&self, group: &str, name: &str) -> Result<usize, String> {
+        let members = || self.variants.iter().enumerate().filter(|(_, v)| v.group == group);
+        members().find(|(_, v)| v.name == name).map(|(i, _)| i).ok_or_else(|| {
+            let names: Vec<&str> = members().map(|(_, v)| v.name.as_str()).collect();
+            if names.is_empty() {
+                format!("groupe « {group} » inconnu")
+            } else {
+                format!(
+                    "aucune variante « {name} » dans le groupe « {group} » : {}",
+                    names.join(", ")
+                )
+            }
+        })
+    }
+
+    /// Comme [`Self::draw`], avec des variantes imposées `(groupe, indice)` : le groupe garde la
+    /// variante imposée au lieu de tirer. Les flux de tirage sont dérivés du groupe : imposer
+    /// une variante ne déplace aucun autre tirage (tempo de plage compris).
+    #[must_use]
+    pub fn draw_forced(
+        &self,
+        profile: &StyleProfile,
+        seed: u64,
+        forced: &[(String, usize)],
+    ) -> SessionDraw {
         let mut draw = SessionDraw {
             seed,
             drawn: Vec::new(),
@@ -470,7 +539,12 @@ impl ProfileSession {
             base: None,
         };
         let (mut intensity, mut density) = (None, None);
-        let (mut comping, mut percussion): (Vec<TagWeight>, Vec<TagWeight>) = Default::default();
+        let mut percussion_density = None;
+        let (mut comping, mut percussion, mut bass): (
+            Vec<TagWeight>,
+            Vec<TagWeight>,
+            Vec<TagWeight>,
+        ) = Default::default();
         for (group_index, group) in self.groups().into_iter().enumerate() {
             let members: Vec<(usize, &SessionVariant)> = self
                 .variants
@@ -479,8 +553,13 @@ impl ProfileSession {
                 .filter(|(_, variant)| variant.group == group)
                 .collect();
             let weights: Vec<u32> = members.iter().map(|(_, variant)| variant.weight).collect();
-            let (index, variant) =
-                members[pick(&weights, mix(mix(seed, GROUP_STREAM), group_index as u64))];
+            let picked = pick(&weights, mix(mix(seed, GROUP_STREAM), group_index as u64));
+            let (index, variant) = forced
+                .iter()
+                .rev()
+                .find(|(name, _)| name == group)
+                .and_then(|(_, index)| members.iter().copied().find(|(i, _)| i == index))
+                .unwrap_or(members[picked]);
             draw.drawn.push(DrawnVariant {
                 group: group.to_owned(),
                 index,
@@ -518,17 +597,28 @@ impl ProfileSession {
             if !variant.percussion.is_empty() {
                 percussion.clone_from(&variant.percussion);
             }
+            if !variant.bass.is_empty() {
+                bass.clone_from(&variant.bass);
+            }
             draw.arc = variant.arc.clone().or(draw.arc);
             intensity = variant.intensity.or(intensity);
             density = variant.density.or(density);
+            percussion_density = variant.percussion_density.or(percussion_density);
         }
-        if intensity.is_some() || density.is_some() || !comping.is_empty() || !percussion.is_empty()
+        if intensity.is_some()
+            || density.is_some()
+            || !comping.is_empty()
+            || !percussion.is_empty()
+            || !bass.is_empty()
+            || percussion_density.is_some()
         {
             draw.base = Some(SessionBase {
                 intensity: intensity.unwrap_or(1.0),
                 density: density.unwrap_or(1.0),
                 comping,
                 percussion,
+                bass,
+                percussion_density,
                 neutral: ArcVariant::default(),
             });
         }
@@ -646,6 +736,7 @@ impl ProfileSession {
             }
             validate_tags(profile, &field, "comping", &variant.comping)?;
             validate_tags(profile, &field, "percussion", &variant.percussion)?;
+            validate_tags(profile, &field, "bass", &variant.bass)?;
             if let Some(arc) = &variant.arc {
                 require(
                     self.arcs.contains_key(arc),
@@ -653,6 +744,11 @@ impl ProfileSession {
                     "arc inconnu dans session.arcs",
                 )?;
             }
+            require(
+                variant.percussion_density.is_none_or(|level| level <= 2),
+                format!("{field}.percussion_density"),
+                "niveau de densité dans 0..2 requis",
+            )?;
             for (name, value) in [("intensity", variant.intensity), ("density", variant.density)] {
                 require(
                     value.is_none_or(|value| value.is_finite() && (0.0..=2.0).contains(&value)),

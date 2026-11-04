@@ -207,7 +207,7 @@ repeat_from = 1
 [[arcs.deux_temps_long.stages]]
 choruses = 2
 variants = [
-  { weight = 3, intensity = 0.65, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 2 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 3, intensity = 0.65, density = 0.5, bass_feel = "three_feel", comping = [{ tag = "sparse", weight = 2 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
   { weight = 1, intensity = 0.8, density = 0.7, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "ride" }] },
 ]
 [[arcs.deux_temps_long.stages]]
@@ -218,7 +218,7 @@ variants = [
 [[arcs.deux_temps_long.fall]]
 intensity = 0.5
 density = 0.4
-bass_feel = "two_feel"
+bass_feel = "three_feel"
 comping = [{ tag = "sparse" }]
 percussion = [{ tag = "hat" }]
 breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

@@ -393,6 +393,10 @@ pub(crate) fn candidates(
     color: Color,
 ) -> Option<impl Iterator<Item = Voicing>> {
     let quality = quality_of(chord)?;
+    // Une dyade sans tierce ni septième n'a pas de voicing de comping : voicing serré.
+    if quality.chord_type() == ChordType::Power {
+        return None;
+    }
     let mut shapes = match kind {
         ChordVoicing::CloseTriad | ChordVoicing::FixedTriad => return None,
         ChordVoicing::GuideTones => guide_shapes(quality, color),

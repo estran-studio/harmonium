@@ -61,6 +61,7 @@ pub fn parse_command(line: &str) -> Result<EngineCommand> {
         "style" => parse_style_command(&tokens[1..]),
         "percussion" => parse_percussion_command(&tokens[1..]),
         "intensity" => parse_intensity_command(&tokens[1..]),
+        "variant" => parse_variant_command(&tokens[1..]),
 
         _ => Err(anyhow!("Unknown command: {}. Type 'help' for available commands.", tokens[0])),
     }
@@ -287,6 +288,21 @@ fn parse_percussion_command(tokens: &[&str]) -> Result<EngineCommand> {
     Ok(EngineCommand::SetPercussionDensity(density))
 }
 
+/// Parse `variant <groupe> <indice>` (impose une variante de session) ou `variant clear`.
+fn parse_variant_command(tokens: &[&str]) -> Result<EngineCommand> {
+    match tokens {
+        ["clear"] => Ok(EngineCommand::ClearSessionVariants),
+        [group, variant] => Ok(match variant.parse::<usize>() {
+            Ok(index) => EngineCommand::ForceSessionVariant { group: (*group).to_owned(), index },
+            Err(_) => EngineCommand::ForceSessionVariantNamed {
+                group: (*group).to_owned(),
+                name: (*variant).to_owned(),
+            },
+        }),
+        _ => Err(anyhow!("Usage: variant <groupe> <indice|nom> | variant clear")),
+    }
+}
+
 /// Parse `intensity <0..1>`.
 fn parse_intensity_command(tokens: &[&str]) -> Result<EngineCommand> {
     if tokens.len() != 1 {
@@ -457,6 +473,23 @@ mod tests {
         assert!(parse_command("percussion").is_err());
         assert!(parse_command("percussion 3").is_err());
         assert!(parse_command("percussion dense").is_err());
+    }
+
+    #[test]
+    fn test_parse_variant() {
+        assert_eq!(
+            parse_command("variant kit 3").ok(),
+            Some(EngineCommand::ForceSessionVariant { group: "kit".into(), index: 3 })
+        );
+        assert_eq!(parse_command("variant clear").ok(), Some(EngineCommand::ClearSessionVariants));
+        assert!(parse_command("variant kit").is_err());
+        assert_eq!(
+            parse_command("variant kit balais").ok(),
+            Some(EngineCommand::ForceSessionVariantNamed {
+                group: "kit".into(),
+                name: "balais".into()
+            })
+        );
     }
 
     #[test]

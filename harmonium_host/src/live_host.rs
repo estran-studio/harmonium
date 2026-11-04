@@ -404,6 +404,18 @@ impl LiveHost {
                 self.composer.set_seed(seed);
                 self.restart_session()
             }
+            EngineCommand::ForceSessionVariant { group, index } => {
+                self.composer.force_session_variant(&group, index)?;
+                self.restart_session()
+            }
+            EngineCommand::ForceSessionVariantNamed { group, name } => {
+                self.composer.force_session_variant_named(&group, &name)?;
+                self.restart_session()
+            }
+            EngineCommand::ClearSessionVariants => {
+                self.composer.clear_session_variants();
+                self.restart_session()
+            }
             EngineCommand::NewMelody => {
                 self.composer.new_melody();
                 self.restart_session()

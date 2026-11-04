@@ -471,6 +471,10 @@ pub struct PedalAlternative {
 pub struct ChordLoop {
     #[serde(default = "default_loop_weight")]
     pub weight: u32,
+    /// Modes où la boucle concourt (celui de l'air, tiré ou non) ; vide : tous. Si aucune
+    /// alternative de la partie ne convient au mode, toutes concourent.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modes: Vec<Mode>,
     pub chords: Vec<LoopChord>,
 }
 fn default_loop_weight() -> u32 {
@@ -490,6 +494,9 @@ fn is_unit_weight(weight: &u32) -> bool {
 pub struct GeneratedLoop {
     #[serde(default = "default_loop_weight")]
     pub weight: u32,
+    /// Modes où la boucle concourt ; vide : tous (voir [`ChordLoop::modes`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modes: Vec<Mode>,
     /// Longueur de la boucle en mesures, diviseur de la longueur de la partie (omise : la
     /// partie entière, sans répétition).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -604,8 +611,20 @@ pub struct ProfileHarmony {
     pub max_recursion: u8,
     #[serde(default)]
     pub scale_guidance: bool,
+    /// Nombre de tirages harmoniques distincts qui se suivent d'un chorus à l'autre (`1..=16`) :
+    /// le chorus `n` joue le tirage `n mod tour_variants` (le premier est celui de l'air, les
+    /// autres tirent leurs boucles, pédales et boucles générées avec une graine dérivée).
+    /// Par défaut 1 : une seule harmonie, répétée à chaque chorus. Modèle `loop` seulement.
+    #[serde(default = "default_tour_variants", skip_serializing_if = "is_one")]
+    pub tour_variants: u8,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parts: BTreeMap<String, HarmonyPart>,
+}
+const fn default_tour_variants() -> u8 {
+    1
+}
+fn is_one(value: &u8) -> bool {
+    *value == 1
 }
 impl ProfileHarmony {
     /// Une alternative unique ne requiert aucune graine ni aucun tirage.

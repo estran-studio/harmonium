@@ -189,13 +189,13 @@ lisent (pas `close_triad`).
 
 Entre graines : une des quatre boucles de chaque partie (A et B), un des motifs de basse d'un plan de motifs par air, les rythmes et phrases de comping, les groupes de batterie et leurs phrases, les relances. Entre chorus d'une graine : l'arc (exposition, corps, sommet, retombée) change le comping, la batterie (charleston puis ride) et l'intensité ; les breaks et stop-time sont tirés par chorus.
 
-Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `resumer_variete.py`) :
+Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `resumer_variete.py`) ; accords et basse **après A7** (`tour_variants = 4` : un tirage de grille par chorus, accords pleins ou de puissance ; motifs de basse étiquetés `sparse` / `medium` / `dense` que l'arc restreint, plan de basse tiré à chaque chorus ; avant A7 : accords 0 % changés d'un chorus au suivant, basse 6 %, 9 suites d'accords distinctes sur 16 graines) :
 
 | Couche | Mesures changées d'un chorus au suivant | Paires de chorus identiques | Chorus distincts / graine | Suites distinctes (16 graines) | Distance graduée entre graines |
 |---|---:|---:|---:|---:|---:|
-| accompagnement | 98% | 0% | 4.0 | 16 / 16 | 65% |
-| accords | 0% | 100% | 1.0 | 9 / 16 | 58% |
-| basse | 2% | 50% | 1.88 | 16 / 16 | 89% |
+| accompagnement | 100% | 0% | 4.0 | 16 / 16 | 70% |
+| accords | 81% | 2% | 3.9 | 16 / 16 | 79% |
+| basse | 72% | 3% | 3.8 | 16 / 16 | 89% |
 | batterie | 91% | 0% | 4.0 | 16 / 16 | 58% |
 | comping : rythme | 77% | 0% | 3.94 | 16 / 16 | 33% |
 | comping : voicings | 89% | 0% | 4.0 | 16 / 16 | 89% |
@@ -218,17 +218,16 @@ Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `re
 
 ## Limites
 
-- **Accords de puissance** : le schéma n'a pas de qualité « 5 » (fondamentale et quinte) ; la guitare joue des triades majeures et mineures doublées à l'octave.
+- **Accords de puissance** (A7) : la moitié des grilles tirables est écrite en qualité « 5 » (fondamentale, quinte, octave) ; l'autre moitié garde les triades. Poids de métier, sans corpus.
 - Le rock du GMD est joué majoritairement au ride et à la charleston fermée en croches ; les groupes de toms seuls (sans timekeeper) sont écartés.
 - **Basse et comping : règles de métier**, jugées à l'écoute seulement (D5 : aucune écoute exigée ; des preuves chiffrées,
   compte rendu `specs/019-bibliotheque-accompagnements/b8-profils-gmd.md`). WJazzD ne mesure que la basse du jazz ; aucun corpus distribuable de
   voicings ni de rythmes de comping (décision F3).
 - **Batterie** : kit électronique Roland TD-11, dix batteurs en tout ; les vélocités et le micro-timing sont ceux du
   kit (niveaux recalés au kit de rendu). Un groupe de peu de fichiers décrit un batteur, pas un style (L2 § 4.1).
-- **Manques du schéma** (comptes rendus B8 et R2-styles) : accords de puissance (« 5 »), options de basse d'A4
-  (`walking.*` : notes fantômes, croches, notes répétées, arrivée) exclusives de `motifs` et de `templates` donc
-  inutilisables avec des riffs, feel de basse et étiquettes d'arc pour les motifs de basse (`bass_feel` exige la marche),
-  groupes de session indépendants (un kit « power » avec un tempo lent n'est pas exclu), boucle de grille fixe par air.
+- **Manques du schéma restants** (A7, `specs/019-bibliotheque-accompagnements/a7-manques-schema.md`) : options de basse d'A4
+  (`walking.*` : notes fantômes, croches, notes répétées, arrivée) toujours exclusives de `motifs` et de `templates` donc
+  inutilisables avec des riffs ; groupes de session indépendants (un kit « power » avec un tempo lent n'est pas exclu).
 
 ## Régénérer
 

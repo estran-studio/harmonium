@@ -559,6 +559,40 @@ impl MusicComposer {
         self.seek(1);
     }
 
+    /// Impose la variante `index` de `[[session.variants]]` au groupe `group` (« les balais,
+    /// quelle que soit la graine ») et rejoue depuis la mesure 1 : les autres groupes gardent
+    /// le tirage de la graine.
+    ///
+    /// # Errors
+    /// Indice inconnu, ou variante d'un autre groupe.
+    pub fn force_session_variant(&mut self, group: &str, index: usize) -> Result<(), String> {
+        self.generator.force_session_variant(group, index)?;
+        self.writehead.reset();
+        self.clear_staged();
+        self.seek(1);
+        Ok(())
+    }
+
+    /// Comme [`Self::force_session_variant`], par nom de variante.
+    ///
+    /// # Errors
+    /// Nom inconnu dans le groupe.
+    pub fn force_session_variant_named(&mut self, group: &str, name: &str) -> Result<(), String> {
+        self.generator.force_session_variant_named(group, name)?;
+        self.writehead.reset();
+        self.clear_staged();
+        self.seek(1);
+        Ok(())
+    }
+
+    /// Rend tous les groupes au tirage de la graine et rejoue depuis la mesure 1.
+    pub fn clear_session_variants(&mut self) {
+        self.generator.clear_forced_session_variants();
+        self.writehead.reset();
+        self.clear_staged();
+        self.seek(1);
+    }
+
     /// Get the current session seed.
     pub fn session_seed(&self) -> u64 {
         self.session_seed
