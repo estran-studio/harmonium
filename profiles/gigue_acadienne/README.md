@@ -121,3 +121,24 @@ d'arrangement à écouter, pas un taux d'hétérophonie mesuré dans le corpus m
 55 airs d'une seule source (The Session) : positions de mesure, taux par mesure et secondes fins reposent sur de petits effectifs
 (B : 36 secondes fins, A : 48). Aucun ornement `turn`, `chord` ni trille mesuré dans ce type : désactivés. Les tailles de l'échantillon
 interdisent de conclure sur la tradition acadienne dans son ensemble.
+
+## Habillage par graine (019, R2-trad)
+
+`session.toml` : une graine tire un habillage dans les bornes de la tradition, sans toucher aux airs (cellules, rôles, formes et ornements sont ceux du profil ; seule leur réalisation varie). 3 × 6 × 3 × 4 × 3 × 2 × 3 × 3 × 3 × 4 = 139 968 habillages possibles.
+
+| Groupe | Variantes (poids) | Source |
+|---|---|---|
+| `tempo` | pose 168–175, moyen 176–184, vif 185–192 BPM | sous-plages de `meter.min_bpm..max_bpm` (168–192) |
+| `tonalite` | ré ionien (6), sol ionien (5), la ionien (5), do ionien (2), mi dorien (2), la dorien (1) | `melody.key_modes` du profil et tonalités courantes des airs de violon de la tradition |
+| `melodie` | violon (40 / 40), fiddle (110 / 40), accordeon (21 / 40) | métier : instrument de mélodie (et de contre-mélodie) |
+| `comping` | piano (0), piano_bastringue (3), guitare_nylon (24), guitare_acier (25) | métier : piano en « vamp » ou guitare |
+| `basse` | piano (0), contrebasse (32), basse_doigts (33) | métier |
+| `voicing` | `close_triad` (3), `fixed_triad` (2) | triades simples seulement |
+| `registre` | normal (5), haut (1), grave (1) : octave des accords | métier |
+| `energie` | doux 0,85 (1), normal (2), fort 1,12 (1) : multiplicateur d'intensité | métier |
+| `pieds` | discrets 0,8 (1), normal (2), fournis 1,2 (1) : multiplicateur de densité des pieds (podorythmie, `harmonium_trad.sf2`) | métier |
+| `arc` | `defaut` (2), `montee` (3), `sommet` (3), `orchestre` (2) | arcs nommés sur les tours d'un air (un chorus = un tour) |
+
+Arcs nommés (chaque arc reprend à son début à chaque air d'un set ; le dernier tour du set se détache) : `defaut` laisse l'énergie plate ; `montee` (0,8 → 0,95 → 1,1) ; `sommet` (deux tours posés, un sommet à 1,2) ; `orchestre` (exposition à une guitare ou un piano plus doux, sommet à un autre comping et une autre basse) ; le dernier tour du set monte à 1,25 ou 1,3 (`fall`). Sans `fall` (set sans fin), le dernier chorus n'est pas détaché.
+
+L'hôte garde la main : `SetBpm`, `SetSwing` et `[fixed_tonality]` (grille de training) gagnent sur la variante. Les valeurs ci-dessus sont des règles de métier de la tradition, à valider à l'oreille ; aucune n'est mesurée.

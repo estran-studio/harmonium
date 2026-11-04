@@ -175,3 +175,22 @@ documente le couple fifre/tambour par compagnie : doubler le fifre représente
 le rassemblement des compagnies, pas un deuxième musicien obligé dans chaque compagnie.
 Neutre : section absente. [Schéma commun](../README.md#hétérophonie).
 
+## Habillage par graine (019, R2-trad)
+
+`session.toml` : une graine tire un habillage dans les bornes de la tradition, sans toucher aux airs (cellules, rôles, formes et ornements sont ceux du profil ; seule leur réalisation varie). 3 × 6 × 4 × 3 × 3 × 3 × 3 = 5 832 habillages possibles.
+
+| Groupe | Variantes (poids) | Source |
+|---|---|---|
+| `tempo` | pas_lent 90–100, pas_ordinaire 101–116, pas_rapide 117–126 BPM | sous-plages de `meter.min_bpm..max_bpm` (90–126) |
+| `tonalite` | ré ionien (6), sol ionien (6), la ionien (2), ré éolien (2), do ionien (2), fa ionien (1) | `melody.key_modes` du profil et tonalités courantes des airs de violon de la tradition |
+| `melodie` | piccolo (72 / 72), flute (73 / 73), clarinette (71 / 71), trompette (56 / 56) | métier : instrument de mélodie (et de contre-mélodie) |
+| `kit` | standard (0), room (8), power (16) | kits de GeneralUser GS, banque 128 |
+| `energie` | doux 0,85 (1), normal (2), fort 1,12 (1) : multiplicateur d'intensité | métier |
+| `pieds` | discrets 0,8 (1), normal (2), fournis 1,2 (1) : multiplicateur de densité des caisses (marche) | métier |
+| `arc` | `defaut` (2), `montee` (3), `sommet` (3) | arcs nommés sur les tours d'un air (un chorus = un tour) |
+
+Arcs nommés (chaque arc reprend à son début à chaque air d'un set ; le dernier tour du set se détache) : `defaut` laisse l'énergie plate ; `montee` (0,8 → 0,95 → 1,1) ; `sommet` (deux tours posés, un sommet à 1,2) ; le dernier tour du set monte à 1,25 ou 1,3 (`fall`). Sans `fall` (set sans fin), le dernier chorus n'est pas détaché.
+
+La marche n'a pas d'accompagnement : l'habillage ne porte que la mélodie (fifre, flûte), le kit de la caisse claire et de la grosse caisse, le tempo, la tonalité, l'énergie et l'arc.
+
+L'hôte garde la main : `SetBpm`, `SetSwing` et `[fixed_tonality]` (grille de training) gagnent sur la variante. Les valeurs ci-dessus sont des règles de métier de la tradition, à valider à l'oreille ; aucune n'est mesurée.

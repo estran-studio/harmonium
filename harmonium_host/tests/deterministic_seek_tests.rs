@@ -190,7 +190,13 @@ fn invalidate_future_after_generation_keeps_playhead_bar() {
         Some(2),
         "regeneration starts after the playhead bar"
     );
-    assert_eq!(before[0].tempo, 230.0, "bar 1 kept the default profile's original tempo");
+    let profile = composer.profile().clone();
+    assert!(
+        (profile.meter.min_bpm..=profile.meter.max_bpm).contains(&before[0].tempo)
+            && (before[0].tempo - 150.0).abs() > f32::EPSILON,
+        "bar 1 kept the tempo the session drew, not the new one: {}",
+        before[0].tempo
+    );
     assert!(
         after.iter().all(|m| (m.tempo - 150.0).abs() < f32::EPSILON),
         "regenerated bars use the new tempo"

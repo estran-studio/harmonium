@@ -35,6 +35,8 @@ fn each_emotion_changes_the_next_bar_without_touching_current_bar_or_pulse() -> 
         composer.set_tuning(TuningParams {
             profile: {
                 let mut p = TuningParams::default().profile;
+                // Tempo nominal du profil (230 BPM) : sans l'habillage par graine de R2-trad.
+                p.session = Default::default();
                 p.arrangement = Arrangement::from_start(3, Default::default());
                 p
             },
@@ -144,6 +146,7 @@ fn emotion_mapping_reads_style_tempo_data_and_preserves_runtime_contract() -> Re
         create_offline_engine(None, None, &[], 44100.0)?;
 
     let mut tuning = TuningParams::default();
+    tuning.profile.session = Default::default();
     tuning.profile.meter.default_bpm = 250.0;
     composer.set_tuning(tuning);
     composer.set_swing_ratio(0.61);

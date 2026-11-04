@@ -10,12 +10,15 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : R2-styles (019, 29) habille les neuf profils `gmd_*` par graine
+/// Version du contrat : R2-trad (019, 31) habille par graine les dix profils trad (tempo dans
+/// la plage de la tradition, tonalité, instrument de mélodie, comping, basse, voicings de
+/// triade, registre, énergie, pieds, kit, arcs sur les tours d'un air ; les airs ne changent
+/// pas). R2-styles (29) habille les neuf profils `gmd_*` par graine
 /// (tempo, tonalité, programmes, kit, voicings, registre, énergie, arcs) et active le
 /// micro-timing par voix et les coups probabilistes. S0 (26) tire la graine d'accompagnement
 /// une fois par air après la mélodie ; R1 (25) intègre P1/P2 aux profils `nt_desert`,
 /// `isaac_basement`, `isaac_burning` et `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 29;
+pub const TUNING_VERSION: u32 = 31;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
