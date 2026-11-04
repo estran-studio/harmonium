@@ -1,0 +1,33 @@
+# Courbes de service ; aucun lien émotion/style mesuré. Le tempo ne bouge pas avec l'arousal : il est celui de la session
+# (105 à 128, plage mesurée) ; les vélocités par piste sont élargies (0,6 à 1,3) pour que l'arc s'entende.
+# Aucune bascule de mode : le mode tiré n'est qu'une étiquette (les accords s'écrivent relatifs à la tonique).
+neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
+mode_shift_boundary = "part"
+dark_below = 0.1
+bright_above = 0.9
+parallel_modes = [{ bright = "ionian", dark = "aeolian", weight = 1 }]
+arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
+tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, 0.0], [1.0, 0.0]]
+melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
+chords_velocity = [[0.0, 0.65], [0.5, 1.0], [1.0, 1.3]]
+bass_velocity = [[0.0, 0.75], [0.5, 1.0], [1.0, 1.2]]
+percussion_velocity = [[0.0, 0.6], [0.5, 1.0], [1.0, 1.3]]
+percussion_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+melody_duration = [[0.0, 1.0], [1.0, 1.0]]
+strong_accent = [[0.0, 0.0], [1.0, 0.0]]
+chords_intensity = [[0.0, 0.0], [1.0, 0.0]]
+run_weight = [[0.0, 1.0], [1.0, 1.0]]
+arp_weight = [[0.0, 1.0], [1.0, 1.0]]
+turn_weight = [[0.0, 1.0], [1.0, 1.0]]
+color_register = [[0.0, 0.0], [1.0, 0.0]]
+brightness_accent = [[0.0, 0.0], [1.0, 0.0]]
+density_percussion = [[0.0, 0.0], [1.0, 0.0]]
+density_chords = [[0.0, 0.0], [1.0, 0.0]]
+density_tracks = []
+tension_offbeat = [[0.0, 0.0], [1.0, 0.0]]
+tension_duration = [[0.0, 1.0], [1.0, 1.0]]
+tension_dominant = [[0.0, 0.0], [1.0, 0.0]]
+tension_chord_duration = [[0.0, 1.0], [1.0, 1.0]]
+color = [{ key = 0, mode = "ionian", weight = [[0.0, 1.0], [1.0, 1.0]] }]
