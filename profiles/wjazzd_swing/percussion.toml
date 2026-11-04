@@ -1,24 +1,43 @@
-# Batterie du profil `wjazzd_swing` (E7) : GENÉRÉ par `python -m harmonium_lab.backing.engine_values
-# --percussion` depuis `references/wjazzd-swing/measures-drums.json` (Groove MIDI Dataset v1.0.0,
-# CC BY 4.0, Gillick et al., ICML 2019 : jazz et jazz/swing, 4/4, mesures `beat` et `fill`).
-# Chaque pattern est construit sur les probabilités PAR PAS d'un groupe de mesures de même figure
-# de ride ramenées à la grille 16 pas swinguée ; aucun n'est une mesure d'un enregistrement.
-# Voix : ride (51) et charleston pédale (44), caisse claire (38), tom (43) sur PercussionHigh,
-# grosse caisse (36) sur PercussionLow ; kit jazz de GeneralUser GS (banque 128, programme 32).
-# Poids = effectif de mesures du groupe. Densité 0 : ride ; 1 : + pédale 2 et 4 ; 2 : + caisse
-# claire (ghost notes) et grosse caisse. Relance de la mesure de fin de phrase : mesures `fill`
-# (seule cadence de densité 2).
+# Batterie du profil `wjazzd_swing` (phase 019, B1) : GÉNÉRÉ par
+# `specs/019-bibliotheque-accompagnements/b1/batterie_jazz.py` (relancer le script le réécrit).
+#
+# Source : Groove MIDI Dataset v1.0.0 (Google LLC), CC BY 4.0, Gillick, Roberts, Engel, Eck, Bamman, ICML 2019 ;
+# styles `jazz` et `jazz/swing`, 4/4 : 33 fichiers `beat` (5 batteurs, 1229 mesures entières),
+# 22 fichiers `fill` (une mesure, 1 batteur). Aucune mesure d'un enregistrement n'est copiée : chaque coup est un
+# (rôle, pas) dont la probabilité par pas dans un groupe de mesures atteint le seuil de sa densité (0,5 ; 0,25 pour la
+# grosse caisse, la caisse claire et les relances).
+#
+# MESURÉ (GMD) :
+# - patterns : un par figure de ride (spang-a-lang `0,4,6,8,12,14`, partiel, orné, ride aux noires plus), densités 0 à 2 ;
+#   étiquette `spang` ou `quarters` (la figure) ; poids = effectif de mesures du groupe ;
+# - phrases : suites de figures sur 2 et 4 mesures alignées sur le début du fichier (10 mesurées : ≥ 3 occurrences
+#   dans ≥ 2 fichiers, ≥ 2 si la suite change de figure) ;
+# - relances : une mesure entière (tous les fichiers `fill` du GMD couvrent la mesure depuis le pas 0), copiées par
+#   étiquette d'arc (les relances sont filtrées par étiquette) ;
+#
+# RÈGLES DE MÉTIER (aucune mesure, le GMD ne contient aucun jeu aux balais ni la fréquence des relances) :
+# - relances en levée (`start_step` 8 et 12) : la relance mesurée tronquée au pas de départ, à la moitié de son poids ;
+# - patterns et phrases `brush` (balais : balayage `swirl` = touche 40 « Jazz Brushed Snare », tape = touche 38 du
+#   kit 40) ;
+# - 4 phrases `quarters` : ride aux noires avec réponse en spang-a-lang (les suites mesurées mélangent les figures sous `spang`) ;
+# - `fills_none_weight = 30` : part de fins de phrase sans relance (≈ 40 %), non mesurée.
+#
+# Voix : ride (51), pédale (44), caisse claire (38), tom (43) sur PercussionHigh, grosse caisse (36) sur PercussionLow,
+# balayage (40) et tape (38). Densité 0 : timekeeper ; 1 : + pédale aux temps 2 et 4 ; 2 : + caisse claire fantôme et grosse
+# caisse. Niveaux de voix : `engine_values.ROLE_GAIN` (kit jazz de GeneralUser GS, banque 128).
+
 low_note = 36
 high_note = 51
 low_velocity = 64
 high_velocity = 64
 percussion_gain = 1.0
 velocity_humanize = 3
+fills_none_weight = 30
 
 [[voices]]
 name = "kick"
 note = 36
-velocity = 34
+velocity = 32
 track = "PercussionLow"
 
 [[voices]]
@@ -36,7 +55,7 @@ track = "PercussionHigh"
 [[voices]]
 name = "snare"
 note = 38
-velocity = 23
+velocity = 22
 track = "PercussionHigh"
 
 [[voices]]
@@ -45,8 +64,22 @@ note = 43
 velocity = 40
 track = "PercussionHigh"
 
+[[voices]]
+name = "swirl"
+note = 40
+velocity = 64
+track = "PercussionHigh"
+
+[[voices]]
+name = "tap"
+note = 38
+velocity = 52
+track = "PercussionHigh"
+
+# 0 : beat:spang_a_lang, beat:spang_partial (GMD, 11 fichiers)
 [[patterns]]
 density = 0
+tag = "spang"
 weight = 300
 hits = [
   { step = 0, voice = "ride", delta_velocity = -5 },
@@ -57,8 +90,10 @@ hits = [
   { step = 14, voice = "ride", delta_velocity = -9 },
 ]
 
+# 1 : beat:quarters_plus (GMD, 12 fichiers)
 [[patterns]]
 density = 0
+tag = "quarters"
 weight = 73
 hits = [
   { step = 0, voice = "ride", delta_velocity = -6 },
@@ -67,8 +102,10 @@ hits = [
   { step = 12, voice = "ride", delta_velocity = 3 },
 ]
 
+# 2 : beat:spang_a_lang_ornamented (GMD, 11 fichiers)
 [[patterns]]
 density = 0
+tag = "spang"
 weight = 30
 hits = [
   { step = 0, voice = "ride", delta_velocity = 19 },
@@ -82,8 +119,10 @@ hits = [
   { step = 15, voice = "ride", delta_velocity = -12 },
 ]
 
+# 3 : beat:spang_partial (GMD, 14 fichiers)
 [[patterns]]
 density = 1
+tag = "spang"
 weight = 154
 hits = [
   { step = 0, voice = "ride" },
@@ -94,8 +133,10 @@ hits = [
   { step = 14, voice = "ride", delta_velocity = -12 },
 ]
 
+# 4 : beat:spang_a_lang (GMD, 11 fichiers)
 [[patterns]]
 density = 1
+tag = "spang"
 weight = 146
 hits = [
   { step = 0, voice = "ride", delta_velocity = -5 },
@@ -108,8 +149,10 @@ hits = [
   { step = 14, voice = "ride", delta_velocity = -9 },
 ]
 
+# 5 : beat:quarters_plus (GMD, 12 fichiers)
 [[patterns]]
 density = 1
+tag = "quarters"
 weight = 73
 hits = [
   { step = 0, voice = "ride", delta_velocity = -6 },
@@ -120,8 +163,10 @@ hits = [
   { step = 12, voice = "ride", delta_velocity = 3 },
 ]
 
+# 6 : beat:spang_a_lang_ornamented (GMD, 11 fichiers)
 [[patterns]]
 density = 1
+tag = "spang"
 weight = 30
 hits = [
   { step = 0, voice = "ride", delta_velocity = 19 },
@@ -135,8 +180,10 @@ hits = [
   { step = 15, voice = "ride", delta_velocity = -12 },
 ]
 
+# 7 : beat:spang_partial (GMD, 14 fichiers)
 [[patterns]]
 density = 2
+tag = "spang"
 weight = 154
 hits = [
   { step = 0, voice = "kick", delta_velocity = -4 },
@@ -151,8 +198,10 @@ hits = [
   { step = 14, voice = "snare", delta_velocity = -9 },
 ]
 
+# 8 : beat:spang_a_lang (GMD, 11 fichiers)
 [[patterns]]
 density = 2
+tag = "spang"
 weight = 146
 hits = [
   { step = 0, voice = "kick", delta_velocity = -10 },
@@ -167,8 +216,10 @@ hits = [
   { step = 14, voice = "ride", delta_velocity = -9 },
 ]
 
+# 9 : beat:quarters_plus (GMD, 12 fichiers)
 [[patterns]]
 density = 2
+tag = "quarters"
 weight = 73
 hits = [
   { step = 0, voice = "kick", delta_velocity = -1 },
@@ -183,31 +234,491 @@ hits = [
   { step = 14, voice = "snare" },
 ]
 
+# 10 : beat:spang_a_lang_ornamented (GMD, 11 fichiers)
 [[patterns]]
 density = 2
+tag = "spang"
 weight = 30
 hits = [
   { step = 0, voice = "kick", delta_velocity = -8 },
   { step = 0, voice = "ride", delta_velocity = 19 },
   { step = 2, voice = "ride", delta_velocity = -19 },
-  { step = 4, voice = "kick", delta_velocity = -10 },
+  { step = 4, voice = "kick", delta_velocity = -9 },
   { step = 4, voice = "ride", delta_velocity = 23 },
   { step = 6, voice = "ride", delta_velocity = -12 },
-  { step = 8, voice = "kick", delta_velocity = -11 },
+  { step = 8, voice = "kick", delta_velocity = -10 },
   { step = 8, voice = "ride", delta_velocity = 14 },
   { step = 10, voice = "ride", delta_velocity = -18 },
-  { step = 12, voice = "kick", delta_velocity = -11 },
+  { step = 12, voice = "kick", delta_velocity = -10 },
   { step = 12, voice = "ride", delta_velocity = 18 },
   { step = 14, voice = "ride", delta_velocity = -12 },
   { step = 15, voice = "ride", delta_velocity = -12 },
 ]
 
-[[cadence_patterns]]
-density = 2
+# 11 : balais, figure a, densité 0 (règle de métier)
+[[patterns]]
+density = 0
+tag = "brush"
+weight = 3
 hits = [
-  { step = 0, voice = "snare", delta_velocity = 12 },
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "swirl", delta_velocity = 6 },
+  { step = 6, voice = "tap", delta_velocity = -4 },
+  { step = 8, voice = "swirl" },
+  { step = 12, voice = "swirl", delta_velocity = 6 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+# 12 : balais, figure a, densité 1 (règle de métier)
+[[patterns]]
+density = 1
+tag = "brush"
+weight = 3
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "swirl", delta_velocity = 6 },
+  { step = 4, voice = "pedal" },
+  { step = 6, voice = "tap", delta_velocity = -4 },
+  { step = 8, voice = "swirl" },
+  { step = 12, voice = "swirl", delta_velocity = 6 },
+  { step = 12, voice = "pedal" },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+# 13 : balais, figure a, densité 2 (règle de métier)
+[[patterns]]
+density = 2
+tag = "brush"
+weight = 3
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -14 },
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "swirl", delta_velocity = 6 },
+  { step = 4, voice = "pedal" },
+  { step = 6, voice = "tap", delta_velocity = -4 },
+  { step = 8, voice = "swirl" },
+  { step = 10, voice = "tap", delta_velocity = -12 },
+  { step = 12, voice = "swirl", delta_velocity = 6 },
+  { step = 12, voice = "pedal" },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+# 14 : balais, figure b, densité 0 (règle de métier)
+[[patterns]]
+density = 0
+tag = "brush"
+weight = 2
+hits = [
+  { step = 0, voice = "swirl", delta_velocity = 4 },
+  { step = 4, voice = "tap" },
+  { step = 6, voice = "tap", delta_velocity = -6 },
+  { step = 8, voice = "swirl", delta_velocity = 4 },
+  { step = 12, voice = "tap" },
+  { step = 14, voice = "tap", delta_velocity = -6 },
+]
+
+# 15 : balais, figure b, densité 1 (règle de métier)
+[[patterns]]
+density = 1
+tag = "brush"
+weight = 2
+hits = [
+  { step = 0, voice = "swirl", delta_velocity = 4 },
+  { step = 4, voice = "tap" },
+  { step = 4, voice = "pedal" },
+  { step = 6, voice = "tap", delta_velocity = -6 },
+  { step = 8, voice = "swirl", delta_velocity = 4 },
+  { step = 12, voice = "tap" },
+  { step = 12, voice = "pedal" },
+  { step = 14, voice = "tap", delta_velocity = -6 },
+]
+
+# 16 : balais, figure b, densité 2 (règle de métier)
+[[patterns]]
+density = 2
+tag = "brush"
+weight = 2
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -14 },
+  { step = 0, voice = "swirl", delta_velocity = 4 },
+  { step = 4, voice = "tap" },
+  { step = 4, voice = "pedal" },
+  { step = 6, voice = "tap", delta_velocity = -6 },
+  { step = 8, voice = "swirl", delta_velocity = 4 },
+  { step = 12, voice = "tap" },
+  { step = 12, voice = "pedal" },
+  { step = 14, voice = "tap", delta_velocity = -6 },
+  { step = 15, voice = "tap", delta_velocity = -16 },
+]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 39
+patterns = [0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 39
+patterns = [4, 4]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 39
+patterns = [8, 8]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 23
+patterns = [0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 23
+patterns = [4, 3]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 23
+patterns = [8, 7]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 22
+patterns = [0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 22
+patterns = [3, 3]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 22
+patterns = [7, 7]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 21
+patterns = [0, 1]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 21
+patterns = [3, 5]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 21
+patterns = [7, 9]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 4
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 4
+patterns = [4, 4, 4, 4]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 4
+patterns = [8, 8, 8, 8]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 3
+patterns = [0, 1, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 3
+patterns = [4, 5, 4, 3]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 3
+patterns = [8, 9, 8, 7]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 3
+patterns = [0, 0, 0, 1]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 3
+patterns = [4, 4, 4, 5]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 3
+patterns = [8, 8, 8, 9]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 3
+patterns = [0, 0, 0, 2]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 3
+patterns = [4, 4, 4, 6]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 3
+patterns = [8, 8, 8, 10]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 3
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 3
+patterns = [4, 4, 4, 3]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 3
+patterns = [8, 8, 8, 7]
+
+[[phrases]]
+density = 0
+tag = "spang"
+weight = 3
+patterns = [0, 1, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "spang"
+weight = 3
+patterns = [3, 5, 4, 3]
+
+[[phrases]]
+density = 2
+tag = "spang"
+weight = 3
+patterns = [7, 9, 8, 7]
+
+[[phrases]]
+density = 0
+tag = "quarters"
+weight = 3
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 1
+tag = "quarters"
+weight = 3
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 2
+tag = "quarters"
+weight = 3
+patterns = [9, 9, 9, 9]
+
+[[phrases]]
+density = 0
+tag = "quarters"
+weight = 2
+patterns = [1, 1, 1, 0]
+
+[[phrases]]
+density = 1
+tag = "quarters"
+weight = 2
+patterns = [5, 5, 5, 4]
+
+[[phrases]]
+density = 2
+tag = "quarters"
+weight = 2
+patterns = [9, 9, 9, 8]
+
+[[phrases]]
+density = 0
+tag = "quarters"
+weight = 2
+patterns = [1, 1]
+
+[[phrases]]
+density = 1
+tag = "quarters"
+weight = 2
+patterns = [5, 5]
+
+[[phrases]]
+density = 2
+tag = "quarters"
+weight = 2
+patterns = [9, 9]
+
+[[phrases]]
+density = 0
+tag = "quarters"
+weight = 1
+patterns = [1, 0, 1, 1]
+
+[[phrases]]
+density = 1
+tag = "quarters"
+weight = 1
+patterns = [5, 4, 5, 5]
+
+[[phrases]]
+density = 2
+tag = "quarters"
+weight = 1
+patterns = [9, 8, 9, 9]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 3
+patterns = [11, 11, 11, 11]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 3
+patterns = [12, 12, 12, 12]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 3
+patterns = [13, 13, 13, 13]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 11, 11, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 12, 12, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [13, 13, 13, 16]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 14, 11, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 15, 12, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [13, 16, 13, 16]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 1
+patterns = [14, 14, 14, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 1
+patterns = [15, 15, 15, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 1
+patterns = [16, 16, 16, 16]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [13, 16]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 11]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 12]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [13, 13]
+
+[[fills]]
+density = 1
+tag = "spang"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
   { step = 0, voice = "tom", delta_velocity = -2 },
-  { step = 1, voice = "snare", delta_velocity = -6 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
   { step = 1, voice = "tom", delta_velocity = -17 },
   { step = 2, voice = "kick", delta_velocity = -3 },
   { step = 2, voice = "snare", delta_velocity = -7 },
@@ -216,15 +727,328 @@ hits = [
   { step = 5, voice = "snare", delta_velocity = -3 },
   { step = 5, voice = "tom", delta_velocity = -11 },
   { step = 6, voice = "kick", delta_velocity = -1 },
-  { step = 6, voice = "snare", delta_velocity = 5 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
   { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
-  { step = 8, voice = "snare", delta_velocity = 8 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
   { step = 8, voice = "tom", delta_velocity = 7 },
   { step = 9, voice = "snare", delta_velocity = -1 },
   { step = 9, voice = "tom", delta_velocity = -9 },
   { step = 10, voice = "kick", delta_velocity = -1 },
   { step = 10, voice = "snare", delta_velocity = 4 },
-  { step = 12, voice = "snare", delta_velocity = 18 },
-  { step = 13, voice = "snare", delta_velocity = 7 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
   { step = 14, voice = "snare", delta_velocity = 19 },
-]
+] }]
+
+[[fills]]
+density = 1
+tag = "quarters"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "brush"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "spang"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "quarters"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "brush"
+weight = 22
+bars = [{ hits = [
+  { step = 0, voice = "snare", delta_velocity = 11 },
+  { step = 0, voice = "tom", delta_velocity = -2 },
+  { step = 1, voice = "snare", delta_velocity = -5 },
+  { step = 1, voice = "tom", delta_velocity = -17 },
+  { step = 2, voice = "kick", delta_velocity = -3 },
+  { step = 2, voice = "snare", delta_velocity = -7 },
+  { step = 2, voice = "tom", delta_velocity = 8 },
+  { step = 4, voice = "snare", delta_velocity = -4 },
+  { step = 5, voice = "snare", delta_velocity = -3 },
+  { step = 5, voice = "tom", delta_velocity = -11 },
+  { step = 6, voice = "kick", delta_velocity = -1 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 6, voice = "tom", note = 50, delta_velocity = 7 },
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "spang"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "quarters"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "brush"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "spang"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "quarters"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "brush"
+weight = 11
+start_step = 8
+bars = [{ hits = [
+  { step = 8, voice = "snare", delta_velocity = 7 },
+  { step = 8, voice = "tom", delta_velocity = 7 },
+  { step = 9, voice = "snare", delta_velocity = -1 },
+  { step = 9, voice = "tom", delta_velocity = -9 },
+  { step = 10, voice = "kick", delta_velocity = -1 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "spang"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "quarters"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 1
+tag = "brush"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "spang"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "quarters"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]
+
+[[fills]]
+density = 2
+tag = "brush"
+weight = 11
+start_step = 12
+bars = [{ hits = [
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare", delta_velocity = 6 },
+  { step = 14, voice = "snare", delta_velocity = 19 },
+] }]

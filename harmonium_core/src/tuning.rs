@@ -10,11 +10,11 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : la graine de l'accompagnement (comping, marche et notes de passage de
-/// la basse, motifs de basse) vient de la graine de session, tirée une fois par air après la
-/// mélodie, et non plus de la mélodie écrite (S0, 26) ; R1 (019, 25) intègre les propositions
+/// Version du contrat : B1 (019, 28) habille `wjazzd_swing` par graine (tempo, tonalité,
+/// instruments, voicings, arcs), active phrases/relances, basse enrichie et swing JTD par piste.
+/// S0 (26) tire la graine d'accompagnement de la session, après la mélodie ; R1 (25) intègre
 /// P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 26;
+pub const TUNING_VERSION: u32 = 28;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
