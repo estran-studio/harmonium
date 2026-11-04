@@ -1,0 +1,1475 @@
+# GÉNÉRÉ : .venv/bin/python specs/019-bibliotheque-accompagnements/b3/gmd_latin_brazilian_samba_batterie.py --out profiles/gmd_latin_brazilian_samba/percussion.toml
+# Gillick, Roberts, Engel, Eck, Bamman, Learning to Groove with Inverse Sequence Transformations, ICML 2019 ;
+# Groove MIDI Dataset v1.0.0, Google LLC, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+# MESURÉ (GMD latin/brazilian-samba, 5 fichiers, 322 mesures, un batteur) : grosse caisse, tom grave (surdo), charleston
+# au pied, caisse claire, cross-stick ; deux gestes de caisse claire et leurs suites ; relances de latin/samba `fill`.
+# RÈGLE DE MÉTIER (le GMD n'a aucune percussion latine) : surdo étouffé/ouvert, tamborim (wood block GM 76, le kit GM
+# n'a pas de tamborim), agogô, chocalho, pandeiro, orchestration surdo -> ensemble -> batucada par étiquette d'arc.
+# Étiquettes que l'arc nomme : surdo (surdo, grosse caisse douce, chocalho), ensemble (+ tamborim, agogô, charleston
+# au pied, grosse caisse du kit), batucada (+ caisse claire, cross-stick, pandeiro, relances).
+# Un 4/4 de 16 pas = deux mesures de 2/4 de 8 pas : surdo ouvert aux pas 4 et 12, étouffé aux pas 0 et 8.
+
+low_note = 36
+high_note = 38
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 3
+fills_none_weight = 10
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 64
+track = "PercussionLow"
+
+[[voices]]
+name = "surdo"
+note = 43
+velocity = 78
+track = "PercussionLow"
+
+[[voices]]
+name = "caixa"
+note = 38
+velocity = 62
+track = "PercussionHigh"
+
+[[voices]]
+name = "bois"
+note = 37
+velocity = 66
+track = "PercussionHigh"
+
+[[voices]]
+name = "pedale"
+note = 44
+velocity = 60
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_aigu"
+note = 50
+velocity = 74
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_medium"
+note = 47
+velocity = 74
+track = "PercussionHigh"
+
+[[voices]]
+name = "tamborim"
+note = 76
+velocity = 66
+track = "PercussionHigh"
+
+[[voices]]
+name = "agogo_aigu"
+note = 67
+velocity = 62
+track = "PercussionHigh"
+
+[[voices]]
+name = "agogo_grave"
+note = 68
+velocity = 62
+track = "PercussionHigh"
+
+[[voices]]
+name = "shaker"
+note = 82
+velocity = 42
+track = "PercussionHigh"
+
+[[voices]]
+name = "pandeiro"
+note = 54
+velocity = 46
+track = "PercussionHigh"
+
+# 0
+[[patterns]]
+density = 0
+tag = "surdo"
+weight = 126
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+]
+
+# 1
+[[patterns]]
+density = 0
+tag = "surdo"
+weight = 196
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+]
+
+# 2
+[[patterns]]
+density = 0
+tag = "ensemble"
+weight = 126
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+]
+
+# 3
+[[patterns]]
+density = 0
+tag = "ensemble"
+weight = 196
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+]
+
+# 4
+[[patterns]]
+density = 0
+tag = "batucada"
+weight = 126
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 2, voice = "caixa", delta_velocity = 11, probability = 0.79 },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+]
+
+# 5
+[[patterns]]
+density = 0
+tag = "batucada"
+weight = 196
+hits = [
+  { step = 0, voice = "caixa", delta_velocity = -1 },
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "caixa", delta_velocity = 1, probability = 0.87 },
+  { step = 2, voice = "caixa", delta_velocity = -1 },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "caixa", delta_velocity = 16 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "caixa", delta_velocity = -6 },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "caixa", delta_velocity = 2 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "caixa", delta_velocity = 2, probability = 0.82 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 8, voice = "caixa", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "caixa", delta_velocity = 15 },
+  { step = 10, voice = "caixa", delta_velocity = 1 },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "caixa", delta_velocity = 19, probability = 0.81 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "caixa", delta_velocity = -10, probability = 0.88 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "caixa", delta_velocity = -2, probability = 0.85 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "caixa", delta_velocity = 9, probability = 0.78 },
+]
+
+# 6
+[[patterns]]
+density = 1
+tag = "surdo"
+weight = 126
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 7
+[[patterns]]
+density = 1
+tag = "surdo"
+weight = 196
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 8
+[[patterns]]
+density = 1
+tag = "ensemble"
+weight = 126
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 7, voice = "kick", delta_velocity = -21, probability = 0.79 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.75 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.83 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.67 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 9
+[[patterns]]
+density = 1
+tag = "ensemble"
+weight = 196
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "kick", delta_velocity = -19, probability = 0.78 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 10
+[[patterns]]
+density = 1
+tag = "batucada"
+weight = 126
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "caixa", delta_velocity = -7, probability = 0.67 },
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "caixa", delta_velocity = -2, probability = 0.63 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "caixa", delta_velocity = 11, probability = 0.79 },
+  { step = 2, voice = "pandeiro", delta_velocity = 4 },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "caixa", delta_velocity = 10, probability = 0.58 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "caixa", delta_velocity = -12, probability = 0.66 },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "caixa", delta_velocity = -2, probability = 0.69 },
+  { step = 6, voice = "pandeiro", delta_velocity = -8 },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 7, voice = "kick", delta_velocity = -21, probability = 0.79 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "caixa", delta_velocity = -20, probability = 0.63 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "caixa", delta_velocity = 50, probability = 0.63 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "caixa", delta_velocity = -24, probability = 0.63 },
+  { step = 10, voice = "pandeiro", delta_velocity = 4 },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.75 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.83 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "caixa", delta_velocity = -17, probability = 0.6 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "caixa", delta_velocity = -10, probability = 0.56 },
+  { step = 14, voice = "pandeiro", delta_velocity = -8 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.67 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 11
+[[patterns]]
+density = 1
+tag = "batucada"
+weight = 196
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "caixa", delta_velocity = -1 },
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "caixa", delta_velocity = 1, probability = 0.87 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "caixa", delta_velocity = -1 },
+  { step = 2, voice = "pandeiro", delta_velocity = 4 },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "caixa", delta_velocity = 16 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "caixa", delta_velocity = -6 },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "caixa", delta_velocity = 2 },
+  { step = 6, voice = "pandeiro", delta_velocity = -8 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "caixa", delta_velocity = 2, probability = 0.82 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "caixa", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "caixa", delta_velocity = 15 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "caixa", delta_velocity = 1 },
+  { step = 10, voice = "pandeiro", delta_velocity = 4 },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "caixa", delta_velocity = 19, probability = 0.81 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "caixa", delta_velocity = -10, probability = 0.88 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "caixa", delta_velocity = -2, probability = 0.85 },
+  { step = 14, voice = "pandeiro", delta_velocity = -8 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "caixa", delta_velocity = 9, probability = 0.78 },
+  { step = 15, voice = "kick", delta_velocity = -19, probability = 0.78 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 12
+[[patterns]]
+density = 2
+tag = "surdo"
+weight = 126
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "kick", delta_velocity = -21, probability = 0.79 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.75 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.67 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 13
+[[patterns]]
+density = 2
+tag = "surdo"
+weight = 196
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -26 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "kick", delta_velocity = -30 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "kick", delta_velocity = -19, probability = 0.78 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 14
+[[patterns]]
+density = 2
+tag = "ensemble"
+weight = 126
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 2, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 7, voice = "kick", delta_velocity = -21, probability = 0.79 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 10, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.75 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.83 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.67 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 15
+[[patterns]]
+density = 2
+tag = "ensemble"
+weight = 196
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 2, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 10, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "kick", delta_velocity = -19, probability = 0.78 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 16
+[[patterns]]
+density = 2
+tag = "batucada"
+weight = 126
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "caixa", delta_velocity = -7, probability = 0.67 },
+  { step = 0, voice = "kick", delta_velocity = 19 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "caixa", delta_velocity = -2, probability = 0.63 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "caixa", delta_velocity = 11, probability = 0.79 },
+  { step = 2, voice = "pandeiro", delta_velocity = 4 },
+  { step = 2, voice = "pedale", delta_velocity = 2, probability = 0.8 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 2, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 3, voice = "caixa", delta_velocity = 10, probability = 0.58 },
+  { step = 3, voice = "kick", delta_velocity = -19, probability = 0.89 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "caixa", delta_velocity = -12, probability = 0.66 },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "caixa", delta_velocity = -2, probability = 0.69 },
+  { step = 6, voice = "pandeiro", delta_velocity = -8 },
+  { step = 6, voice = "pedale", delta_velocity = 2, probability = 0.88 },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 6, voice = "tamborim", delta_velocity = -6 },
+  { step = 7, voice = "bois", delta_velocity = 1, probability = 0.29 },
+  { step = 7, voice = "caixa", delta_velocity = 9, probability = 0.44 },
+  { step = 7, voice = "kick", delta_velocity = -21, probability = 0.79 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "caixa", delta_velocity = -20, probability = 0.63 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "caixa", delta_velocity = 50, probability = 0.63 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "caixa", delta_velocity = -24, probability = 0.63 },
+  { step = 10, voice = "pandeiro", delta_velocity = 4 },
+  { step = 10, voice = "pedale", probability = 0.79 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 10, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 11, voice = "bois", delta_velocity = 1, probability = 0.26 },
+  { step = 11, voice = "caixa", delta_velocity = 26, probability = 0.46 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.75 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.83 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "caixa", delta_velocity = -17, probability = 0.6 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "caixa", delta_velocity = -10, probability = 0.56 },
+  { step = 14, voice = "pandeiro", delta_velocity = -8 },
+  { step = 14, voice = "pedale", delta_velocity = 2, probability = 0.81 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 14, voice = "tamborim", delta_velocity = -6 },
+  { step = 15, voice = "bois", delta_velocity = 3, probability = 0.44 },
+  { step = 15, voice = "caixa", delta_velocity = 19, probability = 0.29 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.67 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+# 17
+[[patterns]]
+density = 2
+tag = "batucada"
+weight = 196
+hits = [
+  { step = 0, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 0, voice = "caixa", delta_velocity = -1 },
+  { step = 0, voice = "kick", delta_velocity = 17 },
+  { step = 0, voice = "shaker", delta_velocity = 6 },
+  { step = 0, voice = "tamborim" },
+  { step = 1, voice = "caixa", delta_velocity = 1, probability = 0.87 },
+  { step = 1, voice = "shaker", delta_velocity = -14 },
+  { step = 2, voice = "caixa", delta_velocity = -1 },
+  { step = 2, voice = "pandeiro", delta_velocity = 4 },
+  { step = 2, voice = "pedale", probability = 0.87 },
+  { step = 2, voice = "shaker", delta_velocity = -2 },
+  { step = 2, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 3, voice = "caixa", delta_velocity = 16 },
+  { step = 3, voice = "kick", delta_velocity = -19 },
+  { step = 3, voice = "shaker", delta_velocity = -14 },
+  { step = 3, voice = "tamborim", delta_velocity = -6 },
+  { step = 4, voice = "caixa", delta_velocity = -10, probability = 0.4 },
+  { step = 4, voice = "kick", delta_velocity = 21 },
+  { step = 4, voice = "shaker", delta_velocity = 6 },
+  { step = 4, voice = "surdo" },
+  { step = 5, voice = "caixa", delta_velocity = -6 },
+  { step = 5, voice = "shaker", delta_velocity = -14 },
+  { step = 5, voice = "tamborim", delta_velocity = -6 },
+  { step = 6, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 6, voice = "caixa", delta_velocity = 2 },
+  { step = 6, voice = "pandeiro", delta_velocity = -8 },
+  { step = 6, voice = "pedale" },
+  { step = 6, voice = "shaker", delta_velocity = -2 },
+  { step = 7, voice = "caixa", delta_velocity = 2, probability = 0.82 },
+  { step = 7, voice = "kick", delta_velocity = -23, probability = 0.86 },
+  { step = 7, voice = "shaker", delta_velocity = -14 },
+  { step = 8, voice = "agogo_aigu", delta_velocity = -6 },
+  { step = 8, voice = "caixa", delta_velocity = -6 },
+  { step = 8, voice = "kick", delta_velocity = 12 },
+  { step = 8, voice = "shaker", delta_velocity = 6 },
+  { step = 8, voice = "tamborim" },
+  { step = 9, voice = "caixa", delta_velocity = 15 },
+  { step = 9, voice = "shaker", delta_velocity = -14 },
+  { step = 10, voice = "caixa", delta_velocity = 1 },
+  { step = 10, voice = "pandeiro", delta_velocity = 4 },
+  { step = 10, voice = "pedale", delta_velocity = 2, probability = 0.87 },
+  { step = 10, voice = "shaker", delta_velocity = -2 },
+  { step = 10, voice = "tamborim", delta_velocity = -22, probability = 0.5 },
+  { step = 11, voice = "caixa", delta_velocity = 19, probability = 0.81 },
+  { step = 11, voice = "kick", delta_velocity = -21, probability = 0.86 },
+  { step = 11, voice = "shaker", delta_velocity = -14 },
+  { step = 11, voice = "tamborim", delta_velocity = -6 },
+  { step = 12, voice = "caixa", delta_velocity = 10, probability = 0.39 },
+  { step = 12, voice = "kick", delta_velocity = 21, probability = 0.88 },
+  { step = 12, voice = "shaker", delta_velocity = 6 },
+  { step = 12, voice = "surdo", delta_velocity = -4 },
+  { step = 13, voice = "caixa", delta_velocity = -10, probability = 0.88 },
+  { step = 13, voice = "shaker", delta_velocity = -14 },
+  { step = 13, voice = "tamborim", delta_velocity = -6 },
+  { step = 14, voice = "agogo_grave", delta_velocity = -6 },
+  { step = 14, voice = "caixa", delta_velocity = -2, probability = 0.85 },
+  { step = 14, voice = "pandeiro", delta_velocity = -8 },
+  { step = 14, voice = "pedale", probability = 0.87 },
+  { step = 14, voice = "shaker", delta_velocity = -2 },
+  { step = 15, voice = "bois", probability = 0.2 },
+  { step = 15, voice = "caixa", delta_velocity = 9, probability = 0.78 },
+  { step = 15, voice = "kick", delta_velocity = -19, probability = 0.78 },
+  { step = 15, voice = "shaker", delta_velocity = -14 },
+]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 63
+patterns = [1, 1]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 37
+patterns = [1, 0]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 33
+patterns = [0, 1]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 27
+patterns = [0, 0]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 15
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 10
+patterns = [1, 0, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 7
+patterns = [0, 1, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 7
+patterns = [1, 1, 1, 0]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 6
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 0
+tag = "surdo"
+weight = 5
+patterns = [0, 1, 1, 0]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 63
+patterns = [3, 3]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 37
+patterns = [3, 2]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 33
+patterns = [2, 3]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 27
+patterns = [2, 2]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 15
+patterns = [3, 3, 3, 3]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 10
+patterns = [3, 2, 3, 3]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 7
+patterns = [2, 3, 3, 3]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 7
+patterns = [3, 3, 3, 2]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 6
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "ensemble"
+weight = 5
+patterns = [2, 3, 3, 2]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 63
+patterns = [5, 5]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 37
+patterns = [5, 4]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 33
+patterns = [4, 5]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 27
+patterns = [4, 4]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 15
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 10
+patterns = [5, 4, 5, 5]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 7
+patterns = [4, 5, 5, 5]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 7
+patterns = [5, 5, 5, 4]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 6
+patterns = [4, 4, 4, 4]
+
+[[phrases]]
+density = 0
+tag = "batucada"
+weight = 5
+patterns = [4, 5, 5, 4]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 63
+patterns = [7, 7]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 37
+patterns = [7, 6]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 33
+patterns = [6, 7]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 27
+patterns = [6, 6]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 15
+patterns = [7, 7, 7, 7]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 10
+patterns = [7, 6, 7, 7]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 7
+patterns = [6, 7, 7, 7]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 7
+patterns = [7, 7, 7, 6]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 6
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 1
+tag = "surdo"
+weight = 5
+patterns = [6, 7, 7, 6]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 63
+patterns = [9, 9]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 37
+patterns = [9, 8]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 33
+patterns = [8, 9]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 27
+patterns = [8, 8]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 15
+patterns = [9, 9, 9, 9]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 10
+patterns = [9, 8, 9, 9]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 7
+patterns = [8, 9, 9, 9]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 7
+patterns = [9, 9, 9, 8]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 6
+patterns = [8, 8, 8, 8]
+
+[[phrases]]
+density = 1
+tag = "ensemble"
+weight = 5
+patterns = [8, 9, 9, 8]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 63
+patterns = [11, 11]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 37
+patterns = [11, 10]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 33
+patterns = [10, 11]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 27
+patterns = [10, 10]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 15
+patterns = [11, 11, 11, 11]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 10
+patterns = [11, 10, 11, 11]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 7
+patterns = [10, 11, 11, 11]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 7
+patterns = [11, 11, 11, 10]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 6
+patterns = [10, 10, 10, 10]
+
+[[phrases]]
+density = 1
+tag = "batucada"
+weight = 5
+patterns = [10, 11, 11, 10]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 63
+patterns = [13, 13]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 37
+patterns = [13, 12]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 33
+patterns = [12, 13]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 27
+patterns = [12, 12]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 15
+patterns = [13, 13, 13, 13]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 10
+patterns = [13, 12, 13, 13]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 7
+patterns = [12, 13, 13, 13]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 7
+patterns = [13, 13, 13, 12]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 6
+patterns = [12, 12, 12, 12]
+
+[[phrases]]
+density = 2
+tag = "surdo"
+weight = 5
+patterns = [12, 13, 13, 12]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 63
+patterns = [15, 15]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 37
+patterns = [15, 14]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 33
+patterns = [14, 15]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 27
+patterns = [14, 14]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 15
+patterns = [15, 15, 15, 15]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 10
+patterns = [15, 14, 15, 15]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 7
+patterns = [14, 15, 15, 15]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 7
+patterns = [15, 15, 15, 14]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 6
+patterns = [14, 14, 14, 14]
+
+[[phrases]]
+density = 2
+tag = "ensemble"
+weight = 5
+patterns = [14, 15, 15, 14]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 63
+patterns = [17, 17]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 37
+patterns = [17, 16]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 33
+patterns = [16, 17]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 27
+patterns = [16, 16]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 15
+patterns = [17, 17, 17, 17]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 10
+patterns = [17, 16, 17, 17]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 7
+patterns = [16, 17, 17, 17]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 7
+patterns = [17, 17, 17, 16]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 6
+patterns = [16, 16, 16, 16]
+
+[[phrases]]
+density = 2
+tag = "batucada"
+weight = 5
+patterns = [16, 17, 17, 16]
+
+[[fills]]
+density = 1
+tag = "batucada"
+weight = 9
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "caixa", delta_velocity = 56, probability = 0.78 },
+    { step = 1, voice = "caixa", delta_velocity = -4, probability = 0.78 },
+    { step = 3, voice = "caixa", delta_velocity = -11, probability = 0.78 },
+    { step = 4, voice = "caixa", delta_velocity = 24, probability = 0.89 },
+    { step = 6, voice = "caixa", delta_velocity = -1, probability = 0.78 },
+    { step = 7, voice = "caixa", delta_velocity = 26, probability = 0.56 },
+    { step = 8, voice = "caixa", delta_velocity = 31, probability = 0.67 },
+    { step = 14, voice = "kick", delta_velocity = 1, probability = 0.67 },
+    { step = 14, voice = "surdo", delta_velocity = 38, probability = 0.67 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "batucada"
+weight = 9
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "caixa", delta_velocity = 56, probability = 0.78 },
+    { step = 1, voice = "caixa", delta_velocity = -4, probability = 0.78 },
+    { step = 2, voice = "caixa", delta_velocity = -28, probability = 0.44 },
+    { step = 3, voice = "caixa", delta_velocity = -11, probability = 0.78 },
+    { step = 4, voice = "caixa", delta_velocity = 24, probability = 0.89 },
+    { step = 5, voice = "caixa", delta_velocity = 19, probability = 0.44 },
+    { step = 6, voice = "caixa", delta_velocity = -1, probability = 0.78 },
+    { step = 6, voice = "kick", delta_velocity = -14, probability = 0.33 },
+    { step = 7, voice = "caixa", delta_velocity = 26, probability = 0.56 },
+    { step = 8, voice = "caixa", delta_velocity = 31, probability = 0.67 },
+    { step = 9, voice = "caixa", delta_velocity = -5, probability = 0.33 },
+    { step = 10, voice = "caixa", delta_velocity = 39, probability = 0.33 },
+    { step = 10, voice = "kick", delta_velocity = 1, probability = 0.33 },
+    { step = 10, voice = "surdo", delta_velocity = 4, probability = 0.33 },
+    { step = 14, voice = "kick", delta_velocity = 1, probability = 0.67 },
+    { step = 14, voice = "surdo", delta_velocity = 38, probability = 0.67 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "batucada"
+weight = 3
+start_step = 0
+bars = [
+  { hits = [
+    { step = 1, voice = "caixa", delta_velocity = -1 },
+    { step = 3, voice = "caixa", delta_velocity = -8 },
+    { step = 4, voice = "caixa", delta_velocity = -4 },
+    { step = 5, voice = "caixa", delta_velocity = -5 },
+    { step = 7, voice = "caixa", delta_velocity = -1 },
+    { step = 8, voice = "caixa", delta_velocity = 2 },
+    { step = 9, voice = "caixa", delta_velocity = -2 },
+    { step = 11, voice = "caixa", delta_velocity = 4, probability = 0.67 },
+    { step = 12, voice = "caixa", delta_velocity = 2 },
+    { step = 14, voice = "surdo", delta_velocity = 49, probability = 0.67 },
+  ] },
+]

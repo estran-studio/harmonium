@@ -1,0 +1,889 @@
+{
+  "profile": "gmd_latin_brazilian_samba",
+  "seeds": 16,
+  "habillages_distincts": 14,
+  "tempos": [
+    92,
+    92,
+    103,
+    91,
+    116,
+    114,
+    91,
+    92,
+    89,
+    104,
+    90,
+    89,
+    116,
+    89,
+    89,
+    115
+  ],
+  "grappes_tempo_8bpm": 3,
+  "tonalites": 6,
+  "programmes_comping_basse_kit": 10,
+  "kits": [
+    [
+      128,
+      0
+    ],
+    [
+      128,
+      8
+    ],
+    [
+      128,
+      40
+    ]
+  ],
+  "variantes_distinctes_par_groupe": {
+    "arc": 2,
+    "basse": 3,
+    "comping": 4,
+    "energie": 3,
+    "kit": 3,
+    "registre": 2,
+    "tempo": 3,
+    "tonalite": 6,
+    "voicing": 4
+  },
+  "swing": [
+    0.5
+  ],
+  "seeds_avec_orchestration_par_chorus": 2,
+  "lignes": [
+    {
+      "seed": 1,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "re"
+        ],
+        [
+          "comping",
+          "guitare_acier"
+        ],
+        [
+          "basse",
+          "contrebasse"
+        ],
+        [
+          "kit",
+          "room"
+        ],
+        [
+          "voicing",
+          "shell"
+        ],
+        [
+          "registre",
+          "grave"
+        ],
+        [
+          "energie",
+          "doux"
+        ],
+        [
+          "arc",
+          "orchestre"
+        ]
+      ],
+      "bpm": 92.0,
+      "key": 2,
+      "mode": "ionian",
+      "programs": [
+        24,
+        32,
+        128,
+        40
+      ],
+      "chorus_changes": 2,
+      "swing": 0.5
+    },
+    {
+      "seed": 2,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "do"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 92.0,
+      "key": 0,
+      "mode": "ionian",
+      "programs": [
+        4,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 3,
+      "session": [
+        [
+          "tempo",
+          "mesure"
+        ],
+        [
+          "tonalite",
+          "si_bemol"
+        ],
+        [
+          "comping",
+          "piano"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "room"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "doux"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 103.0,
+      "key": 10,
+      "mode": "ionian",
+      "programs": [
+        0,
+        33,
+        128,
+        8
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 4,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "fa"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "contrebasse"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "drop_2"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 91.0,
+      "key": 5,
+      "mode": "ionian",
+      "programs": [
+        4,
+        32,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 5,
+      "session": [
+        [
+          "tempo",
+          "vif"
+        ],
+        [
+          "tonalite",
+          "si_bemol"
+        ],
+        [
+          "comping",
+          "guitare_acier"
+        ],
+        [
+          "basse",
+          "basse_fretless"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "shell"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 116.0,
+      "key": 10,
+      "mode": "ionian",
+      "programs": [
+        25,
+        35,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 6,
+      "session": [
+        [
+          "tempo",
+          "vif"
+        ],
+        [
+          "tonalite",
+          "do"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "contrebasse"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "orchestre"
+        ]
+      ],
+      "bpm": 114.0,
+      "key": 0,
+      "mode": "ionian",
+      "programs": [
+        24,
+        32,
+        128,
+        40
+      ],
+      "chorus_changes": 2,
+      "swing": 0.5
+    },
+    {
+      "seed": 7,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "sol"
+        ],
+        [
+          "comping",
+          "guitare_nylon"
+        ],
+        [
+          "basse",
+          "contrebasse"
+        ],
+        [
+          "kit",
+          "balais"
+        ],
+        [
+          "voicing",
+          "shell"
+        ],
+        [
+          "registre",
+          "grave"
+        ],
+        [
+          "energie",
+          "doux"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 91.0,
+      "key": 7,
+      "mode": "ionian",
+      "programs": [
+        24,
+        32,
+        128,
+        40
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 8,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "si_bemol"
+        ],
+        [
+          "comping",
+          "piano"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "room"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 92.0,
+      "key": 10,
+      "mode": "ionian",
+      "programs": [
+        0,
+        33,
+        128,
+        8
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 9,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "do"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "fort"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 89.0,
+      "key": 0,
+      "mode": "ionian",
+      "programs": [
+        4,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 10,
+      "session": [
+        [
+          "tempo",
+          "mesure"
+        ],
+        [
+          "tonalite",
+          "re"
+        ],
+        [
+          "comping",
+          "piano"
+        ],
+        [
+          "basse",
+          "contrebasse"
+        ],
+        [
+          "kit",
+          "balais"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 104.0,
+      "key": 2,
+      "mode": "ionian",
+      "programs": [
+        0,
+        32,
+        128,
+        40
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 11,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "la"
+        ],
+        [
+          "comping",
+          "guitare_nylon"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "grave"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 90.0,
+      "key": 9,
+      "mode": "ionian",
+      "programs": [
+        24,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 12,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "sol"
+        ],
+        [
+          "comping",
+          "guitare_nylon"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "sans_fondamentale"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 89.0,
+      "key": 7,
+      "mode": "ionian",
+      "programs": [
+        24,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 13,
+      "session": [
+        [
+          "tempo",
+          "vif"
+        ],
+        [
+          "tonalite",
+          "si_bemol"
+        ],
+        [
+          "comping",
+          "guitare_nylon"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "room"
+        ],
+        [
+          "voicing",
+          "drop_2"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 116.0,
+      "key": 10,
+      "mode": "ionian",
+      "programs": [
+        24,
+        33,
+        128,
+        8
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 14,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "sol"
+        ],
+        [
+          "comping",
+          "guitare_acier"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "drop_2"
+        ],
+        [
+          "registre",
+          "grave"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 89.0,
+      "key": 7,
+      "mode": "ionian",
+      "programs": [
+        25,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 15,
+      "session": [
+        [
+          "tempo",
+          "pose"
+        ],
+        [
+          "tonalite",
+          "do"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "basse_aux_doigts"
+        ],
+        [
+          "kit",
+          "standard"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 89.0,
+      "key": 0,
+      "mode": "ionian",
+      "programs": [
+        4,
+        33,
+        128,
+        0
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    },
+    {
+      "seed": 16,
+      "session": [
+        [
+          "tempo",
+          "vif"
+        ],
+        [
+          "tonalite",
+          "sol"
+        ],
+        [
+          "comping",
+          "piano_tine"
+        ],
+        [
+          "basse",
+          "basse_fretless"
+        ],
+        [
+          "kit",
+          "room"
+        ],
+        [
+          "voicing",
+          "notes_guides"
+        ],
+        [
+          "registre",
+          "normal"
+        ],
+        [
+          "energie",
+          "neutre"
+        ],
+        [
+          "arc",
+          "etoffe"
+        ]
+      ],
+      "bpm": 115.0,
+      "key": 7,
+      "mode": "ionian",
+      "programs": [
+        4,
+        35,
+        128,
+        8
+      ],
+      "chorus_changes": 0,
+      "swing": 0.5
+    }
+  ]
+}

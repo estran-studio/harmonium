@@ -1,0 +1,289 @@
+{
+  "fichiers": 5,
+  "mesures": 322,
+  "tempos_fichiers": [
+    89,
+    89,
+    89,
+    93,
+    110
+  ],
+  "tempos_p10_p50_p90": [
+    89.0,
+    89,
+    103.2
+  ],
+  "par_pas": {
+    "kick": [
+      0.99,
+      0.02,
+      0.02,
+      0.92,
+      0.92,
+      0.02,
+      0.03,
+      0.83,
+      0.92,
+      0.02,
+      0.04,
+      0.82,
+      0.86,
+      0.0,
+      0.08,
+      0.74
+    ],
+    "tom_low": [
+      0.01,
+      0.0,
+      0.0,
+      0.02,
+      0.63,
+      0.07,
+      0.0,
+      0.01,
+      0.01,
+      0.01,
+      0.02,
+      0.01,
+      0.61,
+      0.09,
+      0.17,
+      0.03
+    ],
+    "hat_pedal": [
+      0.02,
+      0.01,
+      0.84,
+      0.01,
+      0.01,
+      0.02,
+      0.92,
+      0.01,
+      0.02,
+      0.03,
+      0.84,
+      0.01,
+      0.03,
+      0.02,
+      0.85,
+      0.0
+    ],
+    "snare": [
+      0.84,
+      0.77,
+      0.87,
+      0.78,
+      0.3,
+      0.83,
+      0.83,
+      0.67,
+      0.83,
+      0.8,
+      0.84,
+      0.67,
+      0.3,
+      0.77,
+      0.74,
+      0.59
+    ],
+    "sidestick": [
+      0.1,
+      0.08,
+      0.09,
+      0.12,
+      0.0,
+      0.01,
+      0.07,
+      0.23,
+      0.02,
+      0.08,
+      0.05,
+      0.22,
+      0.04,
+      0.03,
+      0.02,
+      0.3
+    ]
+  },
+  "velocite_mediane_gmd": {
+    "kick": 31.0,
+    "tom_low": 87.0,
+    "hat_pedal": 55.0,
+    "snare": 50.0,
+    "sidestick": 77.0
+  },
+  "gestes": [
+    {
+      "geste": 0,
+      "mesures": 126,
+      "fichiers": 5
+    },
+    {
+      "geste": 1,
+      "mesures": 196,
+      "fichiers": 4
+    }
+  ],
+  "suites": [
+    {
+      "gestes": [
+        1,
+        1
+      ],
+      "occurrences": 63,
+      "fichiers": 4
+    },
+    {
+      "gestes": [
+        1,
+        0
+      ],
+      "occurrences": 37,
+      "fichiers": 4
+    },
+    {
+      "gestes": [
+        0,
+        1
+      ],
+      "occurrences": 33,
+      "fichiers": 4
+    },
+    {
+      "gestes": [
+        0,
+        0
+      ],
+      "occurrences": 27,
+      "fichiers": 3
+    },
+    {
+      "gestes": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "occurrences": 15,
+      "fichiers": 4
+    },
+    {
+      "gestes": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "occurrences": 10,
+      "fichiers": 3
+    },
+    {
+      "gestes": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "occurrences": 7,
+      "fichiers": 3
+    },
+    {
+      "gestes": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "occurrences": 7,
+      "fichiers": 2
+    },
+    {
+      "gestes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "occurrences": 6,
+      "fichiers": 2
+    },
+    {
+      "gestes": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "occurrences": 5,
+      "fichiers": 3
+    }
+  ],
+  "relances": {
+    "fichiers_beat_fill_total": 17,
+    "fichiers_une_mesure_droits": 12,
+    "coups_par_fichier": [
+      10,
+      10,
+      11,
+      11,
+      11,
+      12,
+      12,
+      13,
+      14,
+      18,
+      20,
+      21
+    ],
+    "courtes": 9,
+    "chargees": 3,
+    "tempo": [
+      116
+    ]
+  },
+  "micro_timing_en_pas": {
+    "kick": {
+      "sur_le_temps": {
+        "n": 1192,
+        "mediane": -0.008
+      },
+      "hors_temps": {
+        "n": 1136,
+        "mediane": -0.046
+      }
+    },
+    "snare": {
+      "sur_le_temps": {
+        "n": 734,
+        "mediane": -0.035
+      },
+      "hors_temps": {
+        "n": 2941,
+        "mediane": -0.048
+      }
+    },
+    "hat_pedal": {
+      "sur_le_temps": {
+        "n": 24,
+        "mediane": -0.027
+      },
+      "hors_temps": {
+        "n": 1145,
+        "mediane": -0.025
+      }
+    },
+    "tom_low": {
+      "sur_le_temps": {
+        "n": 406,
+        "mediane": -0.021
+      },
+      "hors_temps": {
+        "n": 137,
+        "mediane": -0.04
+      }
+    }
+  },
+  "patterns": 18,
+  "phrases": 90,
+  "relances_ecrites": 3
+}

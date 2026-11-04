@@ -1,0 +1,49 @@
+# Arc de `gmd_latin_brazilian_samba` sur plusieurs chorus (A3) : valeurs de métier, aucune mesure de corpus (le GMD
+# isole beat et fill, WJazzD ne donne pas la dynamique d'un chorus). Un chorus = une passe de la grille de seize
+# mesures ; cinq chorus par air, nombre connu, donc la retombée joue au dernier. La batterie s'étoffe par étiquette
+# (percussion.toml) : surdo -> ensemble -> batucada ; le niveau de densité suit l'intensité et la densité du chorus
+# (dynamics.toml : exposition et retombée niveau 0, corps niveau 1, sommet niveau 2) :
+#   1      exposition : surdo et chocalho seuls, comping clairsemé ou médian, doux ;
+#   2      l'ensemble entre : + tamborim, agogô, charleston au pied, grosse caisse du kit ;
+#   3      corps : la batucada (caixa, cross-stick, pandeiro, relances) une fois sur deux ou l'ensemble, un break de
+#          la guitare à mi-chorus ou un break de la guitare et de la basse avant le chorus suivant ;
+#   4      sommet : batucada pleine, comping dense, plus fort, stop-time sur les deux dernières mesures une fois
+#          sur deux (guitare et basse sur le un, la batterie continue) ;
+#   5      retombée : surdo et chocalho, clairsemé, doux, stop-time sur le un des deux dernières mesures ;
+# au-delà (plus de cinq chorus ou set sans fin) : l'ensemble, le corps et le sommet en boucle (`repeat_from`), sans
+# retombée.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.6, density = 0.5, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "surdo" }] },
+  { weight = 1, intensity = 0.7, density = 0.6, comping = [{ tag = "sparse" }], percussion = [{ tag = "surdo" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.9, density = 0.9, comping = [{ tag = "sparse", weight = 1 }, { tag = "medium", weight = 2 }], percussion = [{ tag = "ensemble" }] },
+  { weight = 1, intensity = 1.0, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "ensemble" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "batucada", weight = 2 }, { tag = "ensemble", weight = 1 }], breaks = [{ start = 9, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, intensity = 1.15, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "batucada" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "batucada" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.55
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "surdo" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

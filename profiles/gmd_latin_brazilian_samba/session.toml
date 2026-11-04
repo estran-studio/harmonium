@@ -1,0 +1,241 @@
+# Habillage par graine de `gmd_latin_brazilian_samba` (A2) : un tirage par groupe, les groupes se combinent ; deux
+# groupes ne règlent jamais le même champ. Programmes General MIDI de GeneralUser GS (sans Odin ; vérifiés dans la
+# banque) : guitare nylon 24, acier 25, piano 0, piano Tine 4 ; contrebasse 32, basse aux doigts 33, fretless 35 ;
+# kits de la banque 128 : standard 0, room 8, jazz 32, balais 40 (les touches latines 54, 67, 68, 76, 82 y sont toutes).
+#
+# 3 tempos × 6 tonalités × 4 comping × 3 basses × 4 kits × 4 voicings × 2 registres × 3 énergies × 2 arcs
+# = 41 472 habillages possibles en 31 variantes.
+
+# Tempo. GMD brazilian-samba : 89 (3 fichiers), 93, 110 ; latin/samba (« trop peu ») : 116. L'étendue mesurée (89 à
+# 116) ne laisse place qu'à trois plages étroites séparées de plus de 8 BPM, toutes à l'intérieur des bornes mesurées ;
+# la plage du milieu n'a aucun fichier (elle est entre 93 et 110). Aucun tempo hors de l'étendue mesurée.
+[[variants]]
+group = "tempo"
+name = "pose"
+weight = 2
+bpm = [89.0, 92.0]
+
+[[variants]]
+group = "tempo"
+name = "mesure"
+weight = 1
+bpm = [101.0, 104.0]
+
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [113.0, 116.0]
+
+# Tonalité : les grilles sont écrites relativement à la tonique, la variante les transpose (do, ré, fa, sol, la, si
+# bémol ; majeures).
+[[variants]]
+group = "tonalite"
+name = "do"
+tonality = { key = 0, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re"
+tonality = { key = 2, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "fa"
+tonality = { key = 5, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "sol"
+tonality = { key = 7, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "la"
+tonality = { key = 9, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "si_bemol"
+tonality = { key = 10, mode = "ionian" }
+
+# Instrument du comping.
+[[variants]]
+group = "comping"
+name = "guitare_nylon"
+weight = 3
+instruments = { chords_program = 24 }
+
+[[variants]]
+group = "comping"
+name = "guitare_acier"
+weight = 2
+instruments = { chords_program = 25 }
+
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 2
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "piano_tine"
+weight = 1
+instruments = { chords_program = 4 }
+
+# Instrument de la basse.
+[[variants]]
+group = "basse"
+name = "contrebasse"
+weight = 2
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_aux_doigts"
+weight = 2
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "basse"
+name = "basse_fretless"
+weight = 1
+instruments = { bass_program = 35 }
+
+# Kit : standard, room, jazz (baguettes), balais.
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "jazz"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 32 }
+
+[[variants]]
+group = "kit"
+name = "balais"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+# Famille de voicings du comping.
+[[variants]]
+group = "voicing"
+name = "notes_guides"
+weight = 2
+voicing = "guide_tones"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 1
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "sans_fondamentale"
+weight = 1
+voicing = "rootless"
+
+[[variants]]
+group = "voicing"
+name = "shell"
+weight = 1
+voicing = "shell"
+
+# Registre du comping : une octave plus bas une fois sur trois.
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "registre"
+name = "grave"
+weight = 1
+register_octaves = { Chords = -1 }
+
+# Énergie de base (multiplicateurs de l'intensité et de la densité lues par `dynamics`).
+[[variants]]
+group = "energie"
+name = "doux"
+weight = 1
+intensity = 0.85
+density = 0.85
+
+[[variants]]
+group = "energie"
+name = "neutre"
+weight = 2
+
+[[variants]]
+group = "energie"
+name = "fort"
+weight = 1
+intensity = 1.15
+density = 1.1
+
+# Arc : celui de `arc.toml` (rien à surcharger) ou l'arc nommé « orchestre ».
+[[variants]]
+group = "arc"
+name = "etoffe"
+weight = 2
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 1
+arc = "orchestre"
+
+# Arc « orchestre » : mêmes étiquettes, intensités et breaks que `arc.toml`, et l'orchestration change à chaque
+# chorus. Chorus 1 (exposition) : guitare nylon et balais ; chorus 2 : le kit et le comping de la session ; chorus 3 :
+# le piano prend le comping ; chorus 4 (sommet) : guitare acier et kit de puissance (banque 128, programme 16) ;
+# chorus 5 (retombée) : guitare nylon et balais. Les programmes d'un chorus remplacent ceux de la session ; un
+# chorus qui n'en déclare pas les rend.
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, instruments = { chords_program = 24, percussion_bank = 128, percussion_program = 40 }, intensity = 0.6, density = 0.5, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "surdo" }] },
+  { weight = 1, instruments = { chords_program = 24, percussion_bank = 128, percussion_program = 40 }, intensity = 0.7, density = 0.6, comping = [{ tag = "sparse" }], percussion = [{ tag = "surdo" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.9, density = 0.9, comping = [{ tag = "sparse", weight = 1 }, { tag = "medium", weight = 2 }], percussion = [{ tag = "ensemble" }] },
+  { weight = 1, intensity = 1.0, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "ensemble" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, instruments = { chords_program = 0 }, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "batucada", weight = 2 }, { tag = "ensemble", weight = 1 }], breaks = [{ start = 9, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, instruments = { chords_program = 0 }, intensity = 1.15, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "batucada" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { instruments = { chords_program = 25, percussion_bank = 128, percussion_program = 16 }, intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "batucada" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.orchestre.fall]]
+instruments = { chords_program = 24, percussion_bank = 128, percussion_program = 40 }
+intensity = 0.55
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "surdo" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

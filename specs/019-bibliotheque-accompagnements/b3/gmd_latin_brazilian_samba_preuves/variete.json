@@ -1,0 +1,134 @@
+{
+  "gmd_latin_brazilian_samba (livré)": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.596,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.999,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.513,
+      "inter_suites_distinctes": 4,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 3.62,
+      "inter_distance_graduee": 0.892,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.202,
+      "intra_paires_identiques": 0.062
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 3.0,
+      "inter_distance_graduee": 0.128,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.996,
+      "intra_paires_identiques": 0.167
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.5,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.868,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.95,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.915,
+      "intra_paires_identiques": 0.0
+    }
+  },
+  "même profil sans session.toml (avant)": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.601,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 1.0,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.636,
+      "inter_suites_distinctes": 4,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 3.81,
+      "inter_distance_graduee": 0.912,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.19,
+      "intra_paires_identiques": 0.042
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 3.0,
+      "inter_distance_graduee": 0.129,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 1.0,
+      "intra_paires_identiques": 0.167
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.452,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.861,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.875,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.896,
+      "intra_paires_identiques": 0.0
+    }
+  },
+  "wjazzd_swing (V0, même binaire)": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.384,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.992,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.0,
+      "inter_suites_distinctes": 1,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.591,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.919,
+      "intra_paires_identiques": 0.0
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.187,
+      "inter_suites_distinctes": 11,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.681,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.805,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.458,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.744,
+      "intra_paires_identiques": 0.0
+    }
+  }
+}

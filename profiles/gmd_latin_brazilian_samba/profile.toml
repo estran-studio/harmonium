@@ -1,0 +1,452 @@
+# Profil `gmd_latin_brazilian_samba` (phase 019, B3) : accompagnement de samba sous une grille d'accords.
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le style `latin/brazilian-samba` du
+# Groove MIDI Dataset v1.0.0 (5 fichiers `beat`, 1 seul batteur, 322 mesures 4/4 droites, 89 BPM médian,
+# fiabilité « juste » : décrit un batteur, pas la tradition). La batterie du kit (grosse caisse, surdo tenu par
+# un tom grave, charleston au pied, caisse claire, cross-stick, deux gestes de caisse et leurs suites) vient de là ;
+# les relances viennent de `latin/samba` `fill` (12 fichiers d'une mesure sur 17, « juste », même batteur). Le GMD
+# ne contient AUCUNE percussion latine (kit électronique Roland TD-11) : surdo étouffé, tamborim, agogô, chocalho,
+# pandeiro, basse en deux temps et comping de samba sont des RÈGLES DE MÉTIER (idiome traditionnel), dites telles
+# dans `README.md`. La basse est calibrée sur le sous-ensemble `rhythmfeel = LATIN` de la Weimar Jazz Database v2.1
+# (27 solos, 23 avec mesures valides, 1639 mesures, « assez ») pour ce qu'il mesure : registre, approches avant un
+# changement d'accord, rythme harmonique, longueur de chorus ; c'est du hard bop sur rythme latin : la base ne
+# distingue ni bossa, ni samba, ni afro-cubain, et ne voit aucune croche de basse. Le corpus audio BRID (samba, CC BY
+# 4.0) n'est pas ingéré.
+#
+# Un 4/4 de 16 pas = DEUX mesures de 2/4 de 8 pas (la samba est en 2/4) : surdo ouvert aux pas 4 et 12 (temps 2 de
+# chaque 2/4), étouffé aux pas 0 et 8. Feel droit, aucune clave (la samba n'en a pas), aucune mélodie (piste `Melody`
+# absente de l'arrangement). Tout sonne avec GeneralUser GS (guitare nylon, basse acoustique, kit GM) : aucun Odin.
+#
+# Grilles par défaut, quand l'utilisateur n'en fournit pas : formes communes écrites pour ce profil (aucune œuvre
+# nommée), relatives à la tonique, seize mesures. Aucune réharmonisation (D4). Pas de `[fixed_tonality]` : la
+# tonalité vient de l'habillage par graine (`session.toml`).
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
+
+[meta]
+id = "gmd_latin_brazilian_samba"
+name = "Samba (Groove MIDI Dataset, latin/brazilian-samba)"
+tradition = "Groove MIDI Dataset v1.0.0, style latin/brazilian-samba : 5 fichiers beat, 1 batteur, kit électronique Roland TD-11 ; relances : latin/samba fill ; basse : Weimar Jazz Database v2.1, sous-ensemble rhythmfeel = LATIN (27 solos, 1951 à 1997)"
+tags = ["samba", "latin", "bresil", "accompagnement", "grille", "droit"]
+corpus = """\
+Groove MIDI Dataset v1.0.0 (Google LLC), CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ : Gillick, Roberts, Engel, Eck, Bamman, Learning to Groove with Inverse Sequence Transformations, ICML 2019 ; Groove MIDI Dataset v1.0.0, Google LLC, CC BY 4.0 ; probabilités par pas, gestes de caisse claire, suites et relances de la batterie samba, agrégés, jamais un enregistrement. \
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL); individual contents under the Database Contents License (DbCL 1.0). Open Database License 1.0, https://opendatacommons.org/licenses/odbl/1-0/ ; Database Contents License 1.0, https://opendatacommons.org/licenses/dbcl/1-0/. \
+Statistiques agrégées seulement (registre de basse, approches avant un changement d'accord, rythme harmonique, longueur de chorus, tempos) ; aucune note de solo ni de ligne de basse copiée. \
+Manifestes et mesures : harmonium_lab corpus/gmd, corpus/wjazzd, references/gmd-latin-brazilian-samba/, references/gmd-latin-samba/, references/wjazzd-latin/. Surdo, tamborim, agogô, chocalho, pandeiro, basse en deux temps, comping : règles de métier, voir README. Grilles par défaut : formes communes écrites pour ce profil (voir README)."""
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+# Feel droit en 16 pas : doubles croches égales (GMD brazilian-samba : 5 fichiers sur 5 « straight »).
+default_swing_ratio = 0.5
+# GMD brazilian-samba (5 fichiers beat) : tempos 89 (3 fichiers), 93, 110 ; p10 89, p50 89, p90 103,2 ; latin/samba
+# (2 fichiers beat, « trop peu ») : 116. Défaut = médiane 89 ; bornes = tempos mesurés (89 et 116) élargis de
+# l'écart de l'arousal (± 4 BPM, `tempo_offset`) : 85 et 120.
+default_bpm = 89.0
+min_bpm = 85.0
+max_bpm = 120.0
+
+# Une partie de seize mesures : un chorus. WJazzD LATIN : chorus de 8 mesures (31 sur 69), 16 (9), 24 (9), 32 (9).
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Grille"
+melody_center_offset = 0
+phrase_ends = [4, 8, 12, 16]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que `gmd_funk`. Les tonalités tirées (do, ré, fa, sol, la, si bémol,
+# toutes majeures : les grilles sont écrites en majeur) sont celles de l'habillage ; une grille ne dépend pas de la
+# tonalité tirée au-delà de la tonique (le mode n'est qu'une étiquette).
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [
+  { key = 0, mode = "ionian", weight = 1 },
+  { key = 2, mode = "ionian", weight = 1 },
+  { key = 5, mode = "ionian", weight = 1 },
+  { key = 7, mode = "ionian", weight = 1 },
+  { key = 9, mode = "ionian", weight = 1 },
+  { key = 10, mode = "ionian", weight = 1 },
+]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles relatives à la tonique ; un créneau de quatre pas (une noire). WJazzD LATIN : le changement d'accord tombe
+# sur le temps 1 dans 84,9 % des cas et sur le temps 3 dans 15,1 %, 86,9 % des mesures n'ont qu'un accord (13,1 %
+# deux) ; durée d'un accord : 4 temps (58,7 %), 2 temps (29,8 %), 8 temps (8,4 %). Les grilles ci-dessous changent
+# d'accord à la mesure, une à quatre mesures sur seize à la blanche selon la boucle (10 % des mesures au poids des
+# boucles, contre 13,1 % mesurés ; 6 % à 25 % selon la boucle).
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+[harmony.parts.Grille]
+kind = "chord_loop"
+loops = [
+  # I-vi-ii-V : le tour de samba, quatre fois ; la mesure 15 enchaîne ii et V à la blanche, V7 tient la mesure 16.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 16 },
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 16 },
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 16 },
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 24 },
+  ] },
+  # I-IV-V : deux mesures par accord, retour au I ; la seconde moitié resserre : IV puis V7 à la blanche (mesure 13).
+  { weight = 2, chords = [
+    { semitones = 0, quality = "6", steps = 32 },
+    { semitones = 5, quality = "maj7", steps = 32 },
+    { semitones = 7, quality = "7", steps = 32 },
+    { semitones = 0, quality = "6", steps = 32 },
+    { semitones = 0, quality = "6", steps = 16 },
+    { semitones = 5, quality = "maj7", steps = 32 },
+    { semitones = 7, quality = "7", steps = 16 },
+    { semitones = 5, quality = "maj7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 24 },
+    { semitones = 0, quality = "6", steps = 32 },
+  ] },
+  # Cycle de quintes diatonique : I, IV, vii demi-diminué, III7, vi, ii, V7, I ; huit mesures, deux fois (ii et V7 à la
+  # blanche dans la mesure 14).
+  { weight = 3, chords = [
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 5, quality = "maj7", steps = 16 },
+    { semitones = 11, quality = "m7b5", steps = 16 },
+    { semitones = 4, quality = "7b9", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 16 },
+    { semitones = 7, quality = "7", steps = 16 },
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 0, quality = "maj7", steps = 16 },
+    { semitones = 5, quality = "maj7", steps = 16 },
+    { semitones = 11, quality = "m7b5", steps = 16 },
+    { semitones = 4, quality = "7b9", steps = 16 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 32 },
+  ] },
+  # vi-ii-V-I : quatre mesures répétées, ii et V à la blanche dans la seconde.
+  { weight = 2, chords = [
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 32 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 32 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 32 },
+    { semitones = 9, quality = "m7", steps = 16 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 32 },
+  ] },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Basse en deux temps (règle de métier : WJazzD ne donne que la hauteur à la noire, aucune croche). Fondamentale
+# puis quinte (`fifth_if_held` : la quinte tant que l'accord tient, la fondamentale à un changement, donc toujours
+# l'arrivée sur la basse publiée) sur les temps de chaque 2/4 (marcação), figure de la grosse caisse (0, 3, 4, 7, 8,
+# 11, 12, 15), tenues ; les gabarits anticipent le changement d'accord (`pickup` avant la barre ou la blanche) ; deux
+# motifs sans le quatrième temps laissent la place à l'approche. Ce qui est mesuré (WJazzD LATIN, 6556 temps) :
+# - registre : hauteur de basse centiles 1, 50, 99 = 31, 40, 50, étendue 28..53 ; arrivées sur un changement :
+#   fenêtre 35..45 (1015 événements), la plus dense de douze demi-tons 36..47 (84,7 %) : la fondamentale se place dans
+#   35..46, la quinte dans la même fenêtre, les approches dans la fenêtre de marche mesurée 33..50 ;
+# - approche du temps 4 avant un changement à la barre (1205 événements, 22 solos) : aucune 59,9 %, chromatique
+#   21,6 %, diatonique 18,5 % : poids de `passing` ci-dessous.
+[accompaniment.bass]
+low = 35
+high = 46
+walk_low = 33
+walk_high = 50
+
+# 1. Marcação : fondamentale puis quinte à chaque temps, notes courtes (surdo).
+[[accompaniment.bass.templates]]
+weight = 4
+bars = 1
+rhythm = [
+  { step = 0, duration = 3, velocity = 100 },
+  { step = 4, duration = 3, velocity = 90 },
+  { step = 8, duration = 3, velocity = 96 },
+  { step = 12, duration = 3, velocity = 88 },
+]
+cycle = [{ degree = "root" }, { degree = "fifth_if_held" }]
+pickup = { lead = 2, duration = 2, velocity = 84 }
+
+# 2. Figure de la grosse caisse : la basse joue 0, 3, 4, 7, 8, 11, 12, 15, notes fantômes sur les pas 3, 7, 11, 15.
+[[accompaniment.bass.templates]]
+weight = 3
+bars = 1
+rhythm = [
+  { step = 0, duration = 3, velocity = 100 },
+  { step = 3, duration = 1, velocity = 70 },
+  { step = 4, duration = 3, velocity = 92 },
+  { step = 7, duration = 1, velocity = 68 },
+  { step = 8, duration = 3, velocity = 98 },
+  { step = 11, duration = 1, velocity = 70 },
+  { step = 12, duration = 3, velocity = 90 },
+  { step = 15, duration = 1, velocity = 68 },
+]
+cycle = [{ degree = "root" }, { degree = "root" }, { degree = "fifth_if_held" }, { degree = "fifth_if_held" }]
+pickup = { lead = 1, duration = 1, velocity = 80 }
+
+# 3. Deux tenues : la fondamentale tenue sur chaque 2/4, anticipation du changement.
+[[accompaniment.bass.templates]]
+weight = 2
+bars = 1
+rhythm = [
+  { step = 0, duration = 8, velocity = 96 },
+  { step = 8, duration = 7, velocity = 90 },
+]
+cycle = [{ degree = "root" }]
+pickup = { lead = 2, duration = 2, velocity = 84 }
+
+# 4. Marcação variée : fondamentale, fondamentale, quinte, fondamentale (hauteur répétée : 38 % des intervalles de
+#    WJazzD LATIN sont des répétitions).
+[[accompaniment.bass.templates]]
+weight = 2
+bars = 1
+rhythm = [
+  { step = 0, duration = 3, velocity = 100 },
+  { step = 4, duration = 3, velocity = 86 },
+  { step = 8, duration = 3, velocity = 96 },
+  { step = 12, duration = 3, velocity = 90 },
+]
+cycle = [{ degree = "root" }, { degree = "root" }, { degree = "fifth_if_held" }, { degree = "root" }]
+pickup = { lead = 2, duration = 2, velocity = 84 }
+
+# 5. Sans le quatrième temps : la place de l'approche chromatique ou diatonique mesurée (`passing`).
+[[accompaniment.bass.motifs]]
+bars = 1
+weight = 4
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 4, semitones = 0, velocity = 100 },
+  { step = 4, duration = 4, semitones = 7, octave = -1, velocity = 90 },
+  { step = 8, duration = 4, semitones = 0, velocity = 96 },
+]
+
+# 6. Deux mesures : le quatrième temps libre une mesure sur deux.
+[[accompaniment.bass.motifs]]
+bars = 2
+weight = 3
+reference = "chord_root"
+notes = [
+  { step = 0, duration = 4, semitones = 0, velocity = 100 },
+  { step = 4, duration = 4, semitones = 7, octave = -1, velocity = 90 },
+  { step = 8, duration = 4, semitones = 0, velocity = 96 },
+  { step = 12, duration = 4, semitones = 7, octave = -1, velocity = 88 },
+  { step = 16, duration = 4, semitones = 0, velocity = 100 },
+  { step = 20, duration = 4, semitones = 7, octave = -1, velocity = 90 },
+  { step = 24, duration = 4, semitones = 0, velocity = 96 },
+]
+
+[accompaniment.bass.passing]
+none_weight = 60
+density = [[0.0, 0.2], [0.5, 1.0], [1.0, 1.8]]
+phrase = [[0.0, 1.0], [1.0, 1.0]]
+avoid_melody_intervals = []
+rules = [
+  { when = "next_target_differs", before = [4], motion = "chromatic", weight = 22, duration = 4, velocity_delta = -14, min_leap = 0 },
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 19, duration = 4, velocity_delta = -14, min_leap = 0 },
+]
+
+# Comping : guitare nylon (GeneralUser GS 24 ; l'habillage tire aussi l'acier 25, le piano 0, le piano Tine 4) en notes
+# guides, sur des rythmes de samba (batida du violão : contretemps, 3-3-2, anticipations de la mesure suivante,
+# doubles croches de cavaquinho). Règles de métier : aucun corpus ouvert de comping (décision F3 de 018). Étiquettes
+# `sparse` / `medium` / `dense` : l'arc nomme celles d'un chorus. Une attaque qui finit sur la barre (`anticipate`)
+# joue l'accord de la mesure suivante.
+[accompaniment.chords]
+center = 62
+max_drift = 6
+default_pattern = 0
+voicing = "guide_tones"
+low = 50
+high = 74
+register_drift = { step = 2, max = 5 }
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 66 }] }]
+comping = [
+  # 0-3 : clairsemé, un accord par 2/4, tenue, temps 2, silence.
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 7, velocity = 72 }, { step = 8, duration = 7, velocity = 66 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 6, duration = 2, velocity = 62 }, { step = 8, duration = 3, velocity = 70 }, { step = 14, duration = 2, velocity = 64, anticipate = true }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 4, velocity = 70 }, { step = 12, duration = 4, velocity = 66, anticipate = true }] },
+  { weight = 1, tag = "sparse", hits = [] },
+  # 4-7 : médian, contretemps, trois-trois-deux, anticipation.
+  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 2, velocity = 70, direction = "up" }, { step = 6, duration = 2, velocity = 66, direction = "up" }, { step = 10, duration = 2, velocity = 70, direction = "up" }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 3, duration = 3, velocity = 62, direction = "up" }, { step = 6, duration = 2, velocity = 66, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 11, duration = 3, velocity = 60, direction = "up" }, { step = 14, duration = 2, velocity = 68, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 4, duration = 1, velocity = 58, direction = "up" }, { step = 6, duration = 1, velocity = 64, direction = "up" }, { step = 7, duration = 1, velocity = 56, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 12, duration = 1, velocity = 58, direction = "up" }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 76, direction = "block" }, { step = 4, duration = 2, velocity = 60, direction = "up" }, { step = 7, duration = 1, velocity = 60, direction = "up" }, { step = 8, duration = 4, velocity = 72, direction = "block" }, { step = 12, duration = 2, velocity = 62, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", anticipate = true }] },
+  # 8-11 : dense, doubles croches de cavaquinho, notes fantômes à probabilité réduite.
+  { weight = 4, tag = "dense", hits = [
+    { step = 0, duration = 1, velocity = 82, direction = "down" }, { step = 1, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
+    { step = 2, duration = 1, velocity = 64, direction = "down" }, { step = 3, duration = 1, velocity = 70, direction = "up" },
+    { step = 4, duration = 1, velocity = 78, direction = "down" }, { step = 5, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
+    { step = 6, duration = 1, velocity = 64, direction = "down" }, { step = 7, duration = 1, velocity = 70, direction = "up" },
+    { step = 8, duration = 1, velocity = 80, direction = "down" }, { step = 9, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
+    { step = 10, duration = 1, velocity = 64, direction = "down" }, { step = 11, duration = 1, velocity = 70, direction = "up" },
+    { step = 12, duration = 1, velocity = 78, direction = "down" }, { step = 13, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
+    { step = 14, duration = 1, velocity = 64, direction = "down" }, { step = 15, duration = 1, velocity = 70, direction = "up", anticipate = true },
+  ] },
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 2, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 64, direction = "up" },
+    { step = 4, duration = 1, velocity = 76, direction = "down" }, { step = 6, duration = 1, velocity = 64, direction = "up" },
+    { step = 7, duration = 1, velocity = 56, direction = "up", probability = 0.7 }, { step = 8, duration = 2, velocity = 82, direction = "down" },
+    { step = 11, duration = 1, velocity = 64, direction = "up" }, { step = 12, duration = 1, velocity = 76, direction = "down" },
+    { step = 14, duration = 1, velocity = 66, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", probability = 0.7, anticipate = true },
+  ] },
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 3, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 62, direction = "up" },
+    { step = 5, duration = 1, velocity = 52, direction = "up", probability = 0.5 }, { step = 6, duration = 2, velocity = 72, direction = "down" },
+    { step = 8, duration = 3, velocity = 82, direction = "down" }, { step = 11, duration = 1, velocity = 62, direction = "up" },
+    { step = 13, duration = 1, velocity = 52, direction = "up", probability = 0.5 }, { step = 14, duration = 2, velocity = 70, direction = "down", anticipate = true },
+  ] },
+  { weight = 2, tag = "dense", hits = [
+    { step = 0, duration = 4, velocity = 86, direction = "block" }, { step = 4, duration = 1, velocity = 62, direction = "up" },
+    { step = 6, duration = 1, velocity = 70, direction = "up" }, { step = 7, duration = 1, velocity = 58, direction = "up" },
+    { step = 8, duration = 4, velocity = 84, direction = "block" }, { step = 12, duration = 1, velocity = 62, direction = "up" },
+    { step = 14, duration = 1, velocity = 70, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", anticipate = true },
+  ] },
+]
+# Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de métier : deux mesures
+# du même rythme puis une variation, mise en place de fin de chorus (`part_end`) plus dense ou en tenue.
+phrases = [
+  { weight = 3, tag = "sparse", motifs = [0, 0, 1, 0] },
+  { weight = 3, tag = "sparse", motifs = [1, 2, 1, 2] },
+  { weight = 2, tag = "sparse", motifs = [0, 3] },
+  { weight = 2, tag = "sparse", motifs = [2, 2] },
+  { weight = 3, tag = "sparse", at = "part_end", motifs = [0, 0, 2, 1] },
+  { weight = 3, tag = "medium", motifs = [4, 5, 4, 5] },
+  { weight = 3, tag = "medium", motifs = [5, 5, 6, 5] },
+  { weight = 2, tag = "medium", motifs = [4, 7, 4, 7] },
+  { weight = 2, tag = "medium", motifs = [6, 6] },
+  { weight = 2, tag = "medium", motifs = [5, 4] },
+  { weight = 3, tag = "medium", at = "part_end", motifs = [4, 5, 6, 7] },
+  { weight = 3, tag = "dense", motifs = [8, 8, 9, 8] },
+  { weight = 3, tag = "dense", motifs = [9, 10, 9, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 11, 8, 11] },
+  { weight = 2, tag = "dense", motifs = [10, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 9] },
+  { weight = 3, tag = "dense", at = "part_end", motifs = [8, 8, 9, 11] },
+]
+
+# Gratté de la guitare (cordes du bas au haut, quelques millisecondes d'écart) : valeurs de départ des profils à
+# guitare, aucune mesure de samba.
+[accompaniment.chords.spread]
+down_gap_ms = 6.0
+up_gap_ms = 4.0
+up_note_count = 2
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 89.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 4
+
+[instruments]
+melody_program = 0
+chords_program = 24
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[ornaments]
+rate_scale = 0.0
+
+# Micro-timing de la batterie : médianes du GMD brazilian-samba (écart à la grille, en pas ; un batteur, kit
+# électronique contre un métronome) : grosse caisse −0,008 sur le temps, −0,046 hors temps (n = 1192 et 1136), tom grave
+# (surdo) −0,021 et −0,040 (406 et 137), caisse claire −0,035 et −0,048 (734 et 2941), charleston au pied −0,027 et
+# −0,025 (24 et 1145). Voix latines (agogô, tamborim, chocalho, pandeiro) : aucune mesure, aucun décalage. Aucun
+# `jitter` sur la batterie (il partage son tirage avec la basse à notes de passage ; contrat de B4).
+[performance.tracks.PercussionLow]
+voices = [
+  { note = 36, on_beat = -0.008, off_beat = -0.046 },
+  { note = 43, on_beat = -0.021, off_beat = -0.04 },
+]
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 38, on_beat = -0.035, off_beat = -0.048 },
+  { note = 44, on_beat = -0.027, off_beat = -0.025 },
+]
+[performance.tracks.Bass]
+jitter = 0.04
+[performance.tracks.Chords]
+jitter = 0.05
+
+# Mixage de service (rien de mesuré sur un corpus) : niveaux de piste calés sur le LUFS intégré en solo (graines 1 et 2,
+# 48 mesures ; cibles accords −26, basse −25, batterie −25,5, somme en puissance des deux pistes de percussion) avec un
+# maître à +25 dB, puis maître ramené à +24,3 dB parce que la crête vraie du kit « room » (graine 8) dépassait −1 dBFS
+# (−0,6) ; mesures finales dans le README.
+[mix]
+master_db = 24.3
+[mix.room]
+room_size = 0.25
+damping = 0.6
+width = 0.5
+level = 0.1
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.5
+pan = -0.3
+reverb_send = 0.1
+[mix.tracks.Bass]
+level_db = -17.8
+pan = 0.0
+reverb_send = 0.03
+[mix.tracks.PercussionLow]
+level_db = -14.2
+pan = 0.0
+reverb_send = 0.06
+[mix.tracks.PercussionHigh]
+level_db = -14.2
+pan = 0.0
+reverb_send = 0.06
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

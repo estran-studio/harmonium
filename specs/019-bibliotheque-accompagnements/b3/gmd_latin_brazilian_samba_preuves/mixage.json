@@ -1,0 +1,14 @@
+{
+  "Chords": -26.6,
+  "Bass": -25.6,
+  "PercussionLow": -28.8,
+  "PercussionHigh": -30.1,
+  "kit": -26.4,
+  "mix_graines_1_2": -22.0,
+  "mix_min_max": [
+    -22.9,
+    -20.0
+  ],
+  "crete_vraie_max_dBFS": -1.3,
+  "graines_crete": 16
+}
