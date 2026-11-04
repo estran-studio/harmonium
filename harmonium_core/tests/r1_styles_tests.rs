@@ -32,7 +32,10 @@ fn snapshots(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
         ..Default::default()
     };
     params.set_swing_ratio(p.meter.default_swing_ratio);
-    let mut generator = TuneGenerator::new(params, TuningParams { profile: p.clone() });
+    // Contrat de mètre, de pulsation et de tempo nominal : sans le tirage de session.
+    let mut p = p.clone();
+    p.session = Default::default();
+    let mut generator = TuneGenerator::new(params, TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     (1..=bars)
         .map(|bar| MeasureSnapshot::from_measure(&generator.generate_measure(bar, &mut rng)))

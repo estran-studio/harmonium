@@ -23,6 +23,8 @@ fn ramp() -> SetRamp {
 fn tuning() -> TuningParams {
     let mut p = StyleProfile::default();
     p.arrangement.tours_per_tune = 1;
+    // La rampe du set est testée seule : le tempo de session ne s'y mêle pas.
+    p.session = Default::default();
     p.set.signature = Default::default();
     p.set.length = vec![SetLength { tunes: 3, weight: 1 }];
     p.set.ramp = Some(ramp());

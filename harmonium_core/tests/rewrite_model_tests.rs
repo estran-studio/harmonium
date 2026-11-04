@@ -26,6 +26,8 @@ fn profile(period: usize, guidance: bool) -> StyleProfile {
     use RomanNumeral::{I, II, V};
     let mut p = StyleProfile::default();
     p.ornaments = Default::default();
+    // Les accords attendus sont écrits en sol : la tonalité ne vient pas du tirage de session.
+    p.session = Default::default();
     p.harmony.model = "rewrite_functional".into();
     p.harmony.steps_per_chord = period;
     p.harmony.rules = vec![rule(I, vec![II], 1.0), rule(II, vec![V], 1.0), rule(V, vec![I], 1.0)];

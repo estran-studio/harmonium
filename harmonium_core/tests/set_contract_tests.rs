@@ -109,6 +109,8 @@ fn tuning(mutate: impl FnOnce(&mut StyleProfile)) -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement.tours_per_tune = 1;
     tuning.profile.set.signature = Default::default();
+    // Les couleurs publiées sont comparées aux candidates du profil, pas à la tonalité tirée.
+    tuning.profile.session = Default::default();
     tuning.profile.set.ramp = None;
     mutate(&mut tuning.profile);
     tuning

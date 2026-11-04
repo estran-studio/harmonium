@@ -2459,10 +2459,19 @@ mod tests {
             profile: {
                 let mut p = TuningParams::default().profile;
                 p.arrangement = Arrangement::from_start(3, Default::default());
+                // Le test porte sur les métadonnées, pas sur l'habillage tiré par la graine.
+                p.session = Default::default();
                 p
             },
             ..TuningParams::default()
         }
+    }
+
+    /// Profil par défaut avec son intro, sans l'habillage par graine (pas le sujet des tests d'intro).
+    fn make_unsessioned_default() -> TuningParams {
+        let mut tuning = TuningParams::default();
+        tuning.profile.session = Default::default();
+        tuning
     }
 
     #[test]
@@ -2516,7 +2525,7 @@ mod tests {
 
         // 2. Avec intro : générer intro + 32 mesures, puis comparer les 32 mesures après l'intro
         let mut rng_intro = ChaCha8Rng::seed_from_u64(seed);
-        let mut intro_gen = TuneGenerator::new(params, TuningParams::default());
+        let mut intro_gen = TuneGenerator::new(params, make_unsessioned_default());
 
         // Générer assez pour passer l'intro et couvrir 32 mesures d'air
         for bar in 1..=100 {
@@ -2527,7 +2536,7 @@ mod tests {
 
         // Régénérer depuis le début (même seed) pour la comparaison
         let mut rng_intro2 = ChaCha8Rng::seed_from_u64(seed);
-        let mut intro_gen2 = TuneGenerator::new(make_tune_params(), TuningParams::default());
+        let mut intro_gen2 = TuneGenerator::new(make_tune_params(), make_unsessioned_default());
 
         for tune_bar in 1..=32 {
             let bar = tune_bar + intro_bars;

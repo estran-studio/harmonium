@@ -25,6 +25,8 @@ fn recipe(name: &str) -> StyleProfile {
     profile.arrangement = Arrangement::from_start(2, Part(0));
     profile.arrangement.intro = IntroConfig::none();
     profile.set = Default::default();
+    // La recette est testée seule : pas d'habillage tiré par la graine du profil par défaut.
+    profile.session = Default::default();
     profile
 }
 

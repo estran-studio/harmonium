@@ -80,6 +80,8 @@ fn distributed_final_endings_follow_weights_and_preserve_other_bars_over_200_tun
     for distributed in with_endings {
         let mut profile = distributed.clone();
         profile.performance = Default::default();
+        // Les airs se rejouent à l'identique d'un tour à l'autre : sans l'arc de session (vélocité).
+        profile.session = Default::default();
         profile.arrangement = Arrangement::from_start(2, Default::default());
         let mut counts = [[0usize; 3]; 2];
         for seed in 0..200 {

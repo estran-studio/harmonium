@@ -200,6 +200,10 @@ fn audible_tempo_is_taken_then_cleared_at_pulse_boundaries() -> Result<(), Strin
     let (mut host, mut playback) = host()?;
     let mut clock = host.take_clock_reader().ok_or("horloge absente")?;
     host.apply(EngineCommand::SetWriteheadLookahead(8))?;
+    // Le test porte sur le tempo audible : un tempo tiré par la graine n'a pas une période entière en trames.
+    let mut profile = host.profile().clone();
+    profile.session = Default::default();
+    host.apply(EngineCommand::SetStyleProfile(Box::new(profile)))?;
     let mut buffer = [0.0f32; 512];
     let mut period = |host: &mut LiveHost, playback: &mut PlaybackEngine| {
         for _ in 0..400 {

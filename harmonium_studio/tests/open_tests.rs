@@ -92,7 +92,7 @@ fn a_changed_profile_file_reloads_once_and_only_after_the_files_settle() -> Resu
     let (_temp, dir) = profile_copy()?;
     let mut watch = ProfileWatch::new(&dir);
     let mut now = Instant::now();
-    assert_eq!(watch.files().len(), 6, "profile.toml et les cinq banques de [files]");
+    assert_eq!(watch.files().len(), 7, "profile.toml et les six banques de [files]");
     assert!(settle(&mut watch, &mut now).is_empty(), "rien ne change : rien ne se recharge");
 
     rename(&dir, "Edited")?;

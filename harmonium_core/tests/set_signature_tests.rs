@@ -16,6 +16,7 @@ use rand_chacha::ChaCha8Rng;
 fn tuning(rate: f32) -> TuningParams {
     let mut p = StyleProfile::default();
     p.arrangement.tours_per_tune = 1;
+    p.session = Default::default();
     p.arrangement.intro = IntroConfig::none();
     p.set.length = vec![SetLength { tunes: 3, weight: 1 }];
     p.set.ramp = None;

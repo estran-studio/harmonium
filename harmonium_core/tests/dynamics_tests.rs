@@ -18,6 +18,8 @@ fn generator() -> (TuneGenerator, ChaCha8Rng) {
         profile: {
             let mut p = TuningParams::default().profile;
             p.arrangement = Arrangement::from_start(1, Default::default());
+            // Le test porte sur l'intensité, pas sur l'habillage par graine du profil par défaut.
+            p.session = Default::default();
             p.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
             p
         },

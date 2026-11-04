@@ -223,7 +223,9 @@ fn hornpipe_metadata_and_corpus_citation() {
 
 #[test]
 fn hornpipe_meter_swing_and_tempo_contract() {
-    let p = hornpipe_profile();
+    let mut p = hornpipe_profile();
+    // Tempo nominal du profil : sans le tirage de session (couvert par `trad_session_profile_tests`).
+    p.session = Default::default();
     assert_eq!(p.meter.time_signature, TimeSignature::new(4, 4));
     assert_eq!(p.meter.steps_per_bar, 16);
     assert_eq!(p.meter.steps_per_unit, 2);

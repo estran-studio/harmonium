@@ -16,6 +16,8 @@ use rand_chacha::ChaCha8Rng;
 fn tuning() -> TuningParams {
     let mut tuning = TuningParams::default();
     tuning.profile.arrangement = Arrangement::from_start(3, Default::default());
+    // Ces tests portent sur les changements de mode, pas sur l'habillage par graine (tonalité, mode).
+    tuning.profile.session = Default::default();
     tuning.profile.ornaments.types.retain(|kind, _| *kind == OrnamentKind::Passing);
     tuning.profile.accompaniment.as_mut().unwrap().bass.passing = None;
     tuning.profile.dynamics.color = vec![ColorChoice {

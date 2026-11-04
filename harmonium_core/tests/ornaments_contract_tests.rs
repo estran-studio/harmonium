@@ -25,6 +25,7 @@ const KINDS: [OrnamentKind; 8] = [
 fn base() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.session = Default::default();
     p.ornaments = Default::default();
     p.accompaniment.as_mut().unwrap().bass.passing = None;
     for part in &mut p.form.parts {
