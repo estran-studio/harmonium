@@ -41,6 +41,13 @@ moteur. Les comptes rendus de 018 listent les manques :
 - **D4 — Pas de réharmonisation par défaut** : training note l'impro contre la grille de
   l'utilisateur ; l'accompagnement ne la contredit pas (accords de passage, substitutions : option
   désactivée par défaut si un style en a besoin).
+- **D8 — Implémentation sur `ovh-inner`** (propriétaire, 2026-11-03 : le Mac consomme trop
+  d'énergie). La vague 4 lot 1 finit sur le Mac ; ensuite les agents travaillent et compilent sur
+  `ovh-inner` (VPS, 8 cœurs, 22 Go, accès SSH `ovh-inner` par le routeur), **3 agents à la fois**,
+  et l'orchestrateur y fait les vérifications lourdes (dumps, suites, natif = wasm). Le Mac garde
+  l'orchestration et la compilation du studio pour les écoutes (D7). Synchro git **directe Mac ↔
+  `ovh-inner`** par SSH (GitHub n'est poussé que sur demande, comme avant). Relais de modèles :
+  Sonnet → Codex → **muse-spark** (`muse-code/muse-spark-1.3`, compte d'`ovh-inner`), jamais Opus.
 - **D7 — Revues et tests dans le studio** (propriétaire, 2026-11-03) : plus de pages d'écoute MP3.
   L'orchestrateur ouvre pour le propriétaire un lien qui charge dans le studio un profil (distribué,
   fixture ou dossier d'un worktree) avec graine et position, en pause par défaut ; le studio
