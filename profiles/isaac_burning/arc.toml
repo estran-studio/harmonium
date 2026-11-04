@@ -1,0 +1,27 @@
+# Fundamentum : riff présent ~60 % du morceau, sections d'accords aux m.32-40,
+# 56-64, 96-104, 128-136 ; coupure de batterie m.143 (labo isaac-basement §3).
+# Adaptation au jeu sans fin : pas de fall, trois paliers d'un tour de 40 mesures,
+# puis alternance corps/sommet indéfiniment, même avec --tours 4 ou 16.
+# Intensité/densité modestes : les quatre émotions du jeu restent prioritaires.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.95, density = 0.95, percussion = [{ tag = "backbeat" }] },
+  { weight = 1, intensity = 1.0, density = 0.95, percussion = [{ tag = "backbeat" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3 },
+  { weight = 1, intensity = 1.05, density = 1.05, breaks = [{ start = -1, bars = 1, chance = 0.35, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 1.1, density = 1.1, percussion = [{ tag = "backbeat", weight = 3 }, { tag = "drive" }] },
+  { weight = 1, intensity = 1.05, density = 1.1, percussion = [{ tag = "backbeat" }, { tag = "drive" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]

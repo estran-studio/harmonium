@@ -1,5 +1,9 @@
 //! Profil distribué `nt_desert` : arche, voix et émotions observées dans les
 //! snapshots et le lecteur public, sans figer les tirages ni recopier le TOML.
+//! Le profil porte un habillage par graine (`session.toml`) et un arc (`arc.toml`) : les
+//! assertions s'appuient sur le contrat publié (accords, tonalité, entrées, fenêtres de
+//! piste) et tolèrent ce que l'habillage et l'arc du second chorus font varier (motif de
+//! comping de la nappe, coupe de batterie déclarée dans B, présence des relances).
 use std::collections::{BTreeMap, BTreeSet};
 
 use harmonium_core::{
@@ -68,7 +72,7 @@ fn motif(s: &MeasureSnapshot, track: u8) -> Vec<(u8, usize, usize)> {
 #[test]
 fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
     let p = load()?;
-    for seed in 1..=5 {
+    for seed in 1..=8 {
         let snapshots = stream(&p, seed, 96)?;
         for (i, s) in snapshots.iter().enumerate() {
             let local = i % 48;
@@ -83,29 +87,55 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
             } else {
                 assert!(!notes(s, 2).is_empty() || (32..40).contains(&local));
             }
+            let pad = notes(s, 1);
+            let starts: BTreeSet<_> = pad.iter().map(|n| n.start_step).collect();
+            let first_chorus = i < 48;
             if local < 8 || local >= 40 {
-                let pad = notes(s, 1);
-                assert_eq!(pad.len(), 1, "pédale seule, mesure {}", s.index);
                 // Pédale G# ou, en alternative (R1), sa quinte ré# ; la même sur A1 et A1'.
+                assert!([8, 3].contains(&s.chord_root_pc), "pédale G# ou D#, mesure {}", s.index);
                 assert!(
-                    [8, 3].contains(&(pad[0].pitch % 12)),
-                    "pédale G# ou D#, mesure {}",
+                    pad.iter().all(|n| n.pitch % 12 == s.chord_root_pc),
+                    "pédale publiée, mesure {}",
                     s.index
                 );
-                assert_eq!(pad[0].pitch % 12, s.chord_root_pc, "pédale publiée");
+                if first_chorus {
+                    assert_eq!(pad.len(), 1, "pédale seule, mesure {}", s.index);
+                } else {
+                    // Second chorus : motif de comping de l'arc (tenue, respiration ou reprise
+                    // à mi-mesure), une note par attaque.
+                    assert!(
+                        starts.contains(&0) && starts.is_subset(&BTreeSet::from([0, 12])),
+                        "attaques de la pédale {starts:?}, mesure {}",
+                        s.index
+                    );
+                    assert_eq!(pad.len(), starts.len(), "pédale seule, mesure {}", s.index);
+                }
             } else {
-                let pad = notes(s, 1);
                 let classes: BTreeSet<_> = pad.iter().map(|n| n.pitch % 12).collect();
                 // Triade publiée, plus la basse d'un accord slash (boucle générée sur pédale).
                 let mut chord: BTreeSet<_> = s.chord_pitch_classes.iter().copied().collect();
                 chord.insert(s.chord_bass_pc);
-                assert_eq!(pad.len(), 4, "triade doublée, mesure {}", s.index);
                 assert_eq!(classes, chord, "classes de l'accord publié, mesure {}", s.index);
-                assert!(
-                    pad.iter().all(|n| n.start_step == 0 && n.duration_steps == s.steps),
-                    "nappe non tenue, mesure {}",
-                    s.index
-                );
+                if first_chorus || (16..32).contains(&local) {
+                    assert_eq!(pad.len(), 4, "triade doublée, mesure {}", s.index);
+                    assert!(
+                        pad.iter().all(|n| n.start_step == 0 && n.duration_steps == s.steps),
+                        "nappe non tenue, mesure {}",
+                        s.index
+                    );
+                } else {
+                    assert!(
+                        starts.contains(&0) && starts.is_subset(&BTreeSet::from([0, 12])),
+                        "attaques de la nappe {starts:?}, mesure {}",
+                        s.index
+                    );
+                    assert_eq!(pad.len(), 4 * starts.len(), "triade doublée, mesure {}", s.index);
+                    assert!(
+                        pad.iter().all(|n| n.duration_steps <= s.steps),
+                        "nappe plus longue que la mesure, mesure {}",
+                        s.index
+                    );
+                }
             }
         }
         // Le premier A1 ouvre sans percussion ni lead ; la voix entre en A2 et
@@ -123,9 +153,12 @@ fn arche_48_entrees_et_pont_de_nappes() -> TestResult {
             for s in
                 snapshots[start + 8..start + 16].iter().chain(&snapshots[start + 32..start + 48])
             {
+                // L'arc du second chorus peut couper la batterie sur la fenêtre de B qu'il
+                // déclare (mesures 37 et 38 du chorus) ; hors de cette fenêtre, elle joue.
+                let cut = start == 48 && [37, 38].contains(&(s.index - start));
                 for track in [0, 3, 4] {
                     assert!(
-                        !notes(s, track).is_empty(),
+                        cut && track != 0 || !notes(s, track).is_empty(),
                         "voix attendue piste {track}, mesure {} (graine {seed})",
                         s.index
                     );
@@ -181,7 +214,7 @@ fn contrevoix_uniquement_sur_les_huit_dernieres_mesures_du_second_tour() -> Test
 }
 
 #[test]
-fn motifs_reconnaissables_et_second_tour_varie_sans_changer_accompagnement() -> TestResult {
+fn motifs_reconnaissables_et_second_tour_varie_sans_changer_accords_ni_basse() -> TestResult {
     let p = load()?;
     let mut copies = 0;
     for seed in 1..=5 {
@@ -197,15 +230,17 @@ fn motifs_reconnaissables_et_second_tour_varie_sans_changer_accompagnement() -> 
         (8..16).chain(32..48).any(|i| motif(&snapshots[i], 0) != motif(&snapshots[i + 48], 0)),
         "aucune variation mélodique effective au second tour, graine 1"
     );
+    // Les accords publiés et la basse ne changent pas d'un tour à l'autre ; seul le motif de
+    // comping de la nappe peut varier avec l'arc du second chorus.
     for i in 0..48 {
-        for track in [1, 2] {
-            assert_eq!(
-                motif(&snapshots[i], track),
-                motif(&snapshots[i + 48], track),
-                "variation d'accompagnement piste {track}, mesure {}",
-                i + 1
-            );
-        }
+        let (first, second) = (&snapshots[i], &snapshots[i + 48]);
+        assert_eq!(
+            (&first.chord_pitch_classes, first.chord_root_pc, first.chord_bass_pc),
+            (&second.chord_pitch_classes, second.chord_root_pc, second.chord_bass_pc),
+            "accord publié différent au second tour, mesure {}",
+            i + 1
+        );
+        assert_eq!(motif(first, 2), motif(second, 2), "variation de la basse, mesure {}", i + 1);
     }
     // Les relances de pédale restent distinctes des longues tenues.
     for i in [3, 7, 43, 47] {
@@ -221,7 +256,8 @@ fn liaisons_sans_reattaque_ni_note_orpheline() -> TestResult {
     let mut g = TuneGenerator::new(params(&p), TuningParams { profile: p });
     let mut rng = ChaCha8Rng::seed_from_u64(1);
     let mut measures: Vec<_> = (1..=96).map(|b| g.generate_measure(b, &mut rng)).collect();
-    measures.push(Measure::new(97, signature, 210.0, 24));
+    let tempo = measures.last().map_or(210.0, |m| m.tempo);
+    measures.push(Measure::new(97, signature, tempo, 24));
     let mut reader = Playhead::new(44100.0, 4);
     let mut bass_attacks = Vec::new();
     let mut chords_attacks = Vec::new();
@@ -289,7 +325,7 @@ fn palette_du_kit_et_fills_uniquement_aux_frontieres_hors_pont() -> TestResult {
     let p = load()?;
     let mut toms = BTreeSet::new();
     let mut filled = BTreeSet::new();
-    for seed in 1..=5 {
+    for seed in 1..=16 {
         for s in stream(&p, seed, 96)? {
             for n in &s.notes {
                 assert!(n.track <= 5, "piste inconnue : {n:?}");
@@ -315,12 +351,14 @@ fn palette_du_kit_et_fills_uniquement_aux_frontieres_hors_pont() -> TestResult {
             }
         }
     }
-    assert_eq!(toms, BTreeSet::from([41, 45, 48]), "palette de toms non entendue");
     assert_eq!(
-        filled,
-        BTreeSet::from([16, 40, 48, 56, 64, 88, 96]),
-        "frontières sans fill sur les cinq graines"
+        toms,
+        BTreeSet::from([41, 45, 48]),
+        "palette de toms non entendue sur les seize graines"
     );
+    // Une relance n'est pas systématique (`fills_none_weight`) : sur seize graines, plusieurs
+    // frontières de partie en portent, jamais une autre mesure (vérifié ci-dessus).
+    assert!(filled.len() >= 3, "trop peu de frontières avec relance : {filled:?}");
     Ok(())
 }
 

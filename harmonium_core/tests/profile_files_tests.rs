@@ -228,6 +228,8 @@ fn in_memory_files_report_the_same_errors_as_the_disk() -> TestResult {
         "arrangement.toml",
         "dynamics.toml",
         "set.toml",
+        "arc.toml",
+        "session.toml",
     ]
     .into_iter()
     .map(|name| Ok((name.to_string(), copy.read(name)?)))

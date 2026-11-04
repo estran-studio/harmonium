@@ -17,6 +17,8 @@ percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
+session = "session.toml"
+arc = "arc.toml"
 
 [meta]
 id = "isaac_burning"

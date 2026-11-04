@@ -1,0 +1,24 @@
+# R2 : développement cyclique d'une musique de jeu, sans fin connue ni fall.
+# Un chorus = un tour de 48 mesures. Le pont reste intégralement en nappes seules.
+# Multiplicateurs modestes ; les émotions gardent la maîtrise de l'intensité.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.85, density = 0.85, comping = [{ tag = "tenue" }] },
+  { weight = 1, intensity = 0.9, density = 0.9, comping = [{ tag = "tenue" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, comping = [{ tag = "tenue", weight = 3 }, { tag = "creux", weight = 1 }] },
+  { weight = 1, intensity = 1.1, density = 1.1, comping = [{ tag = "reprise" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.15, density = 1.15, comping = [{ tag = "tenue", weight = 2 }, { tag = "reprise", weight = 1 }] },
+]

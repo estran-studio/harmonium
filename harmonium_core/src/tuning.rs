@@ -10,11 +10,10 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : la graine de l'accompagnement (comping, marche et notes de passage de
-/// la basse, motifs de basse) vient de la graine de session, tirée une fois par air après la
-/// mélodie, et non plus de la mélodie écrite (S0, 26) ; R1 (019, 25) intègre les propositions
-/// P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 26;
+/// Version du contrat : R2-jeux (019, 27) active les habillages par graine, arcs et phrases des
+/// cinq profils de jeu ; `isaac_cellar` reçoit aussi des boucles générées et pédales alternatives.
+/// S0 (26) dérive l'accompagnement de la graine de session ; R1 (25) intègre P1/P2.
+pub const TUNING_VERSION: u32 = 27;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

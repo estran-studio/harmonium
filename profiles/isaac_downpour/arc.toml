@@ -1,0 +1,32 @@
+# R2-jeux (019 vague 4). River of Despair : A/B/C de 16 mesures, reprise de ces blocs
+# (labo isaac-basement/README.md §3, mesures 64–128). Un chorus = 48 mesures ici.
+# Pas de fall : les étapes valent aussi pour --tours 4/16 et au-delà. Chaque étape dure un chorus,
+# puis le corps alterne les deux dernières étapes. Pas de marche : motifs de basse de 2 mesures.
+repeat_from = 1
+
+# Premier tour : conserver les tags de session ; légère différence de souffle, et option de
+# laisser la nappe ouvrir seule un instant (batterie seule coupée, pas de silence accidentel).
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.95, density = 0.95 },
+  { weight = 1, intensity = 1.0, density = 1.0, breaks = [{ start = 1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]
+
+# Tour suivant : chœur Aahs/Oohs (couleur vocale de la piste, §4), batterie encore clairsemée.
+# Une variante sans programmes restitue les programmes de session, pas de mutation persistante.
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.0, density = 1.0, instruments = { melody_program = 53 }, comping = [{ tag = "tenue", weight = 3 }, { tag = "plein" }], percussion = [{ tag = "tapis", weight = 2 }, { tag = "pouls", weight = 2 }, { tag = "charleston" }] },
+  { weight = 1, intensity = 1.05, density = 1.0 },
+]
+
+# Troisième tour : respiration de batterie au raccord de deux blocs (fin de B), sans couper
+# les notes de basse tenues ni la nappe. Règle d'orchestration, pas de nouvelle transcription.
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.95, density = 0.90, comping = [{ tag = "souffle" }, { tag = "tenue", weight = 3 }], percussion = [{ tag = "tapis", weight = 3 }, { tag = "pouls" }, { tag = "charleston" }], breaks = [{ start = 32, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+  { weight = 1, intensity = 1.05, density = 1.05, instruments = { percussion_program = 8 }, comping = [{ tag = "tenue", weight = 3 }, { tag = "plein" }] },
+]

@@ -8,9 +8,11 @@ low_velocity = 96
 high_velocity = 86
 percussion_gain = 1.0
 velocity_humanize = 4
+fills_none_weight = 1
 
 [[patterns]]
 density = 0
+tag = "stomp"
 hits = [
   { step = 0, track = "PercussionLow", delta_velocity = 0 },
   { step = 8, track = "PercussionHigh", delta_velocity = -10 },
@@ -19,6 +21,7 @@ hits = [
 [[patterns]]
 density = 1
 weight = 1
+tag = "stomp"
 hits = [
   { step = 0, track = "PercussionLow", delta_velocity = 0 },
   { step = 2, track = "PercussionLow", delta_velocity = -22 },
@@ -31,6 +34,7 @@ hits = [
 [[patterns]]
 density = 2
 weight = 1
+tag = "stomp"
 hits = [
   { step = 0, track = "PercussionLow", delta_velocity = 0 },
   { step = 2, track = "PercussionLow", delta_velocity = -22 },
@@ -49,6 +53,7 @@ hits = [
 [[patterns]]
 density = 1
 weight = 2
+tag = "reponse"
 hits = [
   { step = 0, track = "PercussionLow" },
   { step = 4, track = "PercussionHigh", delta_velocity = -8 },
@@ -61,6 +66,7 @@ hits = [
 [[patterns]]
 density = 2
 weight = 2
+tag = "reponse"
 hits = [
   { step = 0, track = "PercussionLow" },
   { step = 2, track = "PercussionLow", delta_velocity = -22 },
@@ -73,40 +79,248 @@ hits = [
   { step = 14, track = "PercussionHigh", note = 42, delta_velocity = -40 },
 ]
 
-[[cadence_patterns]]
-density = 0
-hits = [
-  { step = 0, track = "PercussionLow" },
-  { step = 8, track = "PercussionHigh", delta_velocity = -10 },
-  { step = 14, track = "PercussionHigh", note = 41, delta_velocity = -16 },
-]
+# Phase 019, R2-jeux (A1). Les patterns ci-dessus portent un `tag` que l'arc nomme : « stomp » (les
+# patterns initiaux), « reponse » (les réponses de poids 2, contretemps de grosse caisse déplacé).
+# Un `tag` ne change rien sans arc ni habillage (`session.toml`) : le tirage ordinaire reste celui
+# de la partie, indices 0 à 4 ci-dessus (0 : densité 0 ; 1 et 2 : stomp de densité 1 et 2 ; 3 et 4 :
+# réponses de densité 1 et 2).
+#
+# Phrases : des suites de 4 ou 8 mesures (la longueur des parties A2/D et A1 ; jamais deux mesures,
+# qui feraient revenir la relance à chaque deuxième mesure d'une marche qui n'en a qu'aux fins de
+# phrase). Avant, un pattern par partie et par densité jouait toute la passe, les reprises et les
+# tours relisaient le même choix : la batterie ne changeait pas d'un tour à l'autre. Maintenant la
+# phrase se tire à chaque passe ; elle se compose des mêmes patterns, aucune nouvelle frappe. Densité
+# 0 (ossature kick 0, caisse 8) : pas de phrase.
 
-[[cadence_patterns]]
+# Densité 1.
+[[phrases]]
 density = 1
-hits = [
-  { step = 0, track = "PercussionLow" },
-  { step = 2, track = "PercussionLow", delta_velocity = -22 },
-  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
-  { step = 6, track = "PercussionLow", delta_velocity = -16 },
-  { step = 8, track = "PercussionHigh" },
+weight = 6
+tag = "stomp"
+patterns = [1, 1, 1, 3]
+[[phrases]]
+density = 1
+weight = 1
+tag = "stomp"
+patterns = [1, 1, 3, 1]
+[[phrases]]
+density = 1
+weight = 2
+tag = "stomp"
+part = "A1"
+patterns = [1, 1, 1, 1, 1, 1, 3, 1]
+[[phrases]]
+density = 1
+weight = 6
+tag = "reponse"
+patterns = [3, 3, 3, 1]
+[[phrases]]
+density = 1
+weight = 1
+tag = "reponse"
+patterns = [3, 1, 3, 3]
+[[phrases]]
+density = 1
+weight = 2
+tag = "reponse"
+part = "A1"
+patterns = [3, 3, 1, 3, 3, 3, 1, 3]
+
+# Densité 2.
+[[phrases]]
+density = 2
+weight = 6
+tag = "stomp"
+patterns = [2, 2, 2, 4]
+[[phrases]]
+density = 2
+weight = 1
+tag = "stomp"
+patterns = [2, 2, 4, 2]
+[[phrases]]
+density = 2
+weight = 2
+tag = "stomp"
+part = "A1"
+patterns = [2, 2, 2, 2, 2, 2, 4, 2]
+[[phrases]]
+density = 2
+weight = 6
+tag = "reponse"
+patterns = [4, 4, 4, 2]
+[[phrases]]
+density = 2
+weight = 1
+tag = "reponse"
+patterns = [4, 2, 4, 4]
+[[phrases]]
+density = 2
+weight = 2
+tag = "reponse"
+part = "A1"
+patterns = [4, 4, 2, 4, 4, 4, 2, 4]
+
+# Relances de fin de phrase : elles remplacent les trois `[[cadence_patterns]]` de l'essai (retirés),
+# dont le contenu est repris à l'identique dans la première relance de chaque densité (tag « stomp »,
+# `part_end`). Tom bas 41, toms 43, 45 et 48 de la grille de l'essai (proposition originale de G7c :
+# le Basement n'a pas de fills de toms transcrits). Les autres relances sont des propositions
+# originales, non transcrites (mêmes notes de tom, mêmes vélocités, fin de mesure seulement), pour
+# que la fin de partie ne sonne pas la même chute à chaque passe. La batterie de Diptera Sonata
+# se coupe à la fin (mes. 141), celle de Periculum à la mes. 128 : aucune relance n'est écrite
+# au-delà de la partie. `fills_none_weight = 1` : environ une fin de phrase sur huit sans relance.
+# Densité 0.
+[[fills]]
+density = 0
+weight = 7
+tag = "stomp"
+at = "part_end"
+start_step = 14
+bars = [{ hits = [{ step = 14, track = "PercussionHigh", note = 41, delta_velocity = -16 }] }]
+[[fills]]
+density = 0
+weight = 7
+tag = "reponse"
+at = "part_end"
+start_step = 14
+bars = [{ hits = [{ step = 14, track = "PercussionHigh", note = 43, delta_velocity = -14 }, { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -10 }] }]
+# Densité 1.
+[[fills]]
+density = 1
+weight = 7
+tag = "stomp"
+at = "part_end"
+start_step = 12
+bars = [{ hits = [
   { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
   { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
   { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
   { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
-]
-
-[[cadence_patterns]]
+] }]
+[[fills]]
+density = 1
+weight = 7
+tag = "reponse"
+at = "part_end"
+start_step = 12
+bars = [{ hits = [
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+] }]
+# Densité 2.
+[[fills]]
 density = 2
-hits = [
-  { step = 0, track = "PercussionLow" },
-  { step = 2, track = "PercussionLow", delta_velocity = -22 },
-  { step = 4, track = "PercussionHigh", delta_velocity = -8 },
-  { step = 6, track = "PercussionLow", delta_velocity = -16 },
-  { step = 8, track = "PercussionHigh" },
+weight = 7
+tag = "stomp"
+at = "part_end"
+start_step = 10
+bars = [{ hits = [
   { step = 10, track = "PercussionHigh", delta_velocity = -18 },
   { step = 11, track = "PercussionHigh", delta_velocity = -22 },
   { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
   { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
   { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
   { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+] }]
+[[fills]]
+density = 2
+weight = 7
+tag = "reponse"
+at = "part_end"
+start_step = 12
+bars = [{ hits = [
+  { step = 12, track = "PercussionHigh", delta_velocity = -8 },
+  { step = 13, track = "PercussionHigh", delta_velocity = -20 },
+  { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+] }]
+
+# Fin de chorus (la dernière phrase du chorus, la reprise A1' ; `chorus_end` l'emporte sur `part_end`
+# à cet endroit) : deux mesures, un roulement de toms descendant sur la seconde. Le tour suivant
+# repart sur le stomp ; sans arc, ni tag, rien ne change de la mécanique de fin de phrase.
+[[fills]]
+density = 1
+weight = 7
+tag = "stomp"
+at = "chorus_end"
+start_step = 12
+bars = [
+  { hits = [{ step = 14, track = "PercussionHigh", note = 41, delta_velocity = -16 }] },
+  { hits = [
+    { step = 0, track = "PercussionLow" },
+    { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+    { step = 8, track = "PercussionHigh" },
+    { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+    { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+    { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+  ] },
+]
+[[fills]]
+density = 1
+weight = 7
+tag = "reponse"
+at = "chorus_end"
+start_step = 8
+bars = [
+  { hits = [
+    { step = 8, track = "PercussionHigh" },
+    { step = 12, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  ] },
+  { hits = [
+    { step = 0, track = "PercussionLow" },
+    { step = 6, track = "PercussionLow", delta_velocity = -16 },
+    { step = 8, track = "PercussionHigh" },
+    { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+    { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+    { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+  ] },
+]
+[[fills]]
+density = 2
+weight = 7
+tag = "stomp"
+at = "chorus_end"
+start_step = 12
+bars = [
+  { hits = [
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -12 },
+    { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+  ] },
+  { hits = [
+    { step = 0, track = "PercussionLow" },
+    { step = 4, track = "PercussionHigh", delta_velocity = -8 },
+    { step = 8, track = "PercussionHigh" },
+    { step = 10, track = "PercussionHigh", delta_velocity = -18 },
+    { step = 11, track = "PercussionHigh", delta_velocity = -22 },
+    { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+    { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+    { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+  ] },
+]
+[[fills]]
+density = 2
+weight = 7
+tag = "reponse"
+at = "chorus_end"
+start_step = 8
+bars = [
+  { hits = [
+    { step = 8, track = "PercussionHigh" },
+    { step = 12, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+  ] },
+  { hits = [
+    { step = 0, track = "PercussionLow" },
+    { step = 2, track = "PercussionLow", delta_velocity = -22 },
+    { step = 6, track = "PercussionLow", delta_velocity = -16 },
+    { step = 8, track = "PercussionHigh" },
+    { step = 12, track = "PercussionHigh", note = 48, delta_velocity = -14 },
+    { step = 13, track = "PercussionHigh", note = 45, delta_velocity = -12 },
+    { step = 14, track = "PercussionHigh", note = 43, delta_velocity = -10 },
+    { step = 15, track = "PercussionHigh", note = 41, delta_velocity = -8 },
+  ] },
 ]

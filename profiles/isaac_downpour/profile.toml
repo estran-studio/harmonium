@@ -11,12 +11,16 @@
 # R1 (phase 019, propositions P2 du labo, provenance en commentaire) : une boucle
 # de C, deux motifs de basse d'A et, dans percussion.toml, un groove de densité 1
 # extraits de River of Despair. Pas de groove de densité 2 (décision du 2026-11-02).
+# R2 (phase 019 vague 4) : habillage en groupes, arc sans fin, phrases de batterie ;
+# les trois blocs de 16 mesures et les motifs de basse R1 restent inchangés.
 [files]
 cells = "cells.toml"
 percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
+session = "session.toml"
+arc = "arc.toml"
 
 [meta]
 id = "isaac_downpour"
@@ -258,8 +262,30 @@ notes = [
 center = 60
 max_drift = 6
 note_count = 4
+# Fenêtre commune des voicings de nappe (close / drop2 / open), sans tensions ajoutées.
+low = 45
+high = 77
 default_pattern = 0
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 16, velocity = 58, tie = true }] }]
+# Règle de métier : nappe lente liée, jamais de comping de jazz ; les phrases
+# portent seulement un souffle de vélocité sur les changements d'accord.
+comping = [
+  { weight = 6, tag = "tenue", hits = [{ step = 0, direction = "block", duration = 16, velocity = 58, tie = true }] },
+  { weight = 2, tag = "souffle", hits = [{ step = 0, direction = "block", duration = 16, velocity = 53, tie = true }] },
+  { weight = 1, tag = "plein", hits = [{ step = 0, direction = "block", duration = 16, velocity = 62, tie = true }] },
+]
+[[accompaniment.chords.phrases]]
+weight = 4
+tag = "tenue"
+motifs = [0, 0, 0, 0]
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "souffle"
+motifs = [1, 1, 0, 0]
+[[accompaniment.chords.phrases]]
+weight = 1
+tag = "plein"
+motifs = [2, 2, 0, 0]
 
 [instruments]
 # GeneralUser GS : basse doigts 33, nappe chaude 89, chœur Aahs 52.

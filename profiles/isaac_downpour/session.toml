@@ -1,0 +1,196 @@
+# R2-jeux (019 vague 4). Un tirage par groupe, aucun champ partagé entre groupes.
+# Source : labo references/isaac-basement/README.md, §§2–6 (River of Despair).
+# Tempo : référence 144 BPM, voisines de la famille 140 ; marges de jeu 124..164.
+# Les trois plages restent séparées de >8 BPM, la plage nominale pèse le plus.
+[[variants]]
+group = "tempo"
+name = "large"
+weight = 1
+bpm = [124.0, 130.0]
+[[variants]]
+group = "tempo"
+name = "nominal"
+weight = 6
+bpm = [140.0, 148.0]
+[[variants]]
+group = "tempo"
+name = "pressant"
+weight = 1
+bpm = [158.0, 164.0]
+
+# Une seule tonalité attestée pour ce niveau : D mineur harmonique (47_river_of_despair).
+# Pas de transposition empruntée à un autre niveau : C# / D# chromatiques sont des notes locales,
+# pas des toniques. D est déjà dans key_modes et dynamics.color ; register_octaves.Bass reste 0.
+[[variants]]
+group = "tonalite"
+name = "re_mineur_harmonique"
+tonality = { key = 2, mode = "harmonic_minor" }
+
+# Basse électrique ou synthétique (§4, confiance moyenne). Odin : permutation des seuls presets
+# du profil, avec leurs niveaux appariés ; mêmes when, ordre et morphing. Le défaut initial reste
+# majoritaire. Aucun nouveau preset ni nouvelle calibration, aucun changement de registre.
+[[variants]]
+group = "basse"
+name = "doigts"
+weight = 3
+instruments = { bass_program = 33 }
+[[variants]]
+group = "basse"
+name = "synthetique"
+weight = 1
+instruments = { bass_program = 38 }
+odin = { Bass = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Growly FM Bass [XR]", level_db = 1.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "BS PWM Bass XY", level_db = 9.5, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Bass Low [RM]", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { preset = "BS Decay Bass MW", level_db = 6.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+] } }
+
+# Lit harmonique tenu : Warm Pad 89 / Space Voice 91 (GM Pad 4 choir), §4.
+# La permutation Odin reste dans les nappes déjà calibrées du profil.
+[[variants]]
+group = "nappe"
+name = "chaude"
+weight = 3
+instruments = { chords_program = 89 }
+[[variants]]
+group = "nappe"
+name = "vocale"
+weight = 1
+instruments = { chords_program = 91 }
+odin = { Chords = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Darken Nature [RM]", level_db = 3.5, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Drifter", level_db = 3.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Moonshade", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Haunt [RM]", level_db = 5.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+] } }
+
+# Chœur Aahs / Oohs, stem vocals de River of Despair (RMS 0,019 ; §4, confiance moyenne).
+# Pas de zones Odin sur Melody dans ce profil : SoundFont dans les deux rendus.
+[[variants]]
+group = "choeur"
+name = "aahs"
+weight = 3
+instruments = { melody_program = 52 }
+[[variants]]
+group = "choeur"
+name = "oohs"
+weight = 1
+instruments = { melody_program = 53 }
+
+# Kit sec rock (§4), room comme couleur de pièce ; jamais un shuffle ni des balais de jazz.
+# GeneralUser GS : banque 128, Standard 1 (0), Room (8), existence vérifiée dans phdr du SF2.
+[[variants]]
+group = "kit"
+name = "sec"
+weight = 3
+instruments = { percussion_bank = 128, percussion_program = 0 }
+[[variants]]
+group = "kit"
+name = "piece"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+# Nappe en triades parallèles (§6.3, confiance moyenne sur les qualités). Répartition seule :
+# pas de rootless, quartes ni tensions de jazz. Tous les sons restent dans l'accord publié.
+[[variants]]
+group = "voicing"
+name = "serre"
+weight = 4
+voicing = "close_triad"
+[[variants]]
+group = "voicing"
+name = "drop2"
+weight = 1
+voicing = "drop2"
+[[variants]]
+group = "voicing"
+name = "ouvert"
+weight = 1
+voicing = "open"
+
+# Couleur de chœur grave (§4 : « aah graves »), sans déplacer la basse ni la nappe.
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 3
+[[variants]]
+group = "registre"
+name = "choeur_grave"
+weight = 1
+register_octaves = { Melody = -1 }
+
+# Modulations modestes : le contrat des quatre émotions et density_tracks reste dans dynamics.
+[[variants]]
+group = "energie"
+name = "voile"
+weight = 2
+intensity = 0.90
+density = 0.90
+[[variants]]
+group = "energie"
+name = "neutre"
+weight = 4
+intensity = 1.0
+density = 1.0
+[[variants]]
+group = "energie"
+name = "tendu"
+weight = 1
+intensity = 1.10
+density = 1.05
+
+# Répartition des phrases. Le groove de densité 1 de R1 (charleston, reconnu par la référence) garde
+# au moins sa part d'origine (3 sur 6 : tapis 2, pouls 1, charleston 3) dans la variante majoritaire ;
+# les deux autres l'accentuent seulement un peu moins. Mesure de distance symbolique : un tag
+# « tapis » à 4 contre charleston 1 coûtait ~9 points de batterie.
+[[variants]]
+group = "patterns"
+name = "reference"
+weight = 4
+comping = [{ tag = "tenue", weight = 4 }, { tag = "souffle", weight = 1 }]
+percussion = [{ tag = "tapis", weight = 2 }, { tag = "pouls", weight = 1 }, { tag = "charleston", weight = 3 }]
+[[variants]]
+group = "patterns"
+name = "tapis"
+weight = 1
+comping = [{ tag = "tenue", weight = 4 }, { tag = "souffle", weight = 1 }]
+percussion = [{ tag = "tapis", weight = 3 }, { tag = "pouls", weight = 1 }, { tag = "charleston", weight = 2 }]
+[[variants]]
+group = "patterns"
+name = "pouls"
+weight = 1
+comping = [{ tag = "tenue", weight = 3 }, { tag = "plein", weight = 1 }]
+percussion = [{ tag = "tapis", weight = 1 }, { tag = "pouls", weight = 2 }, { tag = "charleston", weight = 3 }]
+
+[[variants]]
+group = "arc"
+name = "blocs"
+weight = 3
+[[variants]]
+group = "arc"
+name = "brume"
+weight = 1
+arc = "brume"
+
+# Arc alternatif : trois tours de 48 mesures, sans conclusion ; début plus voilé, puis souffle
+# de chœur et retour au tapis. Pas de fall, le corps peut durer sans limite (repeat_from 1).
+[arcs.brume]
+repeat_from = 1
+[[arcs.brume.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.90, density = 0.90, breaks = [{ start = 1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+  { weight = 1, intensity = 0.95, density = 0.95 },
+]
+[[arcs.brume.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.0, density = 0.95, instruments = { melody_program = 53 }, comping = [{ tag = "tenue", weight = 3 }, { tag = "souffle" }], percussion = [{ tag = "tapis", weight = 3 }, { tag = "pouls" }, { tag = "charleston" }] },
+]
+[[arcs.brume.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.95, density = 0.90, comping = [{ tag = "souffle" }, { tag = "tenue", weight = 2 }], percussion = [{ tag = "tapis", weight = 4 }, { tag = "pouls" }, { tag = "charleston" }] },
+  { weight = 1, intensity = 1.05, density = 1.0, instruments = { percussion_program = 8 } },
+]

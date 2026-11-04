@@ -1,0 +1,310 @@
+# Habillage par graine d'`isaac_cellar` (R2, phase 019 vague 4). Un tirage par groupe, une fois par graine ;
+# les groupes se combinent. Rien de ceci ne touche aux contrats du jeu : émotions, `density_tracks`,
+# conditions et ordre des zones Odin, courbes de `dynamics` restent ceux du profil. Les valeurs sont
+# celles de Periculum : 140 BPM, pédale D, mineur harmonique. L'inflexion D# reste locale dans les
+# motifs et les pédales ; aucun autre centre ni mode global attesté n'est imposé : une seule tonalité,
+# donc pas de groupe `tonalite` (une variante unique ne tire rien). Aucune écoute revendiquée (D5).
+#
+# Règles de distance au corpus (`symdist.py`, Periculum, 10 graines) : l'énergie ne règle que `density`
+# (session) et l'arc que `intensity` : les deux ensemble font passer la batterie à la densité voisine
+# (batterie −6,7 points) ; la plage nominale pèse 6 sur 8 et le kit standard 5 sur 8.
+
+# Tempo : la plage nominale (Periculum, grille vérifiée 140,0 ; tempo brut 143,6) pèse six fois plus
+# que chacune des deux autres. Toutes restent dans `meter.min_bpm..max_bpm` (120..160).
+# L'émotion (`tempo_offset`, ±20) s'ajoute à la base.
+[[variants]]
+group = "tempo"
+name = "lent"
+weight = 1
+bpm = [128.0, 134.0]
+
+[[variants]]
+group = "tempo"
+name = "nominal"
+weight = 6
+bpm = [138.0, 144.0]
+
+[[variants]]
+group = "tempo"
+name = "presse"
+weight = 1
+bpm = [148.0, 154.0]
+
+# Tonalité : seul D mineur harmonique est établi pour Periculum. L'inflexion phrygienne D# ne prouve
+# pas un mode global ; le contrat de bascule émotionnelle reste inchangé.
+[[variants]]
+group = "tonalite"
+name = "re_harmonique"
+weight = 4
+tonality = { key = 2, mode = "harmonic_minor" }
+
+
+# Basse : synthé 38 (le programme de repli du profil), basse au doigt 33 (pédale de Periculum, candidat des
+# références) ou basse piquée 34 (riff piqué). Les zones Odin permutent la zone par défaut et la zone de
+# menace en emportant leur niveau (appariés au défaut Growly par le profil : DeepBass +1,5 dB).
+[[variants]]
+group = "basse"
+name = "synthe"
+weight = 2
+instruments = { bass_program = 38 }
+
+[[variants]]
+group = "basse"
+name = "doigts_sourde"
+weight = 1
+instruments = { bass_program = 33 }
+[variants.odin.Bass]
+[[variants.odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Bass Low [RM]"
+level_db = -3.0
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+[[variants.odin.Bass.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Bass Crusher [RM]"
+level_db = 3.5
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+[[variants.odin.Bass.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Growly FM Bass [XR]"
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+[[variants.odin.Bass.zones]]
+preset = "DeepBass [Photonic]"
+level_db = 1.5
+morph = [
+  { param = "fil1_freq", arousal = 3000.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+]
+
+[[variants]]
+group = "basse"
+name = "piquee"
+weight = 1
+instruments = { bass_program = 34 }
+
+# Nappe : chœur 91 (profil), nappe chaude 89, orgue 19 (références : « 91 pour le lit sombre ; 89 ; 19 si
+# l'ostinato est organique »). Zones Odin : défaut et menace permutés pour 89 (niveau de « Alone in the
+# Subway » −6,0 dB).
+[[variants]]
+group = "nappe"
+name = "choeur"
+weight = 2
+instruments = { chords_program = 91 }
+
+[[variants]]
+group = "nappe"
+name = "chaude_metro"
+weight = 1
+instruments = { chords_program = 89 }
+[variants.odin.Chords]
+[[variants.odin.Chords.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Moonshade"
+level_db = -11.0
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+[[variants.odin.Chords.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Darken Nature [RM]"
+level_db = -6.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+[[variants.odin.Chords.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Eerie Pad"
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+[[variants.odin.Chords.zones]]
+preset = "Alone in the Subway"
+level_db = -6.0
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_release", density = 0.6 },
+]
+
+[[variants]]
+group = "nappe"
+name = "orgue"
+weight = 1
+instruments = { chords_program = 19 }
+
+# Chœur de la mélodie (A' et pont) : 53 (profil), 52 (références : « chœur 52 / 53 »), 10 (boîte à
+# musique : « si un timbre clavier apparaît à l'oreille », à valider).
+[[variants]]
+group = "choeur"
+name = "oohs"
+weight = 2
+instruments = { melody_program = 53 }
+
+[[variants]]
+group = "choeur"
+name = "aahs"
+weight = 2
+instruments = { melody_program = 52 }
+
+[[variants]]
+group = "choeur"
+name = "boite_a_musique"
+weight = 1
+instruments = { melody_program = 10 }
+
+# Kit (banque 128 de GeneralUser GS) : standard 0 (le profil, « kit rock sec et compressé »), power 16
+# (stomp plus lourd), room 8, electronic 24 (stomp industriel).
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 5
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "power"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 16 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "electronic"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 24 }
+
+# Groove : stomp de Periculum (profil) ou demi-temps de Fundamentum ; tags de repli de la batterie
+# (le chorus d'un arc qui déclare les siens passe devant).
+[[variants]]
+group = "groove"
+name = "stomp"
+weight = 3
+percussion = [{ tag = "stomp", weight = 4 }, { tag = "rock", weight = 1 }]
+
+[[variants]]
+group = "groove"
+name = "demi_temps"
+weight = 1
+percussion = [{ tag = "rock", weight = 3 }, { tag = "stomp", weight = 1 }]
+
+# Nappes : triade serrée ou étalée sans extensions ajoutées. La basse garde la fondamentale.
+[[variants]]
+group = "voicing"
+name = "serre"
+weight = 4
+voicing = "close_triad"
+
+[[variants]]
+group = "voicing"
+name = "drop2"
+weight = 1
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "ouvert"
+weight = 1
+voicing = "open"
+
+# Registre de la nappe : une octave plus bas une fois sur quatre (le lit sombre des références).
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 3
+
+[[variants]]
+group = "registre"
+name = "grave"
+weight = 1
+register_octaves = { Chords = -1 }
+
+# Énergie de base : modeste, l'intensité vient des émotions du jeu (arousal, tension).
+[[variants]]
+group = "energie"
+name = "retenue"
+weight = 1
+density = 0.9
+
+[[variants]]
+group = "energie"
+name = "nominale"
+weight = 3
+
+[[variants]]
+group = "energie"
+name = "appuyee"
+weight = 1
+density = 1.1
+
+# Arc : celui de `arc.toml` (descente puis chorus pesant), l'arc « orchestre » (le chœur change de timbre
+# au chorus 2) ou l'arc « calme » (batterie ossature, retenue).
+[[variants]]
+group = "arc"
+name = "descente"
+weight = 3
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 1
+arc = "orchestre"
+
+[[variants]]
+group = "arc"
+name = "calme"
+weight = 1
+arc = "calme"
+
+# Arc « orchestre » : chorus 1 chœur 52 (Aahs) et nappe de la session ; chorus 2 voix 53 (Oohs), nappe 89
+# (SoundFont) ; au-delà, le chorus 2 reprend (`repeat_from`). Aucune retombée : le jeu n'annonce pas de fin.
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, instruments = { melody_program = 52 }, intensity = 0.9, percussion = [{ tag = "stomp", weight = 3 }, { tag = "sparse" }] },
+  { weight = 1, instruments = { melody_program = 52 }, percussion = [{ tag = "stomp" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, instruments = { melody_program = 53, chords_program = 89 }, intensity = 1.1, percussion = [{ tag = "stomp", weight = 2 }, { tag = "rock" }] },
+  { weight = 1, instruments = { melody_program = 53 }, intensity = 1.0, percussion = [{ tag = "stomp" }] },
+]
+
+# Arc « calme » : le chœur seul porte le chorus 1 (batterie en ossature, une mesure de silence au retour de
+# la boucle), le chorus 2 monte d'un cran ; `repeat_from` rejoue le chorus 2.
+[arcs.calme]
+repeat_from = 1
+
+[[arcs.calme.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.75, percussion = [{ tag = "sparse", weight = 3 }, { tag = "stomp" }] },
+  { weight = 1, intensity = 0.8, percussion = [{ tag = "stomp" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]
+
+[[arcs.calme.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.9, percussion = [{ tag = "stomp" }] },
+  { weight = 1, intensity = 1.0, percussion = [{ tag = "stomp", weight = 2 }, { tag = "rock" }] },
+]

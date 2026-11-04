@@ -56,6 +56,7 @@ Le onzième, `nt_desert` (phase 014, G7 à G7h), est le premier profil de jeu vi
 Les profils `isaac_*` sont des essais d'écoute de fin de phase 014 : mêmes mécanismes que `nt_desert`, aucun ajout moteur, voir `profiles/isaac_basement/README.md` (les trois autres suivent le même schéma ; leur en-tête de `profile.toml` résume l'écriture).
 Phase 019, B8 : sept profils d'accompagnement sous grille construits sur le Groove MIDI Dataset (CC BY 4.0), `gmd_rock`, `gmd_pop`, `gmd_hiphop`, `gmd_soul`, `gmd_reggae`, `gmd_dance_disco`, `gmd_afrobeat` ; batterie générée par `specs/019-bibliotheque-accompagnements/b8/generer.py`, basse, comping et grilles en règles de métier (aucune source mesurée), arc sur quatre chorus, phrases et relances ; voir leurs README et `specs/019-bibliotheque-accompagnements/b8-profils-gmd.md`.
 Phase 019, R1 : `nt_desert`, `isaac_basement`, `isaac_burning` et `isaac_downpour` embarquent des alternatives issues des propositions P1 (boucles générées, pédale à alternatives, gabarits de basse) et P2 (boucles, motifs et patterns extraits des transcriptions), avec leur provenance en commentaire TOML ; `TUNING_VERSION` 25. `isaac_cellar` est inchangé. Voir `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md` et les README `nt_desert` et `isaac_basement`.
+Phase 019, R2-jeux : les cinq profils de jeu (`nt_desert`, `isaac_basement`, `isaac_burning`, `isaac_cellar`, `isaac_downpour`) activent l'habillage par graine (`session.toml` : tempo en plages autour du tempo du niveau, timbres SoundFont et zones Odin permutées avec leur `level_db`, kit, famille de voicings, registre, énergie, tags, arc nommé), un arc sans retombée (`arc.toml`, `repeat_from`) et des phrases et relances de batterie tirées des patterns existants ; `isaac_cellar` reçoit en plus une pédale à alternatives et deux boucles générées. Une seule tonalité par profil : les références du niveau n'en attestent qu'une, ou la seconde (A phrygien de `nt_desert`) coûte plus d'un point de distance symbolique. `TUNING_VERSION` 27. Voir `specs/019-bibliotheque-accompagnements/r2-jeux.md`.
 Phase 019, B4 et B7 : `gmd_funk` et `gmd_neworleans_funk_secondline` sont des profils sous grille (`loop`, `[fixed_tonality]`, sans piste `Melody`) qui activent l'arc (A3), les phrases et les relances (A1) : batterie en patterns, phrases et relances tirés du Groove MIDI Dataset (`specs/019-bibliotheque-accompagnements/b47_batterie.py`), basse en riffs (WJazzD `FUNK` pour le registre et les approches de `gmd_funk`), comping en règles de métier, plusieurs boucles de grille par défaut tirées par la graine. Voir leur `README.md` (provenance, mesure → valeur, limites) et `specs/019-bibliotheque-accompagnements/b47-funk-neworleans.md`.
 
 |---|---|
@@ -299,8 +300,8 @@ la boucle décrit les mesures du corps de l'air.
 
 Quatre mécanismes **optionnels** s'ajoutent aux données écrites sans les remplacer. Un profil
 qui n'en active aucun garde ses notes octet pour octet. Depuis R1 (phase 019), `nt_desert` (boucles générées, pédale à
-alternatives) et `isaac_burning` (boucles générées, gabarits de basse) en activent ; les autres profils distribués n'en activent
-aucun. Tous sont nommés par le rôle musical, tirent par le `ChaCha8Rng` injecté (entiers
+alternatives) et `isaac_burning` (boucles générées, gabarits de basse) en activent, ainsi que `isaac_cellar` depuis R2 (pédale à
+alternatives, boucles générées) ; les autres profils distribués n'en activent aucun. Tous sont nommés par le rôle musical, tirent par le `ChaCha8Rng` injecté (entiers
 `u64`, principe II) et sont refusés au chargement avec le champ en cause s'ils sont
 insatisfaisables. Compte rendu, preuves et recommandations par profil :
 `specs/018-grille-et-moteur-neutre/p1-procedural-regles.md`.

@@ -1,0 +1,287 @@
+# Habillage par graine de Burning Basement (phase 019, R2-jeux, A2) : un tirage par groupe, les
+# groupes se combinent ; deux groupes ne règlent jamais le même champ. Identité du jeu gardée :
+# F# phrygien (riff de deux mesures, accords D-B-A-F#), 140 BPM métronomique, basse médiator ou
+# doigts saturée, orgue rock et chœur ; l'intensité vient des émotions du jeu (énergie : 0,9-1,1).
+# Un air par set : la tonalité de la variante est celle de la session entière.
+#
+# 3 tempos × 3 basses × 4 nappes × 2 chœurs × 3 kits × 4 voicings × 3 énergies
+# × 3 batteries × 3 arcs = 23 328 habillages possibles en 27 variantes.
+#
+# Tonalité : aucun groupe. Les références du niveau (labo `isaac-basement` § 2) donnent un seul centre,
+# F# (riff F#1, `b2` = G, E = `b7`), et un seul mode utilisable ici : phrygien. Leur lecture
+# « phrygien / éolien » reste ambiguë à l'oreille (confiance haute sur G = `b2`, que l'éolien
+# n'a pas), et le seul autre gabarit (D majeur / E dorien, marge 0) est un artefact global, non
+# attesté par le riff. Rendre l'éolien atteignable aurait obligé à toucher `dynamics.parallel_modes`
+# (contrat émotion) : on garde F# phrygien seul et on documente le manque (note R2).
+#
+# Sources (références labo `isaac-basement`, README § 1, 2, 4, 6 ; `isaac-niveaux.md`) : le tempo
+# de grille vérifié de Fundamentum est 140 (beat_track brut 136) ; l'étage vise « métronomique »,
+# donc la plage nominale 138-142 pèse 6 sur 8 (75 %) et les plages lente (126-129) et vive (151-154)
+# 1 chacune, séparées de plus de 8 BPM et resserrées autour de la référence (la distance au corpus
+# pèse surtout le tempo et le kit). Les timbres sont les candidats
+# du labo (§ 4 : basse 33/34/38, nappe 91/89/19, chœur 52/53, kit rock) ; les presets Odin sont
+# ceux déjà présents dans le profil, permutés avec leur `level_db` (niveau apparié au preset).
+
+# Tempo. Le tempo joué = base + courbe `tempo_offset` de l'émotion (-20..+20 BPM selon l'arousal).
+[[variants]]
+group = "tempo"
+name = "pesant"
+weight = 1
+bpm = [126.0, 129.0]
+
+[[variants]]
+group = "tempo"
+name = "nominal"
+weight = 6
+bpm = [138.0, 142.0]
+
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [151.0, 154.0]
+
+# Basse : SoundFont de repli et zones Odin de la même variante. Candidats du labo (README § 4) :
+# 34 Pick Bass (riff piqué de Fundamentum), 33 Finger Bass (pédale), 38 Synth Bass 1 (si plus
+# synthétique). Odin : les quatre presets et leurs niveaux (-5 / -5 / -3 / 0 dB) du profil,
+# permutés sans changer les conditions `when` ni leur ordre ; la zone par défaut reste sans `when`.
+[[variants]]
+group = "basse"
+name = "mediator"
+weight = 3
+instruments = { bass_program = 34 }
+
+[[variants]]
+group = "basse"
+name = "doigts"
+weight = 2
+instruments = { bass_program = 33 }
+[variants.odin.Bass]
+zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Growly FM Bass [XR]", level_db = -5.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Bass Low [RM]", level_db = -5.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Bass Crusher [RM]", morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { preset = "DeepBass [Photonic]", level_db = -3.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+]
+
+[[variants]]
+group = "basse"
+name = "synthetique"
+weight = 1
+instruments = { bass_program = 38 }
+[variants.odin.Bass]
+zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "DeepBass [Photonic]", level_db = -3.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Bass Crusher [RM]", morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Growly FM Bass [XR]", level_db = -5.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { preset = "Bass Low [RM]", level_db = -5.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+]
+
+# Nappe / accords : orgue rock du profil (18) ou, dans le labo (README § 4), orgue (16 tirettes,
+# 19 à tuyaux : « si l'ostinato est organique ») et pad sombre (91 Space Voice = Pad 4 choir,
+# 89 Warm Pad). Odin : permutations des quatre presets du profil avec leur niveau
+# (-7 / -3 / 0 / 0 dB).
+[[variants]]
+group = "nappe"
+name = "orgue_rock"
+weight = 3
+instruments = { chords_program = 18 }
+
+[[variants]]
+group = "nappe"
+name = "orgue_tirettes"
+weight = 2
+instruments = { chords_program = 16 }
+[variants.odin.Chords]
+zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Clouded [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Moonshade", level_db = -7.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Prophet", level_db = -3.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Haunt [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+]
+
+[[variants]]
+group = "nappe"
+name = "orgue_a_tuyaux"
+weight = 1
+instruments = { chords_program = 19 }
+[variants.odin.Chords]
+zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Haunt [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Prophet", level_db = -3.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Moonshade", level_db = -7.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Clouded [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+]
+
+[[variants]]
+group = "nappe"
+name = "pad_sombre"
+weight = 1
+instruments = { chords_program = 91 }
+[variants.odin.Chords]
+zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Moonshade", level_db = -7.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Haunt [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Clouded [RM]", morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Prophet", level_db = -3.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+]
+
+# Chœur (piste Melody, sans zone Odin) : 52 Concert Choir (« Choir Aahs ») ou 53 Voice Oohs, les
+# deux programmes du labo (README § 4).
+[[variants]]
+group = "choeur"
+name = "aahs"
+weight = 3
+instruments = { melody_program = 52 }
+
+[[variants]]
+group = "choeur"
+name = "oohs"
+weight = 2
+instruments = { melody_program = 53 }
+
+# Kit rock de la banque 128 de GeneralUser GS : standard 0, room 8, power 16 (le README § 4 du labo
+# décrit un kit rock sec et compressé, caisse claire claquante).
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 6
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "power"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 16 }
+
+# Famille de voicings de la nappe (sections d'accords ; la pédale du riff garde sa note seule).
+# Poids faibles pour les voicings non serrés : mesure `symdist` accords 61,9 (avant) → 61,1 avec
+# serre 8 / ouvert 2 / drop_2 1 / quinte_tierce 1 ; avec serre 3 / 2 / 1 / 1, 60,5 (perte > 1 point).
+[[variants]]
+group = "voicing"
+name = "serre"
+weight = 8
+voicing = "close_triad"
+
+[[variants]]
+group = "voicing"
+name = "ouvert"
+weight = 2
+voicing = "open"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 1
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "quinte_tierce"
+weight = 1
+voicing = "shell"
+
+# Énergie de base : multiplicateurs modestes, l'intensité vient des émotions du jeu.
+[[variants]]
+group = "energie"
+name = "calme"
+weight = 1
+intensity = 0.9
+density = 0.9
+
+[[variants]]
+group = "energie"
+name = "nominale"
+weight = 3
+
+[[variants]]
+group = "energie"
+name = "tendue"
+weight = 1
+intensity = 1.1
+density = 1.1
+
+# Batterie (tags de repli, quand le chorus de l'arc n'en nomme pas) : l'ossature backbeat de
+# Fundamentum (tag `backbeat` : patterns écrits, réponses, groove de P2) ou plus de relances de
+# grosse caisse et de charleston en croches (tag `drive`, règle de métier du rock en demi-temps).
+[[variants]]
+group = "batterie"
+name = "backbeat"
+weight = 4
+percussion = [{ tag = "backbeat" }]
+
+[[variants]]
+group = "batterie"
+name = "mixte"
+weight = 2
+percussion = [{ tag = "backbeat", weight = 3 }, { tag = "drive", weight = 1 }]
+
+[[variants]]
+group = "batterie"
+name = "drive"
+weight = 1
+percussion = [{ tag = "backbeat", weight = 1 }, { tag = "drive", weight = 3 }]
+
+# Arc : celui de `arc.toml` (montée), ou un arc nommé ci-dessous.
+[[variants]]
+group = "arc"
+name = "montee"
+weight = 3
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 2
+arc = "orchestre"
+
+[[variants]]
+group = "arc"
+name = "plateau"
+weight = 1
+arc = "plateau"
+
+# Arc « orchestre » : le kit et le chœur changent à la frontière de chorus (les programmes du
+# chorus remplacent ceux de la session, un chorus qui n'en déclare pas les rend). Le kit est
+# SoundFont dans tous les rendus ; Odin ne joue que basse et nappe. Chorus 1 : programmes de la
+# session, plus calme ; chorus 2 : kit room ; chorus 3 : kit power et chœur oohs ; puis 2-3 en
+# boucle (aucune retombée : un jeu n'a pas de fin connue).
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.9, density = 0.9, percussion = [{ tag = "backbeat" }] },
+  { weight = 1, intensity = 0.95, density = 0.9, percussion = [{ tag = "backbeat" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, instruments = { percussion_program = 8 }, percussion = [{ tag = "backbeat", weight = 3 }, { tag = "drive", weight = 1 }] },
+  { weight = 1, instruments = { percussion_program = 8 }, density = 1.05, percussion = [{ tag = "backbeat", weight = 1 }, { tag = "drive", weight = 1 }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, instruments = { percussion_program = 16, melody_program = 53 }, intensity = 1.1, density = 1.1, percussion = [{ tag = "drive", weight = 3 }, { tag = "backbeat" }], breaks = [{ start = -1, bars = 1, chance = 0.3, tracks = ["PercussionLow", "PercussionHigh"] }] },
+  { weight = 1, instruments = { percussion_program = 16 }, intensity = 1.1, density = 1.1, percussion = [{ tag = "drive", weight = 2 }, { tag = "backbeat" }] },
+]
+
+# Arc « plateau » : un seul palier, tous les chorus pareils, sauf une relance de silence de la
+# batterie sur la dernière mesure de temps en temps. Le jeu garde sa bande plate.
+[arcs.plateau]
+
+[[arcs.plateau.stages]]
+choruses = 1
+variants = [
+  { weight = 3, percussion = [{ tag = "backbeat" }] },
+  { weight = 1, percussion = [{ tag = "backbeat" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]

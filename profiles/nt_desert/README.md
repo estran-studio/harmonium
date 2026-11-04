@@ -87,6 +87,27 @@ accords, P2 (`harmonium_lab/references/p2-variete.md`) pour la batterie.
 Chaque ajout porte sa provenance (piste, minutage, confiance) en commentaire
 TOML. Mesures avant/après : `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md`.
 
+## Habillage, arc et phrases (R2, phase 019 vague 4)
+
+- **`session.toml`** (un tirage par groupe, les groupes se combinent) : `tempo`
+  (nominal 204–216, poids 4 ; 180–190 et 226–236, poids 1 chacun, resserrés
+  autour des 210 de Fläshyn), `basse` (scie 81, « Saw Bass Hold » 38, et deux
+  permutations Odin des quatre presets de zone avec leur `level_db`), `nappe`
+  (89 ou 88, permutation Odin des quatre presets), `choeur` (doublure 81 ou 88),
+  `batterie` (tags `plein`, `sec`, `mixte`), `energie` (0,9 à 1,1) et `arc`.
+  Aucun groupe `tonalite` : A phrygien (A Way) est attesté par le niveau, mais
+  la basse de Fläshyn, centrée sur G♯, perd environ 68 points de distance
+  symbolique sur une graine en A ; le profil reste en G♯ phrygien.
+- **`arc.toml`** : un chorus = un tour de 48 mesures, trois étapes (ouverture
+  allégée en nappe tenue, développement avec respiration ou reprise du comping,
+  plein), `repeat_from = 1`, aucun `fall`. L'arc nommé `relais` y ajoute la nappe
+  88 et une coupe de batterie dans B au chorus 2 ; la basse ne change jamais de
+  programme en cours d'air.
+- **Batterie** : phrases de quatre mesures (`plein`, `sec`) et relances de fin de
+  partie (migration des anciens `cadence_patterns`, `fills_none_weight = 1`).
+- **Comping** : trois motifs de nappe (`tenue`, `creux`, `reprise`), le pont reste
+  tenu.
+
 ## Timbres et émotions
 
 Tous les programmes nécessaires sont présents dans `assets/nt_desert.sf2`

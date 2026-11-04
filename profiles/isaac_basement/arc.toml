@@ -1,0 +1,29 @@
+# R2-jeux : arc d'une musique de jeu sans fin connue. Une étape = un tour/chorus complet
+# de 40 mesures (pas un set de deux tours). Repeat_from remet le corps et la respiration en
+# boucle même avec 4 ou 16 tours ; aucun fall, aucune cadence harmonique ajoutée.
+# Règle de métier tirée des blocs de texture du labo isaac-basement §3 (Diptera : reprises,
+# chœur épars 56–64 ; Periculum : alternance ostinato/pont) : la forme et les tracks_off
+# du profil restent intacts. La respiration de batterie en fin de tour rappelle ses coupes
+# de fin de section, non sa coda définitive. Multiplicateurs 0.9–1.1, émotions prioritaires.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.95, density = 0.95, comping = [{ tag = "tenue" }] },
+  { weight = 1, intensity = 1.0, density = 1.0 },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 1.05, density = 1.05, comping = [{ tag = "tenue", weight = 3 }, { tag = "souffle" }], percussion = [{ tag = "stomp", weight = 2 }, { tag = "reponse" }] },
+  { weight = 1, intensity = 1.1, density = 1.1, comping = [{ tag = "souffle" }], percussion = [{ tag = "reponse" }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.0, density = 1.0, percussion = [{ tag = "stomp" }, { tag = "reponse", weight = 2 }] },
+  { weight = 1, intensity = 0.9, density = 0.9, comping = [{ tag = "tenue" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]

@@ -76,18 +76,13 @@ fn graines_isaac_varient_accords_et_grilles_et_se_rejouent_exactement() -> TestR
 }
 
 #[test]
-fn retours_de_partie_et_second_tour_conservent_les_choix() -> TestResult {
+fn retours_de_partie_conservent_harmonie_mais_renouvellent_batterie() -> TestResult {
     for id in ISAAC {
         let mut profile = StyleProfile::named(id)?;
-        // Isoler l'identité des patterns de la rampe d'intensité, qui peut changer
-        // la densité effective entre les deux tours.
-        profile.dynamics.percussion_intensity.0 = vec![[0.0, 0.0], [1.0, 0.0]];
-        profile.dynamics.density_percussion.0 = vec![[0.0, 0.0], [1.0, 0.0]];
-        // Downpour n'a qu'un tour en données ; exercer aussi son second tour.
-        profile.arrangement.tours_per_tune = 2;
+        profile.arrangement.tours_per_tune = 4;
         let bars = profile.form.bars_per_tour();
         for seed in [1, 2] {
-            let snapshots = stream(&profile, seed, 1, bars * 2);
+            let snapshots = stream(&profile, seed, 1, bars * 4);
             let mut written = BTreeMap::new();
             for snapshot in &snapshots {
                 let position = snapshot.position.as_ref().ok_or("position absente")?;
@@ -95,12 +90,19 @@ fn retours_de_partie_et_second_tour_conservent_les_choix() -> TestResult {
                     continue;
                 }
                 let key = (position.part.0, position.bar_in_part);
-                let score =
-                    (snapshot.chord_root_offset, snapshot.chord_is_minor, grid(snapshot, &[3, 4]));
-                if let Some(previous) = written.insert(key, score.clone()) {
-                    assert_eq!(previous, score, "{id}, retour {key:?}, graine {seed}");
+                let score = (snapshot.chord_root_offset, snapshot.chord_is_minor);
+                if let Some(previous) = written.insert(key, score) {
+                    assert_eq!(previous, score, "{id}, harmonie du retour {key:?}, graine {seed}");
                 }
             }
+            let drums: Vec<_> = snapshots
+                .chunks_exact(bars)
+                .map(|chorus| chorus.iter().map(|s| grid(s, &[3, 4])).collect::<Vec<_>>())
+                .collect();
+            assert!(
+                drums.windows(2).any(|pair| pair[0] != pair[1]),
+                "{id}, batterie identique sur quatre chorus, graine {seed}"
+            );
         }
     }
     Ok(())
@@ -180,12 +182,8 @@ fn melodie_realisee_sur_la_boucle_choisie_y_compris_hors_isaac() -> TestResult {
     for profile in profiles {
         for seed in [1, 2, 3] {
             for snapshot in stream(&profile, seed, 1, profile.form.bars_per_tour()) {
-                let chord: std::collections::BTreeSet<_> = snapshot
-                    .notes
-                    .iter()
-                    .filter(|note| note.track == 1)
-                    .map(|note| note.pitch % 12)
-                    .collect();
+                let chord: std::collections::BTreeSet<_> =
+                    snapshot.chord_pitch_classes.iter().copied().collect();
                 for note in snapshot.notes.iter().filter(|note| note.track == 0) {
                     assert!(
                         chord.contains(&(note.pitch % 12)),
