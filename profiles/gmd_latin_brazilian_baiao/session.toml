@@ -1,0 +1,177 @@
+# Habillage par graine (A2) du profil `gmd_latin_brazilian_baiao` : choix de métier, aucune mesure de corpus ne
+# donne une variante. Programmes General MIDI de GeneralUser GS (sans Odin) : accordéon 21, guitare nylon 24,
+# piano 0, contrebasse 32, basse aux doigts 33 ; kits de la banque 128 : standard 0, salle 8, jazz 32, balais 40.
+#
+# Tempo : la source n'a que 95, 95 et 110 BPM ; les trois plages (95..98, 101..104, 107..110) restent dans cette
+# étendue de 15 BPM, elles NE SONT PAS trois régimes mesurés, et seules la première et la dernière sont séparées
+# de plus de 8 BPM. Aucun BPM hors de 95..110 (min_bpm et max_bpm du profil) : la plage de la source est gardée.
+# Tonalité : six toniques en mixolydien (G, D, C, F, A, Si bémol), sans `[fixed_tonality]` pour que la variante
+# prime. Limite connue : une boucle de grille ne dépend pas de la tonalité tirée (le mode n'est qu'une étiquette).
+#
+# 3 tempos x 6 tonalités x 3 comping x 2 basses x 4 kits x 4 voicings x 2 registres x 2 énergies x 2 arcs
+# = 13 824 habillages possibles en 28 variantes.
+
+[[variants]]
+group = "tempo"
+name = "pose"
+bpm = [95.0, 98.0]
+
+[[variants]]
+group = "tempo"
+name = "intermediaire"
+bpm = [101.0, 104.0]
+
+[[variants]]
+group = "tempo"
+name = "allant"
+bpm = [107.0, 110.0]
+
+[[variants]]
+group = "tonalite"
+name = "sol"
+tonality = { key = 7, mode = "mixolydian" }
+
+[[variants]]
+group = "tonalite"
+name = "re"
+tonality = { key = 2, mode = "mixolydian" }
+
+[[variants]]
+group = "tonalite"
+name = "do"
+tonality = { key = 0, mode = "mixolydian" }
+
+[[variants]]
+group = "tonalite"
+name = "fa"
+tonality = { key = 5, mode = "mixolydian" }
+
+[[variants]]
+group = "tonalite"
+name = "la"
+tonality = { key = 9, mode = "mixolydian" }
+
+[[variants]]
+group = "tonalite"
+name = "si_bemol"
+tonality = { key = 10, mode = "mixolydian" }
+
+[[variants]]
+group = "comping"
+name = "accordeon"
+instruments = { chords_program = 21 }
+
+[[variants]]
+group = "comping"
+name = "guitare_nylon"
+instruments = { chords_program = 24 }
+
+[[variants]]
+group = "comping"
+name = "piano"
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "basse"
+name = "contrebasse"
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_aux_doigts"
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "kit"
+name = "standard"
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "salle"
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "jazz"
+instruments = { percussion_bank = 128, percussion_program = 32 }
+
+[[variants]]
+group = "kit"
+name = "balais"
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+[[variants]]
+group = "voicing"
+name = "serre"
+voicing = "close_triad"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "coquille"
+voicing = "shell"
+
+[[variants]]
+group = "voicing"
+name = "ouvert"
+voicing = "open"
+
+[[variants]]
+group = "registre"
+name = "normal"
+
+[[variants]]
+group = "registre"
+name = "grave"
+register_octaves = { Chords = -1 }
+
+[[variants]]
+group = "energie"
+name = "souple"
+intensity = 0.9
+density = 0.9
+
+[[variants]]
+group = "energie"
+name = "franc"
+intensity = 1.1
+density = 1.1
+
+[[variants]]
+group = "arc"
+name = "continu"
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+arc = "orchestre"
+
+# Arc nommé « orchestre » : arc de métier : cinq chorus de seize mesures, sans changement de grille (aucune mesure de corpus).
+# Exposition à la charleston et au comping clairsemé, deux chorus de corps au ride (le second aussi à la caixa, la
+# caisse claire en doubles croches), sommet dense au ride ou à la caixa avec stop-time une fois sur deux sur les deux
+# dernières mesures, retombée à la charleston avec stop-time (accords et basse sur le un seulement).
+[arcs.orchestre]
+repeat_from = 1
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [{ instruments = { percussion_program = 40 }, intensity = 0.65, density = 0.8, comping = [{ tag = "sparse" }], percussion = [{ tag = "hat" }] }]
+[[arcs.orchestre.stages]]
+choruses = 2
+variants = [
+  { intensity = 1.0, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "ride" }, { tag = "hat" }] },
+  { intensity = 1.1, density = 1.1, comping = [{ tag = "medium" }, { tag = "dense" }], percussion = [{ tag = "ride" }, { tag = "caixa" }], breaks = [{ start = 9, bars = 1, chance = 0.5, tracks = ["Chords"] }] },
+]
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [{ instruments = { chords_program = 21 }, intensity = 1.5, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }, { tag = "caixa" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] }]
+[[arcs.orchestre.fall]]
+intensity = 0.5
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

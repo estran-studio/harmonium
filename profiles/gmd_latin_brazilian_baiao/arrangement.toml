@@ -1,0 +1,15 @@
+# 5 chorus de la forme (16 mesures par chorus) : accords, basse et
+# batterie jouent dès la première mesure (accompagnement sous une grille, pas de montée en couches). Pas de
+# piste Melody. Le nombre de chorus est connu (un air par set, voir set.toml) : la retombée de l'arc joue au
+# dernier.
+tours_per_tune = 5
+
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0
