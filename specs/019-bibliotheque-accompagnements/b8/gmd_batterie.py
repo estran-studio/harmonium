@@ -20,6 +20,7 @@ Ce qui diffère de `gmd_styles.proposed_patterns` (L2), et pourquoi :
 
 from __future__ import annotations
 
+import os
 import pickle
 import sys
 from collections import Counter, defaultdict
@@ -98,6 +99,11 @@ class DrumSpec:
     fills: bool = True
     #: Groupes (timekeeper, figure) écartés à la main, avec la raison (README).
     drop_groups: list[tuple[str, str]] = field(default_factory=list)
+    #: Feel retenu (`straight` : 16 pas ; `ternary` : triolets, 12 pas, B6) et pas par mesure.
+    feel: str = "straight"
+    steps: int = STEPS
+    #: Pas de départ d'une relance : bornes (exclues) des temps 1 à 4 (16 pas : 3, 6, 10 ; 12 pas : 2, 5, 8).
+    start_cuts: tuple[int, int, int] = (3, 6, 10)
 
 
 def load_results(lab: Path) -> list[Any]:
@@ -105,7 +111,7 @@ def load_results(lab: Path) -> list[Any]:
     sys.path.insert(0, str(lab / "src"))
     from harmonium_lab.backing import drums, gmd_styles as G  # noqa: PLC0415
 
-    cache = Path("/tmp/harmonium-019/b8/results.pkl")
+    cache = Path(os.environ.get("H019_GMD_CACHE", "/tmp/harmonium-019/b8/results.pkl"))
     if cache.is_file():
         return pickle.loads(cache.read_bytes())
     archive = drums.open_archive()
@@ -141,7 +147,7 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
     from harmonium_lab.backing import gmd_styles as G  # noqa: PLC0415
 
     beats = [r for r in results if r.row.style in spec.styles and r.row.beat_type == "beat" and not r.reject
-             and r.row.time_signature == "4-4" and r.feel == "straight" and r.measures]
+             and r.row.time_signature == "4-4" and r.feel == spec.feel and r.measures]
     measures = [m for r in beats for m in r.measures]
     drummer_of = {r.row.path: r.row.drummer for r in beats}
 
@@ -192,7 +198,7 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
     def fill_pool() -> list[Any]:
         styles = spec.fill_styles if spec.fill_styles is not None else spec.styles
         return [r for r in results if r.row.style in styles and r.row.beat_type == "fill" and not r.reject
-                and r.row.time_signature == "4-4" and r.feel == "straight" and r.measures and r.fill_position]
+                and r.row.time_signature == "4-4" and r.feel == spec.feel and r.measures and r.fill_position]
 
     fills_src = fill_pool() if spec.fills else []
     for r in fills_src:
@@ -231,7 +237,7 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
         for density, thr in LEVELS.items():
             thresholds = {(g.key[0] if k == "timekeeper" else k): v for k, v in thr.items()}
             floors = {(g.key[0] if k == "timekeeper" else k): v for k, v in PROB_FLOORS.get(density, {}).items()}
-            hits = subset_hits(g.measures, thresholds, STEPS, floors)
+            hits = subset_hits(g.measures, thresholds, spec.steps, floors)
             if not hits:
                 continue
             dup = next((i for i, p in enumerate(patterns) if p["density"] == density and p["tag"] == g.tag
@@ -311,7 +317,9 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
         if n > 2:
             continue
         first = r.fill_position["first_step"]
-        start = 0 if first < 3 else 4 if first < 6 else 8 if first < 10 else 12
+        unit = spec.steps // 4
+        cuts = spec.start_cuts
+        start = unit * (0 if first < cuts[0] else 1 if first < cuts[1] else 2 if first < cuts[2] else 3)
         fill_groups[(n, start)].append(r)
     fills: list[dict[str, Any]] = []
     fills_skipped: list[dict[str, Any]] = []
@@ -325,7 +333,7 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
             ms = [r.measures[i] for r in rs if len(r.measures) == n_bars]
             hits = []
             for role in FILL_ROLES:
-                for step in range(STEPS):
+                for step in range(spec.steps):
                     if i == 0 and step < start:
                         continue
                     present = [m.steps[role][step] for m in ms if step in m.steps.get(role, {})]

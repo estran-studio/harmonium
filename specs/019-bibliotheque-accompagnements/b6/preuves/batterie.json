@@ -1,0 +1,183 @@
+{
+ "n_files": 5,
+ "n_measures": 340,
+ "n_drummers": 4,
+ "bpm": [
+  72,
+  112,
+  125,
+  130,
+  134
+ ],
+ "n_fill_files": 29,
+ "groups": [
+  {
+   "key": "ride:spang",
+   "tag": "ride",
+   "n_measures": 45,
+   "n_files": 1,
+   "n_drummers": 1
+  },
+  {
+   "key": "ride:eighths",
+   "tag": "ride",
+   "n_measures": 28,
+   "n_files": 2,
+   "n_drummers": 1
+  },
+  {
+   "key": "ride:quarters",
+   "tag": "ride",
+   "n_measures": 21,
+   "n_files": 1,
+   "n_drummers": 1
+  },
+  {
+   "key": "hat_closed:sixteenths",
+   "tag": "hat",
+   "n_measures": 18,
+   "n_files": 1,
+   "n_drummers": 1
+  },
+  {
+   "key": "ride:sixteenths",
+   "tag": "ride",
+   "n_measures": 18,
+   "n_files": 1,
+   "n_drummers": 1
+  },
+  {
+   "key": "hat_closed:eighths",
+   "tag": "hat",
+   "n_measures": 8,
+   "n_files": 1,
+   "n_drummers": 1
+  }
+ ],
+ "skipped": [
+  {
+   "group": "hat_closed:pas:0,2,4,5,7",
+   "n_measures": 21,
+   "n_files": 1,
+   "reason": "écarté (README)"
+  },
+  {
+   "group": "hat_closed:pas:2,4,5,7",
+   "n_measures": 16,
+   "n_files": 1,
+   "reason": "écarté (README)"
+  }
+ ],
+ "fills_skipped": [
+  {
+   "bars": 2,
+   "start_step": 0,
+   "n_files": 2
+  },
+  {
+   "bars": 2,
+   "start_step": 3,
+   "n_files": 1
+  }
+ ],
+ "phrase_note": "mesurées : suites de groupes vues ≥ 2 fois (≥ 2 si la suite change de groupe) dans ≥ 1 fichiers ; 6 phrases de groove tenu 4 mesures ajoutées pour les groupes sans suite mesurée (règle de métier)",
+ "probabilistic": 52,
+ "voices": {
+  "kick": {
+   "name": "kick",
+   "note": 36,
+   "track": "PercussionLow",
+   "velocity": 100
+  },
+  "hat_closed": {
+   "name": "hat",
+   "note": 42,
+   "track": "PercussionHigh",
+   "velocity": 70
+  },
+  "hat_pedal": {
+   "name": "pedal",
+   "note": 44,
+   "track": "PercussionHigh",
+   "velocity": 62
+  },
+  "ride": {
+   "name": "ride",
+   "note": 51,
+   "track": "PercussionHigh",
+   "velocity": 74
+  },
+  "sidestick": {
+   "name": "sidestick",
+   "note": 37,
+   "track": "PercussionHigh",
+   "velocity": 88
+  },
+  "snare": {
+   "name": "snare",
+   "note": 38,
+   "track": "PercussionHigh",
+   "velocity": 96
+  },
+  "tom_high": {
+   "name": "tom_high",
+   "note": 50,
+   "track": "PercussionHigh",
+   "velocity": 92
+  },
+  "tom_low": {
+   "name": "tom_low",
+   "note": 43,
+   "track": "PercussionHigh",
+   "velocity": 92
+  }
+ },
+ "n_patterns": 18,
+ "n_phrases": 24,
+ "n_fills": 3,
+ "fill_tags": [
+  "hat",
+  "ride"
+ ],
+ "timing": {
+  "36": {
+   "on_beat": -0.072,
+   "off_beat": -0.086
+  },
+  "38": {
+   "on_beat": -0.047,
+   "off_beat": -0.054
+  },
+  "42": {
+   "on_beat": -0.006,
+   "off_beat": -0.053
+  },
+  "44": {
+   "on_beat": -0.113,
+   "off_beat": -0.139
+  },
+  "46": {
+   "on_beat": -0.042,
+   "off_beat": -0.055
+  },
+  "51": {
+   "on_beat": -0.039,
+   "off_beat": 0.032
+  },
+  "49": {
+   "on_beat": -0.096
+  },
+  "50": {
+   "off_beat": -0.001,
+   "on_beat": -0.001
+  },
+  "47": {
+   "off_beat": -0.194,
+   "on_beat": -0.194
+  },
+  "43": {
+   "on_beat": -0.061,
+   "off_beat": -0.137
+  }
+ }
+}

@@ -1,0 +1,13 @@
+[performance.tracks.PercussionLow]
+voices = [
+  { note = 36, on_beat = -0.072, off_beat = -0.086 },
+]
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 38, on_beat = -0.047, off_beat = -0.054 },
+  { note = 42, on_beat = -0.006, off_beat = -0.053 },
+  { note = 44, on_beat = -0.113, off_beat = -0.139 },
+  { note = 51, on_beat = -0.039, off_beat = 0.032 },
+  { note = 43, on_beat = -0.061, off_beat = -0.137 },
+  { note = 50, on_beat = -0.001 },
+]
