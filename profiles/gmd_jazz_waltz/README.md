@@ -40,7 +40,7 @@ dites comme telles. WJazzD n'a aucune valse exploitable (E7 ne lit que le 4/4), 
 | Basse | marche aux noires (`walking`) ; **deux temps = une blanche sur le un puis une noire sur le trois** (`two_feel` en 3/4 : attaques aux pulsations 0 et 2) ; arrivée sur l'accord à chaque changement ; croches fantômes rares |
 | Accords | voicings `rootless` par défaut, `color` 9/11/13, `register_drift` ±5 ; dix rythmes d'une mesure (4 `sparse`, 3 `medium`, 3 `dense`) sur les temps 2 et 3 avec anticipations, douze phrases |
 | Batterie | kit jazz 128/32 par défaut (ride 51, pédale 44, grosse caisse 36, caisse claire 38, tom 43) ; kit balais 128/40 : `tap` 38 et `swirl` 40 |
-| Arc | exposition à deux temps, deux chorus de marche (ride, un break à la mesure 24 ou un chorus plus fort), retombée à deux temps avec stop-time ; au-delà de quatre chorus : sommet puis corps en boucle |
+| Arc | exposition à deux temps ou à la blanche pointée (`three_feel`, A7), deux chorus de marche (ride, un break à la mesure 24 ou un chorus plus fort), retombée à la blanche pointée avec stop-time ; au-delà de quatre chorus : sommet puis corps en boucle |
 | Timing | basse sur la batterie, accords en retard de 0,2 pas (valeurs de `wjazzd_swing`, non mesurées en 3/4) |
 | Mixage | niveaux de `wjazzd_swing` ; **non mesuré au LUFS** pour ce profil |
 
@@ -56,9 +56,8 @@ de batterie du kit), voicings (`rootless`, `drop2`, `open`, `guide_tones`), regi
 
 ## Limites et manques de schéma
 
-- **Blanche pointée impossible** : `bass_feel` ne connaît que `walking` (une attaque par pulsation) et `two_feel` (une
-  toutes les deux pulsations). Une attaque par mesure de 3/4 (la blanche pointée de la valse) demande un feel à trois
-  pulsations : manque listé pour A7, non contourné. Le deux temps joue blanche + noire.
+- **Blanche pointée** (A7) : `bass_feel = "three_feel"` joue une attaque par mesure de 3/4 (une arrivée de plus à chaque
+  changement d'accord) ; l'exposition et la retombée la tirent (poids de métier, sans corpus), le deux temps garde blanche + noire.
 - **Basse sans mesure en 3/4**, comping sans corpus ; les poids de basse viennent du swing 4/4.
 - Un seul batteur, deux fichiers : la variété de batterie mesurée est celle d'un batteur ; les relances sont de métier.
 - Swing de la JTD (4/4) porté au 3/4, 0,06 au-dessus du GMD.

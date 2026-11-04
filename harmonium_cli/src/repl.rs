@@ -286,6 +286,15 @@ fn report(command: &EngineCommand, host: &LiveHost) {
         }
         EngineCommand::Reset => print_success_msg("Engine reset to defaults"),
         EngineCommand::SetSeed(seed) => print_success_msg(&format!("Seed réglé à {seed}")),
+        EngineCommand::ForceSessionVariant { group, index } => {
+            print_success_msg(&format!("Groupe « {group} » : variante {index} imposée"));
+        }
+        EngineCommand::ForceSessionVariantNamed { group, name } => {
+            print_success_msg(&format!("Groupe « {group} » : variante « {name} » imposée"));
+        }
+        EngineCommand::ClearSessionVariants => {
+            print_success_msg("Variantes de session : retour au tirage de la graine");
+        }
         EngineCommand::NewMelody => {
             print_success_msg(&format!("Nouvelle graine : {}", host.session_seed()));
         }

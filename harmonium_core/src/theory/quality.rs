@@ -155,6 +155,10 @@ impl Quality {
     pub fn voicing_tones(self, limit: usize) -> ArrayVec<u8, 5> {
         let limit = limit.min(5);
         let mut tones: ArrayVec<u8, 16> = self.chord_type.intervals().iter().copied().collect();
+        if self.chord_type == ChordType::Power {
+            // Dyade fondamentale-quinte doublée à l'octave : trois voix.
+            tones.push(12);
+        }
         for interval in 1..12u8 {
             if self.tensions & bit(interval) != 0 {
                 tones.push(interval + 12);

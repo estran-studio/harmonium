@@ -17,6 +17,7 @@ fn profile() -> TestResult<StyleProfile> {
         bars: 2,
         weight: 1,
         part: None,
+        tag: None,
         reference: BassReference::ChordRoot,
         notes: vec![
             BassMotifNote {

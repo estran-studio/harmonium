@@ -17,7 +17,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{
     accomp_profile::require,
-    arc::{TagWeight, tagged_weight},
+    arc::{TagWeight, tagged_weight_any},
     phrase::{
         Candidate, ClaveSide, MAX_FILL_BARS, MAX_PHRASE_BARS, MAX_PHRASES, PhraseAt, Slot, Window,
         pick_fill, tile,
@@ -418,6 +418,9 @@ pub struct PercussionPhrase {
     /// Étiquette que `[arc]` nomme pour choisir parmi les phrases.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
+    /// Étiquettes supplémentaires : la phrase concourt sous chacune (poids du tag le plus fort).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
     /// Emplacement dans la passe de la partie.
     #[serde(default, skip_serializing_if = "is_any")]
     pub at: PhraseAt,
@@ -453,6 +456,10 @@ pub struct PercussionFill {
     /// Étiquette que `[arc]` nomme pour choisir parmi les relances.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
+    /// Étiquettes supplémentaires : la relance concourt sous chacune (poids du tag le plus
+    /// fort), sans la recopier par étiquette.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
     /// Fins de phrase concernées : toutes (`any`), celles qui ferment la passe d'une partie
     /// (`part_end` : mise en place avant un changement de section) ou celle du chorus
     /// (`chorus_end`).
@@ -950,7 +957,15 @@ impl PercussionTable {
             (phrase.density == density && phrase.part.as_deref().is_none_or(|p| p == part)).then(
                 || Candidate {
                     bars: phrase.patterns.len(),
-                    weight: tagged_weight(phrase.weight, phrase.tag.as_deref(), tags),
+                    weight: tagged_weight_any(
+                        phrase.weight,
+                        phrase
+                            .tag
+                            .as_deref()
+                            .into_iter()
+                            .chain(phrase.tags.iter().map(String::as_str)),
+                        tags,
+                    ),
                     at: phrase.at,
                     side: phrase.clave,
                 },
@@ -999,7 +1014,14 @@ impl PercussionTable {
                     let fill = &self.fills[index];
                     (fill.density == density).then(|| Candidate {
                         bars: fill.bars.len(),
-                        weight: tagged_weight(fill.weight, fill.tag.as_deref(), tags),
+                        weight: tagged_weight_any(
+                            fill.weight,
+                            fill.tag
+                                .as_deref()
+                                .into_iter()
+                                .chain(fill.tags.iter().map(String::as_str)),
+                            tags,
+                        ),
                         at: fill.at,
                         side: None,
                     })

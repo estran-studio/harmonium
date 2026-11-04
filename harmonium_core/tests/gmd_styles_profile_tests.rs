@@ -307,10 +307,12 @@ fn la_grille_par_defaut_est_une_boucle_ecrite_de_chaque_partie_relative_a_la_ton
                 spec.id
             );
             let again = stream_of(plain(spec)?, seed, TUNE, 0.5, 1);
-            assert_eq!(
-                degrees(&again)[CHORUS..2 * CHORUS],
-                d[..],
-                "{} graine {seed} : second chorus",
+            // Le second chorus joue une boucle écrite de chaque partie (`tour_variants`, A7).
+            let second = &degrees(&again)[CHORUS..2 * CHORUS];
+            assert!(
+                spec.a.iter().any(|l| l[..] == second[..8])
+                    && spec.b.iter().any(|l| l[..] == second[8..]),
+                "{} graine {seed} : second chorus hors des boucles écrites",
                 spec.id
             );
         }

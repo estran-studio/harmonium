@@ -158,7 +158,12 @@ fn les_sessions_varient_et_la_basse_change_de_feel_sur_l_arc() -> Resultat {
                     .map(|n| n.start_step)
                     .collect::<BTreeSet<_>>()
             };
-            assert_eq!(bass_steps(first), BTreeSet::from([0, 8]));
+            // Deux temps (blanche + noire) ou blanche pointée (`three_feel`, A7).
+            assert!(
+                [BTreeSet::from([0, 8]), BTreeSet::from([0])].contains(&bass_steps(first)),
+                "{id} : {:?}",
+                bass_steps(first)
+            );
             marche |= flow[32..64].iter().any(|s| bass_steps(s).len() >= temps);
         }
         assert!(habillages.len() >= 8, "{id} : {} habillages", habillages.len());

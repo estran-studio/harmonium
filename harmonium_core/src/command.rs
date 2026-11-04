@@ -112,6 +112,19 @@ pub enum EngineCommand {
     /// Énergie du style (`0..=1`), audible à la mesure suivante.
     SetIntensity(f32),
 
+    /// Impose la variante `index` (de `[[session.variants]]` du profil) au groupe `group`,
+    /// quelle que soit la graine ; les autres groupes gardent leur tirage. Rejoue depuis la
+    /// mesure 1. Refusée si l'indice est inconnu ou d'un autre groupe.
+    ForceSessionVariant { group: String, index: usize },
+
+    /// Comme `ForceSessionVariant`, la variante étant désignée par son nom (`name` de
+    /// `[[session.variants]]`) : p. ex. `{ group: "rythme", name: "up_rapide" }` impose tempo, kit
+    /// et arc du groupe, que `SetBpm` seul ne change pas.
+    ForceSessionVariantNamed { group: String, name: String },
+
+    /// Rend tous les groupes de session au tirage de la graine ; rejoue depuis la mesure 1.
+    ClearSessionVariants,
+
     // === UTILITY ===
     /// Back to the active profile's defaults (emotions, direct tempo, swing,
     /// meter), no loop, no imposed audible tempo; replays from bar 1 with

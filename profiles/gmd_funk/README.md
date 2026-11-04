@@ -167,3 +167,11 @@ exposition et retombée plus légères que le sommet, stop-time de la retombée 
 - **Habillage par graine** (R2) : groupes indépendants, aucun lien entre kit, tempo et instruments (un kit « power » peut tomber avec le tempo le plus lent) ; tonalités, instruments, kits, voicings, registre, énergie et arcs sont de métier, jugés par des preuves chiffrées seulement (D5). Les options de marche d'A4 (notes fantômes, croches, notes répétées, arrivée) sont exclusives de `motifs` et de `passing` : la basse garde ses riffs.
 - **Mixage** : réglé au LUFS en solo (graine 1), aucune écoute ; la grosse caisse et le charleston partagent
   le canal 9 du kit GM, le niveau de `PercussionHigh` gagne, la grosse caisse se règle par sa voix.
+
+## Grille par chorus (A7, `harmony.tour_variants = 4`)
+
+La grille tirée une fois par air et tenue à chaque chorus (0 % de mesures d'accord changées d'un chorus au suivant) est
+remplacée par un tirage par chorus : le chorus `n` joue le tirage `n mod 4` (le premier est celui de l'air). Mesuré par
+`harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus ; avant → après) : accords changés d'un chorus au suivant
+0 % → 70 %, paires de chorus identiques 100 % → 22 %, suites d'accords distinctes sur 16 graines 5 / 16 → 16 / 16 ;
+basse changée (elle suit la fondamentale des accords) 9 % → 43 %. Poids et progressions de métier, aucun corpus de grilles.

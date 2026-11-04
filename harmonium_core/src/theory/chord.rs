@@ -136,11 +136,14 @@ pub enum ChordType {
     /// Accord dominant altéré (1-3-b7) ; ses altérations b9, #9, #11, b13 sont des
     /// extensions imposées (voir [`Quality`]) - ex: C7alt
     Altered,
+    /// Accord de puissance (1-5), sans tierce - ex: C5. Joué en dyade doublée à l'octave
+    /// (voicings serrés) ; jamais déduit d'un ensemble de notes (`Chord::from_notes`).
+    Power,
 }
 
 impl ChordType {
     /// Tous les types, dans l'ordre de déclaration (source unique du vocabulaire de suffixes).
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Major,
         Self::Minor,
         Self::Augmented,
@@ -161,6 +164,7 @@ impl ChordType {
         Self::Dominant7Flat5,
         Self::Dominant7Sus2,
         Self::Altered,
+        Self::Power,
     ];
 
     /// Retourne les intervalles (en demi-tons) depuis la fondamentale
@@ -187,6 +191,7 @@ impl ChordType {
             Self::Dominant7Flat5 => &[0, 4, 6, 10],
             Self::Dominant7Sus2 => &[0, 2, 7, 10],
             Self::Altered => &[0, 4, 10],
+            Self::Power => &[0, 7],
         }
     }
 
@@ -233,6 +238,7 @@ impl ChordType {
             Self::Dominant7Flat5 => "7b5",
             Self::Dominant7Sus2 => "7sus2",
             Self::Altered => "7alt",
+            Self::Power => "5",
         }
     }
 
@@ -281,6 +287,7 @@ impl ChordType {
             self,
             Self::Sus2
                 | Self::Sus4
+                | Self::Power
                 | Self::Augmented
                 | Self::Diminished7
                 | Self::Dominant7Sus4

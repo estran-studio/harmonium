@@ -244,11 +244,19 @@ fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plus
                 format!("{} graine {seed} : grille hors des boucles écrites : {first:?}", spec.id)
             })?;
             seen.insert(which);
-            // Les chorus suivants rejouent la même boucle (le tirage est par air).
-            for n in 2..=CHORUSES {
+            // Chaque chorus joue une des boucles écrites (un tirage par chorus, `tour_variants`,
+            // A7) ; le chorus 5 rejoue le tirage du chorus 1 (cycle de quatre).
+            let mut chorus_choices = Vec::new();
+            for n in 1..=CHORUSES {
                 let again: Vec<Vec<(usize, u8)>> =
                     chorus(&flow, spec, n).iter().map(|s| changes(s)).collect();
-                assert_eq!(again, first, "{} graine {seed} chorus {n}", spec.id);
+                let which = expected.iter().position(|e| *e == again).ok_or_else(|| {
+                    format!("{} graine {seed} chorus {n} : hors des boucles écrites", spec.id)
+                })?;
+                chorus_choices.push(which);
+            }
+            if CHORUSES >= 5 {
+                assert_eq!(chorus_choices[0], chorus_choices[4], "{} graine {seed}", spec.id);
             }
         }
         assert!(seen.len() >= 3, "{} : 16 graines n'ont tiré que {} grilles", spec.id, seen.len());

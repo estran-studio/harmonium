@@ -13,21 +13,21 @@ repeat_from = 1
 [[stages]]
 choruses = 1
 variants = [
-  { weight = 3, intensity = 0.65, density = 0.9, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
-  { weight = 1, intensity = 0.75, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+  { weight = 3, intensity = 0.65, density = 0.9, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }], percussion_density = 1, bass = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }] },
+  { weight = 1, intensity = 0.75, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }], percussion_density = 1, bass = [{ tag = "medium" }, { tag = "sparse" }] },
 ]
 
 [[stages]]
 choruses = 2
 variants = [
-  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
-  { weight = 1, intensity = 1.2, density = 1.2, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }], bass = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }] },
+  { weight = 1, intensity = 1.2, density = 1.2, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], bass = [{ tag = "dense" }, { tag = "medium" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
 ]
 
 [[stages]]
 choruses = 1
 variants = [
-  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], bass = [{ tag = "dense" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
 ]
 
 [[fall]]
@@ -35,4 +35,6 @@ intensity = 0.5
 density = 0.5
 comping = [{ tag = "sparse" }]
 percussion = [{ tag = "hat" }]
+percussion_density = 0
+bass = [{ tag = "sparse" }]
 breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

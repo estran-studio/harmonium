@@ -55,6 +55,12 @@ pub enum BassFeel {
     /// Une attaque toutes les deux pulsations (la première est l'arrivée, la seconde
     /// l'approche), plus une arrivée à chaque changement d'accord.
     TwoFeel,
+    /// Une attaque toutes les trois pulsations (blanche pointée d'une mesure de 3/4), plus une
+    /// arrivée à chaque changement d'accord.
+    ThreeFeel,
+    /// Une seule attaque par mesure (ronde, ou blanche pointée d'un 6/8 à deux pulsations),
+    /// plus une arrivée à chaque changement d'accord.
+    BarFeel,
 }
 
 impl BassFeel {
@@ -64,6 +70,8 @@ impl BassFeel {
         match self {
             Self::Walking => 1,
             Self::TwoFeel => 2,
+            Self::ThreeFeel => 3,
+            Self::BarFeel => usize::MAX,
         }
     }
 }
@@ -85,6 +93,21 @@ const fn default_weight() -> u32 {
 /// Poids effectif d'un candidat de tag `tag` sous `tags` : 0 s'il ne porte pas un tag nommé.
 pub(crate) fn tag_weight(tags: &[TagWeight], tag: Option<&str>) -> u64 {
     tag.map_or(0, |tag| tags.iter().filter(|t| t.tag == tag).map(|t| u64::from(t.weight)).sum())
+}
+
+/// Comme [`tagged_weight`] pour un candidat à plusieurs étiquettes : le poids du tag le plus
+/// fort parmi les siens (0 s'il n'en porte aucun de nommé).
+pub(crate) fn tagged_weight_any<'t>(
+    weight: u32,
+    names: impl Iterator<Item = &'t str> + Clone,
+    tags: &[TagWeight],
+) -> u64 {
+    if tags.is_empty() {
+        u64::from(weight)
+    } else {
+        let best = names.map(|name| tag_weight(tags, Some(name))).max().unwrap_or(0);
+        u64::from(weight).saturating_mul(best)
+    }
 }
 
 /// Poids d'un candidat sous les tags de l'arc : son poids seul si `tags` est vide, sinon son
@@ -128,7 +151,8 @@ const fn default_chance() -> f32 {
 }
 
 impl ArcBreak {
-    /// Fenêtre `[début, fin)` en mesures 0-based dans un chorus de `bars` mesures.
+    /// Fenêtre `[début, fin)` en mesures 0-based dans un chorus de `bars` mesures, bornée au
+    /// chorus : vide si le break commence au-delà de la dernière mesure.
     fn window(&self, bars: usize) -> (usize, usize) {
         let first = if self.start > 0 {
             self.start.unsigned_abs() as usize - 1
@@ -154,6 +178,11 @@ pub struct ArcVariant {
     /// la densité des notes de passage de la basse.
     #[serde(default = "default_multiplier")]
     pub density: f32,
+    /// Niveau de densité de la batterie (`0`, `1` ou `2`) du chorus, qui **remplace** l'arrondi
+    /// de la densité du jeu, de `percussion_intensity` et de `density_percussion` : il choisit
+    /// directement les patterns, phrases et relances de ce niveau. Omis : le niveau calculé.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percussion_density: Option<u8>,
     /// Feel de la basse ; exige `accompaniment.bass.walking`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bass_feel: Option<BassFeel>,
@@ -171,6 +200,12 @@ pub struct ArcVariant {
     /// de relance de `cadence_patterns` ne changent pas.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub percussion: Vec<TagWeight>,
+    /// Tags des motifs et gabarits de basse (`accompaniment.bass.motifs[].tag`, `templates[].tag`)
+    /// autorisés, pondérés. Sous des tags, le plan de basse est **tiré à chaque chorus** (flux
+    /// dérivé du chorus) parmi les sources qui en portent un ; sans tags (ni ici ni dans la
+    /// session), le plan est celui de l'air, répété à chaque chorus.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bass: Vec<TagWeight>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub breaks: Vec<ArcBreak>,
 }
@@ -182,10 +217,12 @@ impl Default for ArcVariant {
             weight: 1,
             intensity: 1.0,
             density: 1.0,
+            percussion_density: None,
             bass_feel: None,
             instruments: None,
             comping: Vec::new(),
             percussion: Vec::new(),
+            bass: Vec::new(),
             breaks: Vec::new(),
         }
     }
@@ -254,6 +291,11 @@ impl<'a> ArcBar<'a> {
     /// Densité rythmique de la mesure, bornée à 0..1.
     pub(crate) fn density(&self, base: f32) -> f32 {
         (base * self.base_multiplier(|b| b.density) * self.variant.density).clamp(0.0, 1.0)
+    }
+
+    /// Niveau de densité imposé à la batterie : celui du chorus, à défaut celui de la session.
+    pub(crate) fn percussion_level(&self) -> Option<u8> {
+        self.variant.percussion_density.or_else(|| self.base.and_then(|b| b.percussion_density))
     }
 
     /// Pulsations entre deux attaques de la basse (1 : une marche par pulsation).
@@ -346,6 +388,22 @@ impl ChorusArc {
         draw(&stage.variants, mix(mix(seed, VARIANT_STREAM), chorus as u64))
     }
 
+    /// Tags de basse du chorus `chorus` (1-based) sur un set de `choruses` chorus, à défaut ceux
+    /// de la base de session.
+    pub(crate) fn bass_tags<'a>(
+        &'a self,
+        seed: u64,
+        chorus: usize,
+        choruses: Option<usize>,
+        base: Option<&'a SessionBase>,
+    ) -> &'a [TagWeight] {
+        let variant = self.variant(seed, chorus, choruses);
+        match (variant.bass.is_empty(), base) {
+            (true, Some(base)) => &base.bass,
+            _ => &variant.bass,
+        }
+    }
+
     /// État de l'arc à la mesure de `position` ; `None` pendant une intro. `bars` : mesures
     /// d'un chorus (`form.bars_per_tour()`), `seed` : graine de l'arc du set, `base` : base de
     /// la variante de session.
@@ -391,7 +449,6 @@ impl ChorusArc {
     /// (`arc`, ou `session.arcs.<nom>` pour un arc nommé par une variante de session).
     pub(crate) fn validate(&self, profile: &StyleProfile, path: &str) -> Result<(), ProfileError> {
         let steps = profile.meter.steps_per_bar;
-        let bars = profile.form.bars_per_tour();
         require(
             (1..=MAX_STAGES).contains(&self.stages.len()),
             format!("{path}.stages"),
@@ -411,16 +468,10 @@ impl ChorusArc {
                 format!("{field}.choruses"),
                 "1..1024 chorus requis",
             )?;
-            self.validate_variants(
-                profile,
-                &stage.variants,
-                &format!("{field}.variants"),
-                steps,
-                bars,
-            )?;
+            self.validate_variants(profile, &stage.variants, &format!("{field}.variants"), steps)?;
         }
         if !self.fall.is_empty() {
-            self.validate_variants(profile, &self.fall, &format!("{path}.fall"), steps, bars)?;
+            self.validate_variants(profile, &self.fall, &format!("{path}.fall"), steps)?;
         }
         Ok(())
     }
@@ -431,7 +482,6 @@ impl ChorusArc {
         variants: &[ArcVariant],
         field: &str,
         steps: usize,
-        bars: usize,
     ) -> Result<(), ProfileError> {
         require((1..=MAX_VARIANTS).contains(&variants.len()), field, "1..16 variantes requises")?;
         let mut total = 0u64;
@@ -447,6 +497,11 @@ impl ChorusArc {
                 )?;
             }
             require(
+                variant.percussion_density.is_none_or(|level| level <= 2),
+                format!("{field}.percussion_density"),
+                "niveau de densité dans 0..2 requis",
+            )?;
+            require(
                 variant.bass_feel.is_none()
                     || profile.accompaniment.as_ref().is_some_and(|a| a.bass.walking.is_some()),
                 format!("{field}.bass_feel"),
@@ -454,6 +509,7 @@ impl ChorusArc {
             )?;
             validate_tags(profile, &field, "comping", &variant.comping)?;
             validate_tags(profile, &field, "percussion", &variant.percussion)?;
+            validate_tags(profile, &field, "bass", &variant.bass)?;
             if let Some(instruments) = &variant.instruments {
                 instruments.validate(profile, &format!("{field}.instruments"))?;
             }
@@ -464,21 +520,18 @@ impl ChorusArc {
             )?;
             for (b, brk) in variant.breaks.iter().enumerate() {
                 let field = format!("{field}.breaks[{b}]");
-                let start = brk.start.unsigned_abs() as usize;
+                // La fenêtre se lit dans le chorus joué (`window`) : l'hôte remplace la forme par la
+                // grille de l'utilisateur, souvent plus courte. Un break qui n'y tient pas est
+                // ramené à la longueur du chorus, ou ignoré s'il commence au-delà ; jamais refusé.
                 require(
-                    brk.start != 0 && start <= bars,
+                    brk.start != 0,
                     format!("{field}.start"),
                     "mesure du chorus requise (1-based, négatif depuis la fin, jamais 0)",
                 )?;
                 require(
-                    brk.bars >= 1
-                        && if brk.start > 0 {
-                            start - 1 + brk.bars as usize <= bars
-                        } else {
-                            brk.bars as usize <= start
-                        },
+                    brk.bars >= 1,
                     format!("{field}.bars"),
-                    "fenêtre d'au moins une mesure, dans le chorus",
+                    "fenêtre d'au moins une mesure requise",
                 )?;
                 require(
                     brk.chance.is_finite() && (0.0..=1.0).contains(&brk.chance),
@@ -517,7 +570,22 @@ pub(crate) fn validate_tags(
     tags: &[TagWeight],
 ) -> Result<(), ProfileError> {
     let (known, bank): (HashSet<&str>, &str) =
-        if name == "comping" {
+        if name == "bass" {
+            (
+                profile
+                    .accompaniment
+                    .iter()
+                    .flat_map(|a| {
+                        a.bass
+                            .motifs
+                            .iter()
+                            .filter_map(|motif| motif.tag.as_deref())
+                            .chain(a.bass.templates.iter().filter_map(|t| t.tag.as_deref()))
+                    })
+                    .collect(),
+                "accompaniment.bass (motifs, templates)",
+            )
+        } else if name == "comping" {
             (
                 profile
                     .accompaniment
@@ -537,8 +605,12 @@ pub(crate) fn validate_tags(
                     .patterns
                     .iter()
                     .filter_map(|p| p.tag.as_deref())
-                    .chain(profile.percussion.phrases.iter().filter_map(|p| p.tag.as_deref()))
-                    .chain(profile.percussion.fills.iter().filter_map(|f| f.tag.as_deref()))
+                    .chain(profile.percussion.phrases.iter().flat_map(|p| {
+                        p.tag.as_deref().into_iter().chain(p.tags.iter().map(String::as_str))
+                    }))
+                    .chain(profile.percussion.fills.iter().flat_map(|f| {
+                        f.tag.as_deref().into_iter().chain(f.tags.iter().map(String::as_str))
+                    }))
                     .collect(),
                 "percussion (patterns, phrases, fills)",
             )

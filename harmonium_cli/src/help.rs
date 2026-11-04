@@ -58,6 +58,11 @@ pub fn print_help() {
                 "intensity <0..1>",
                 "Énergie, articulation, percussion et accords ; effet à la prochaine mesure",
             ),
+            (
+                "variant <groupe> <indice|nom>",
+                "Impose la variante de session (indice ou nom dans [[session.variants]]) au groupe, quelle que soit la graine",
+            ),
+            ("variant clear", "Rend les groupes de session au tirage de la graine"),
             ("seed <u64>", "Fixe le seed de session et régénère depuis la mesure 1"),
             ("seed new", "Tire un nouveau seed au hasard et repart de la mesure 1"),
         ],
@@ -156,6 +161,12 @@ pub fn print_command_help(command: &str) {
             println!("  {}  - Silence the output: set output mute|unmute", "output".green());
             println!("  {}  - Writehead lookahead in bars (minimum 4)", "lookahead".green());
             println!("  {}  - Session seed (see also: seed new)", "seed".green());
+        }
+
+        "variant" => {
+            println!("variant <groupe> <indice|nom> : impose la variante `indice` (ou de ce nom) de [[session.variants]] au groupe,");
+            println!("quelle que soit la graine ; les autres groupes gardent leur tirage. Rejoue depuis la mesure 1.");
+            println!("variant clear : rend tous les groupes au tirage de la graine.");
         }
 
         "intensity" => {

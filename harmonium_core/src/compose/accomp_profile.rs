@@ -90,6 +90,10 @@ pub struct BassMotif {
     pub weight: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub part: Option<String>,
+    /// Étiquette que `[arc]` (`bass`) et `[session]` nomment pour choisir parmi les motifs et
+    /// les gabarits de basse : sous des tags, seuls ceux qui en portent un concourent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
     #[serde(default)]
     pub reference: BassReference,
     pub notes: Vec<BassMotifNote>,
@@ -110,6 +114,9 @@ pub struct BassTemplate {
     pub weight: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub part: Option<String>,
+    /// Étiquette de l'arc et de la session (voir `BassMotif::tag`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
     /// Mesures du cycle de `ramp` (`1..=16`) ; la montée repart au début du cycle.
     #[serde(default = "default_one_bar")]
     pub bars: usize,
@@ -698,6 +705,9 @@ impl Spread {
 pub enum PassingWhen {
     NextTargetDiffers,
     ChordChangeInsideBar,
+    /// Le dernier accord de la mesure n'est pas le premier de la suivante : l'approche de la
+    /// première basse de la mesure suivante n'a lieu qu'à un changement d'accord à la barre.
+    ChordChangeAtBar,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1019,6 +1029,7 @@ pub(crate) enum BassSource {
 pub(crate) struct BassCandidate<'a> {
     pub source: BassSource,
     pub part: Option<&'a str>,
+    pub tag: Option<&'a str>,
     pub weight: u32,
     pub bars: usize,
 }
@@ -1029,18 +1040,26 @@ impl BassVoice {
         !self.motifs.is_empty() || !self.templates.is_empty()
     }
 
+    /// Vrai si un motif ou un gabarit porte une étiquette (`tag`).
+    pub(crate) fn has_tags(&self) -> bool {
+        self.motifs.iter().any(|m| m.tag.is_some())
+            || self.templates.iter().any(|t| t.tag.is_some())
+    }
+
     /// Pool de tirage : les motifs dans l'ordre du profil, puis les gabarits. Sans gabarit,
     /// c'est exactement la liste des motifs, donc le même flux de tirages.
     pub(crate) fn sources(&self) -> impl Iterator<Item = BassCandidate<'_>> {
         let motifs = self.motifs.iter().enumerate().map(|(i, m)| BassCandidate {
             source: BassSource::Motif(i),
             part: m.part.as_deref(),
+            tag: m.tag.as_deref(),
             weight: m.weight,
             bars: m.bars,
         });
         let templates = self.templates.iter().enumerate().map(|(i, t)| BassCandidate {
             source: BassSource::Template(i),
             part: t.part.as_deref(),
+            tag: t.tag.as_deref(),
             weight: t.weight,
             bars: t.bars,
         });
@@ -1097,7 +1116,9 @@ fn validate_templates(
             require(
                 parts.iter().any(|p| &p.name == part_name),
                 format!("{tf}.part"),
-                "partie inconnue dans form.parts",
+                &format!(
+                    "partie « {part_name} » absente de form.parts (une grille d'utilisateur remplace la forme : un motif ou gabarit rattaché à une partie nommée ne s'y applique pas ; retirer `part` pour qu'il joue sous toute grille)"
+                ),
             )?;
             require(
                 parts
@@ -1249,7 +1270,9 @@ impl AccompanimentParams {
                     require(
                         parts.iter().any(|p| &p.name == part_name),
                         format!("{mf}.part"),
-                        "partie inconnue dans form.parts",
+                        &format!(
+                            "partie « {part_name} » absente de form.parts (une grille d'utilisateur remplace la forme : un motif ou gabarit rattaché à une partie nommée ne s'y applique pas ; retirer `part` pour qu'il joue sous toute grille)"
+                        ),
                     )?;
                     require(
                         parts.iter().all(|p| {

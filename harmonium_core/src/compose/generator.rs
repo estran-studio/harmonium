@@ -137,6 +137,8 @@ pub struct ActiveTune {
     pub harmony: HarmonyPlan,
     /// Plan motivique de la basse pour cet air (vide si la basse utilise `hits`).
     bass_plan: BassMotifPlan,
+    /// Graine des plans de basse par chorus (voir `Generator::bass_plan_for`).
+    bass_seed: u64,
     /// Alternatives de percussion fixées par partie et densité pour cet air.
     percussion_plan: PercussionPatternPlan,
     /// Décalages d'humanisation des vélocités de la percussion, par mesure unique de
@@ -209,6 +211,9 @@ pub struct TuneGenerator {
     /// variantes). Tirage unique, avant le premier air ; remis à zéro par le rejeu et par un
     /// changement de profil.
     session: Option<Arc<SessionDraw>>,
+    /// Variantes de session imposées par l'hôte, `(groupe, indice)` ; le tirage de la graine
+    /// ne les touche pas.
+    forced_variants: Vec<(String, usize)>,
 }
 
 impl TuneGenerator {
@@ -225,6 +230,7 @@ impl TuneGenerator {
             next_note_id: 1,
             current_bar: 0,
             session: None,
+            forced_variants: Vec::new(),
             ending_tune,
         }
     }
@@ -294,7 +300,44 @@ impl TuneGenerator {
             self.tunes.clear();
             self.sets.clear();
             self.session = None;
+            // Les indices imposés visaient les variantes de l'ancien profil.
+            self.forced_variants.clear();
         }
+    }
+
+    /// Impose la variante `index` (de `[[session.variants]]`) au groupe `group`, quelle que soit
+    /// la graine ; prend effet au prochain tirage de session (rejeu depuis la mesure 1).
+    ///
+    /// # Errors
+    /// Indice inconnu, ou variante d'un autre groupe.
+    pub fn force_session_variant(&mut self, group: &str, index: usize) -> Result<(), String> {
+        self.profile.session.check_forced(group, index)?;
+        self.forced_variants.retain(|(name, _)| name != group);
+        self.forced_variants.push((group.to_owned(), index));
+        self.session = None;
+        Ok(())
+    }
+
+    /// Comme [`Self::force_session_variant`], la variante étant désignée par son nom
+    /// (`[[session.variants]].name`).
+    ///
+    /// # Errors
+    /// Nom inconnu dans le groupe.
+    pub fn force_session_variant_named(&mut self, group: &str, name: &str) -> Result<(), String> {
+        let index = self.profile.session.resolve_named(group, name)?;
+        self.force_session_variant(group, index)
+    }
+
+    /// Rend tous les groupes au tirage de la graine.
+    pub fn clear_forced_session_variants(&mut self) {
+        self.forced_variants.clear();
+        self.session = None;
+    }
+
+    /// Variantes imposées `(groupe, indice)`.
+    #[must_use]
+    pub fn forced_session_variants(&self) -> &[(String, usize)] {
+        &self.forced_variants
     }
 
     /// Variantes de session tirées pour la graine ; `None` tant qu'aucune mesure n'est générée
@@ -316,7 +359,11 @@ impl TuneGenerator {
         }
         let high = rng.next_range_u64(0..1 << 32);
         let seed = (high << 32) | rng.next_range_u64(0..1 << 32);
-        self.session = Some(Arc::new(self.profile.session.draw(&self.profile, seed)));
+        self.session = Some(Arc::new(self.profile.session.draw_forced(
+            &self.profile,
+            seed,
+            &self.forced_variants,
+        )));
     }
 
     /// Réinitialise le générateur à son état initial pour le seek déterministe.
@@ -815,11 +862,14 @@ impl TuneGenerator {
         }
         let bar = self.performed_bar(position);
         let chords = self.chords_for_bar(tune, bar);
-        let next_target = (bar + 1 < self.profile.form.bars_per_tour() * position.tours)
+        let has_next = bar + 1 < self.profile.form.bars_per_tour() * position.tours;
+        let next_chord = has_next.then(|| self.chords_for_bar(tune, bar + 1)[0]);
+        let next_target = has_next
             .then(|| {
                 let next = self.chords_for_bar(tune, bar + 1);
+                let next_plan = self.bass_plan_for(tune, position, bar + 1);
                 first_bass_target(
-                    &tune.bass_plan,
+                    &next_plan,
                     &tune.plan,
                     bar + 1,
                     &next,
@@ -843,6 +893,7 @@ impl TuneGenerator {
             strong_steps: &a.strong_steps,
             chords: &chords,
             steps_per_chord: self.profile.harmony.steps_per_chord,
+            next_chord,
             next_target,
         };
         let id = &mut self.next_note_id;
@@ -851,6 +902,41 @@ impl TuneGenerator {
             *id += 1;
             next
         });
+    }
+
+    /// Plan de basse de la mesure `bar` (numérotée dans l'air) : celui de l'air, sauf sous des
+    /// tags de basse (arc du chorus, à défaut session), où chaque chorus tire le sien parmi les
+    /// motifs et gabarits qui portent un de ces tags (flux dérivé du chorus : le seek et le
+    /// rejeu retrouvent le même plan). `position` : la mesure jouée, pas forcément `bar`.
+    fn bass_plan_for<'a>(
+        &self,
+        tune: &'a ActiveTune,
+        position: &TunePosition,
+        bar: usize,
+    ) -> Cow<'a, BassMotifPlan> {
+        let Some(accompaniment) = &self.tuning.profile.accompaniment else {
+            return Cow::Borrowed(&tune.bass_plan);
+        };
+        if !accompaniment.bass.uses_plan() || !accompaniment.bass.has_tags() {
+            return Cow::Borrowed(&tune.bass_plan);
+        }
+        let session = self.session.as_deref();
+        let base = session.and_then(SessionDraw::base);
+        let chorus = position.tune_in_set.saturating_sub(1) * position.tours
+            + bar / self.profile.form.bars_per_tour()
+            + 1;
+        let tags = match chorus_arc_of(&self.profile, session) {
+            Some(arc) => {
+                arc.bass_tags(self.arc_seed(position.tune_index), chorus, position.choruses(), base)
+            }
+            None => base.map_or(&[][..], |base| base.bass.as_slice()),
+        };
+        if tags.is_empty() {
+            return Cow::Borrowed(&tune.bass_plan);
+        }
+        let mut rng =
+            ChaCha8Rng::seed_from_u64(crate::ornaments::mix(tune.bass_seed, chorus as u64));
+        Cow::Owned(BassMotifPlan::new(&tune.plan, &accompaniment.bass, tags, &mut rng))
     }
 
     /// Mesures `[début, fin)` (0-based dans la partie) de la phrase qui contient
@@ -1164,6 +1250,7 @@ impl TuneGenerator {
             }
         }
         if self.track_active(TrackId::Bass, position) {
+            let bass_plan = self.bass_plan_for(tune, position, bar_in_tour);
             let next_first = self.next_bar_first_chord(tune, bar_in_tour);
             let next_note_id = &mut self.next_note_id;
             let mut next_id = || {
@@ -1195,7 +1282,7 @@ impl TuneGenerator {
                         walking,
                         &mut next_id,
                     )
-                } else if let Some(slice) = tune.bass_plan.slice_for_bar(plan, bar_in_tour) {
+                } else if let Some(slice) = bass_plan.slice_for_bar(plan, bar_in_tour) {
                     if let Some(index) = slice.template_index() {
                         bass_template_bar(
                             &accompaniment.bass.templates[index],
@@ -1427,10 +1514,12 @@ impl TuneGenerator {
                 tune.plan.bar_role(self.performed_bar(position)).role,
             );
             let table = &self.tuning.profile.percussion;
-            let density = self.percussion_density(
-                self.arc_intensity(position.tune_index, arc),
-                self.arc_density(arc),
-            );
+            let density = arc.and_then(ArcBar::percussion_level).unwrap_or_else(|| {
+                self.percussion_density(
+                    self.arc_intensity(position.tune_index, arc),
+                    self.arc_density(arc),
+                )
+            });
             let tags = arc.map_or(&[][..], ArcBar::percussion_tags);
             let form = &self.profile.form;
             // Phrases de batterie de la passe de la partie et relance de fin de phrase : tirées
@@ -2101,14 +2190,17 @@ impl TuneGenerator {
             } else {
                 0
             };
+        let bass_seed = source.map_or_else(
+            || crate::ornaments::mix(accompaniment_seed, 0x424D_4F54),
+            |source| source.bass_seed,
+        );
         let bass_plan = if let Some(source) = source {
             source.bass_plan.clone()
         } else if let Some(a) = &self.profile.accompaniment
             && a.bass.uses_plan()
         {
-            let mut bass_rng =
-                ChaCha8Rng::seed_from_u64(crate::ornaments::mix(accompaniment_seed, 0x424D_4F54));
-            BassMotifPlan::new(&plan, &a.bass, &mut bass_rng)
+            let mut bass_rng = ChaCha8Rng::seed_from_u64(bass_seed);
+            BassMotifPlan::new(&plan, &a.bass, &[], &mut bass_rng)
         } else {
             BassMotifPlan::default()
         };
@@ -2124,6 +2216,7 @@ impl TuneGenerator {
             melody,
             harmony,
             bass_plan,
+            bass_seed,
             percussion_plan,
             percussion_humanize,
             variant_seed,

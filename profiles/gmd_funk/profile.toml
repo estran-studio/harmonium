@@ -96,6 +96,8 @@ even_eighth_velocity_offset = -6
 [harmony]
 model = "loop"
 steps_per_chord = 4
+# Un tirage de grille par chorus (A7) : le chorus n joue le tirage n mod 4 (le premier est celui de l\'air).
+tour_variants = 4
 
 [harmony.parts.Grille]
 kind = "chord_loop"

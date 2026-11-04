@@ -87,6 +87,9 @@ even_eighth_velocity_offset = -6
 [harmony]
 model = "loop"
 steps_per_chord = 4
+# Un tirage de grille par chorus (A7) : le chorus n joue le tirage n mod 4 (le premier est celui de l'air) ;
+# la progression change d'un chorus au suivant, en accords pleins ou de puissance.
+tour_variants = 4
 
 # Couplet (huit mesures) : quatre grilles de forme commune, une tirée par air selon la graine.
 [harmony.parts.A]
@@ -135,6 +138,47 @@ loops = [
     { semitones = 5, quality = "", steps = 16 },
     { semitones = 0, quality = "", steps = 16 },
     { semitones = 7, quality = "", steps = 16 },
+  ] },
+  # Versions en accords de puissance (guitare saturée : fondamentale, quinte, octave), mêmes progressions.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+  ] },
+  { weight = 3, chords = [
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+  ] },
+  { weight = 2, chords = [
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 10, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 10, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+  ] },
+  { weight = 2, chords = [
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
   ] },
 ]
 
@@ -186,6 +230,47 @@ loops = [
     { semitones = 0, quality = "", steps = 16 },
     { semitones = 0, quality = "", steps = 16 },
   ] },
+  # Versions en accords de puissance (guitare saturée : fondamentale, quinte, octave), mêmes progressions.
+  { weight = 3, chords = [
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+  ] },
+  { weight = 2, chords = [
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 9, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+  ] },
+  { weight = 2, chords = [
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+    { semitones = 7, quality = "5", steps = 16 },
+    { semitones = 5, quality = "5", steps = 16 },
+  ] },
+  { weight = 1, chords = [
+    { semitones = 8, quality = "5", steps = 16 },
+    { semitones = 10, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 8, quality = "5", steps = 16 },
+    { semitones = 10, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+    { semitones = 0, quality = "5", steps = 16 },
+  ] },
 ]
 
 [accompaniment]
@@ -199,22 +284,23 @@ low = 28
 high = 39
 motifs = [
   # 0 : croches à la fondamentale
-  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 100 }, { step = 2, duration = 2, semitones = 0, velocity = 88 }, { step = 4, duration = 2, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 0, velocity = 88 }, { step = 8, duration = 2, semitones = 0, velocity = 96 }, { step = 10, duration = 2, semitones = 0, velocity = 88 }, { step = 12, duration = 2, semitones = 0, velocity = 92 }, { step = 14, duration = 2, semitones = 0, velocity = 88 }] },
+  { bars = 1, weight = 4, tag = "medium", reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 100 }, { step = 2, duration = 2, semitones = 0, velocity = 88 }, { step = 4, duration = 2, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 0, velocity = 88 }, { step = 8, duration = 2, semitones = 0, velocity = 96 }, { step = 10, duration = 2, semitones = 0, velocity = 88 }, { step = 12, duration = 2, semitones = 0, velocity = 92 }, { step = 14, duration = 2, semitones = 0, velocity = 88 }] },
   # 1 : noires à la fondamentale
-  { bars = 1, weight = 3, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 100 }, { step = 4, duration = 4, semitones = 0, velocity = 92 }, { step = 8, duration = 4, semitones = 0, velocity = 96 }, { step = 12, duration = 4, semitones = 0, velocity = 92 }] },
+  { bars = 1, weight = 3, tag = "sparse", reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 100 }, { step = 4, duration = 4, semitones = 0, velocity = 92 }, { step = 8, duration = 4, semitones = 0, velocity = 96 }, { step = 12, duration = 4, semitones = 0, velocity = 92 }] },
   # 2 : croches, octave en contretemps des temps 2 et 4
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 100 }, { step = 2, duration = 2, semitones = 0, velocity = 88 }, { step = 4, duration = 2, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 12, velocity = 94 }, { step = 8, duration = 2, semitones = 0, velocity = 96 }, { step = 10, duration = 2, semitones = 0, velocity = 88 }, { step = 12, duration = 2, semitones = 0, velocity = 92 }, { step = 14, duration = 2, semitones = 12, velocity = 94 }] },
+  { bars = 1, weight = 2, tag = "dense", reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 100 }, { step = 2, duration = 2, semitones = 0, velocity = 88 }, { step = 4, duration = 2, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 12, velocity = 94 }, { step = 8, duration = 2, semitones = 0, velocity = 96 }, { step = 10, duration = 2, semitones = 0, velocity = 88 }, { step = 12, duration = 2, semitones = 0, velocity = 92 }, { step = 14, duration = 2, semitones = 12, velocity = 94 }] },
   # 3 : syncopé : fondamentale, contretemps, quinte
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 100 }, { step = 3, duration = 3, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 0, velocity = 90 }, { step = 8, duration = 4, semitones = 0, velocity = 98 }, { step = 12, duration = 2, semitones = 7, velocity = 92 }, { step = 14, duration = 2, semitones = 0, velocity = 90 }] },
+  { bars = 1, weight = 2, tag = "dense", reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 100 }, { step = 3, duration = 3, semitones = 0, velocity = 92 }, { step = 6, duration = 2, semitones = 0, velocity = 90 }, { step = 8, duration = 4, semitones = 0, velocity = 98 }, { step = 12, duration = 2, semitones = 7, velocity = 92 }, { step = 14, duration = 2, semitones = 0, velocity = 90 }] },
   # 4 : deux mesures : noires, puis croches avec la quinte au temps 4
-  { bars = 2, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 96 }, { step = 4, duration = 4, semitones = 0, velocity = 96 }, { step = 8, duration = 4, semitones = 0, velocity = 96 }, { step = 12, duration = 4, semitones = 0, velocity = 96 }, { step = 16, duration = 2, semitones = 0, velocity = 100 }, { step = 18, duration = 2, semitones = 0, velocity = 88 }, { step = 20, duration = 2, semitones = 0, velocity = 92 }, { step = 22, duration = 2, semitones = 0, velocity = 88 }, { step = 24, duration = 2, semitones = 0, velocity = 96 }, { step = 26, duration = 2, semitones = 0, velocity = 88 }, { step = 28, duration = 2, semitones = 7, velocity = 94 }, { step = 30, duration = 2, semitones = 0, velocity = 90 }] },
+  { bars = 2, weight = 2, tag = "medium", reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 96 }, { step = 4, duration = 4, semitones = 0, velocity = 96 }, { step = 8, duration = 4, semitones = 0, velocity = 96 }, { step = 12, duration = 4, semitones = 0, velocity = 96 }, { step = 16, duration = 2, semitones = 0, velocity = 100 }, { step = 18, duration = 2, semitones = 0, velocity = 88 }, { step = 20, duration = 2, semitones = 0, velocity = 92 }, { step = 22, duration = 2, semitones = 0, velocity = 88 }, { step = 24, duration = 2, semitones = 0, velocity = 96 }, { step = 26, duration = 2, semitones = 0, velocity = 88 }, { step = 28, duration = 2, semitones = 7, velocity = 94 }, { step = 30, duration = 2, semitones = 0, velocity = 90 }] },
   # 5 : note tenue (couplet calme)
-  { bars = 1, weight = 1, reference = "chord_root", notes = [{ step = 0, duration = 16, semitones = 0, velocity = 92 }] },
+  { bars = 1, weight = 1, tag = "sparse", reference = "chord_root", notes = [{ step = 0, duration = 16, semitones = 0, velocity = 92 }] },
 ]
 
 # Gabarit : croches à la fondamentale, relance vers la fondamentale de l'accord suivant (pickup).
 [[accompaniment.bass.templates]]
 weight = 3
+tag = "medium"
 bars = 1
 rhythm = [{ step = 0, duration = 2, velocity = 98 }, { step = 2, duration = 2, velocity = 86 }, { step = 4, duration = 2, velocity = 90 }, { step = 6, duration = 2, velocity = 86 }, { step = 8, duration = 2, velocity = 94 }, { step = 10, duration = 2, velocity = 86 }, { step = 12, duration = 2, velocity = 90 }, { step = 14, duration = 2, velocity = 86 }]
 cycle = [{ degree = "root" }]

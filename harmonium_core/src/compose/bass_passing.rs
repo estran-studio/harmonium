@@ -60,6 +60,8 @@ pub(crate) struct PassingContext<'a> {
     pub strong_steps: &'a [usize],
     pub chords: &'a [super::DegreeChord],
     pub steps_per_chord: usize,
+    /// Premier accord de la mesure suivante (`None` après la dernière).
+    pub next_chord: Option<super::DegreeChord>,
     /// Première basse de la mesure suivante, dans sa couleur harmonique active.
     pub next_target: Option<(usize, u8)>,
 }
@@ -89,6 +91,13 @@ fn eligible(
             || target_step < context.steps_per_chord
             || context.chords[target_step / context.steps_per_chord]
                 == context.chords[target_step / context.steps_per_chord - 1])
+    {
+        return false;
+    }
+    if rule.when == PassingWhen::ChordChangeAtBar
+        && (target_step < steps
+            || context.next_chord.is_none()
+            || context.next_chord.as_ref() == context.chords.last())
     {
         return false;
     }

@@ -38,6 +38,7 @@ impl HarmoniumCompleter {
                 "percussion",
                 "seed",
                 "intensity",
+                "variant",
                 "help",
                 "quit",
                 "exit",
@@ -192,6 +193,7 @@ impl HarmoniumCompleter {
                         "style",
                         "percussion",
                         "intensity",
+                        "variant",
                     ]
                     .iter()
                     .map(|&cmd| Pair { display: cmd.to_string(), replacement: cmd.to_string() })

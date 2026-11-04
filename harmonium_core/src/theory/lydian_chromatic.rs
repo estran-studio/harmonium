@@ -192,7 +192,7 @@ impl LydianChromaticConcept {
             ChordType::Augmented | ChordType::Augmented7 => chord.root,
 
             // Sus: traité comme majeur (neutre)
-            ChordType::Sus2 | ChordType::Sus4 => chord.root,
+            ChordType::Sus2 | ChordType::Sus4 | ChordType::Power => chord.root,
         }
     }
 
