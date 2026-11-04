@@ -50,9 +50,8 @@ fn export_all_profiles(automation: Option<&Path>, name: &str) -> std::io::Result
     let mut stuck = Vec::new();
     let mut failed = Vec::new();
     while !pending.is_empty() || !running.is_empty() {
-        while running.len() < slots
-            && let Some(id) = pending.pop()
-        {
+        while running.len() < slots {
+            let Some(id) = pending.pop() else { break };
             let midi = dir.join(format!("{id}.mid"));
             let child = spawn_export(&id, automation, &midi)?;
             running.push((id, midi, child, Instant::now()));
