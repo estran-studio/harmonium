@@ -1,0 +1,18 @@
+# Courbes de swing selon le tempo (A6), reprises de la Jazz Trio Database v0.2 (MIT ; harmonium_lab
+# references/jtd-swing-tempo/, `a6_table.curve`) : plateau puis décroissance linéaire jusqu'à 299,3 BPM, borne de
+# la plage mesurée (102 à 299 BPM, trios de piano en 4/4 swing). Batterie : charnière 140 BPM, pente −0,0976 par
+# 100 BPM ; basse : 130 BPM, −0,0439 ; piano (comping) : 150 BPM, −0,0728. LIMITE DITE : la JTD ne contient aucune
+# valse (4/4 seulement) ; le swing de la valse en reprend la courbe. Les deux fichiers 3/4 du GMD (un
+# batteur, kit électronique, métronome) donnent un rapport de ride de 0,656 (120 BPM) et 0,598 (200 BPM), soit 0,06
+# sous la courbe de la JTD (0,721 et 0,659) : même écart que celui du GMD 4/4 jazz (0,646 contre 0,718, README de
+# `wjazzd_swing`), la JTD (976 pistes, 99 batteurs) est retenue.
+reference = "PercussionHigh"
+
+[tracks.PercussionHigh]
+points = [[140.0, 0.7213], [299.3089, 0.5658]]
+[tracks.PercussionLow]
+points = [[140.0, 0.7213], [299.3089, 0.5658]]
+[tracks.Bass]
+points = [[130.0, 0.7148], [299.3089, 0.6405]]
+[tracks.Chords]
+points = [[150.0, 0.7021], [299.3089, 0.5934]]

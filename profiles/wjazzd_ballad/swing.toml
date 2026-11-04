@@ -1,0 +1,16 @@
+# Courbes de swing selon le tempo (A6), reprises de la Jazz Trio Database v0.2 (MIT ; harmonium_lab
+# references/jtd-swing-tempo/, `a6_table.curve`) : plateau puis décroissance linéaire jusqu'à 299,3 BPM.
+# LIMITE DITE : la JTD ne contient aucun tempo sous 102 BPM (classe « < 120 » : 102 à 120, médiane 115, batterie
+# 0,720, basse 0,713, piano 0,695) ; les ballades de session (48 à 78 BPM) sont **hors de la plage mesurée**.
+# Elles prolongent le plateau (choix de métier non mesuré), décalé par le swing de session. Batterie : charnière 140 BPM,
+# pente −0,0976 par 100 BPM ; basse : 130 BPM, −0,0439 ; piano (comping) : 150 BPM, −0,0728.
+reference = "PercussionHigh"
+
+[tracks.PercussionHigh]
+points = [[140.0, 0.7213], [299.3089, 0.5658]]
+[tracks.PercussionLow]
+points = [[140.0, 0.7213], [299.3089, 0.5658]]
+[tracks.Bass]
+points = [[130.0, 0.7148], [299.3089, 0.6405]]
+[tracks.Chords]
+points = [[150.0, 0.7021], [299.3089, 0.5934]]
