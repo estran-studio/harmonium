@@ -5,14 +5,16 @@
 # (rythmes de comping, phrases) et la batterie (patterns, phrases, relances) ne dépendent que de l'accord
 # publié et de la graine. Les deux parties par défaut (A et B de 8 mesures, quatre grilles chacune), quand
 # l'utilisateur n'en fournit pas, sont des progressions d'accords de forme commune écrites pour ce profil
-# (voir README, provenance et droits). Tonalité verrouillée (sol ionien) : la grille s'écrit relative.
+# (voir README, provenance et droits). La grille s'écrit relative à la tonique : la tonalité est tirée par la graine
+# (`session.toml`, par défaut sol ionien) et training la remplace par `[fixed_tonality]`.
 #
 # Ce qui vient de la source : la batterie, le tempo et le feel (`percussion.toml` est GÉNÉRÉ par
 # `specs/019-bibliotheque-accompagnements/b8/generer.py`). Ce qui n'en vient pas, DIT ICI : la basse, le comping
 # et les grilles sont des règles de métier (aucune mesure de basse ni de voicings pour ce style), le mixage et
-# l'arc sont des réglages de service. L'habillage par graine (A2) n'existe pas encore : le tempo, les
-# instruments et la tonalité sont fixes ; la variété vient des boucles de grille, de l'arc, des phrases et
-# relances, des motifs de basse et des patterns de batterie.
+# l'arc sont des réglages de service. L'habillage par graine (`session.toml`, A2 ; R2-styles) tire le tempo dans
+# la plage de la source, la tonalité, les instruments, le kit, la famille de voicings, le registre, l'énergie et
+# l'arc ; la variété vient aussi des boucles de grille, des phrases et relances, des motifs de basse et des
+# patterns de batterie (coups probabilistes et micro-timing par voix mesurés dans le GMD).
 #
 # Aucune mélodie : la piste `Melody` est absente de l'arrangement.
 
@@ -23,6 +25,7 @@ arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
 arc = "arc.toml"
+session = "session.toml"
 
 [meta]
 id = "gmd_pop"
@@ -46,10 +49,6 @@ default_bpm = 135.0
 min_bpm = 83.0
 max_bpm = 142.0
 
-[fixed_tonality]
-key = 7
-mode = "ionian"
-
 [form]
 sequence = [0, 1]
 [[form.parts]]
@@ -69,7 +68,7 @@ roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
 cell_units = 8
 strong_units = [0, 2, 4, 6]
 weak_units = [1, 3, 5, 7]
-key_modes = [{ key = 7, mode = "ionian", weight = 1 }]
+key_modes = [{ key = 7, mode = "ionian", weight = 3 }, { key = 0, mode = "ionian", weight = 3 }, { key = 2, mode = "ionian", weight = 2 }, { key = 9, mode = "ionian", weight = 1 }, { key = 5, mode = "ionian", weight = 2 }]
 [melody.params]
 weight_role_run = 3
 weight_role_arp = 0
@@ -226,6 +225,8 @@ center = 62
 max_drift = 6
 default_pattern = 0
 voicing = "close_triad"
+color = { none_weight = 4, published_weight = 1, ninth_weight = 1 }
+register_drift = { step = 2, max = 4 }
 low = 52
 high = 76
 patterns = [{ hits = [{ step = 0, duration = 8, velocity = 74 }, { step = 8, duration = 8, velocity = 70 }] }]
@@ -321,6 +322,19 @@ percussion_program = 0
 [ornaments]
 rate_scale = 0.0
 
+[performance.tracks.PercussionLow]
+voices = [
+  { note = 36, on_beat = -0.163, off_beat = -0.125, jitter = 0.1 },
+]
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 38, on_beat = -0.141, off_beat = -0.076, jitter = 0.1 },
+  { note = 42, on_beat = -0.094, off_beat = -0.153, jitter = 0.1 },
+  { note = 44, on_beat = -0.2, off_beat = 0.2, jitter = 0.1 },
+  { note = 51, on_beat = -0.04, off_beat = -0.099, jitter = 0.1 },
+  { note = 53, on_beat = -0.2, off_beat = -0.127, jitter = 0.1 },
+  { note = 43, on_beat = -0.086, off_beat = -0.2, jitter = 0.1 },
+]
 [performance.tracks.Bass]
 jitter = 0.1
 [performance.tracks.Chords]

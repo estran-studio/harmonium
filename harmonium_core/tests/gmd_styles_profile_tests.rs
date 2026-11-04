@@ -1,7 +1,7 @@
 //! B8 : contrat des sept profils distribués `gmd_*` (rock, pop, hip-hop, soul, reggae, disco, afrobeat), observé dans
 //! le flux de `MeasureSnapshot` (principe VI) : grille par défaut (boucles écrites relatives à la tonique), feel et
-//! tempo de la source, basse sur les changements d'accord, comping dans l'accord publié, batterie (voix, densités,
-//! relances), arc sur quatre chorus, variété entre graines.
+//! tempo de la source, basse sur les changements d'accord, comping compatible avec la qualité publiée (D4),
+//! batterie (voix, densités, relances), arc de base sur quatre chorus, variété entre graines.
 //!
 //! Les attendus sont écrits en clair (tableau `STYLES`). Basse, comping et grilles sont des règles de métier : aucun
 //! corpus ne les mesure, le test ne vérifie donc que leur cohérence avec l'accord publié, pas une ressemblance à une
@@ -31,11 +31,8 @@ const TOMS: [u8; 5] = [41, 43, 45, 47, 50];
 
 struct Spec {
     id: &'static str,
-    key: u8,
     /// Plage de tempo de la source : centile 10, médiane, centile 90 des fichiers `beat` retenus.
     bpm: (f32, f32, f32),
-    /// Programmes GeneralUser GS : accords, basse, kit (banque 128).
-    programs: (u8, u8, u8),
     /// Boucles de la partie A et de la partie B : degrés chromatiques des fondamentales, une par mesure.
     a: &'static [[u8; 8]],
     b: &'static [[u8; 8]],
@@ -53,9 +50,7 @@ struct Spec {
 const STYLES: [Spec; 7] = [
     Spec {
         id: "gmd_rock",
-        key: 4,
         bpm: (90.0, 105.0, 130.0),
-        programs: (29, 34, 8),
         a: &[
             [0, 0, 5, 5, 0, 0, 7, 5],
             [0, 7, 9, 5, 0, 7, 9, 5],
@@ -76,9 +71,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_pop",
-        key: 7,
         bpm: (83.0, 135.0, 142.0),
-        programs: (0, 33, 0),
         a: &[
             [0, 7, 9, 5, 0, 7, 9, 5],
             [9, 5, 0, 7, 9, 5, 0, 7],
@@ -99,9 +92,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_hiphop",
-        key: 0,
         bpm: (70.0, 91.0, 100.0),
-        programs: (4, 38, 25),
         a: &[
             [0, 8, 3, 10, 0, 8, 3, 10],
             [0, 0, 5, 5, 0, 0, 5, 5],
@@ -122,9 +113,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_soul",
-        key: 3,
         bpm: (80.0, 102.0, 105.0),
-        programs: (4, 33, 0),
         a: &[
             [0, 9, 2, 7, 0, 9, 2, 7],
             [0, 0, 5, 5, 0, 9, 2, 7],
@@ -140,9 +129,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_reggae",
-        key: 9,
         bpm: (83.0, 102.0, 121.0),
-        programs: (27, 33, 0),
         a: &[
             [0, 0, 5, 5, 0, 0, 5, 5],
             [0, 5, 0, 7, 0, 5, 0, 7],
@@ -158,9 +145,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_dance_disco",
-        key: 9,
         bpm: (120.0, 120.0, 137.0),
-        programs: (27, 33, 0),
         a: &[
             [0, 0, 5, 5, 0, 0, 5, 5],
             [0, 5, 10, 3, 0, 5, 10, 3],
@@ -176,9 +161,7 @@ const STYLES: [Spec; 7] = [
     },
     Spec {
         id: "gmd_afrobeat",
-        key: 2,
         bpm: (86.0, 98.0, 113.0),
-        programs: (27, 33, 0),
         a: &[
             [0, 0, 0, 0, 5, 5, 5, 5],
             [0, 0, 5, 5, 0, 0, 5, 5],
@@ -198,10 +181,11 @@ fn profile(spec: &Spec) -> TestResult<StyleProfile> {
     Ok(StyleProfile::named(spec.id)?)
 }
 
-/// Même profil sans arc : isole la grille, la basse, le comping et la batterie ordinaires.
+/// Même profil sans arc ni session (qui pourrait choisir un arc nommé) : isole la base.
 fn plain(spec: &Spec) -> TestResult<StyleProfile> {
     let mut p = profile(spec)?;
     p.arc = None;
+    p.session = Default::default();
     Ok(p)
 }
 
@@ -241,12 +225,39 @@ fn context_at(s: &MeasureSnapshot, step: usize) -> &ChordContext {
 }
 
 /// Fondamentales relatives à la tonique, une par mesure (un accord par mesure dans toutes les grilles).
-fn degrees(spec: &Spec, flow: &[MeasureSnapshot]) -> Vec<u8> {
-    flow.iter().map(|s| (s.chord_changes[0].context.root_pc + 12 - spec.key) % 12).collect()
+fn degrees(flow: &[MeasureSnapshot]) -> Vec<u8> {
+    flow.iter()
+        .map(|s| {
+            let key = s.position.map_or(0, |p| p.key);
+            (s.chord_changes[0].context.root_pc + 12 - key) % 12
+        })
+        .collect()
 }
 
 fn pcs(pitches: impl IntoIterator<Item = u8>) -> BTreeSet<u8> {
     pitches.into_iter().map(|p| p % 12).collect()
+}
+
+/// D4 : notes publiées et tensions naturelles sans conflit (convention de `bass_voicings_tests`).
+fn allowed_pcs(chord: &ChordContext) -> BTreeSet<u8> {
+    let owned: Vec<u8> =
+        chord.pitch_classes.iter().map(|pc| (pc + 12 - chord.root_pc) % 12).collect();
+    let mut allowed: BTreeSet<u8> = chord.pitch_classes.iter().copied().collect();
+    for (tension, same_degree) in [(2u8, &[1u8, 2, 3][..]), (5, &[5, 6][..]), (9, &[8, 9][..])] {
+        if !owned.iter().any(|o| same_degree.contains(o) || (tension + 12 - o) % 12 == 1) {
+            allowed.insert((chord.root_pc + tension) % 12);
+        }
+    }
+    allowed
+}
+
+/// Le groupe « registre » de ces profils ne déplace que le comping, par octaves.
+fn chord_register_offset(s: &MeasureSnapshot) -> i16 {
+    match s.session.iter().find(|v| v.group == "registre").map(|v| v.name.as_str()) {
+        Some("haut") => 12,
+        Some("grave") => -12,
+        _ => 0,
+    }
 }
 
 /// Attaques de la piste des accords d'une mesure : (pas, durée, hauteurs).
@@ -264,25 +275,6 @@ fn attacks(s: &MeasureSnapshot, id: u8) -> Vec<(usize, usize, Vec<u8>)> {
 }
 
 #[test]
-fn les_instruments_sont_ceux_de_generaluser_gs_sans_odin() -> TestResult {
-    for spec in &STYLES {
-        let p = profile(spec)?;
-        let (chords, bass, kit) = spec.programs;
-        assert_eq!(p.instruments.chords_program, Some(chords), "{}", spec.id);
-        assert_eq!(p.instruments.bass_program, Some(bass), "{}", spec.id);
-        assert_eq!(
-            (p.instruments.percussion_bank, p.instruments.percussion_program),
-            (128, kit),
-            "{}",
-            spec.id
-        );
-        assert!(p.odin.is_empty(), "{} : zone Odin déclarée", spec.id);
-        assert!(p.arc.is_some(), "{} : arc", spec.id);
-    }
-    Ok(())
-}
-
-#[test]
 fn la_grille_par_defaut_est_une_boucle_ecrite_de_chaque_partie_relative_a_la_tonique() -> TestResult
 {
     for spec in &STYLES {
@@ -290,7 +282,7 @@ fn la_grille_par_defaut_est_une_boucle_ecrite_de_chaque_partie_relative_a_la_ton
         let mut seen_b = BTreeSet::new();
         for seed in 1..=16 {
             let flow = stream_of(plain(spec)?, seed, CHORUS, 0.5, 1);
-            let d = degrees(spec, &flow);
+            let d = degrees(&flow);
             let a = spec.a.iter().position(|l| l[..] == d[..8]);
             let b = spec.b.iter().position(|l| l[..] == d[8..]);
             assert!(
@@ -316,7 +308,7 @@ fn la_grille_par_defaut_est_une_boucle_ecrite_de_chaque_partie_relative_a_la_ton
             );
             let again = stream_of(plain(spec)?, seed, TUNE, 0.5, 1);
             assert_eq!(
-                degrees(spec, &again)[CHORUS..2 * CHORUS],
+                degrees(&again)[CHORUS..2 * CHORUS],
                 d[..],
                 "{} graine {seed} : second chorus",
                 spec.id
@@ -334,36 +326,18 @@ fn la_grille_par_defaut_est_une_boucle_ecrite_de_chaque_partie_relative_a_la_ton
 #[test]
 fn le_tempo_et_le_feel_sont_ceux_de_la_source() -> TestResult {
     for spec in &STYLES {
-        let p = profile(spec)?;
-        assert_eq!(
-            (p.meter.min_bpm, p.meter.default_bpm, p.meter.max_bpm),
-            spec.bpm,
-            "{}",
-            spec.id
-        );
-        assert!((p.meter.default_swing_ratio - 0.5).abs() < 1e-6, "{} : feel droit", spec.id);
-        assert_eq!(
-            (p.meter.steps_per_bar, p.meter.time_signature.numerator),
-            (16, 4),
-            "{}",
-            spec.id
-        );
         for intensity in [0.0f32, 0.5, 1.0] {
             for snap in &stream_of(plain(spec)?, 1, 8, intensity, 1) {
                 assert!(
-                    (p.meter.min_bpm..=p.meter.max_bpm).contains(&snap.tempo),
+                    (spec.bpm.0..=spec.bpm.2).contains(&snap.tempo),
                     "{} intensité {intensity} : tempo {} hors de {}..{}",
                     spec.id,
                     snap.tempo,
-                    p.meter.min_bpm,
-                    p.meter.max_bpm
+                    spec.bpm.0,
+                    spec.bpm.2
                 );
-                assert!(
-                    (snap.swing_ratio - 0.5).abs() < 1e-6,
-                    "{} : swing {}",
-                    spec.id,
-                    snap.swing_ratio
-                );
+                assert!((snap.swing_ratio - 0.5).abs() < 1e-6, "{} : base droite", spec.id);
+                assert_eq!(snap.steps, 16, "{} : grille 4/4", spec.id);
             }
         }
     }
@@ -376,7 +350,7 @@ fn la_basse_joue_l_accord_publie_dans_sa_fenetre_et_arrive_sur_sa_basse() -> Tes
         let (low, high) = spec.bass_window;
         let mut arrivals = 0;
         for seed in [1u64, 2, 17] {
-            let flow = stream_of(plain(spec)?, seed, TUNE + 1, 0.5, 1);
+            let flow = stream_of(profile(spec)?, seed, TUNE + 1, 0.5, 1);
             for (bar, snap) in flow.iter().enumerate().take(TUNE) {
                 for n in track(snap, BASS) {
                     let ctx = format!(
@@ -433,33 +407,39 @@ fn la_basse_joue_l_accord_publie_dans_sa_fenetre_et_arrive_sur_sa_basse() -> Tes
 }
 
 #[test]
-fn le_comping_ne_joue_que_des_notes_de_l_accord_publie() -> TestResult {
+fn le_comping_respecte_la_qualite_publiee_et_ses_tensions_naturelles() -> TestResult {
     for spec in &STYLES {
+        let p = profile(spec)?;
         let mut total = 0;
         for seed in [1u64, 2, 17] {
-            let flow = stream_of(plain(spec)?, seed, TUNE + 1, 0.5, 1);
+            let flow = stream_of(p.clone(), seed, TUNE + 1, 0.5, 1);
             for (bar, snap) in flow.iter().enumerate().take(TUNE) {
                 for (step, duration, pitches) in attacks(snap, CHORDS) {
                     let ctx = format!("{} graine {seed} mesure {} pas {step}", spec.id, bar + 1);
                     // Une attaque anticipée finit sur la barre et joue l'accord de la mesure suivante.
                     let current = context_at(snap, step);
                     let played = pcs(pitches.iter().copied());
-                    let chord = if !played.iter().all(|pc| current.pitch_classes.contains(pc))
-                        && step + duration == 16
+                    let chord = if !played.is_subset(&allowed_pcs(current)) && step + duration == 16
                     {
                         &flow[bar + 1].chord_changes[0].context
                     } else {
                         current
                     };
+                    let allowed = allowed_pcs(chord);
                     assert!(
-                        played.iter().all(|pc| chord.pitch_classes.contains(pc)),
-                        "{ctx} : {played:?} hors de {} {:?}",
-                        chord.chord_name,
-                        chord.pitch_classes
+                        played.is_subset(&allowed),
+                        "{ctx} : {played:?} hors de {} (sons permis {allowed:?})",
+                        chord.chord_name
                     );
+                    // Tessiture du comping (famille serrée ou ouverte, registre de la session : ± une octave).
+                    let offset = chord_register_offset(snap);
                     assert!(
-                        pitches.iter().all(|p| (40..=90).contains(p)),
-                        "{ctx} : tessiture {pitches:?}"
+                        pitches
+                            .iter()
+                            .all(|p| (40 + offset..=90 + offset).contains(&i16::from(*p))),
+                        "{ctx} : tessiture {pitches:?} hors de {}..{}",
+                        40 + offset,
+                        90 + offset
                     );
                     total += 1;
                 }
@@ -554,7 +534,10 @@ fn les_relances_de_fin_de_phrase_jouent_les_toms_du_corpus_ou_aucune() -> TestRe
 fn l_arc_joue_exposition_corps_et_retombee_sur_les_quatre_chorus() -> TestResult {
     for spec in &STYLES {
         for seed in [1u64, 2, 3, 17] {
-            let flow = stream_of(profile(spec)?, seed, TUNE, 0.5, 1);
+            // L'arc par défaut reste couvert indépendamment du choix d'un arc nommé de session.
+            let mut p = profile(spec)?;
+            p.session = Default::default();
+            let flow = stream_of(p, seed, TUNE, 0.5, 1);
             let ctx = |what: &str| format!("{} graine {seed} : {what}", spec.id);
             let chorus = |c: usize| &flow[c * CHORUS..(c + 1) * CHORUS];
             let kicks = |bars: &[MeasureSnapshot]| {
@@ -661,7 +644,7 @@ fn seize_graines_donnent_des_accompagnements_distincts() -> TestResult {
                     .collect::<Vec<_>>(),
             );
             // Forme : boucles de A et de B, intensité de chaque chorus (vélocité moyenne de la batterie).
-            let d = degrees(spec, &flow[..CHORUS]);
+            let d = degrees(&flow[..CHORUS]);
             let level: Vec<usize> = (0..4)
                 .map(|c| {
                     let v: Vec<usize> = flow[c * CHORUS..(c + 1) * CHORUS]

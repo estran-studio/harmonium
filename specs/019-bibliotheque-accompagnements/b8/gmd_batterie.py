@@ -49,7 +49,14 @@ TAG_OF_TIMEKEEPER = {"hat_closed": "hat", "ride": "ride", "ride_bell": "ride", "
 LEVELS: dict[int, dict[str, float]] = {
     0: {"timekeeper": 0.5},
     1: {"timekeeper": 0.5, "hat_pedal": 0.5, "kick": 0.5, "snare": 0.5, "sidestick": 0.5, "hat_open": 0.5},
-    2: {"timekeeper": 0.5, "hat_pedal": 0.5, "kick": 0.25, "snare": 0.25, "sidestick": 0.25, "hat_open": 0.35, "crash": 0.5},
+    2: {"timekeeper": 0.5, "hat_pedal": 0.5, "kick": 0.5, "snare": 0.5, "sidestick": 0.5, "hat_open": 0.5, "crash": 0.5},
+}
+#: R2-styles (A6, `probability`) : en dessous du seuil certain de la densité, un coup dont la fréquence par pas atteint ce
+#: plancher joue avec cette fréquence (mesurée dans le groupe) au lieu d'être joué à coup sûr (avant : dès 0,25) ou
+#: absent. Notes fantômes de la caisse claire, grosse caisse supplémentaire, charleston ouverte.
+PROB_FLOORS: dict[int, dict[str, float]] = {
+    1: {"kick": 0.25, "snare": 0.25, "sidestick": 0.25},
+    2: {"kick": 0.08, "snare": 0.08, "sidestick": 0.10, "hat_open": 0.20},
 }
 #: Niveau de rendu de chaque voix (vélocité MIDI sur le kit de GeneralUser GS), réglage de service : les
 #: vélocités du GMD sont celles des pads d'un Roland TD-11 (grosse caisse médiane 29 à 78, caisse claire
@@ -198,16 +205,23 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
     # Voix : les rôles utilisés ; note GM la plus fréquente, vélocité médiane × gain.
     used: set[str] = set()
 
-    def subset_hits(ms: list[Any], thresholds: dict[str, float], steps: int) -> list[dict[str, Any]]:
+    def subset_hits(ms: list[Any], thresholds: dict[str, float], steps: int,
+                    floors: dict[str, float] | None = None) -> list[dict[str, Any]]:
         hits = []
         total = len(ms)
+        floors = floors or {}
         for role, thr in thresholds.items():
+            floor = floors.get(role, thr)
             for step in range(steps):
                 present = [m.steps[role][step] for m in ms if step in m.steps.get(role, {})]
-                if total and len(present) / total >= thr:
+                frac = len(present) / total if total else 0.0
+                if frac >= min(thr, floor):
                     rel = sum(v / medians[role] for v, _, _ in present) / len(present) if medians.get(role) else 1.0
                     note = sorted(Counter(n for _, n, _ in present).items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
-                    hits.append({"step": step, "role": role, "note": note, "rel": rel})
+                    hit = {"step": step, "role": role, "note": note, "rel": rel}
+                    if frac < thr:
+                        hit["p"] = round(frac, 2)
+                    hits.append(hit)
         hits.sort(key=lambda h: (h["step"], VOICES[h["role"]][1] != "PercussionLow", h["role"]))
         return hits
 
@@ -216,12 +230,13 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
     for g in groups:
         for density, thr in LEVELS.items():
             thresholds = {(g.key[0] if k == "timekeeper" else k): v for k, v in thr.items()}
-            hits = subset_hits(g.measures, thresholds, STEPS)
+            floors = {(g.key[0] if k == "timekeeper" else k): v for k, v in PROB_FLOORS.get(density, {}).items()}
+            hits = subset_hits(g.measures, thresholds, STEPS, floors)
             if not hits:
                 continue
             dup = next((i for i, p in enumerate(patterns) if p["density"] == density and p["tag"] == g.tag
-                        and [(h["step"], h["role"], h["note"]) for h in p["hits"]]
-                        == [(h["step"], h["role"], h["note"]) for h in hits]), None)
+                        and [(h["step"], h["role"], h["note"], h.get("p")) for h in p["hits"]]
+                        == [(h["step"], h["role"], h["note"], h.get("p")) for h in hits]), None)
             if dup is not None:
                 patterns[dup]["weight"] += len(g.measures)
                 patterns[dup]["sources"].append(f"{g.key[0]}:{g.key[1]}")
@@ -341,6 +356,7 @@ def build(results: list[Any], spec: DrumSpec, lab: Path) -> dict[str, Any]:
         "groups": [{"key": f"{g.key[0]}:{g.key[1]}", "tag": g.tag, "n_measures": len(g.measures),
                     "n_files": g.files, "n_drummers": g.drummers} for g in groups],
         "skipped": skipped, "fills_skipped": fills_skipped, "phrase_note": phrase_note,
+        "probabilistic": sum(1 for p in patterns for h in p["hits"] if "p" in h),
     }
     return {"voices": voices, "patterns": patterns, "phrases": phrases, "fills": fills, "stats": stats,
             "tags": sorted({g.tag for g in groups}),
@@ -364,6 +380,8 @@ def percussion_toml(data: dict[str, Any], header: str, fills_none_weight: int, h
         d = delta(voice, h["rel"])
         if d:
             parts.append(f"delta_velocity = {d}")
+        if "p" in h:
+            parts.append(f"probability = {h['p']}")
         return "{ " + ", ".join(parts) + " }"
 
     out = [header.rstrip("\n"), "", "low_note = 36", "high_note = 38", "low_velocity = 64", "high_velocity = 64",

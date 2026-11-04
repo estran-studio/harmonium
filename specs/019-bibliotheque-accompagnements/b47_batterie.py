@@ -21,10 +21,11 @@ Construction (aucune mesure d'un enregistrement n'est copiée : agrégats par gr
    Un groupe est aussi écarté s'il n'est pas un groove (règle `musical` du profil : timekeeper et
    caisse claire au temps 2 ou 4 pour le funk ; grosse caisse et roulement ou timekeeper pour la
    second line).
-3. **Patterns** : par groupe retenu et par densité, un coup par (rôle, pas) dont la probabilité par
-   pas dans le groupe atteint le seuil de la densité ; vélocité = moyenne du (rôle, pas) × gain du
-   rôle ; poids = effectif de mesures ; étiquette `sparse` / `medium` / `dense` = tiers du nombre de
-   coups à la densité 1 (l'arc nomme ces étiquettes).
+3. **Patterns** : par groupe retenu et par densité, un coup par (rôle, pas) dont la fréquence dans
+   le groupe atteint le seuil de la densité ; vélocité = moyenne du (rôle, pas) × gain du rôle.
+   À densité 2, les coups de grosse caisse, caisse claire et cross-stick entre 0,3 et 0,5 portent
+   `probability = fréquence` ; l'ossature à fréquence ≥ 0,5 reste certaine. Poids = effectif ;
+   étiquette `sparse` / `medium` / `dense` = tiers du nombre de coups à la densité 1.
 4. **Phrases** : par fichier, suite des groupes de ses mesures ; fenêtres de 2 et 4 mesures alignées
    sur la première mesure ; suite gardée si ≥ 3 occurrences sur ≥ 2 batteurs (A1) ; poids =
    effectif ; une suite dont la dernière mesure change de groupe est aussi proposée en `part_end`.
@@ -40,6 +41,7 @@ import argparse
 import collections
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -126,6 +128,10 @@ TAGS = ("sparse", "medium", "dense")
 #   densité 0 : ossature : timekeeper à 0,5 et temps forts de la grosse caisse et de la caisse claire à 0,75 ;
 #   densité 1 : tous les rôles à 0,5 ;
 #   densité 2 : grosse caisse, caisse claire, cross-stick à 0,3 (notes fantômes et syncopes), le reste à 0,5.
+#: R2-styles : plancher des notes fantômes probabilistes (densité 2, `probability` = fréquence mesurée).
+GHOST_FLOOR = 0.08
+
+
 def threshold(role: str, density: int) -> float:
     if density == 0:
         return 0.5 if role in TIMEKEEPERS else 0.75
@@ -262,8 +268,10 @@ def build_patterns(groups: list[Group], medians) -> list[dict]:
             for role in ROLES:
                 prob, vel = stats(measures, role)
                 for s in range(16):
-                    if prob[s] > 0 and prob[s] >= threshold(role, density):
-                        hits.append((s, role, vel[s]))
+                    floor = GHOST_FLOOR if density == 2 and role in BACKBEAT else threshold(role, density)
+                    if prob[s] > 0 and prob[s] >= floor:
+                        probability = round(prob[s], 2) if density == 2 and prob[s] < 0.5 else 1.0
+                        hits.append((s, role, vel[s], probability))
             if not hits:
                 continue
             grp.index[density] = len(patterns)
@@ -367,12 +375,15 @@ def voice_levels(medians, used: set[str]) -> dict[str, int]:
     return {role: max(1, min(127, round(medians[role] * gain(role, medians[role])))) for role in used}
 
 
-def hit_line(step: int, role: str, velocity: float, levels: dict[str, int], gains: dict[str, float]) -> str:
+def hit_line(step: int, role: str, velocity: float, levels: dict[str, int], gains: dict[str, float],
+             probability: float = 1.0) -> str:
     name = VOICES[role][0]
     delta = max(1, min(MAX_VELOCITY, round(velocity * gains[role]))) - levels[role]
     parts = [f"step = {step}", f'voice = "{name}"']
     if delta:
         parts.append(f"delta_velocity = {delta}")
+    if probability < 1.0:
+        parts.append(f"probability = {probability}")
     return "  { " + ", ".join(parts) + " },"
 
 
@@ -388,7 +399,8 @@ def emit(name: str, cfg, patterns, phr, fl, medians) -> str:
         "# configuration (grosse caisse, caisse claire, charleston ou ride) : k-moyennes, groupes d'au moins",
         "# 20 mesures, 3 fichiers et 2 batteurs ; aucun n'est une mesure d'un enregistrement.",
         "# Seuils : densité 0 timekeeper ≥ 0,5 et grosse caisse / caisse claire ≥ 0,75 ; densité 1 tous ≥ 0,5 ;",
-        "# densité 2 grosse caisse, caisse claire, cross-stick ≥ 0,3 (notes fantômes), le reste ≥ 0,5.",
+        "# densité 2 : grosse caisse, caisse claire, cross-stick dès 0,08, le reste ≥ 0,5 ; sous 0,5, `probability` = fréquence.",
+        "# L'ossature de densité 1 (fréquence ≥ 0,5) reste certaine ; aucune mesure source n'est copiée.",
         "# Poids = effectif de mesures du groupe ; étiquette = tiers d'activité (sparse, medium, dense).",
         "# Les phrases sont les suites de groupes vues ≥ 3 fois sur ≥ 2 batteurs ; les relances sont les",
         "# fichiers `fill`, groupés par longueur et départ, coups de probabilité ≥ 0,3.",
@@ -412,7 +424,7 @@ def emit(name: str, cfg, patterns, phr, fl, medians) -> str:
     for p in patterns:
         out += ["[[patterns]]", f"density = {p['density']}", f"weight = {p['weight']}", f'tag = "{p["tag"]}"',
                 "hits = ["]
-        out += [hit_line(s, role, v, levels, gains) for s, role, v in p["hits"]]
+        out += [hit_line(s, role, v, levels, gains, probability) for s, role, v, probability in p["hits"]]
         out += ["]", ""]
     for density in (0, 1, 2):
         for ph in phr:
@@ -461,12 +473,46 @@ def report(name, cfg, groups, patterns, phr, fl) -> str:
     return "\n".join(lines)
 
 
+def habillage_module():
+    """Module partagé R2 ; pas de dépendance du moteur au labo."""
+    sys.path.insert(0, str(Path(__file__).parent / "r2-styles"))
+    import habillage
+    return habillage
+
+
+def session_text(name: str) -> str:
+    h = habillage_module().HABILLAGES[name]
+    return h.session_toml(
+        f"# R2-styles : généré par b47_batterie.py {name} --session.\n"
+        "# Tempos GMD ; tonalités, programmes GM, kits, voicings, énergie et arcs : règles de métier.",
+        quiet="sparse", loud="dense")
+
+
+def timing_text(name: str) -> str:
+    H = habillage_module()
+    h = H.HABILLAGES[name]
+    bpm = 96.0 if name == "gmd_funk" else 93.0
+    timing = H.voice_timing(h.families, h.styles, bpm)
+    # Le module partagé nomme les toms 50/47 ; ce profil garde ses touches GM 48/45,
+    # déjà calibrées. Faire la traduction à l'émission, sans perdre leur rôle mesuré.
+    canonical = {48: 50, 45: 47}
+    notes = {canonical.get(note, note) for _, note, _ in VOICES.values()}
+    text = H.voices_toml(timing, notes, with_jitter=False)
+    return text.replace("note = 50,", "note = 48,").replace("note = 47,", "note = 45,") + "\n"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("profile", choices=sorted(PROFILES))
     ap.add_argument("--report", action="store_true", help="écrit les tableaux du README sur stderr")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--session", action="store_true", help="émet session.toml via le module habillage partagé")
+    mode.add_argument("--timing", action="store_true", help="émet le micro-timing par voix, sans jitter")
     args = ap.parse_args(argv)
     cfg = PROFILES[args.profile]
+    if args.session or args.timing:
+        sys.stdout.write(session_text(args.profile) if args.session else timing_text(args.profile))
+        return 0
     res = load(cfg)
     beats = [r for r in res if r.row.beat_type == "beat" and r.row.style in cfg["beat"]]
     fill_files = [r for r in res if r.row.beat_type == "fill" and r.row.style in cfg["fill"]]

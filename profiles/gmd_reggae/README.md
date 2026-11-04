@@ -20,8 +20,8 @@ Provenance chiffrée : `harmonium_lab/references/l2-ingestion.md` (§ 4.2), `ref
 
 Quand l'utilisateur ne fournit pas de grille, le profil joue la partie A puis la partie B (8 mesures chacune ; une
 boucle par partie est tirée par air selon la graine et les poids, puis tenue : un chorus fait 16 mesures). Les
-grilles sont des **progressions d'accords de forme commune**, écrites relativement à la tonique (**la ionien**,
-`fixed_tonality`), pas copiées d'une partition ni d'une œuvre. Le Compendium du US Copyright Office (§802.5(A), éd. du
+grilles sont des **progressions d'accords de forme commune**, écrites relativement à la tonique (**la ionien** par défaut ; la variante
+de session en tire une autre, voir « Habillage par graine »), pas copiées d'une partition ni d'une œuvre. Le Compendium du US Copyright Office (§802.5(A), éd. du
 2021-01-28) range les « chord symbols based on standard chord progressions » parmi le matériau non protégeable
 (*common property*) ; aucune œuvre n'est reproduite, aucune n'est nommée.
 
@@ -64,7 +64,9 @@ Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont
 | Phrases de batterie | 9 entrées (3 densités) | mesurées : suites de groupes vues ≥ 3 fois (≥ 2 si la suite change de groupe) dans ≥ 2 fichiers ; 6 phrases de groove tenu 4 mesures ajoutées pour les groupes sans suite mesurée (règle de métier) | GMD |
 | Relances | 1 groupes × 1 étiquettes × 2 densités | fichiers `fill` (16) | GMD |
 | Basse, comping, grilles | — | **aucune mesure** : règles de métier (one drop, skank sur les contretemps) | règles |
-| Tonalité, instruments, arc, mixage, vélocités | — | réglages de service | — |
+| Plages de tempo de la session, swing léger | voir « Habillage par graine » | centiles des BPM du GMD ; rapport médian des fichiers `swing` | GMD |
+| Micro-timing par voix, coups probabilistes | voir « Habillage par graine » et `percussion.toml` | médianes en ms par rôle ; probabilité par pas du groupe | GMD |
+| Tonalités, instruments, kits, voicings, registre, énergie, arcs nommés, mixage, vélocités | — | réglages de service (règles de métier) | — |
 
 ### Batterie : groupes retenus
 
@@ -101,6 +103,56 @@ d'environ −21,5 LUFS (`wjazzd_swing` : −22,2).
 | mix complet | -22.0 |
 
 
+## Habillage par graine (`session.toml`, A2 ; R2-styles)
+
+Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (9 groupes,
+29 variantes, **25920 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
+le swing, `[fixed_tonality]` du profil de l'hôte (la grille de training, transposée par lui) la tonalité (la variante est
+alors ignorée) ; programmes, voicings, registre, énergie et arc n'ont pas de commande (un hôte qui n'en veut pas installe
+un profil sans `[session]`). Ce profil n'a donc **plus de `[fixed_tonality]`** : la tonalité par défaut (la ionien) n'est
+que la plus pondérée.
+
+| Groupe | Variantes (poids) | Ce que règle le groupe | D'où vient la valeur |
+|---|---|---|---|
+| `tempo` | lent (1), medium (1), vif (1) | tempo (plage de BPM, un entier tiré) | GMD : centiles des BPM des fichiers `beat` |
+| `tonalite` | la_ionian (3), sol_ionian (2), re_ionian (2), do_ionian (1), mi_ionian (1) | tonique et mode du premier air (grille relative transposée) | métier : tonalités courantes du style |
+| `comping` | guitare_claire (3), guitare_sourdine (2), orgue (2), piano (1) | programme des accords | métier |
+| `basse` | doigts (4), fretless (2), mediator (1) | programme de la basse | métier |
+| `kit` | standard (4), room (2), electronique (1) | kit de la banque 128 | métier ; le GMD est joué sur un kit électronique Roland TD-11 |
+| `voicing` | triades_serrees (4), ouvert (1) | famille de voicings du comping | métier |
+| `registre` | normal (4), haut (1) | octave du comping | métier |
+| `energie` | doux (1), normal (2), fort (1) | multiplicateurs d'intensité et de densité de base | service |
+| `arc` | defaut (3), orchestre (2), direct (1), montee (1) | arc : `[arc]` du profil ou arc nommé de `session.toml` | service (aucun corpus ne donne l'arc d'un morceau) |
+
+Les arcs nommés (`orchestre` : le comping et le kit changent de chorus en chorus et reviennent aux programmes de la session ;
+`direct` : pas d'exposition ; `montee` : un cran par chorus) sont écrits dans `session.toml`, mêmes valeurs de service que
+`arc.toml`. Tous les instruments sont des programmes General MIDI de GeneralUser GS (banque 0) et des kits de la banque 128
+(0, 8, 16, 24, 25), vérifiés dans la banque ; aucune zone Odin (D1).
+
+**Micro-timing par voix** (`performance.tracks.Percussion*.voices`, A6) : médianes de l'écart à la grille mesurées dans le
+GMD (groupe 4/4 droit de `reggae`, pondérées par l'effectif), en **fraction de pas au tempo par
+défaut (102 BPM)** : un pas = 15 000 / BPM ms ; les décalages mesurés en ms ne suivent donc pas exactement le tempo tiré
+(à 130 BPM le même retard en ms vaut 24 % de pas de plus). `jitter` : amplitude d'un tirage uniforme dont l'écart-type est celui
+mesuré, plafonnée à 0,1 pas (borne du schéma ; l'écart-type mesuré est de 0,11 à 0,20 pas).
+
+| Voix | Note GM | Sur le temps (pas) | Hors temps (pas) | Jitter (pas) |
+|---|---:|---:|---:|---:|
+| kick | 36 | -0.101 | -0.101 | 0.10 |
+| sidestick | 37 | -0.135 | -0.169 | 0.10 |
+| snare | 38 | -0.120 | -0.142 | 0.10 |
+| hat_closed | 42 | -0.121 | -0.142 | 0.10 |
+| hat_pedal | 44 | -0.200 | -0.200 | 0.10 |
+| hat_open | 46 | -0.162 | -0.115 | 0.10 |
+
+**Coups probabilistes** (`probability`, A6) : 56 coups de `percussion.toml` jouent avec la probabilité par pas mesurée dans le
+groupe (grosse caisse, caisse claire, cross-stick entre 0,08 et le seuil de la densité ; notes fantômes à la densité 2),
+au lieu d'un coup certain dès 0,25 (0,3 pour funk et New Orleans) ou absent : le tirage est sans état (graine, mesure, pas, note) donc stable par graine.
+
+**Voicings** : `chords.color` (tension 9, 11 ou 13 que la qualité permet, jamais en conflit avec la grille, D4) et
+`chords.register_drift` (dérive bornée du centre) sont déclarés ; ils n'agissent que sur les familles de voicings qui les
+lisent (pas `close_triad`).
+
+
 ## Variété entre graines et entre chorus (D6)
 
 Entre graines : une des quatre boucles de la partie A et trois de la partie B, le plan de motifs de basse, les rythmes et phrases de comping, les groupes de batterie (groupes de charleston fermée) et leurs phrases, les relances. Entre chorus : l'arc (comping clairsemé puis dense, breaks, stop-time) ; la batterie n'a qu'un timekeeper (`hat`).
@@ -109,16 +161,14 @@ Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `re
 
 | Couche | Mesures changées d'un chorus au suivant | Paires de chorus identiques | Chorus distincts / graine | Suites distinctes (16 graines) | Distance graduée entre graines |
 |---|---:|---:|---:|---:|---:|
-| accompagnement | 93% | 0% | 4.0 | 16 / 16 | 49% |
-| accords | 0% | 100% | 1.0 | 9 / 16 | 57% |
-| basse | 3% | 42% | 2.0 | 16 / 16 | 87% |
-| batterie | 63% | 1% | 3.94 | 16 / 16 | 18% |
-| comping : rythme | 87% | 0% | 4.0 | 16 / 16 | 24% |
-| comping : voicings | 86% | 0% | 4.0 | 16 / 16 | 58% |
+| accompagnement | 98% | 0% | 4.0 | 16 / 16 | 57% |
+| accords | 0% | 100% | 1.0 | 8 / 16 | 51% |
+| basse | 2% | 46% | 2.0 | 16 / 16 | 89% |
+| batterie | 91% | 0% | 4.0 | 16 / 16 | 28% |
+| comping : rythme | 84% | 0% | 4.0 | 16 / 16 | 23% |
+| comping : voicings | 89% | 0% | 4.0 | 16 / 16 | 95% |
 
 
-L'habillage par graine (A2 : tempo dans la plage, instruments, kit, tonalité, famille de voicings) **n'existe pas
-encore** : il est ajouté aux profils B en vague 4. Ce profil ne le simule pas.
 
 
 ## Distance de la batterie au GMD
@@ -127,12 +177,12 @@ encore** : il est ajouté aux profils B en vague 4. Ce profil ne le simule pas.
 
 | Voix | Profil | Profil sans arc | Copie non calibrée |
 |---|---:|---:|---:|
-| any | 0.169 | 0.167 | 0.319 |
-| hat | 0.078 | 0.083 | 0.801 |
-| kick | 0.278 | 0.265 | 1.000 |
-| moyenne | 0.251 | 0.239 | 0.780 |
+| any | 0.151 | 0.149 | 0.319 |
+| hat | 0.079 | 0.084 | 0.801 |
+| kick | 0.161 | 0.160 | 1.000 |
+| moyenne | 0.179 | 0.186 | 0.780 |
 | ride | 1.000 | 1.000 | 1.000 |
-| snare | 0.478 | 0.442 | 1.000 |
+| snare | 0.326 | 0.352 | 1.000 |
 
 ## Limites
 
@@ -144,9 +194,10 @@ encore** : il est ajouté aux profils B en vague 4. Ce profil ne le simule pas.
   voicings ni de rythmes de comping (décision F3).
 - **Batterie** : kit électronique Roland TD-11, dix batteurs en tout ; les vélocités et le micro-timing sont ceux du
   kit (niveaux recalés au kit de rendu). Un groupe de peu de fichiers décrit un batteur, pas un style (L2 § 4.1).
-- **Manques du schéma** (voir le compte rendu B8) : accords de puissance (« 5 »), notes fantômes et croches de passage de la
-  basse (A4), swing selon le tempo (A6), feel de basse selon le chorus pour les motifs (`bass_feel` exige la marche),
-  micro-timing par voix de batterie, étiquettes sur les motifs de basse.
+- **Manques du schéma** (comptes rendus B8 et R2-styles) : accords de puissance (« 5 »), options de basse d'A4
+  (`walking.*` : notes fantômes, croches, notes répétées, arrivée) exclusives de `motifs` et de `templates` donc
+  inutilisables avec des riffs, feel de basse et étiquettes d'arc pour les motifs de basse (`bass_feel` exige la marche),
+  groupes de session indépendants (un kit « power » avec un tempo lent n'est pas exclu), boucle de grille fixe par air.
 
 ## Régénérer
 

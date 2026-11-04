@@ -14,7 +14,7 @@
 # Ce profil est fait pour jouer sous une grille fournie par l'utilisateur : basse, comping et
 # batterie ne dépendent que de l'accord publié. Les cinq grilles par défaut, quand l'utilisateur
 # n'en fournit pas, sont des formes communes écrites ici (pas des partitions) : vamps à un ou deux
-# accords de seize mesures. Tonique mi pour toutes : la tonalité est verrouillée, la grille s'écrit
+# accords de seize mesures. Tonique tirée par la graine (session.toml ; mi par défaut) : la grille s'écrit
 # relative. Aucune réharmonisation (D4) : les accords publiés ne changent jamais.
 #
 # Aucune mélodie (piste `Melody` absente de l'arrangement). Tout sonne avec GeneralUser GS (guitare
@@ -26,6 +26,7 @@ arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
 arc = "arc.toml"
+session = "session.toml"
 
 [meta]
 id = "gmd_funk"
@@ -54,9 +55,8 @@ default_bpm = 96.0
 min_bpm = 80.0
 max_bpm = 130.0
 
-[fixed_tonality]
-key = 4
-mode = "dorian"
+# Pas de `[fixed_tonality]` : la tonalité vient de la variante de session (R2) ; training installe le sien
+# (le verrou de l'hôte gagne sur la variante).
 
 # Une partie de seize mesures : un chorus. WJazzD FUNK : 24 chorus complets, longueurs 16 mesures
 # (7), 12 (5), autres (12) ; GMD : files de phrases de 2 et 4 mesures.
@@ -73,7 +73,7 @@ roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free",
 cell_units = 8
 strong_units = [0, 2, 4, 6]
 weak_units = [1, 3, 5, 7]
-key_modes = [{ key = 4, mode = "dorian", weight = 1 }]
+key_modes = [{ key = 4, mode = "dorian", weight = 3 }, { key = 9, mode = "dorian", weight = 2 }, { key = 2, mode = "dorian", weight = 2 }, { key = 7, mode = "dorian", weight = 1 }]
 [melody.params]
 weight_role_run = 3
 weight_role_arp = 0
@@ -282,6 +282,8 @@ center = 64
 max_drift = 6
 default_pattern = 0
 voicing = "guide_tones"
+color = { none_weight = 2, published_weight = 1, ninth_weight = 3, eleventh_weight = 1, thirteenth_weight = 2 }
+register_drift = { step = 2, max = 6 }
 low = 52
 high = 76
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 66 }] }]
@@ -377,16 +379,29 @@ percussion_program = 0
 [ornaments]
 rate_scale = 0.0
 
-# Micro-timing de la batterie : médianes du GMD funk (écart à la grille, en pas) : charleston
-# −0,04 (on et off), grosse caisse −0,04 (off) à −0,07 (on), caisse claire −0,02 à −0,07. Le
-# GMD est joué sur un kit électronique contre un métronome : les batteurs jouent légèrement en
-# avant ; dispersion 0,13 à 0,20 pas : non reproduite, aucun `jitter` sur la batterie (le tirage de `jitter`
-# partage son flux entre les pistes et la basse à notes de passage le décalerait : contrat
+# Micro-timing de la batterie par voix (A6, R2-styles) : médianes de l'écart à la grille mesurées dans le GMD
+# (funk, 4/4 droit, pondérées par l'effectif), converties en fraction de pas au tempo par défaut
+# (96 BPM : un pas = 15 000 / BPM ms). Aucun `jitter` sur la batterie : le tirage de `jitter` partage son flux
+# entre les pistes et la basse à notes de passage le décalerait (contrat
 # `passing_keeps_neighbour_tracks_and_strong_bass_unchanged`).
 [performance.tracks.PercussionLow]
-offsets = [-0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05, -0.07, -0.04, -0.04, -0.05]
+voices = [
+  { note = 36, on_beat = -0.069, off_beat = -0.04 },
+]
 [performance.tracks.PercussionHigh]
-offsets = [-0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04, -0.05, -0.04, -0.04, -0.04, -0.06, -0.04, -0.04, -0.04]
+voices = [
+  { note = 37, on_beat = -0.122, off_beat = -0.089 },
+  { note = 38, on_beat = -0.064, off_beat = -0.017 },
+  { note = 42, on_beat = -0.03, off_beat = -0.043 },
+  { note = 44, on_beat = -0.146, off_beat = -0.133 },
+  { note = 46, on_beat = -0.03, off_beat = -0.08 },
+  { note = 49, on_beat = -0.061, off_beat = -0.028 },
+  { note = 51, on_beat = -0.042, off_beat = -0.059 },
+  { note = 53, on_beat = -0.144, off_beat = -0.104 },
+  { note = 43, on_beat = -0.131, off_beat = -0.111 },
+  { note = 45, on_beat = -0.107, off_beat = -0.104 },
+  { note = 48, on_beat = -0.109, off_beat = -0.101 },
+]
 [performance.tracks.Bass]
 jitter = 0.04
 [performance.tracks.Chords]

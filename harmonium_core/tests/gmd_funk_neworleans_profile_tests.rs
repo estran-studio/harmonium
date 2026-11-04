@@ -6,8 +6,8 @@
 //! la basse sur les changements d'accord, le comping dans l'accord publié, le kit et le backbeat
 //! de la batterie, le feel droit en 16 pas, le tempo dans la plage, l'arc sur cinq chorus.
 //!
-//! `gmd_funk` : un chorus de seize mesures, tonique mi (4), cinq chorus par air (80 mesures).
-//! `gmd_neworleans_funk_secondline` : douze mesures, tonique si bémol (10), cinq chorus (60 mesures).
+//! `gmd_funk` : un chorus de seize mesures, cinq chorus par air (80 mesures).
+//! `gmd_neworleans_funk_secondline` : douze mesures, cinq chorus (60 mesures). La tonique est tirée par la session.
 use std::collections::BTreeSet;
 
 use harmonium_core::{
@@ -38,7 +38,6 @@ type Loop = &'static [(u8, usize)];
 
 struct Spec {
     id: &'static str,
-    key: u8,
     /// Mesures d'un chorus.
     bars: usize,
     loops: &'static [Loop],
@@ -53,7 +52,6 @@ struct Spec {
 
 const FUNK: Spec = Spec {
     id: "gmd_funk",
-    key: 4,
     bars: 16,
     loops: &[
         &[(0, 256)],
@@ -84,7 +82,6 @@ const FUNK: Spec = Spec {
 
 const NEW_ORLEANS: Spec = Spec {
     id: "gmd_neworleans_funk_secondline",
-    key: 10,
     bars: 12,
     loops: &[
         &[(0, 16), (5, 16), (0, 32), (5, 32), (0, 32), (7, 16), (5, 16), (0, 24), (7, 8)],
@@ -150,9 +147,31 @@ fn chorus<'a>(flow: &'a [MeasureSnapshot], spec: &Spec, n: usize) -> Vec<&'a Mea
     flow[(n - 1) * spec.bars..n * spec.bars].iter().collect()
 }
 
-/// Degré (demi-tons au-dessus de la tonique) d'un accord publié.
-fn degree(spec: &Spec, c: &ChordContext) -> u8 {
-    (c.root_pc + 12 - spec.key) % 12
+/// Degré (demi-tons au-dessus de la tonique tirée par la session) d'un accord publié.
+fn degree(key: u8, c: &ChordContext) -> u8 {
+    (c.root_pc + 12 - key) % 12
+}
+
+/// D4 : notes publiées et tensions naturelles que la couleur du comping peut ajouter, sans conflit avec la grille.
+fn allowed_pcs(chord: &ChordContext) -> Vec<u8> {
+    let owned: Vec<u8> =
+        chord.pitch_classes.iter().map(|pc| (pc + 12 - chord.root_pc) % 12).collect();
+    let mut allowed: Vec<u8> = chord.pitch_classes.clone();
+    for (tension, same_degree) in [(2u8, &[1u8, 2, 3][..]), (5, &[5, 6][..]), (9, &[8, 9][..])] {
+        if !owned.iter().any(|o| same_degree.contains(o) || (tension + 12 - o) % 12 == 1) {
+            allowed.push((chord.root_pc + tension) % 12);
+        }
+    }
+    allowed
+}
+
+/// Décalage d'octaves du comping tiré par le groupe « registre » de la session.
+fn register_offset(s: &MeasureSnapshot) -> i16 {
+    match s.session.iter().find(|v| v.group == "registre").map(|v| v.name.as_str()) {
+        Some("haut") => 12,
+        Some("grave") => -12,
+        _ => 0,
+    }
 }
 
 fn context_at(s: &MeasureSnapshot, step: usize) -> &ChordContext {
@@ -160,8 +179,9 @@ fn context_at(s: &MeasureSnapshot, step: usize) -> &ChordContext {
 }
 
 /// (pas, degré) de chaque changement publié d'une mesure.
-fn changes(spec: &Spec, s: &MeasureSnapshot) -> Vec<(usize, u8)> {
-    s.chord_changes.iter().map(|c| (c.start_step, degree(spec, &c.context))).collect()
+fn changes(s: &MeasureSnapshot) -> Vec<(usize, u8)> {
+    let key = s.position.map_or(0, |p| p.key);
+    s.chord_changes.iter().map(|c| (c.start_step, degree(key, &c.context))).collect()
 }
 
 /// Les changements par mesure d'une boucle écrite : un pas 0 par mesure, puis chaque changement de
@@ -219,8 +239,7 @@ fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plus
         let mut seen = BTreeSet::new();
         for seed in 1..=16u64 {
             let flow = air(spec, seed)?;
-            let first: Vec<Vec<(usize, u8)>> =
-                flow[..spec.bars].iter().map(|s| changes(spec, s)).collect();
+            let first: Vec<Vec<(usize, u8)>> = flow[..spec.bars].iter().map(changes).collect();
             let which = expected.iter().position(|e| *e == first).ok_or_else(|| {
                 format!("{} graine {seed} : grille hors des boucles écrites : {first:?}", spec.id)
             })?;
@@ -228,7 +247,7 @@ fn la_grille_par_defaut_est_une_des_boucles_ecrites_et_la_graine_en_choisit_plus
             // Les chorus suivants rejouent la même boucle (le tirage est par air).
             for n in 2..=CHORUSES {
                 let again: Vec<Vec<(usize, u8)>> =
-                    chorus(&flow, spec, n).iter().map(|s| changes(spec, s)).collect();
+                    chorus(&flow, spec, n).iter().map(|s| changes(s)).collect();
                 assert_eq!(again, first, "{} graine {seed} chorus {n}", spec.id);
             }
         }
@@ -247,7 +266,7 @@ fn la_basse_arrive_sur_la_basse_publiee_a_chaque_changement_dans_la_fenetre_du_p
                 let ctx = format!("{} graine {seed} mesure {}", spec.id, s.index);
                 let bass = track(s, BASS);
                 // Les deux dernières mesures d'un chorus peuvent porter un break ou un stop-time de
-                // l'arc (la basse ne garde que le temps 1) : les arrivées se lisent ailleurs.
+                // l'arc (la basse se tait ou ne garde que le temps 1) : les arrivées se lisent ailleurs.
                 let in_chorus = (s.index - 1) % spec.bars;
                 let broken = in_chorus >= spec.bars - 2 && s.index > spec.bars;
                 for note in &bass {
@@ -258,7 +277,7 @@ fn la_basse_arrive_sur_la_basse_publiee_a_chaque_changement_dans_la_fenetre_du_p
                         note.pitch
                     );
                 }
-                for change in s.chord_changes.iter().filter(|c| !broken || c.start_step == 0) {
+                for change in s.chord_changes.iter().filter(|_| !broken) {
                     let arrival =
                         bass.iter().find(|n| n.start_step == change.start_step).ok_or_else(
                             || format!("{ctx} pas {} : pas d'attaque de basse", change.start_step),
@@ -352,8 +371,10 @@ fn le_comping_ne_joue_que_des_notes_de_l_accord_publie() -> TestResult {
                     // l'accord de la mesure suivante.
                     let ahead = (step + duration == 16).then(|| flow.get(index + 1)).flatten();
                     let played = pcs(&pitches);
-                    let fits =
-                        |c: &ChordContext| played.iter().all(|pc| c.pitch_classes.contains(pc));
+                    let fits = |c: &ChordContext| {
+                        let allowed = allowed_pcs(c);
+                        played.iter().all(|pc| allowed.contains(pc))
+                    };
                     let sounding = if fits(here) {
                         here
                     } else {
@@ -361,18 +382,24 @@ fn le_comping_ne_joue_que_des_notes_de_l_accord_publie() -> TestResult {
                             || {
                                 format!(
                                     "{ctx} : {played:?} hors de {} {:?}",
-                                    here.chord_name, here.pitch_classes
+                                    here.chord_name,
+                                    allowed_pcs(here)
                                 )
                             },
                         )?
                     };
-                    if !spec.comping_plays_root {
+                    // Seule la famille `drop2` de la session joue la fondamentale (notes guides et shell : jamais).
+                    let drop2 =
+                        snap.session.iter().any(|v| v.group == "voicing" && v.name == "drop_2");
+                    if !spec.comping_plays_root && !drop2 {
                         assert!(!played.contains(&sounding.root_pc), "{ctx} : fondamentale jouée");
                     }
+                    let shift = register_offset(snap);
                     assert!(
-                        pitches[0] >= spec.comping_window.0
-                            && pitches[pitches.len() - 1] <= spec.comping_window.1,
-                        "{ctx} : tessiture {pitches:?}"
+                        i16::from(pitches[0]) >= i16::from(spec.comping_window.0) + shift
+                            && i16::from(pitches[pitches.len() - 1])
+                                <= i16::from(spec.comping_window.1) + shift,
+                        "{ctx} : tessiture {pitches:?} (registre {shift:+})"
                     );
                     attack_count += 1;
                 }

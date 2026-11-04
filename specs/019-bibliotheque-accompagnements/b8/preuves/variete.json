@@ -2,308 +2,308 @@
   "gmd_afrobeat": {
     "accompagnement": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.505,
+      "inter_distance_graduee": 0.606,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.947,
+      "intra_mesures_changees": 1.0,
       "intra_paires_identiques": 0.0
     },
     "accords": {
       "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.487,
-      "inter_suites_distinctes": 9,
+      "inter_distance_graduee": 0.445,
+      "inter_suites_distinctes": 8,
       "intra_mesures_changees": 0.0,
       "intra_paires_identiques": 1.0
     },
     "basse": {
       "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.829,
+      "inter_distance_graduee": 0.879,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
+      "intra_mesures_changees": 0.025,
+      "intra_paires_identiques": 0.458
     },
     "batterie": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.278,
+      "inter_distance_graduee": 0.41,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.79,
+      "intra_mesures_changees": 0.999,
       "intra_paires_identiques": 0.0
     },
     "comping : rythme": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.349,
+      "inter_distance_graduee": 0.332,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.867,
+      "intra_mesures_changees": 0.822,
       "intra_paires_identiques": 0.0
     },
     "comping : voicings": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.579,
+      "inter_distance_graduee": 0.96,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.867,
+      "intra_mesures_changees": 0.951,
       "intra_paires_identiques": 0.0
     }
   },
   "gmd_dance_disco": {
     "accompagnement": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.52,
+      "inter_distance_graduee": 0.577,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.875,
+      "intra_mesures_changees": 0.952,
       "intra_paires_identiques": 0.0
     },
     "accords": {
       "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.555,
-      "inter_suites_distinctes": 9,
+      "inter_distance_graduee": 0.517,
+      "inter_suites_distinctes": 8,
       "intra_mesures_changees": 0.0,
       "intra_paires_identiques": 1.0
     },
     "basse": {
       "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.744,
+      "inter_distance_graduee": 0.751,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
+      "intra_mesures_changees": 0.025,
+      "intra_paires_identiques": 0.458
     },
     "batterie": {
-      "chorus_distincts_par_graine": 3.0,
-      "inter_distance_graduee": 0.2,
+      "chorus_distincts_par_graine": 3.12,
+      "inter_distance_graduee": 0.289,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.667,
-      "intra_paires_identiques": 0.167
+      "intra_mesures_changees": 0.708,
+      "intra_paires_identiques": 0.146
     },
     "comping : rythme": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.365,
+      "inter_distance_graduee": 0.348,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.826,
+      "intra_mesures_changees": 0.786,
       "intra_paires_identiques": 0.0
     },
     "comping : voicings": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.732,
+      "inter_distance_graduee": 0.975,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.826,
+      "intra_mesures_changees": 0.909,
       "intra_paires_identiques": 0.0
     }
   },
   "gmd_hiphop": {
     "accompagnement": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.597,
+      "inter_distance_graduee": 0.665,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.949,
+      "intra_mesures_changees": 0.986,
       "intra_paires_identiques": 0.0
     },
     "accords": {
       "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.562,
+      "inter_distance_graduee": 0.522,
       "inter_suites_distinctes": 10,
       "intra_mesures_changees": 0.0,
       "intra_paires_identiques": 1.0
     },
     "basse": {
-      "chorus_distincts_par_graine": 1.94,
-      "inter_distance_graduee": 0.895,
+      "chorus_distincts_par_graine": 1.81,
+      "inter_distance_graduee": 0.915,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.029,
-      "intra_paires_identiques": 0.448
+      "intra_mesures_changees": 0.022,
+      "intra_paires_identiques": 0.531
     },
     "batterie": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.479,
+      "inter_distance_graduee": 0.496,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.822,
+      "intra_mesures_changees": 0.852,
       "intra_paires_identiques": 0.0
     },
     "comping : rythme": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.415,
+      "chorus_distincts_par_graine": 3.94,
+      "inter_distance_graduee": 0.419,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.832,
-      "intra_paires_identiques": 0.0
+      "intra_mesures_changees": 0.803,
+      "intra_paires_identiques": 0.01
     },
     "comping : voicings": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.631,
+      "chorus_distincts_par_graine": 3.94,
+      "inter_distance_graduee": 0.971,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.812,
-      "intra_paires_identiques": 0.0
+      "intra_mesures_changees": 0.919,
+      "intra_paires_identiques": 0.01
     }
   },
   "gmd_pop": {
     "accompagnement": {
       "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.516,
+      "inter_distance_graduee": 0.628,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.949,
+      "intra_mesures_changees": 0.982,
       "intra_paires_identiques": 0.0
     },
     "accords": {
       "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.521,
-      "inter_suites_distinctes": 12,
-      "intra_mesures_changees": 0.0,
-      "intra_paires_identiques": 1.0
-    },
-    "basse": {
-      "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.878,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
-    },
-    "batterie": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.33,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.844,
-      "intra_paires_identiques": 0.0
-    },
-    "comping : rythme": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.291,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.826,
-      "intra_paires_identiques": 0.0
-    },
-    "comping : voicings": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.56,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.818,
-      "intra_paires_identiques": 0.0
-    }
-  },
-  "gmd_reggae": {
-    "accompagnement": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.491,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.93,
-      "intra_paires_identiques": 0.0
-    },
-    "accords": {
-      "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.571,
-      "inter_suites_distinctes": 9,
-      "intra_mesures_changees": 0.0,
-      "intra_paires_identiques": 1.0
-    },
-    "basse": {
-      "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.871,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
-    },
-    "batterie": {
-      "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.182,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.626,
-      "intra_paires_identiques": 0.01
-    },
-    "comping : rythme": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.24,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.867,
-      "intra_paires_identiques": 0.0
-    },
-    "comping : voicings": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.582,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.863,
-      "intra_paires_identiques": 0.0
-    }
-  },
-  "gmd_rock": {
-    "accompagnement": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.573,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.941,
-      "intra_paires_identiques": 0.0
-    },
-    "accords": {
-      "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.598,
-      "inter_suites_distinctes": 10,
-      "intra_mesures_changees": 0.0,
-      "intra_paires_identiques": 1.0
-    },
-    "basse": {
-      "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.853,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
-    },
-    "batterie": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.47,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.828,
-      "intra_paires_identiques": 0.0
-    },
-    "comping : rythme": {
-      "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.288,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.826,
-      "intra_paires_identiques": 0.0
-    },
-    "comping : voicings": {
-      "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.653,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.837,
-      "intra_paires_identiques": 0.0
-    }
-  },
-  "gmd_soul": {
-    "accompagnement": {
-      "chorus_distincts_par_graine": 4.0,
-      "inter_distance_graduee": 0.547,
-      "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.9,
-      "intra_paires_identiques": 0.0
-    },
-    "accords": {
-      "chorus_distincts_par_graine": 1.0,
-      "inter_distance_graduee": 0.617,
+      "inter_distance_graduee": 0.595,
       "inter_suites_distinctes": 11,
       "intra_mesures_changees": 0.0,
       "intra_paires_identiques": 1.0
     },
     "basse": {
       "chorus_distincts_par_graine": 2.0,
-      "inter_distance_graduee": 0.877,
+      "inter_distance_graduee": 0.918,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.03,
-      "intra_paires_identiques": 0.417
+      "intra_mesures_changees": 0.025,
+      "intra_paires_identiques": 0.458
     },
     "batterie": {
       "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.195,
+      "inter_distance_graduee": 0.363,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.606,
+      "intra_mesures_changees": 0.884,
       "intra_paires_identiques": 0.01
     },
     "comping : rythme": {
-      "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.333,
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.297,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.879,
+      "intra_mesures_changees": 0.798,
       "intra_paires_identiques": 0.0
     },
     "comping : voicings": {
-      "chorus_distincts_par_graine": 3.94,
-      "inter_distance_graduee": 0.711,
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.967,
       "inter_suites_distinctes": 16,
-      "intra_mesures_changees": 0.844,
+      "intra_mesures_changees": 0.914,
+      "intra_paires_identiques": 0.0
+    }
+  },
+  "gmd_reggae": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.574,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.984,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.512,
+      "inter_suites_distinctes": 8,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 2.0,
+      "inter_distance_graduee": 0.894,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.025,
+      "intra_paires_identiques": 0.458
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.278,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.91,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.232,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.836,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.951,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.894,
+      "intra_paires_identiques": 0.0
+    }
+  },
+  "gmd_rock": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.654,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.978,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.581,
+      "inter_suites_distinctes": 9,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 1.88,
+      "inter_distance_graduee": 0.89,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.023,
+      "intra_paires_identiques": 0.5
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.576,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.91,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 3.94,
+      "inter_distance_graduee": 0.332,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.773,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.889,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.889,
+      "intra_paires_identiques": 0.0
+    }
+  },
+  "gmd_soul": {
+    "accompagnement": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.617,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.992,
+      "intra_paires_identiques": 0.0
+    },
+    "accords": {
+      "chorus_distincts_par_graine": 1.0,
+      "inter_distance_graduee": 0.598,
+      "inter_suites_distinctes": 8,
+      "intra_mesures_changees": 0.0,
+      "intra_paires_identiques": 1.0
+    },
+    "basse": {
+      "chorus_distincts_par_graine": 2.0,
+      "inter_distance_graduee": 0.9,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.025,
+      "intra_paires_identiques": 0.458
+    },
+    "batterie": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.276,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.727,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : rythme": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.328,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.84,
+      "intra_paires_identiques": 0.0
+    },
+    "comping : voicings": {
+      "chorus_distincts_par_graine": 4.0,
+      "inter_distance_graduee": 0.976,
+      "inter_suites_distinctes": 16,
+      "intra_mesures_changees": 0.979,
       "intra_paires_identiques": 0.0
     }
   },

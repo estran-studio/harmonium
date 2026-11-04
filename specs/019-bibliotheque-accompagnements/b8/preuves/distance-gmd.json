@@ -2,55 +2,55 @@
   "gmd_afrobeat": {
     "any": {
       "non_calibre": 0.397,
-      "profil": 0.06,
-      "sans_arc": 0.031
+      "profil": 0.032,
+      "sans_arc": 0.032
     },
     "hat": {
       "non_calibre": 0.8,
-      "profil": 0.116,
-      "sans_arc": 0.15
+      "profil": 0.109,
+      "sans_arc": 0.146
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.339,
-      "sans_arc": 0.224
+      "profil": 0.239,
+      "sans_arc": 0.096
     },
     "moyenne": {
       "non_calibre": 0.799,
-      "profil": 0.211,
-      "sans_arc": 0.158
+      "profil": 0.152,
+      "sans_arc": 0.114
     },
     "ride": {
       "non_calibre": 0.602,
-      "profil": 0.445,
-      "sans_arc": 0.143
+      "profil": 0.42,
+      "sans_arc": 0.133
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.329,
-      "sans_arc": 0.225
+      "profil": 0.228,
+      "sans_arc": 0.182
     }
   },
   "gmd_dance_disco": {
     "any": {
       "non_calibre": 0.435,
-      "profil": 0.089,
-      "sans_arc": 0.045
+      "profil": 0.087,
+      "sans_arc": 0.036
     },
     "hat": {
       "non_calibre": 0.862,
-      "profil": 0.206,
-      "sans_arc": 0.117
+      "profil": 0.189,
+      "sans_arc": 0.118
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.21,
-      "sans_arc": 0.074
+      "profil": 0.215,
+      "sans_arc": 0.062
     },
     "moyenne": {
       "non_calibre": 0.824,
-      "profil": 0.164,
-      "sans_arc": 0.113
+      "profil": 0.163,
+      "sans_arc": 0.111
     },
     "ride": {
       "non_calibre": 0.87,
@@ -59,30 +59,30 @@
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.151,
-      "sans_arc": 0.215
+      "profil": 0.159,
+      "sans_arc": 0.227
     }
   },
   "gmd_hiphop": {
     "any": {
       "non_calibre": 0.368,
-      "profil": 0.08,
-      "sans_arc": 0.091
+      "profil": 0.091,
+      "sans_arc": 0.094
     },
     "hat": {
       "non_calibre": 0.827,
-      "profil": 0.125,
-      "sans_arc": 0.146
+      "profil": 0.124,
+      "sans_arc": 0.125
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.181,
-      "sans_arc": 0.197
+      "profil": 0.202,
+      "sans_arc": 0.211
     },
     "moyenne": {
       "non_calibre": 0.799,
-      "profil": 0.149,
-      "sans_arc": 0.166
+      "profil": 0.147,
+      "sans_arc": 0.156
     },
     "ride": {
       "non_calibre": 0.877,
@@ -91,62 +91,62 @@
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.212,
-      "sans_arc": 0.231
+      "profil": 0.169,
+      "sans_arc": 0.195
     }
   },
   "gmd_pop": {
     "any": {
       "non_calibre": 0.236,
-      "profil": 0.084,
+      "profil": 0.071,
       "sans_arc": 0.059
     },
     "hat": {
       "non_calibre": 0.762,
-      "profil": 0.253,
-      "sans_arc": 0.152
+      "profil": 0.212,
+      "sans_arc": 0.145
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.301,
-      "sans_arc": 0.361
+      "profil": 0.22,
+      "sans_arc": 0.23
     },
     "moyenne": {
       "non_calibre": 0.75,
-      "profil": 0.212,
-      "sans_arc": 0.208
+      "profil": 0.171,
+      "sans_arc": 0.17
     },
     "ride": {
       "non_calibre": 0.704,
-      "profil": 0.446,
-      "sans_arc": 0.152
+      "profil": 0.428,
+      "sans_arc": 0.143
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.211,
-      "sans_arc": 0.26
+      "profil": 0.18,
+      "sans_arc": 0.246
     }
   },
   "gmd_reggae": {
     "any": {
       "non_calibre": 0.319,
-      "profil": 0.169,
-      "sans_arc": 0.167
+      "profil": 0.151,
+      "sans_arc": 0.149
     },
     "hat": {
       "non_calibre": 0.801,
-      "profil": 0.078,
-      "sans_arc": 0.083
+      "profil": 0.079,
+      "sans_arc": 0.084
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.278,
-      "sans_arc": 0.265
+      "profil": 0.161,
+      "sans_arc": 0.16
     },
     "moyenne": {
       "non_calibre": 0.78,
-      "profil": 0.251,
-      "sans_arc": 0.239
+      "profil": 0.179,
+      "sans_arc": 0.186
     },
     "ride": {
       "non_calibre": 1.0,
@@ -155,72 +155,72 @@
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.478,
-      "sans_arc": 0.442
+      "profil": 0.326,
+      "sans_arc": 0.352
     }
   },
   "gmd_rock": {
     "any": {
       "non_calibre": 0.339,
-      "profil": 0.085,
-      "sans_arc": 0.088
+      "profil": 0.06,
+      "sans_arc": 0.05
     },
     "hat": {
       "non_calibre": 0.714,
-      "profil": 0.373,
-      "sans_arc": 0.406
+      "profil": 0.302,
+      "sans_arc": 0.4
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.218,
-      "sans_arc": 0.234
+      "profil": 0.153,
+      "sans_arc": 0.202
     },
     "moyenne": {
       "non_calibre": 0.763,
-      "profil": 0.23,
-      "sans_arc": 0.245
+      "profil": 0.184,
+      "sans_arc": 0.236
     },
     "ride": {
       "non_calibre": 0.579,
-      "profil": 0.157,
-      "sans_arc": 0.147
+      "profil": 0.168,
+      "sans_arc": 0.16
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.243,
-      "sans_arc": 0.251
+      "profil": 0.221,
+      "sans_arc": 0.293
     }
   },
   "gmd_soul": {
     "any": {
       "non_calibre": 0.326,
-      "profil": 0.087,
-      "sans_arc": 0.074
+      "profil": 0.086,
+      "sans_arc": 0.117
     },
     "hat": {
       "non_calibre": 0.81,
-      "profil": 0.397,
-      "sans_arc": 0.117
+      "profil": 0.304,
+      "sans_arc": 0.148
     },
     "kick": {
       "non_calibre": 1.0,
-      "profil": 0.346,
-      "sans_arc": 0.372
+      "profil": 0.314,
+      "sans_arc": 0.43
     },
     "moyenne": {
       "non_calibre": 0.784,
-      "profil": 0.285,
-      "sans_arc": 0.214
+      "profil": 0.252,
+      "sans_arc": 0.247
     },
     "ride": {
       "non_calibre": 0.742,
-      "profil": 0.466,
-      "sans_arc": 0.851
+      "profil": 0.438,
+      "sans_arc": 0.903
     },
     "snare": {
       "non_calibre": 1.0,
-      "profil": 0.309,
-      "sans_arc": 0.292
+      "profil": 0.302,
+      "sans_arc": 0.294
     }
   }
 }
