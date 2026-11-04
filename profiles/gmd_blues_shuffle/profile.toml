@@ -1,0 +1,479 @@
+# Profil `gmd_blues_shuffle` (phase 019, B6) : accompagnement de blues shuffle, feel ternaire (12/8 écrit en 4/4 sur douze pas),
+# sous une grille d'accords.
+#
+# GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b6/emit_profile.py` depuis `b6/profile.toml.tmpl` (ne pas éditer ici).
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le style `blues/shuffle` du Groove MIDI Dataset v1.0.0
+# (4 fichiers, 2 batteurs, « juste » ; 2 seulement de feel ternaire). Comme cette source est maigre, la batterie lit aussi
+# les fichiers ternaires de `rock/shuffle` (2) et de `funk/purdieshuffle` (1, 26 relances) : 5 fichiers `beat`, 4 batteurs,
+# 340 mesures, tous des shuffles joués sur kit électronique ; voir `README.md` pour les écarts et les limites. La batterie
+# (patterns, phrases, relances, micro-timing, rapport de swing, plage de tempo) vient de là. Basse en shuffle, comping et
+# grilles de douze mesures sont des règles de métier : aucune source ouverte ne mesure les croches d'une basse de blues
+# (WJazzD ne donne qu'une hauteur par temps, et pour du blues de jazz) ni le comping. Ce qui est mesuré dans WJazzD
+# (groupe `blues`, 87 solos) : registre de la basse, longueur du chorus (douze mesures dans 90 % des chorus), rythme
+# harmonique (92 % de mesures à un accord), proportions des approches du temps 4.
+#
+# Profil fait pour jouer sous une grille fournie par l'utilisateur : basse, comping et batterie ne dépendent que de l'accord
+# publié. Sans grille : cinq blues de douze mesures (forme commune, changement rapide, retournement I-VI-ii-V, mineur,
+# fin posée), écrits relatifs à la tonique tirée par la graine (`session.toml`). Aucune réharmonisation (D4) : les accords
+# publiés ne changent jamais. Aucune mélodie (piste `Melody` absente de l'arrangement). Tout sonne avec GeneralUser GS :
+# aucune banque ni preset Odin.
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
+
+[meta]
+id = "gmd_blues_shuffle"
+name = "Blues shuffle, 12/8 ternaire (Groove MIDI Dataset, shuffles)"
+tradition = "Groove MIDI Dataset v1.0.0, shuffles de feel ternaire : blues/shuffle (2 fichiers), rock/shuffle (2), funk/purdieshuffle (1) et 29 relances ; 4 batteurs, kit électronique Roland TD-11 ; basse, comping, grilles : règles de métier ; registre de basse : Weimar Jazz Database v2.1, groupe blues"
+tags = ["blues", "shuffle", "ternaire", "accompagnement", "grille"]
+corpus = """\
+Groove MIDI Dataset v1.0.0 (Google LLC), CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ : Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman, « Learning to Groove with Inverse Sequence Transformations », ICML 2019 ; probabilités par pas, groupes de mesures, phrases, relances, rapport de swing, micro-timing et tempos de la batterie des fichiers ternaires de blues/shuffle, rock/shuffle et funk/purdieshuffle, agrégés, jamais un enregistrement. \
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL) 1.0, https://opendatacommons.org/licenses/odbl/1-0/ ; individual contents under the Database Contents License (DbCL) 1.0, https://opendatacommons.org/licenses/dbcl/1-0/. \
+Statistiques agrégées seulement (registre de basse, longueur de chorus, rythme harmonique, parts d'approche du temps 4) ; aucune note de solo ni de ligne de basse copiée. \
+Manifestes et mesures : harmonium_lab corpus/gmd, corpus/wjazzd, references/gmd-blues-shuffle/, references/gmd-rock-shuffle/, references/gmd-funk-purdieshuffle/, references/wjazzd-swing/ (groupe blues). Grilles par défaut : formes communes de blues écrites pour ce profil (voir README)."""
+
+# Douze pas par mesure : un pas = un tiers de temps (triolet de croches). Les temps tombent aux pas 0, 3, 6, 9 ; la croche
+# de contretemps du shuffle au pas 2 de chaque groupe de trois (0, 2 | 3, 5 | 6, 8 | 9, 11).
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 12
+steps_per_unit = 3
+steps_per_pulse = 3
+pulses_per_bar = 4
+# GMD, cinq fichiers ternaires : rapport de swing 0,627 / 0,650 / 0,664 / 0,666 / 0,696, médiane 0,664 (tous tempos : 72, 112,
+# 125, 130, 134 BPM, aucune pente visible avec le tempo ; pas de `[swing]` : la courbe de JTD (piano de jazz) ne vaut pas ici).
+default_swing_ratio = 0.664
+# GMD, fichiers ternaires retenus : 72, 112, 125, 130, 134 BPM. Défaut = médiane (125), bas et haut = extrêmes de la source.
+default_bpm = 125.0
+min_bpm = 72.0
+max_bpm = 134.0
+
+# Pas de `[fixed_tonality]` : la tonalité vient de la variante de session ; training installe le sien (le verrou de l'hôte
+# gagne sur la variante).
+
+# Une partie de douze mesures : un chorus de blues. WJazzD, groupe blues : 378 chorus sur 420 font douze mesures (90 %).
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Blues"
+melody_center_offset = 0
+phrase_ends = [4, 8, 12]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que les autres profils sous grille.
+[melody]
+cell_units = 4
+strong_units = [0, 2]
+weak_units = [1, 3]
+key_modes = [{ key = 4, mode = "mixolydian", weight = 3 }, { key = 9, mode = "mixolydian", weight = 3 }, { key = 7, mode = "mixolydian", weight = 2 }, { key = 0, mode = "mixolydian", weight = 2 }, { key = 10, mode = "mixolydian", weight = 2 }, { key = 2, mode = "mixolydian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles de douze mesures relatives à la tonique ; un créneau de trois pas (un temps). WJazzD, groupe blues : 92 % de
+# mesures à un accord, changement d'accord sur le temps 1 dans 89 % des cas, sur le temps 3 dans 11 % : les grilles ci-dessous
+# changent à la mesure. Sommes de pas : douze mesures × douze pas = 144.
+[harmony]
+model = "loop"
+steps_per_chord = 3
+
+[harmony.parts.Blues]
+kind = "chord_loop"
+loops = [
+  # Blues de douze mesures, forme commune : I7 (4), IV7 (2), I7 (2), V7, IV7, I7, V7 (retournement : la dernière mesure sur le V).
+  { weight = 5, chords = [
+    { semitones = 0, quality = "7", steps = 48 },
+    { semitones = 5, quality = "7", steps = 24 },
+    { semitones = 0, quality = "7", steps = 24 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 5, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+  ] },
+  # Blues à changement rapide (quick change) : IV7 dès la deuxième mesure, V7 IV7 I7 V7 aux mesures 9 à 12.
+  { weight = 5, chords = [
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 5, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 24 },
+    { semitones = 5, quality = "7", steps = 24 },
+    { semitones = 0, quality = "7", steps = 24 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 5, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+  ] },
+  # Blues à retournement I-VI-ii-V : VI7 à la mesure 8, ii7, V7, I7, V7 aux mesures 9 à 12.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 5, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 24 },
+    { semitones = 5, quality = "7", steps = 24 },
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 9, quality = "7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+  ] },
+  # Blues mineur : Im7 (4), IVm7 (2), Im7 (2), bVI7, V7, Im7, V7.
+  { weight = 2, chords = [
+    { semitones = 0, quality = "m7", steps = 48 },
+    { semitones = 5, quality = "m7", steps = 24 },
+    { semitones = 0, quality = "m7", steps = 24 },
+    { semitones = 8, quality = "7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 0, quality = "m7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+  ] },
+  # Blues qui se pose : comme la forme commune, mais les mesures 11 et 12 restent sur I7 (fin de chanson, sans retournement).
+  { weight = 2, chords = [
+    { semitones = 0, quality = "7", steps = 48 },
+    { semitones = 5, quality = "7", steps = 24 },
+    { semitones = 0, quality = "7", steps = 24 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 5, quality = "7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 24 },
+  ] },
+]
+
+[accompaniment]
+strong_steps = [0, 6]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Basse en shuffle : riffs « boogie » d'une ou deux mesures, croches ternaires (longue de deux pas, brève d'un pas, une
+# paire par temps) sur la fondamentale, la quinte, la sixte et la septième mineure, écrits par règles de métier : WJazzD
+# ne donne que la hauteur à la noire. Les intervalles sont sans tierce (la tierce dépend de la qualité de l'accord, que le
+# riff ignore : la sixte reste une couleur de blues sur I7 comme sur Im7). Ce qui est mesuré (WJazzD, groupe blues, 87 solos) :
+# - registre : hauteur de basse, centiles 5 à 95 = 34..50, médiane 42, étendue 28..53 ; fenêtre de marche 33..51. La
+#   fondamentale se place dans 30..41 (le blues se joue en dessous : mi grave de la basse à 28), l'octave monte à 53 ;
+# - approche du temps 4 avant un changement d'accord : proportions chromatique / degré de gamme = 41 % / 19 % (parts de
+#   passage au temps 4 de la marche du groupe blues, rapport 2,2) ; le poids de « aucune » est de métier (un riff de boogie
+#   ne marche pas vers chaque accord).
+[accompaniment.bass]
+low = 30
+high = 41
+walk_low = 28
+walk_high = 53
+motifs = [
+  # 1. Boogie : fondamentale, quinte, sixte, quinte (croches ternaires, longue-brève).
+  { bars = 1, weight = 5, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 7, velocity = 82 },
+    { step = 3, duration = 2, semitones = 9, velocity = 94 },
+    { step = 5, duration = 1, semitones = 7, velocity = 82 },
+    { step = 6, duration = 2, semitones = 0, velocity = 98 },
+    { step = 8, duration = 1, semitones = 7, velocity = 82 },
+    { step = 9, duration = 2, semitones = 9, velocity = 94 },
+    { step = 11, duration = 1, semitones = 7, velocity = 82 },
+  ] },
+  # 2. Montée : fondamentale, quinte, sixte, septième mineure, chacune en paire longue-brève.
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 0, velocity = 80 },
+    { step = 3, duration = 2, semitones = 7, velocity = 94 },
+    { step = 5, duration = 1, semitones = 7, velocity = 80 },
+    { step = 6, duration = 2, semitones = 9, velocity = 96 },
+    { step = 8, duration = 1, semitones = 9, velocity = 80 },
+    { step = 9, duration = 2, semitones = 10, velocity = 98 },
+    { step = 11, duration = 1, semitones = 10, velocity = 84 },
+  ] },
+  # 3. Pompe : fondamentale, l'octave en contretemps des temps 2 et 4.
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 0, velocity = 80 },
+    { step = 3, duration = 2, semitones = 0, velocity = 90, octave = 1 },
+    { step = 5, duration = 1, semitones = 0, velocity = 80 },
+    { step = 6, duration = 2, semitones = 0, velocity = 98 },
+    { step = 8, duration = 1, semitones = 0, velocity = 80 },
+    { step = 9, duration = 2, semitones = 0, velocity = 90, octave = 1 },
+    { step = 11, duration = 1, semitones = 0, velocity = 80 },
+  ] },
+  # 4. Marche en noires : fondamentale, quinte, sixte, quinte.
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 3, semitones = 0, velocity = 102 },
+    { step = 3, duration = 3, semitones = 7, velocity = 88 },
+    { step = 6, duration = 3, semitones = 9, velocity = 92 },
+    { step = 9, duration = 3, semitones = 7, velocity = 88 },
+  ] },
+  # 5. Fondamentale et quinte en alternance (rock'n'roll).
+  { bars = 1, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 7, velocity = 82 },
+    { step = 3, duration = 2, semitones = 0, velocity = 92 },
+    { step = 5, duration = 1, semitones = 7, velocity = 82 },
+    { step = 6, duration = 2, semitones = 0, velocity = 98 },
+    { step = 8, duration = 1, semitones = 7, velocity = 82 },
+    { step = 9, duration = 2, semitones = 0, velocity = 92 },
+    { step = 11, duration = 1, semitones = 7, velocity = 82 },
+  ] },
+  # 6. Deux mesures : boogie, puis boogie qui monte à la septième mineure et à la sixte vers l'accord suivant.
+  { bars = 2, weight = 3, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 7, velocity = 82 },
+    { step = 3, duration = 2, semitones = 9, velocity = 94 },
+    { step = 5, duration = 1, semitones = 7, velocity = 82 },
+    { step = 6, duration = 2, semitones = 0, velocity = 98 },
+    { step = 8, duration = 1, semitones = 7, velocity = 82 },
+    { step = 9, duration = 2, semitones = 9, velocity = 94 },
+    { step = 11, duration = 1, semitones = 7, velocity = 82 },
+    { step = 12, duration = 2, semitones = 0, velocity = 104 },
+    { step = 14, duration = 1, semitones = 7, velocity = 82 },
+    { step = 15, duration = 2, semitones = 9, velocity = 94 },
+    { step = 17, duration = 1, semitones = 7, velocity = 82 },
+    { step = 18, duration = 2, semitones = 0, velocity = 98 },
+    { step = 20, duration = 1, semitones = 7, velocity = 82 },
+    { step = 21, duration = 2, semitones = 10, velocity = 94 },
+    { step = 23, duration = 1, semitones = 9, velocity = 82 },
+  ] },
+  # 7. Deux mesures : montée, puis redescente par la sixte et la quinte (la deuxième mesure commence sur la fondamentale).
+  { bars = 2, weight = 2, reference = "chord_root", notes = [
+    { step = 0, duration = 2, semitones = 0, velocity = 104 },
+    { step = 2, duration = 1, semitones = 0, velocity = 80 },
+    { step = 3, duration = 2, semitones = 7, velocity = 94 },
+    { step = 5, duration = 1, semitones = 7, velocity = 80 },
+    { step = 6, duration = 2, semitones = 9, velocity = 96 },
+    { step = 8, duration = 1, semitones = 9, velocity = 80 },
+    { step = 9, duration = 2, semitones = 10, velocity = 98 },
+    { step = 11, duration = 1, semitones = 10, velocity = 84 },
+    { step = 12, duration = 2, semitones = 0, velocity = 100 },
+    { step = 14, duration = 1, semitones = 0, velocity = 80 },
+    { step = 15, duration = 2, semitones = 9, velocity = 92 },
+    { step = 17, duration = 1, semitones = 9, velocity = 80 },
+    { step = 18, duration = 2, semitones = 7, velocity = 96 },
+    { step = 20, duration = 1, semitones = 7, velocity = 80 },
+    { step = 21, duration = 2, semitones = 0, velocity = 94 },
+    { step = 23, duration = 1, semitones = 0, velocity = 80 },
+  ] },
+  # 8. Triolets de fondamentale (blues lent, 12/8 : douze notes par mesure).
+  { bars = 1, weight = 2, reference = "chord_root", notes = [
+    { step = 0, duration = 1, semitones = 0, velocity = 100 },
+    { step = 1, duration = 1, semitones = 0, velocity = 70 },
+    { step = 2, duration = 1, semitones = 0, velocity = 76 },
+    { step = 3, duration = 1, semitones = 0, velocity = 100 },
+    { step = 4, duration = 1, semitones = 0, velocity = 70 },
+    { step = 5, duration = 1, semitones = 0, velocity = 76 },
+    { step = 6, duration = 1, semitones = 0, velocity = 100 },
+    { step = 7, duration = 1, semitones = 0, velocity = 70 },
+    { step = 8, duration = 1, semitones = 0, velocity = 76 },
+    { step = 9, duration = 1, semitones = 0, velocity = 100 },
+    { step = 10, duration = 1, semitones = 0, velocity = 70 },
+    { step = 11, duration = 1, semitones = 0, velocity = 76 },
+  ] },
+  # 9. Tenue : une blanche par demi-mesure (chorus clairsemé, changement d'accord au temps 3).
+  { bars = 1, weight = 2, reference = "chord_root", notes = [
+    { step = 0, duration = 6, semitones = 0, velocity = 98 },
+    { step = 6, duration = 6, semitones = 0, velocity = 90 },
+  ] },
+]
+
+# Approche d'un changement d'accord, un temps avant la cible (trois pas) : une règle par mouvement, `none_weight` pour
+# « aucune ».
+[accompaniment.bass.passing]
+none_weight = 60
+density = [[0.0, 0.2], [0.5, 1.0], [1.0, 1.8]]
+phrase = [[0.0, 1.0], [1.0, 1.0]]
+avoid_melody_intervals = []
+rules = [
+  { when = "next_target_differs", before = [3], motion = "chromatic", weight = 28, duration = 3, velocity_delta = -14, min_leap = 0 },
+  { when = "next_target_differs", before = [3], motion = "scale_step", weight = 12, duration = 3, velocity_delta = -14, min_leap = 0 },
+]
+
+# Comping : piano (GeneralUser GS 0 par défaut ; la session tire guitare claire, guitare saturée, orgue ou piano), notes guides
+# et tensions sur des rythmes de shuffle. Règles de métier : aucun corpus ouvert de comping (décision F3 de 018). Étiquettes
+# `sparse` / `medium` / `dense` : l'arc nomme celles d'un chorus. Un temps = trois pas : longue 2, brève 1.
+[accompaniment.chords]
+center = 62
+max_drift = 6
+default_pattern = 0
+voicing = "guide_tones"
+color = { none_weight = 4, published_weight = 1, ninth_weight = 2, thirteenth_weight = 2 }
+register_drift = { step = 2, max = 6 }
+low = 50
+high = 76
+patterns = [{ hits = [{ step = 0, direction = "block", duration = 5, velocity = 70 }, { step = 6, direction = "block", duration = 5, velocity = 66 }] }]
+comping = [
+  # 0. Accord tenu toute la mesure.
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 11, velocity = 70, direction = "block" }] },
+  # 1. Deux tenues, une par demi-mesure.
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 5, velocity = 72, direction = "block" }, { step = 6, duration = 5, velocity = 64, direction = "block" }] },
+  # 2. Tenue puis relance du temps 4, la dernière note annonce l'accord suivant.
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 74, direction = "block" }, { step = 9, duration = 2, velocity = 62, direction = "down" }, { step = 11, duration = 1, velocity = 66, direction = "up", anticipate = true }] },
+  # 3. Silence.
+  { weight = 1, tag = "sparse", hits = [] },
+  # 4. Une frappe par temps (blues lent).
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 78, direction = "down" }, { step = 3, duration = 2, velocity = 70, direction = "down" }, { step = 6, duration = 2, velocity = 76, direction = "down" }, { step = 9, duration = 2, velocity = 70, direction = "down" }] },
+  # 5. Contretemps des temps 2 et 4, longue-brève.
+  { weight = 3, tag = "medium", hits = [{ step = 3, duration = 2, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 60, direction = "up" }, { step = 9, duration = 2, velocity = 78, direction = "down" }, { step = 11, duration = 1, velocity = 60, direction = "up", anticipate = true }] },
+  # 6. Contretemps de chaque temps (la brève du shuffle).
+  { weight = 3, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 68, direction = "up" }, { step = 5, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 1, velocity = 68, direction = "up" }, { step = 11, duration = 1, velocity = 62, direction = "up" }] },
+  # 7. Accords sur les temps 1 et 3, rebond sur 2 et 4.
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "block" }, { step = 3, duration = 2, velocity = 68, direction = "down" }, { step = 6, duration = 3, velocity = 76, direction = "block" }, { step = 9, duration = 2, velocity = 68, direction = "down" }, { step = 11, duration = 1, velocity = 62, direction = "up", anticipate = true }] },
+  # 8. Paires longue-brève à chaque temps (shuffle plein).
+  { weight = 4, tag = "dense", hits = [
+    { step = 0, duration = 2, velocity = 82, direction = "down" },
+    { step = 2, duration = 1, velocity = 62, direction = "up" },
+    { step = 3, duration = 2, velocity = 70, direction = "down" },
+    { step = 5, duration = 1, velocity = 58, direction = "up" },
+    { step = 6, duration = 2, velocity = 80, direction = "down" },
+    { step = 8, duration = 1, velocity = 62, direction = "up" },
+    { step = 9, duration = 2, velocity = 70, direction = "down" },
+    { step = 11, duration = 1, velocity = 58, direction = "up" },
+  ] },
+  # 9. Shuffle, dernière brève probabiliste.
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 2, velocity = 84, direction = "down" },
+    { step = 2, duration = 1, velocity = 64, direction = "up" },
+    { step = 3, duration = 2, velocity = 68, direction = "down" },
+    { step = 5, duration = 1, velocity = 56, direction = "up" },
+    { step = 6, duration = 2, velocity = 80, direction = "down" },
+    { step = 8, duration = 1, velocity = 62, direction = "up" },
+    { step = 9, duration = 2, velocity = 68, direction = "down" },
+    { step = 11, duration = 1, velocity = 58, direction = "up", probability = 0.6 },
+  ] },
+  # 10. Shuffle, accents du backbeat (temps 2 et 4).
+  { weight = 3, tag = "dense", hits = [
+    { step = 0, duration = 2, velocity = 80, direction = "down" },
+    { step = 2, duration = 1, velocity = 60, direction = "up" },
+    { step = 3, duration = 2, velocity = 92, direction = "down" },
+    { step = 5, duration = 1, velocity = 60, direction = "up" },
+    { step = 6, duration = 2, velocity = 78, direction = "down" },
+    { step = 8, duration = 1, velocity = 60, direction = "up" },
+    { step = 9, duration = 2, velocity = 92, direction = "down" },
+    { step = 11, duration = 1, velocity = 60, direction = "up" },
+  ] },
+  # 11. Triolets de piano (douze frappes, celles du milieu à 80 %).
+  { weight = 2, tag = "dense", hits = [
+    { step = 0, duration = 1, velocity = 76, direction = "down" },
+    { step = 1, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
+    { step = 2, duration = 1, velocity = 62, direction = "down" },
+    { step = 3, duration = 1, velocity = 76, direction = "down" },
+    { step = 4, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
+    { step = 5, duration = 1, velocity = 62, direction = "down" },
+    { step = 6, duration = 1, velocity = 76, direction = "down" },
+    { step = 7, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
+    { step = 8, duration = 1, velocity = 62, direction = "down" },
+    { step = 9, duration = 1, velocity = 76, direction = "down" },
+    { step = 10, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
+    { step = 11, duration = 1, velocity = 62, direction = "down" },
+  ] },
+]
+# Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de métier : deux mesures du même
+# rythme puis une variation ; la fin de chorus (`part_end`) plus dense ou en tenue.
+phrases = [
+  { weight = 3, tag = "sparse", motifs = [0, 0, 1, 0] },
+  { weight = 3, tag = "sparse", motifs = [1, 1, 2, 1] },
+  { weight = 2, tag = "sparse", motifs = [0, 3] },
+  { weight = 2, tag = "sparse", motifs = [2, 2] },
+  { weight = 3, tag = "sparse", at = "part_end", motifs = [1, 1, 2, 0] },
+  { weight = 3, tag = "medium", motifs = [4, 4, 5, 4] },
+  { weight = 3, tag = "medium", motifs = [5, 6, 5, 6] },
+  { weight = 2, tag = "medium", motifs = [4, 7, 4, 7] },
+  { weight = 2, tag = "medium", motifs = [6, 6] },
+  { weight = 2, tag = "medium", motifs = [4, 5] },
+  { weight = 3, tag = "medium", at = "part_end", motifs = [4, 4, 5, 7] },
+  { weight = 3, tag = "dense", motifs = [8, 8, 9, 8] },
+  { weight = 3, tag = "dense", motifs = [9, 10, 9, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 11, 8, 11] },
+  { weight = 2, tag = "dense", motifs = [10, 10] },
+  { weight = 2, tag = "dense", motifs = [8, 9] },
+  { weight = 3, tag = "dense", at = "part_end", motifs = [8, 8, 9, 11] },
+]
+
+# Gratté de la guitare (cordes du bas au haut, quelques millisecondes d'écart), aucune mesure de blues.
+[accompaniment.chords.spread]
+down_gap_ms = 7.0
+up_gap_ms = 5.0
+up_note_count = 3
+gap_jitter = 0.3
+anchor = 0.5
+tempo_exponent = 0.0
+ref_bpm = 112.0
+max_spread_ratio = 0.4
+velocity_slope = 4
+velocity_jitter = 4
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 33
+percussion_bank = 128
+percussion_program = 0
+
+[ornaments]
+rate_scale = 0.0
+
+# Micro-timing de la batterie par voix (A6) : médianes de l'écart à la grille mesurées dans le GMD (fichiers ternaires de
+# blues/shuffle, rock/shuffle, funk/purdieshuffle, pondérées par l'effectif ; voix à moins de 40 attaques écartées),
+# converties en fraction de pas au tempo par défaut (125 BPM : un pas = un tiers de temps = 20 000 / BPM ms = 160 ms).
+# Aucun `jitter` : le tirage partage son flux entre les pistes et la basse à notes de passage le décalerait (contrat
+# `passing_keeps_neighbour_tracks_and_strong_bass_unchanged`).
+[performance.tracks.PercussionLow]
+voices = [
+  { note = 36, on_beat = -0.072, off_beat = -0.086 },
+]
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 38, on_beat = -0.047, off_beat = -0.054 },
+  { note = 42, on_beat = -0.006, off_beat = -0.053 },
+  { note = 44, on_beat = -0.113, off_beat = -0.139 },
+  { note = 51, on_beat = -0.039, off_beat = 0.032 },
+  { note = 43, on_beat = -0.061, off_beat = -0.137 },
+  { note = 50, on_beat = -0.001 },
+]
+[performance.tracks.Bass]
+jitter = 0.04
+[performance.tracks.Chords]
+jitter = 0.05
+
+# Mixage de service (rien de mesuré sur un corpus) : réglé sur le LUFS en solo de chaque piste, voir README.
+[mix]
+master_db = 20.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -16.2
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -14.8
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -16.5
+pan = 0.0
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -16.5
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

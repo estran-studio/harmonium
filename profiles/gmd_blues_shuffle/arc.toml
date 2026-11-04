@@ -1,0 +1,37 @@
+# Arc de `gmd_blues_shuffle` sur plusieurs chorus (A3) : valeurs de métier, aucune mesure de corpus (le GMD isole beat et fill,
+# WJazzD ne donne pas la dynamique d'un chorus). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b6/emit_session.py`. Un chorus
+# = une passe de la grille de douze mesures ; cinq chorus par air, nombre connu, donc la retombée joue au dernier :
+#   1      exposition : comping clairsemé ou médian, batterie à la charleston (`hat`), doux ;
+#   2-3    corps : comping médian ou dense, ride ; un break du comping à la mesure 8 (basse et batterie continuent) ou un break du
+#          comping et de la basse à la dernière mesure (la batterie seule fait le retournement) ;
+#   4      sommet : dense, plus fort, stop-time sur les deux dernières mesures (le retournement) une fois sur deux ;
+#   5      retombée : clairsemé, doux, charleston, stop-time sur le un des deux dernières mesures ;
+# au-delà (plus de cinq chorus ou set sans fin) : le sommet puis le corps et le sommet en boucle (`repeat_from`), sans retombée.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.7, density = 0.6, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium" }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.8, density = 0.7, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = 7, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, intensity = 1.15, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.3, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.45
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

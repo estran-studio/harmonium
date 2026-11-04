@@ -1,0 +1,1036 @@
+# Batterie du profil `gmd_blues_shuffle` : GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b6/batterie.py` depuis le
+# Groove MIDI Dataset v1.0.0 (CC BY 4.0, Gillick, Roberts, Engel, Eck, Bamman, ICML 2019 ; Google LLC) : les fichiers `beat`
+# 4/4 de feel ternaire (triolets, grille de 12 pas) de `blues/shuffle`, `rock/shuffle` et `funk/purdieshuffle` (5 fichiers,
+# 4 batteurs, 340 mesures) ; relances : fichiers `fill` ternaires de `funk/purdieshuffle` (26, un batteur) et de `rock` (3).
+# Chaque pattern est construit sur les probabilités PAR PAS d'un groupe de mesures (timekeeper et figure), pas sur une
+# mesure d'un enregistrement. Groupes d'au moins 8 mesures (un seul fichier suffit : voir README, limites).
+# Seuils : densité 0 timekeeper ≥ 0,5 ; densité 1 + pédale, charleston ouverte, grosse caisse, caisse claire ≥ 0,5 (en
+# dessous, `probability` = fréquence mesurée dès 0,25) ; densité 2 + crash, grosse caisse et caisse claire dès 0,08.
+# Pas = un tiers de temps (0, 3, 6, 9 = les temps ; 2, 5, 8, 11 = les contretemps du shuffle).
+# Poids = effectif de mesures du groupe ; étiquette = timekeeper du groupe (`hat`, `ride`).
+# Kit : kit standard de GeneralUser GS (banque 128, programme 0) ; vélocités de service (celles du GMD sont celles d'un
+# Roland TD-11). Poids de « pas de relance » : 0,8 × le poids total des relances d'une densité, soit 45 % de fins de phrase sans
+# relance (valeur de service : le GMD isole les relances, la part sans relance n'y est pas mesurable).
+
+low_note = 36
+high_note = 38
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 3
+
+fills_none_weight = 21
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 100
+track = "PercussionLow"
+
+[[voices]]
+name = "hat"
+note = 42
+velocity = 70
+track = "PercussionHigh"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 62
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 74
+track = "PercussionHigh"
+
+[[voices]]
+name = "sidestick"
+note = 37
+velocity = 88
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 96
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_high"
+note = 50
+velocity = 92
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_low"
+note = 43
+velocity = 92
+track = "PercussionHigh"
+
+# 0 : ride:spang
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 45
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 4 },
+  { step = 3, voice = "ride", delta_velocity = 37 },
+  { step = 5, voice = "ride", delta_velocity = -8 },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 9, voice = "ride", delta_velocity = 40 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+]
+
+# 1 : ride:spang
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 45
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -9 },
+  { step = 0, voice = "ride", delta_velocity = 4 },
+  { step = 2, voice = "snare", delta_velocity = -53 },
+  { step = 3, voice = "kick", delta_velocity = -25, probability = 0.44 },
+  { step = 3, voice = "pedal", delta_velocity = 10 },
+  { step = 3, voice = "ride", delta_velocity = 37 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 5, voice = "kick", delta_velocity = -7 },
+  { step = 5, voice = "ride", delta_velocity = -8 },
+  { step = 5, voice = "snare", delta_velocity = -20, probability = 0.33 },
+  { step = 6, voice = "kick", delta_velocity = -17 },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "snare", delta_velocity = -51 },
+  { step = 9, voice = "kick", delta_velocity = -25, probability = 0.44 },
+  { step = 9, voice = "pedal", delta_velocity = 11 },
+  { step = 9, voice = "ride", delta_velocity = 40 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 11, voice = "kick", delta_velocity = -39, probability = 0.29 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+  { step = 11, voice = "snare", delta_velocity = 2 },
+]
+
+# 2 : ride:spang
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 45
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -9 },
+  { step = 0, voice = "ride", delta_velocity = 4 },
+  { step = 2, voice = "snare", delta_velocity = -53 },
+  { step = 3, voice = "kick", delta_velocity = -25, probability = 0.44 },
+  { step = 3, voice = "pedal", delta_velocity = 10 },
+  { step = 3, voice = "ride", delta_velocity = 37 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 5, voice = "kick", delta_velocity = -7 },
+  { step = 5, voice = "ride", delta_velocity = -8 },
+  { step = 5, voice = "snare", delta_velocity = -20, probability = 0.33 },
+  { step = 6, voice = "kick", delta_velocity = -17 },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "snare", delta_velocity = -51 },
+  { step = 9, voice = "kick", delta_velocity = -25, probability = 0.44 },
+  { step = 9, voice = "pedal", delta_velocity = 11 },
+  { step = 9, voice = "ride", delta_velocity = 40 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 11, voice = "kick", delta_velocity = -39, probability = 0.29 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+  { step = 11, voice = "snare", delta_velocity = 2 },
+]
+
+# 3 : ride:eighths
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 28
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 2, voice = "ride", delta_velocity = -13 },
+  { step = 3, voice = "ride", delta_velocity = 33 },
+  { step = 5, voice = "ride", delta_velocity = -20 },
+  { step = 6, voice = "ride", delta_velocity = 32 },
+  { step = 8, voice = "ride", delta_velocity = -12 },
+  { step = 9, voice = "ride", delta_velocity = 36 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+]
+
+# 4 : ride:eighths
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 28
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 27 },
+  { step = 0, voice = "pedal", delta_velocity = 9 },
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 1, voice = "snare", delta_velocity = -57 },
+  { step = 2, voice = "kick", delta_velocity = 27, probability = 0.39 },
+  { step = 2, voice = "ride", delta_velocity = -13 },
+  { step = 2, voice = "snare", delta_velocity = -27, probability = 0.32 },
+  { step = 3, voice = "pedal", delta_velocity = 11 },
+  { step = 3, voice = "ride", delta_velocity = 33 },
+  { step = 4, voice = "snare", delta_velocity = -54 },
+  { step = 5, voice = "kick", delta_velocity = 27, probability = 0.36 },
+  { step = 5, voice = "ride", delta_velocity = -20 },
+  { step = 6, voice = "pedal", delta_velocity = 12 },
+  { step = 6, voice = "ride", delta_velocity = 32 },
+  { step = 6, voice = "snare", delta_velocity = 31 },
+  { step = 8, voice = "ride", delta_velocity = -12 },
+  { step = 8, voice = "snare", delta_velocity = -21 },
+  { step = 9, voice = "kick", delta_velocity = 20, probability = 0.39 },
+  { step = 9, voice = "pedal", delta_velocity = 11 },
+  { step = 9, voice = "ride", delta_velocity = 36 },
+  { step = 10, voice = "snare", delta_velocity = -53 },
+  { step = 11, voice = "kick", delta_velocity = 27 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+  { step = 11, voice = "snare", delta_velocity = -23 },
+]
+
+# 5 : ride:eighths
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 28
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 27 },
+  { step = 0, voice = "pedal", delta_velocity = 9 },
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 0, voice = "snare", delta_velocity = 7, probability = 0.18 },
+  { step = 1, voice = "snare", delta_velocity = -57 },
+  { step = 2, voice = "kick", delta_velocity = 27, probability = 0.39 },
+  { step = 2, voice = "ride", delta_velocity = -13 },
+  { step = 2, voice = "snare", delta_velocity = -27, probability = 0.32 },
+  { step = 3, voice = "kick", delta_velocity = 6, probability = 0.18 },
+  { step = 3, voice = "pedal", delta_velocity = 11 },
+  { step = 3, voice = "ride", delta_velocity = 33 },
+  { step = 3, voice = "snare", delta_velocity = 31, probability = 0.18 },
+  { step = 4, voice = "snare", delta_velocity = -54 },
+  { step = 5, voice = "kick", delta_velocity = 27, probability = 0.36 },
+  { step = 5, voice = "ride", delta_velocity = -20 },
+  { step = 5, voice = "snare", delta_velocity = -3, probability = 0.18 },
+  { step = 6, voice = "kick", delta_velocity = -2, probability = 0.18 },
+  { step = 6, voice = "pedal", delta_velocity = 12 },
+  { step = 6, voice = "ride", delta_velocity = 32 },
+  { step = 6, voice = "snare", delta_velocity = 31 },
+  { step = 8, voice = "ride", delta_velocity = -12 },
+  { step = 8, voice = "snare", delta_velocity = -21 },
+  { step = 9, voice = "kick", delta_velocity = 20, probability = 0.39 },
+  { step = 9, voice = "pedal", delta_velocity = 11 },
+  { step = 9, voice = "ride", delta_velocity = 36 },
+  { step = 9, voice = "snare", delta_velocity = 13, probability = 0.21 },
+  { step = 10, voice = "snare", delta_velocity = -53 },
+  { step = 11, voice = "kick", delta_velocity = 27 },
+  { step = 11, voice = "ride", delta_velocity = -9 },
+  { step = 11, voice = "snare", delta_velocity = -23 },
+]
+
+# 6 : ride:quarters
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 21
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 27 },
+  { step = 3, voice = "ride", delta_velocity = 30 },
+  { step = 6, voice = "ride", delta_velocity = 26 },
+  { step = 9, voice = "ride", delta_velocity = 30 },
+]
+
+# 7 : ride:quarters
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 21
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -7 },
+  { step = 0, voice = "ride", delta_velocity = 27 },
+  { step = 0, voice = "snare", delta_velocity = -2 },
+  { step = 2, voice = "snare", delta_velocity = -10 },
+  { step = 3, voice = "kick", delta_velocity = -9 },
+  { step = 3, voice = "pedal", delta_velocity = 8 },
+  { step = 3, voice = "ride", delta_velocity = 30 },
+  { step = 3, voice = "snare", delta_velocity = -1 },
+  { step = 5, voice = "snare", delta_velocity = -10 },
+  { step = 6, voice = "kick", delta_velocity = -6 },
+  { step = 6, voice = "ride", delta_velocity = 26 },
+  { step = 6, voice = "snare", delta_velocity = -4 },
+  { step = 8, voice = "snare", delta_velocity = -10 },
+  { step = 9, voice = "kick", delta_velocity = -6 },
+  { step = 9, voice = "pedal", delta_velocity = 9 },
+  { step = 9, voice = "ride", delta_velocity = 30 },
+  { step = 9, voice = "snare", delta_velocity = 5 },
+  { step = 11, voice = "snare", delta_velocity = -13 },
+]
+
+# 8 : ride:quarters
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 21
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -7 },
+  { step = 0, voice = "ride", delta_velocity = 27 },
+  { step = 0, voice = "snare", delta_velocity = -2 },
+  { step = 2, voice = "snare", delta_velocity = -10 },
+  { step = 3, voice = "kick", delta_velocity = -9 },
+  { step = 3, voice = "pedal", delta_velocity = 8 },
+  { step = 3, voice = "ride", delta_velocity = 30 },
+  { step = 3, voice = "snare", delta_velocity = -1 },
+  { step = 5, voice = "snare", delta_velocity = -10 },
+  { step = 6, voice = "kick", delta_velocity = -6 },
+  { step = 6, voice = "ride", delta_velocity = 26 },
+  { step = 6, voice = "snare", delta_velocity = -4 },
+  { step = 8, voice = "snare", delta_velocity = -10 },
+  { step = 9, voice = "kick", delta_velocity = -6 },
+  { step = 9, voice = "pedal", delta_velocity = 9 },
+  { step = 9, voice = "ride", delta_velocity = 30 },
+  { step = 9, voice = "snare", delta_velocity = 5 },
+  { step = 11, voice = "snare", delta_velocity = -13 },
+]
+
+# 9 : hat_closed:sixteenths
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 18
+hits = [
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 1, voice = "hat", delta_velocity = -26 },
+  { step = 2, voice = "hat", delta_velocity = -26 },
+  { step = 3, voice = "hat", delta_velocity = 31 },
+  { step = 4, voice = "hat", delta_velocity = -28 },
+  { step = 5, voice = "hat", delta_velocity = -26 },
+  { step = 6, voice = "hat", delta_velocity = 9 },
+  { step = 7, voice = "hat", delta_velocity = -29 },
+  { step = 8, voice = "hat", delta_velocity = -26 },
+  { step = 9, voice = "hat", delta_velocity = 25 },
+  { step = 10, voice = "hat", delta_velocity = -25 },
+  { step = 11, voice = "hat", delta_velocity = -22 },
+]
+
+# 10 : hat_closed:sixteenths
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 18
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -23 },
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 1, voice = "hat", delta_velocity = -26 },
+  { step = 1, voice = "snare", delta_velocity = -75, probability = 0.28 },
+  { step = 2, voice = "kick", delta_velocity = -35 },
+  { step = 2, voice = "hat", delta_velocity = -26 },
+  { step = 2, voice = "snare", delta_velocity = -72, probability = 0.44 },
+  { step = 3, voice = "hat", delta_velocity = 31 },
+  { step = 3, voice = "sidestick", delta_velocity = 1, probability = 0.28 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 4, voice = "hat", delta_velocity = -28 },
+  { step = 4, voice = "snare", delta_velocity = -74, probability = 0.39 },
+  { step = 5, voice = "kick", delta_velocity = -54 },
+  { step = 5, voice = "hat", delta_velocity = -26 },
+  { step = 6, voice = "kick", delta_velocity = -43 },
+  { step = 6, voice = "hat", delta_velocity = 9 },
+  { step = 7, voice = "hat", delta_velocity = -29 },
+  { step = 8, voice = "kick", delta_velocity = -31 },
+  { step = 8, voice = "hat", delta_velocity = -26 },
+  { step = 8, voice = "snare", delta_velocity = -73, probability = 0.28 },
+  { step = 9, voice = "hat", delta_velocity = 25 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 10, voice = "kick", delta_velocity = -47, probability = 0.28 },
+  { step = 10, voice = "hat", delta_velocity = -25 },
+  { step = 10, voice = "snare", delta_velocity = -15 },
+  { step = 11, voice = "kick", delta_velocity = -47 },
+  { step = 11, voice = "hat", delta_velocity = -22 },
+  { step = 11, voice = "snare", delta_velocity = 14 },
+]
+
+# 11 : hat_closed:sixteenths
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 18
+hits = [
+  { step = 0, voice = "kick", delta_velocity = -23 },
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 0, voice = "snare", delta_velocity = -43, probability = 0.11 },
+  { step = 1, voice = "hat", delta_velocity = -26 },
+  { step = 1, voice = "snare", delta_velocity = -75, probability = 0.28 },
+  { step = 2, voice = "kick", delta_velocity = -35 },
+  { step = 2, voice = "hat", delta_velocity = -26 },
+  { step = 2, voice = "snare", delta_velocity = -72, probability = 0.44 },
+  { step = 3, voice = "hat", delta_velocity = 31 },
+  { step = 3, voice = "sidestick", delta_velocity = 1, probability = 0.28 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 4, voice = "hat", delta_velocity = -28 },
+  { step = 4, voice = "snare", delta_velocity = -74, probability = 0.39 },
+  { step = 5, voice = "kick", delta_velocity = -54 },
+  { step = 5, voice = "hat", delta_velocity = -26 },
+  { step = 5, voice = "snare", delta_velocity = -84, probability = 0.22 },
+  { step = 6, voice = "kick", delta_velocity = -43 },
+  { step = 6, voice = "hat", delta_velocity = 9 },
+  { step = 6, voice = "snare", delta_velocity = -86, probability = 0.11 },
+  { step = 7, voice = "hat", delta_velocity = -29 },
+  { step = 8, voice = "kick", delta_velocity = -31 },
+  { step = 8, voice = "hat", delta_velocity = -26 },
+  { step = 8, voice = "snare", delta_velocity = -73, probability = 0.28 },
+  { step = 9, voice = "hat", delta_velocity = 25 },
+  { step = 9, voice = "sidestick", delta_velocity = -1, probability = 0.17 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 10, voice = "kick", delta_velocity = -47, probability = 0.28 },
+  { step = 10, voice = "hat", delta_velocity = -25 },
+  { step = 10, voice = "snare", delta_velocity = -15 },
+  { step = 11, voice = "kick", delta_velocity = -47 },
+  { step = 11, voice = "hat", delta_velocity = -22 },
+  { step = 11, voice = "snare", delta_velocity = 14 },
+]
+
+# 12 : ride:sixteenths
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 18
+hits = [
+  { step = 0, voice = "ride", delta_velocity = 29 },
+  { step = 1, voice = "ride", delta_velocity = -35 },
+  { step = 2, voice = "ride", delta_velocity = -20 },
+  { step = 3, voice = "ride", delta_velocity = 38 },
+  { step = 4, voice = "ride", delta_velocity = -23 },
+  { step = 5, voice = "ride", delta_velocity = -15 },
+  { step = 6, voice = "ride", delta_velocity = 17 },
+  { step = 7, voice = "ride", delta_velocity = -24 },
+  { step = 8, voice = "ride", delta_velocity = -18 },
+  { step = 9, voice = "ride", delta_velocity = 17 },
+  { step = 10, voice = "ride", delta_velocity = -19 },
+  { step = 11, voice = "ride", delta_velocity = 1 },
+]
+
+# 13 : ride:sixteenths
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 18
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 7 },
+  { step = 0, voice = "ride", delta_velocity = 29 },
+  { step = 1, voice = "ride", delta_velocity = -35 },
+  { step = 2, voice = "kick", delta_velocity = -9 },
+  { step = 2, voice = "ride", delta_velocity = -20 },
+  { step = 2, voice = "snare", delta_velocity = -73 },
+  { step = 3, voice = "pedal", delta_velocity = -2 },
+  { step = 3, voice = "ride", delta_velocity = 38 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 4, voice = "pedal", delta_velocity = -41 },
+  { step = 4, voice = "ride", delta_velocity = -23 },
+  { step = 4, voice = "snare", delta_velocity = -69 },
+  { step = 5, voice = "kick", delta_velocity = -26 },
+  { step = 5, voice = "ride", delta_velocity = -15 },
+  { step = 5, voice = "snare", delta_velocity = -71 },
+  { step = 6, voice = "kick", delta_velocity = -14 },
+  { step = 6, voice = "ride", delta_velocity = 17 },
+  { step = 7, voice = "pedal", delta_velocity = -33 },
+  { step = 7, voice = "ride", delta_velocity = -24 },
+  { step = 7, voice = "snare", delta_velocity = -5, probability = 0.33 },
+  { step = 8, voice = "kick", delta_velocity = -8 },
+  { step = 8, voice = "ride", delta_velocity = -18 },
+  { step = 9, voice = "pedal", delta_velocity = 4 },
+  { step = 9, voice = "ride", delta_velocity = 17 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 10, voice = "kick", delta_velocity = -22, probability = 0.44 },
+  { step = 10, voice = "ride", delta_velocity = -19 },
+  { step = 10, voice = "snare", delta_velocity = -24 },
+  { step = 11, voice = "kick", delta_velocity = -24 },
+  { step = 11, voice = "ride", delta_velocity = 1 },
+  { step = 11, voice = "snare", delta_velocity = 1 },
+]
+
+# 14 : ride:sixteenths
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 18
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 7 },
+  { step = 0, voice = "ride", delta_velocity = 29 },
+  { step = 1, voice = "ride", delta_velocity = -35 },
+  { step = 1, voice = "snare", delta_velocity = -67, probability = 0.22 },
+  { step = 2, voice = "kick", delta_velocity = -9 },
+  { step = 2, voice = "ride", delta_velocity = -20 },
+  { step = 2, voice = "snare", delta_velocity = -73 },
+  { step = 3, voice = "pedal", delta_velocity = -2 },
+  { step = 3, voice = "ride", delta_velocity = 38 },
+  { step = 3, voice = "sidestick", delta_velocity = 5, probability = 0.11 },
+  { step = 3, voice = "snare", delta_velocity = 31 },
+  { step = 4, voice = "kick", delta_velocity = -24, probability = 0.11 },
+  { step = 4, voice = "pedal", delta_velocity = -41 },
+  { step = 4, voice = "ride", delta_velocity = -23 },
+  { step = 4, voice = "snare", delta_velocity = -69 },
+  { step = 5, voice = "kick", delta_velocity = -26 },
+  { step = 5, voice = "ride", delta_velocity = -15 },
+  { step = 5, voice = "snare", delta_velocity = -71 },
+  { step = 6, voice = "kick", delta_velocity = -14 },
+  { step = 6, voice = "ride", delta_velocity = 17 },
+  { step = 7, voice = "pedal", delta_velocity = -33 },
+  { step = 7, voice = "ride", delta_velocity = -24 },
+  { step = 7, voice = "snare", delta_velocity = -5, probability = 0.33 },
+  { step = 8, voice = "kick", delta_velocity = -8 },
+  { step = 8, voice = "ride", delta_velocity = -18 },
+  { step = 8, voice = "snare", delta_velocity = -80, probability = 0.17 },
+  { step = 9, voice = "kick", delta_velocity = -12, probability = 0.11 },
+  { step = 9, voice = "pedal", delta_velocity = 4 },
+  { step = 9, voice = "ride", delta_velocity = 17 },
+  { step = 9, voice = "sidestick", delta_velocity = 2, probability = 0.11 },
+  { step = 9, voice = "snare", delta_velocity = 31 },
+  { step = 10, voice = "kick", delta_velocity = -22, probability = 0.44 },
+  { step = 10, voice = "ride", delta_velocity = -19 },
+  { step = 10, voice = "snare", delta_velocity = -24 },
+  { step = 11, voice = "kick", delta_velocity = -24 },
+  { step = 11, voice = "ride", delta_velocity = 1 },
+  { step = 11, voice = "snare", delta_velocity = 1 },
+]
+
+# 15 : hat_closed:eighths
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 8
+hits = [
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 2, voice = "hat", delta_velocity = -25 },
+  { step = 3, voice = "hat", delta_velocity = 20 },
+  { step = 5, voice = "hat", delta_velocity = -36 },
+  { step = 6, voice = "hat", delta_velocity = 45 },
+  { step = 8, voice = "hat", delta_velocity = -32 },
+  { step = 9, voice = "hat", delta_velocity = 30 },
+  { step = 11, voice = "hat", delta_velocity = -28 },
+]
+
+# 16 : hat_closed:eighths
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 8
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 24 },
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 1, voice = "snare", delta_velocity = -63 },
+  { step = 2, voice = "kick", delta_velocity = 27 },
+  { step = 2, voice = "hat", delta_velocity = -25 },
+  { step = 2, voice = "snare", delta_velocity = -77, probability = 0.25 },
+  { step = 3, voice = "hat", delta_velocity = 20 },
+  { step = 4, voice = "snare", delta_velocity = -58 },
+  { step = 5, voice = "kick", delta_velocity = 9 },
+  { step = 5, voice = "hat", delta_velocity = -36 },
+  { step = 6, voice = "hat", delta_velocity = 45 },
+  { step = 6, voice = "snare", delta_velocity = 31 },
+  { step = 8, voice = "hat", delta_velocity = -32 },
+  { step = 9, voice = "hat", delta_velocity = 30 },
+  { step = 10, voice = "snare", delta_velocity = -56 },
+  { step = 11, voice = "kick", delta_velocity = -8 },
+  { step = 11, voice = "hat", delta_velocity = -28 },
+  { step = 11, voice = "snare", delta_velocity = -55 },
+]
+
+# 17 : hat_closed:eighths
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 8
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 24 },
+  { step = 0, voice = "hat", delta_velocity = 13 },
+  { step = 1, voice = "snare", delta_velocity = -63 },
+  { step = 2, voice = "kick", delta_velocity = 27 },
+  { step = 2, voice = "hat", delta_velocity = -25 },
+  { step = 2, voice = "snare", delta_velocity = -77, probability = 0.25 },
+  { step = 3, voice = "hat", delta_velocity = 20 },
+  { step = 4, voice = "snare", delta_velocity = -58 },
+  { step = 5, voice = "kick", delta_velocity = 9 },
+  { step = 5, voice = "hat", delta_velocity = -36 },
+  { step = 6, voice = "hat", delta_velocity = 45 },
+  { step = 6, voice = "snare", delta_velocity = 31 },
+  { step = 8, voice = "kick", probability = 0.12 },
+  { step = 8, voice = "hat", delta_velocity = -32 },
+  { step = 9, voice = "hat", delta_velocity = 30 },
+  { step = 9, voice = "snare", delta_velocity = 31, probability = 0.12 },
+  { step = 10, voice = "snare", delta_velocity = -56 },
+  { step = 11, voice = "kick", delta_velocity = -8 },
+  { step = 11, voice = "hat", delta_velocity = -28 },
+  { step = 11, voice = "snare", delta_velocity = -55 },
+]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 17
+patterns = [0, 0]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 17
+patterns = [1, 1]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 17
+patterns = [2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 9
+patterns = [6, 6]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 9
+patterns = [7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 9
+patterns = [8, 8]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+patterns = [4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+patterns = [5, 5]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 4
+patterns = [12, 12]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 4
+patterns = [13, 13]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 4
+patterns = [14, 14]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 4
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 4
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 4
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 3
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 3
+patterns = [7, 7, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 3
+patterns = [8, 8, 8, 8]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 18
+patterns = [9, 9, 9, 9]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 18
+patterns = [10, 10, 10, 10]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 18
+patterns = [11, 11, 11, 11]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 8
+patterns = [15, 15, 15, 15]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 8
+patterns = [16, 16, 16, 16]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 8
+patterns = [17, 17, 17, 17]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 15
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 13 },
+    { step = 1, voice = "snare", delta_velocity = -30 },
+    { step = 2, voice = "snare", delta_velocity = -16 },
+    { step = 3, voice = "snare", delta_velocity = -27 },
+    { step = 4, voice = "snare", delta_velocity = -22 },
+    { step = 4, voice = "tom_high", delta_velocity = -18 },
+    { step = 5, voice = "snare", delta_velocity = -16 },
+    { step = 5, voice = "tom_high", delta_velocity = -15 },
+    { step = 6, voice = "snare", delta_velocity = -8 },
+    { step = 6, voice = "tom_high", delta_velocity = -20 },
+    { step = 6, voice = "tom_low", delta_velocity = -13 },
+    { step = 7, voice = "snare", delta_velocity = -34 },
+    { step = 7, voice = "tom_high", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = -31 },
+    { step = 8, voice = "tom_high", delta_velocity = -14 },
+    { step = 8, voice = "tom_low", delta_velocity = -11 },
+    { step = 9, voice = "snare", delta_velocity = 2 },
+    { step = 9, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "tom_low", delta_velocity = 2 },
+    { step = 10, voice = "snare", delta_velocity = 16 },
+    { step = 10, voice = "tom_high", delta_velocity = 9 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 15
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 13 },
+    { step = 1, voice = "snare", delta_velocity = -30 },
+    { step = 2, voice = "snare", delta_velocity = -16 },
+    { step = 3, voice = "snare", delta_velocity = -27 },
+    { step = 4, voice = "snare", delta_velocity = -22 },
+    { step = 4, voice = "tom_high", delta_velocity = -18 },
+    { step = 5, voice = "snare", delta_velocity = -16 },
+    { step = 5, voice = "tom_high", delta_velocity = -15 },
+    { step = 6, voice = "snare", delta_velocity = -8 },
+    { step = 6, voice = "tom_high", delta_velocity = -20 },
+    { step = 6, voice = "tom_low", delta_velocity = -13 },
+    { step = 7, voice = "snare", delta_velocity = -34 },
+    { step = 7, voice = "tom_high", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = -31 },
+    { step = 8, voice = "tom_high", delta_velocity = -14 },
+    { step = 8, voice = "tom_low", delta_velocity = -11 },
+    { step = 9, voice = "snare", delta_velocity = 2 },
+    { step = 9, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "tom_low", delta_velocity = 2 },
+    { step = 10, voice = "snare", delta_velocity = 16 },
+    { step = 10, voice = "tom_high", delta_velocity = 9 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 5
+start_step = 3
+bars = [
+  { hits = [
+    { step = 3, voice = "snare", delta_velocity = -60 },
+    { step = 4, voice = "kick", delta_velocity = -1 },
+    { step = 4, voice = "snare", delta_velocity = -48 },
+    { step = 5, voice = "snare", delta_velocity = -25 },
+    { step = 6, voice = "sidestick", delta_velocity = 2 },
+    { step = 6, voice = "snare", delta_velocity = 17 },
+    { step = 7, voice = "snare", delta_velocity = 25 },
+    { step = 10, voice = "tom_high", delta_velocity = 28 },
+    { step = 11, voice = "snare", delta_velocity = 11 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 5
+start_step = 3
+bars = [
+  { hits = [
+    { step = 3, voice = "snare", delta_velocity = -60 },
+    { step = 4, voice = "kick", delta_velocity = -1 },
+    { step = 4, voice = "snare", delta_velocity = -48 },
+    { step = 5, voice = "snare", delta_velocity = -25 },
+    { step = 6, voice = "sidestick", delta_velocity = 2 },
+    { step = 6, voice = "snare", delta_velocity = 17 },
+    { step = 7, voice = "snare", delta_velocity = 25 },
+    { step = 10, voice = "tom_high", delta_velocity = 28 },
+    { step = 11, voice = "snare", delta_velocity = 11 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 6
+at = "part_end"
+start_step = 9
+bars = [
+  { hits = [
+    { step = 11, voice = "snare", delta_velocity = -72 },
+  ] },
+  { hits = [
+    { step = 0, voice = "kick", delta_velocity = -3 },
+    { step = 0, voice = "snare", delta_velocity = -11 },
+    { step = 1, voice = "snare", delta_velocity = -66 },
+    { step = 2, voice = "kick", delta_velocity = 5 },
+    { step = 2, voice = "tom_high", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = 20 },
+    { step = 4, voice = "snare", delta_velocity = -75 },
+    { step = 4, voice = "tom_high", delta_velocity = 6 },
+    { step = 5, voice = "kick", delta_velocity = -8 },
+    { step = 5, voice = "snare", delta_velocity = 21 },
+    { step = 6, voice = "snare", delta_velocity = -36 },
+    { step = 6, voice = "tom_high", delta_velocity = 4 },
+    { step = 7, voice = "snare", delta_velocity = -8 },
+    { step = 8, voice = "snare", delta_velocity = 14 },
+    { step = 8, voice = "tom_high", delta_velocity = -1 },
+    { step = 8, voice = "tom_low", delta_velocity = 22 },
+    { step = 9, voice = "snare", delta_velocity = -5 },
+    { step = 9, voice = "tom_high", delta_velocity = 7 },
+    { step = 10, voice = "snare", delta_velocity = -23 },
+    { step = 11, voice = "snare", delta_velocity = -19 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 6
+at = "part_end"
+start_step = 9
+bars = [
+  { hits = [
+    { step = 11, voice = "snare", delta_velocity = -72 },
+  ] },
+  { hits = [
+    { step = 0, voice = "kick", delta_velocity = -3 },
+    { step = 0, voice = "snare", delta_velocity = -11 },
+    { step = 1, voice = "snare", delta_velocity = -66 },
+    { step = 2, voice = "kick", delta_velocity = 5 },
+    { step = 2, voice = "tom_high", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = 20 },
+    { step = 4, voice = "snare", delta_velocity = -75 },
+    { step = 4, voice = "tom_high", delta_velocity = 6 },
+    { step = 5, voice = "kick", delta_velocity = -8 },
+    { step = 5, voice = "snare", delta_velocity = 21 },
+    { step = 6, voice = "snare", delta_velocity = -36 },
+    { step = 6, voice = "tom_high", delta_velocity = 4 },
+    { step = 7, voice = "snare", delta_velocity = -8 },
+    { step = 8, voice = "snare", delta_velocity = 14 },
+    { step = 8, voice = "tom_high", delta_velocity = -1 },
+    { step = 8, voice = "tom_low", delta_velocity = 22 },
+    { step = 9, voice = "snare", delta_velocity = -5 },
+    { step = 9, voice = "tom_high", delta_velocity = 7 },
+    { step = 10, voice = "snare", delta_velocity = -23 },
+    { step = 11, voice = "snare", delta_velocity = -19 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 15
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 13 },
+    { step = 1, voice = "snare", delta_velocity = -30 },
+    { step = 2, voice = "snare", delta_velocity = -16 },
+    { step = 3, voice = "snare", delta_velocity = -27 },
+    { step = 4, voice = "snare", delta_velocity = -22 },
+    { step = 4, voice = "tom_high", delta_velocity = -18 },
+    { step = 5, voice = "snare", delta_velocity = -16 },
+    { step = 5, voice = "tom_high", delta_velocity = -15 },
+    { step = 6, voice = "snare", delta_velocity = -8 },
+    { step = 6, voice = "tom_high", delta_velocity = -20 },
+    { step = 6, voice = "tom_low", delta_velocity = -13 },
+    { step = 7, voice = "snare", delta_velocity = -34 },
+    { step = 7, voice = "tom_high", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = -31 },
+    { step = 8, voice = "tom_high", delta_velocity = -14 },
+    { step = 8, voice = "tom_low", delta_velocity = -11 },
+    { step = 9, voice = "snare", delta_velocity = 2 },
+    { step = 9, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "tom_low", delta_velocity = 2 },
+    { step = 10, voice = "snare", delta_velocity = 16 },
+    { step = 10, voice = "tom_high", delta_velocity = 9 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 15
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 13 },
+    { step = 1, voice = "snare", delta_velocity = -30 },
+    { step = 2, voice = "snare", delta_velocity = -16 },
+    { step = 3, voice = "snare", delta_velocity = -27 },
+    { step = 4, voice = "snare", delta_velocity = -22 },
+    { step = 4, voice = "tom_high", delta_velocity = -18 },
+    { step = 5, voice = "snare", delta_velocity = -16 },
+    { step = 5, voice = "tom_high", delta_velocity = -15 },
+    { step = 6, voice = "snare", delta_velocity = -8 },
+    { step = 6, voice = "tom_high", delta_velocity = -20 },
+    { step = 6, voice = "tom_low", delta_velocity = -13 },
+    { step = 7, voice = "snare", delta_velocity = -34 },
+    { step = 7, voice = "tom_high", delta_velocity = -5 },
+    { step = 8, voice = "snare", delta_velocity = -31 },
+    { step = 8, voice = "tom_high", delta_velocity = -14 },
+    { step = 8, voice = "tom_low", delta_velocity = -11 },
+    { step = 9, voice = "snare", delta_velocity = 2 },
+    { step = 9, voice = "tom_high", delta_velocity = -3 },
+    { step = 9, voice = "tom_low", delta_velocity = 2 },
+    { step = 10, voice = "snare", delta_velocity = 16 },
+    { step = 10, voice = "tom_high", delta_velocity = 9 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 5
+start_step = 3
+bars = [
+  { hits = [
+    { step = 3, voice = "snare", delta_velocity = -60 },
+    { step = 4, voice = "kick", delta_velocity = -1 },
+    { step = 4, voice = "snare", delta_velocity = -48 },
+    { step = 5, voice = "snare", delta_velocity = -25 },
+    { step = 6, voice = "sidestick", delta_velocity = 2 },
+    { step = 6, voice = "snare", delta_velocity = 17 },
+    { step = 7, voice = "snare", delta_velocity = 25 },
+    { step = 10, voice = "tom_high", delta_velocity = 28 },
+    { step = 11, voice = "snare", delta_velocity = 11 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 5
+start_step = 3
+bars = [
+  { hits = [
+    { step = 3, voice = "snare", delta_velocity = -60 },
+    { step = 4, voice = "kick", delta_velocity = -1 },
+    { step = 4, voice = "snare", delta_velocity = -48 },
+    { step = 5, voice = "snare", delta_velocity = -25 },
+    { step = 6, voice = "sidestick", delta_velocity = 2 },
+    { step = 6, voice = "snare", delta_velocity = 17 },
+    { step = 7, voice = "snare", delta_velocity = 25 },
+    { step = 10, voice = "tom_high", delta_velocity = 28 },
+    { step = 11, voice = "snare", delta_velocity = 11 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 6
+at = "part_end"
+start_step = 9
+bars = [
+  { hits = [
+    { step = 11, voice = "snare", delta_velocity = -72 },
+  ] },
+  { hits = [
+    { step = 0, voice = "kick", delta_velocity = -3 },
+    { step = 0, voice = "snare", delta_velocity = -11 },
+    { step = 1, voice = "snare", delta_velocity = -66 },
+    { step = 2, voice = "kick", delta_velocity = 5 },
+    { step = 2, voice = "tom_high", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = 20 },
+    { step = 4, voice = "snare", delta_velocity = -75 },
+    { step = 4, voice = "tom_high", delta_velocity = 6 },
+    { step = 5, voice = "kick", delta_velocity = -8 },
+    { step = 5, voice = "snare", delta_velocity = 21 },
+    { step = 6, voice = "snare", delta_velocity = -36 },
+    { step = 6, voice = "tom_high", delta_velocity = 4 },
+    { step = 7, voice = "snare", delta_velocity = -8 },
+    { step = 8, voice = "snare", delta_velocity = 14 },
+    { step = 8, voice = "tom_high", delta_velocity = -1 },
+    { step = 8, voice = "tom_low", delta_velocity = 22 },
+    { step = 9, voice = "snare", delta_velocity = -5 },
+    { step = 9, voice = "tom_high", delta_velocity = 7 },
+    { step = 10, voice = "snare", delta_velocity = -23 },
+    { step = 11, voice = "snare", delta_velocity = -19 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 6
+at = "part_end"
+start_step = 9
+bars = [
+  { hits = [
+    { step = 11, voice = "snare", delta_velocity = -72 },
+  ] },
+  { hits = [
+    { step = 0, voice = "kick", delta_velocity = -3 },
+    { step = 0, voice = "snare", delta_velocity = -11 },
+    { step = 1, voice = "snare", delta_velocity = -66 },
+    { step = 2, voice = "kick", delta_velocity = 5 },
+    { step = 2, voice = "tom_high", delta_velocity = -2 },
+    { step = 3, voice = "snare", delta_velocity = 20 },
+    { step = 4, voice = "snare", delta_velocity = -75 },
+    { step = 4, voice = "tom_high", delta_velocity = 6 },
+    { step = 5, voice = "kick", delta_velocity = -8 },
+    { step = 5, voice = "snare", delta_velocity = 21 },
+    { step = 6, voice = "snare", delta_velocity = -36 },
+    { step = 6, voice = "tom_high", delta_velocity = 4 },
+    { step = 7, voice = "snare", delta_velocity = -8 },
+    { step = 8, voice = "snare", delta_velocity = 14 },
+    { step = 8, voice = "tom_high", delta_velocity = -1 },
+    { step = 8, voice = "tom_low", delta_velocity = 22 },
+    { step = 9, voice = "snare", delta_velocity = -5 },
+    { step = 9, voice = "tom_high", delta_velocity = 7 },
+    { step = 10, voice = "snare", delta_velocity = -23 },
+    { step = 11, voice = "snare", delta_velocity = -19 },
+  ] },
+]

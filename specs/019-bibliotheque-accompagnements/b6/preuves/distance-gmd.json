@@ -1,0 +1,32 @@
+{
+  "any": {
+    "non_calibre": 0.142,
+    "profil": 0.028,
+    "sans_arc": 0.029
+  },
+  "hat": {
+    "non_calibre": 0.521,
+    "profil": 0.121,
+    "sans_arc": 0.096
+  },
+  "kick": {
+    "non_calibre": 1.0,
+    "profil": 0.076,
+    "sans_arc": 0.129
+  },
+  "moyenne": {
+    "non_calibre": 0.666,
+    "profil": 0.09,
+    "sans_arc": 0.097
+  },
+  "ride": {
+    "non_calibre": 0.46,
+    "profil": 0.148,
+    "sans_arc": 0.175
+  },
+  "snare": {
+    "non_calibre": 1.0,
+    "profil": 0.136,
+    "sans_arc": 0.135
+  }
+}
