@@ -4,7 +4,8 @@ Premier profil distribué d'accompagnement **sous une grille d'accords** : la ba
 accords (voicings, rythmes et phrases de comping) et la batterie (patterns, phrases, relances) ne
 dépendent que de l'accord publié. Il est fait pour le client externe `harmonium_training`, qui fournit sa
 grille ; sans grille, il joue des formes communes écrites pour lui (quatre blues de douze mesures, forme
-AABA de trente-deux en deux versions). Aucune mélodie : la piste `Melody` n'est pas dans l'arrangement.
+AABA de trente-deux en deux versions). Depuis E12, une mélodie jazz (saxophone ténor) tirée de statistiques
+de WJazzD joue par-dessus, coupable par `EnableMelody(false)` (voir « Mélodie »).
 
 Depuis B1 (phase 019, `TUNING_VERSION` 28) **une graine change tout ce qui s'entend** : tempo, tonalité,
 instruments, voicings, kit, arc sur quatre chorus (`session.toml`, A2 et A3). Voir « Habillage par graine ».
@@ -164,6 +165,29 @@ ni `eighths`, mêmes poids de basse) :
 
 Par tranche de tempo de WJazzD (moyenne) : < 130 BPM 0,141 ; 130-175 0,153 ; 175-235 0,160 ; ≥ 235 0,182
 (avant : 0,217 / 0,234 / 0,248 / 0,274). Contrôle de la calibration d'A4 sur ce profil : aucune perte.
+
+## Mélodie (E12, `TUNING_VERSION` 32)
+
+La piste `Melody` joue dès le premier chorus (saxophone ténor, programme 66 de GeneralUser GS) ;
+`EnableMelody(false)` la coupe, pour l'improvisation de training. `cells.toml` (213 cellules, six rôles :
+`open`, `run`, `arp`, `turn`, `cad_half`, `cad_full`) est **synthétisé** par le labo depuis des statistiques
+agrégées des solos swing de WJazzD (rythmes en croches, pas diatoniques, cibles sur les temps, cadences,
+longueur des phrases) ; aucune phrase de solo n'est copiée, et toute cellule qui contiendrait une suite de
+6 notes (pas et durées) ou de 7 notes (pas) d'un solo est refusée à la génération (ODbL 1.0 §4.3, usage A ;
+`harmonium_lab/references/wjazzd-melodie/README.md`).
+
+| Paramètre | Valeur | Source |
+|---|---|---|
+| Phrases de quatre mesures | `Open`, trois libres dont `CadHalf` (m.4), reprise, `CadFull` (fin de A et du blues), `CadHalf` (fin de B) | règle de métier |
+| Poids des rôles libres | conjoint 21, arpège 6, broderie 16 | parts des mesures ni ouvrantes ni cadentielles (26 086 mesures) |
+| Registre | centre 65, tessiture 53..77 | centiles 50, 5 et 95 des hauteurs des solos |
+| Niveaux E10 | au moins 4 cellules par rôle aux niveaux 1, 2 et 3 | les 3 niveaux de référence respectent leurs bornes sur 8 graines |
+
+Sous une grille le moteur (modèle `loop`) ramène chaque note à la note d'accord la plus proche : la ligne
+n'a ni note de passage ni approche chromatique, et la banque est choisie pour que l'effondrement ne la
+réduise pas à des notes répétées (8 % de répétitions, 7 % au corpus, 39 % pour l'ancien bouche-trou).
+Distance au corpus (intervalles, rythme, accord, registre, phrasé) 0,435 → 0,321 ; limites (phrasé sans
+silence, tout-accord) dans `specs/019-bibliotheque-accompagnements/e12-melodie-jazz.md`.
 
 ## Limites
 

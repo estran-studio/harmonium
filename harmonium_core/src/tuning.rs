@@ -10,14 +10,16 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : 30 réunit R2-jeux (019, réservée 27 : habillages par graine, arcs et
+/// Version du contrat : 32 ajoute E12 (019, réservée 32 : mélodie jazz de `wjazzd_swing`, banque de
+/// cellules synthétisée depuis des statistiques de la Weimar Jazz Database, rôles de phrase, registre
+/// des solos ; les autres profils gardent leurs notes). 30 réunit R2-jeux (019, réservée 27 : habillages par graine, arcs et
 /// phrases des cinq profils de jeu ; `isaac_cellar` reçoit aussi des boucles générées et pédales
 /// alternatives) et B1 (019, réservée 28 : `wjazzd_swing` habillé par graine), fusionnées après
 /// R2-styles (29 : les neuf profils `gmd_*` habillés par graine, micro-timing par voix et coups
 /// probabilistes). S0 (26) tire la graine d'accompagnement une fois par air après la mélodie ;
 /// R1 (25) intègre P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et
 /// `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 30;
+pub const TUNING_VERSION: u32 = 32;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
