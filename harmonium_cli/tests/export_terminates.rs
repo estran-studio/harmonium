@@ -8,11 +8,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Largement au-dessus du temps de rendu d'un export (quelques dizaines de secondes en debug, au
-/// plus un export par cœur, pendant le reste de la suite) : un dépassement est un blocage. Le délai
-/// court depuis le lancement de chaque export, pour que le nombre de profils distribués ne change
-/// pas ce que le test mesure.
-const MAX_EXPORT: Duration = Duration::from_secs(300);
+/// Un blocage (BUG1) ne se termine jamais ; un export lent finit. Mesuré en debug sur 8 cœurs peu
+/// chargés (2026-11-04) : 44 s pour `reel_quebecois`, 94 s pour `gmd_rock`, 169 s avec automation
+/// (profils habillés : session, arc, phrases). Au plus un export par cœur, pendant le reste de la
+/// suite : 900 s par export, compté depuis son lancement, laisse la marge d'une CI lente sans
+/// dépendre du nombre de profils distribués.
+const MAX_EXPORT: Duration = Duration::from_secs(900);
 const BARS: usize = 200;
 
 fn scratch_dir(name: &str) -> std::io::Result<PathBuf> {
