@@ -1,0 +1,10 @@
+{
+  "commande": "python3 specs/019-bibliotheque-accompagnements/b3/gmd_afrocuban_mix.py --out specs/019-bibliotheque-accompagnements/b3/gmd_afrocuban_mix.json --measure-only (depuis ~/Project/bascanada/harmonium)",
+  "graines": [1, 2],
+  "mesures": 48,
+  "lufs_solo": {"Chords": -26.1, "Bass": -25.4, "PercussionLow": -29.4, "PercussionHigh": -27.8, "kit_somme_en_puissance": -25.5},
+  "cibles": {"Chords": -26.0, "Bass": -25.0, "kit": -25.5, "mix": "-21 à -22"},
+  "mix_lufs": -21.3,
+  "crete_vraie_dbfs": -4.3,
+  "niveaux_de_piste_db": {"Chords": -16.9, "Bass": -19.1, "PercussionLow": -10.4, "PercussionHigh": -10.4, "master_db": 25.0}
+}

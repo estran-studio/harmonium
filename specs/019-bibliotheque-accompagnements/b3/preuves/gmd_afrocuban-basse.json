@@ -1,0 +1,50 @@
+{
+  "profile": "gmd_afrocuban",
+  "mesures_lues": 762,
+  "temps_avec_basse_active": 2230,
+  "changements_sans_basse_active_exclus": 0,
+  "arrivees_comparees": 285,
+  "approches_comparees": 232,
+  "registre_basse_p1_p50_p99": [
+    36.0,
+    41.0,
+    46.0
+  ],
+  "registre_WJazzD_LATIN_p1_p50_p99": [
+    31.0,
+    40.0,
+    50.0
+  ],
+  "etendue_basse": [
+    35,
+    46
+  ],
+  "etendue_WJazzD_LATIN": [
+    28,
+    53
+  ],
+  "arrivee_sur_la_basse_au_changement": 1.0,
+  "arrivee_WJazzD_LATIN": 0.5711,
+  "approche_a_un_demi_ton_avant_changement_a_la_barre": 0.155,
+  "approche_a_deux_demi_tons": 0.25,
+  "approche_autre": 0.595,
+  "limite_approche": "Distances de hauteur au temps 4 ; deux demi-tons n'implique pas un degré diatonique. Aucun score agrégé.",
+  "approche_WJazzD_LATIN_chromatique_diatonique_aucune": [
+    0.2158,
+    0.1851,
+    0.5992
+  ],
+  "changement_au_temps_3": 0.0,
+  "changement_au_temps_3_WJazzD_LATIN": 0.1514,
+  "mesures_a_un_accord": 1.0,
+  "mesures_a_un_accord_WJazzD_LATIN": 0.8688,
+  "tempo_min_max": [
+    105.0,
+    128.0
+  ],
+  "tempo_WJazzD_LATIN_p10_p50_p90": [
+    103.96,
+    152.7,
+    227.54
+  ]
+}

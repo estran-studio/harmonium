@@ -1,0 +1,236 @@
+{
+  "arc_et_orchestration": {
+    "gmd_afrocuban (livré)": {
+      "densite_etendue": 0.525,
+      "densite_notes_par_mesure": [
+        31.3711,
+        50.9453,
+        51.1758,
+        29.7583
+      ],
+      "orchestration_programmes": {
+        "0": [
+          0
+        ],
+        "1": [
+          0,
+          4,
+          24
+        ],
+        "2": [
+          32,
+          33,
+          35
+        ],
+        "9": [
+          128000,
+          128008,
+          128016,
+          128032,
+          128040
+        ]
+      },
+      "velocite": [
+        55.858,
+        58.0861,
+        58.174,
+        54.0376
+      ],
+      "velocite_etendue": 0.073
+    },
+    "gmd_afrocuban sans session.toml (l'« avant »)": {
+      "densite_etendue": 0.518,
+      "densite_notes_par_mesure": [
+        31.8398,
+        51.2734,
+        51.043,
+        30.0167
+      ],
+      "orchestration_programmes": {
+        "0": [
+          0
+        ],
+        "1": [
+          0
+        ],
+        "2": [
+          32
+        ],
+        "9": [
+          128000
+        ]
+      },
+      "velocite": [
+        55.7166,
+        57.6065,
+        57.6492,
+        53.4207
+      ],
+      "velocite_etendue": 0.075
+    },
+    "wjazzd_swing (V0 remesuré)": {
+      "densite_etendue": 0.016,
+      "densite_notes_par_mesure": [
+        19.517,
+        19.5511,
+        19.3352,
+        19.6453
+      ],
+      "orchestration_programmes": {
+        "0": [
+          0
+        ],
+        "1": [
+          0
+        ],
+        "2": [
+          32
+        ],
+        "9": [
+          128032
+        ]
+      },
+      "velocite": [
+        69.9494,
+        69.9365,
+        70.0822,
+        69.8677
+      ],
+      "velocite_etendue": 0.003
+    }
+  },
+  "couches": {
+    "gmd_afrocuban (livré)": {
+      "accompagnement": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.749,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 1.0,
+        "intra_paires_identiques": 0.0
+      },
+      "accords": {
+        "chorus_distincts_par_graine": 1.0,
+        "inter_distance_graduee": 0.765,
+        "inter_suites_distinctes": 5,
+        "intra_mesures_changees": 0.0,
+        "intra_paires_identiques": 1.0
+      },
+      "basse": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.908,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.491,
+        "intra_paires_identiques": 0.0
+      },
+      "batterie": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.451,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 1.0,
+        "intra_paires_identiques": 0.0
+      },
+      "comping : rythme": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.621,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.88,
+        "intra_paires_identiques": 0.0
+      },
+      "comping : voicings": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.989,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.866,
+        "intra_paires_identiques": 0.0
+      }
+    },
+    "gmd_afrocuban sans session.toml (l'« avant »)": {
+      "accompagnement": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.736,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 1.0,
+        "intra_paires_identiques": 0.0
+      },
+      "accords": {
+        "chorus_distincts_par_graine": 1.0,
+        "inter_distance_graduee": 0.764,
+        "inter_suites_distinctes": 5,
+        "intra_mesures_changees": 0.0,
+        "intra_paires_identiques": 1.0
+      },
+      "basse": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.905,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.464,
+        "intra_paires_identiques": 0.0
+      },
+      "batterie": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.445,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 1.0,
+        "intra_paires_identiques": 0.0
+      },
+      "comping : rythme": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.611,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.839,
+        "intra_paires_identiques": 0.0
+      },
+      "comping : voicings": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.949,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.824,
+        "intra_paires_identiques": 0.0
+      }
+    },
+    "wjazzd_swing (V0 remesuré)": {
+      "accompagnement": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.384,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.992,
+        "intra_paires_identiques": 0.0
+      },
+      "accords": {
+        "chorus_distincts_par_graine": 1.0,
+        "inter_distance_graduee": 0.0,
+        "inter_suites_distinctes": 1,
+        "intra_mesures_changees": 0.0,
+        "intra_paires_identiques": 1.0
+      },
+      "basse": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.591,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.919,
+        "intra_paires_identiques": 0.0
+      },
+      "batterie": {
+        "chorus_distincts_par_graine": 1.0,
+        "inter_distance_graduee": 0.187,
+        "inter_suites_distinctes": 11,
+        "intra_mesures_changees": 0.0,
+        "intra_paires_identiques": 1.0
+      },
+      "comping : rythme": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.681,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.805,
+        "intra_paires_identiques": 0.0
+      },
+      "comping : voicings": {
+        "chorus_distincts_par_graine": 4.0,
+        "inter_distance_graduee": 0.458,
+        "inter_suites_distinctes": 16,
+        "intra_mesures_changees": 0.744,
+        "intra_paires_identiques": 0.0
+      }
+    }
+  }
+}

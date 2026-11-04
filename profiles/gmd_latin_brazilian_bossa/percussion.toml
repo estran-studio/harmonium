@@ -1,0 +1,588 @@
+# Batterie du profil `gmd_latin_brazilian_bossa` : GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b3/gmd_latin_brazilian_bossa_generer.py` (labo en lecture seule) :
+#   cd ~/Project/bascanada/harmonium_lab && .venv/bin/python <worktree>/specs/019-bibliotheque-accompagnements/b3/gmd_latin_brazilian_bossa_generer.py --out <worktree>/profiles/gmd_latin_brazilian_bossa
+# Source : Groove MIDI Dataset v1.0.0, style latin/brazilian-bossa : 2 fichiers beat, 1 batteur (drummer5), 631 mesures, 127 BPM,
+# fiabilité « trop peu » (L2). CC BY 4.0, Gillick, Roberts, Engel, Eck, Bamman, « Learning to Groove with Inverse Sequence
+# Transformations », ICML 2019 ; Google LLC. Agrégats par pas seulement : aucune mesure d'un enregistrement n'est copiée.
+# MESURÉ : trois groupes de mesures (ride en croches 244, ride en noires plus 46, charleston fermé en croches 21), probabilités par pas
+# de la grosse caisse [0, 6, 8, 14], de la pédale (temps 2 et 4), du timekeeper, du cross-stick et de la caisse claire (coups
+# probabilistes), forme des accents. Seuils : d0 timekeeper ≥ 0,5, grosse caisse et pédale ≥ 0,75 ; d1 tout ≥ 0,5, plus grosse
+# caisse fantôme et cross-stick ≥ 0,15 à leur probabilité mesurée ; d2 plus caisse claire ≥ 0,2 et tom médium ≥ 0,1 probabilistes.
+# DE MÉTIER (aucune mesure) : niveau de service de chaque voix (kit GM de GeneralUser GS, pas un TD-11 ; calé sur le LUFS en solo,
+# voir README), shaker GM (densité 2),
+# 9 phrases « groove tenu » 2 et 4 mesures (aucune suite vue assez de fois), toutes les relances (le GMD n'a aucun
+# fichier fill bossa). Le GMD n'a aucune percussion latine : le kit seul est mesuré.
+low_note = 36
+high_note = 37
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 2
+# Poids de « pas de relance » à une fin de phrase : valeur de service (aucun fichier fill dans la source).
+fills_none_weight = 8
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 47
+track = "PercussionLow"
+
+[[voices]]
+name = "sidestick"
+note = 37
+velocity = 96
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 60
+track = "PercussionHigh"
+
+[[voices]]
+name = "hat"
+note = 42
+velocity = 80
+track = "PercussionHigh"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 78
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 86
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom_mid"
+note = 47
+velocity = 65
+track = "PercussionHigh"
+
+[[voices]]
+name = "shaker"
+note = 82
+velocity = 39
+track = "PercussionHigh"
+
+# 0 : groupe charleston_croches (21 mesures), densité 0
+[[patterns]]
+density = 0
+tag = "hat"
+weight = 21
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 16 },
+  { step = 0, voice = "hat", delta_velocity = -25 },
+  { step = 2, voice = "hat", delta_velocity = 32 },
+  { step = 4, voice = "hat", delta_velocity = -15 },
+  { step = 4, voice = "pedal", delta_velocity = -6 },
+  { step = 6, voice = "kick", delta_velocity = 10 },
+  { step = 6, voice = "hat", delta_velocity = -8 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "hat" },
+  { step = 10, voice = "hat", delta_velocity = 25 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+  { step = 12, voice = "pedal", delta_velocity = -9 },
+  { step = 14, voice = "kick", delta_velocity = 10 },
+  { step = 14, voice = "hat", delta_velocity = -5 },
+]
+
+# 1 : groupe charleston_croches (21 mesures), densité 1
+[[patterns]]
+density = 1
+tag = "hat"
+weight = 21
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 16 },
+  { step = 0, voice = "hat", delta_velocity = -25 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.286 },
+  { step = 2, voice = "hat", delta_velocity = 32 },
+  { step = 2, voice = "sidestick", delta_velocity = -5, probability = 0.381 },
+  { step = 4, voice = "hat", delta_velocity = -15 },
+  { step = 4, voice = "pedal", delta_velocity = -6 },
+  { step = 6, voice = "kick", delta_velocity = 10 },
+  { step = 6, voice = "hat", delta_velocity = -8 },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "hat" },
+  { step = 8, voice = "sidestick", delta_velocity = -12, probability = 0.19 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.286 },
+  { step = 10, voice = "hat", delta_velocity = 25 },
+  { step = 10, voice = "sidestick", delta_velocity = 9, probability = 0.286 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+  { step = 12, voice = "pedal", delta_velocity = -9 },
+  { step = 14, voice = "kick", delta_velocity = 10 },
+  { step = 14, voice = "hat", delta_velocity = -5 },
+]
+
+# 2 : groupe charleston_croches (21 mesures), densité 2
+[[patterns]]
+density = 2
+tag = "hat"
+weight = 21
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 16 },
+  { step = 0, voice = "hat", delta_velocity = -25 },
+  { step = 0, voice = "shaker", delta_velocity = -8 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.286 },
+  { step = 2, voice = "hat", delta_velocity = 32 },
+  { step = 2, voice = "shaker" },
+  { step = 2, voice = "sidestick", delta_velocity = -5, probability = 0.381 },
+  { step = 2, voice = "snare", probability = 0.6 },
+  { step = 2, voice = "tom_mid", delta_velocity = -25, probability = 0.143 },
+  { step = 4, voice = "hat", delta_velocity = -15 },
+  { step = 4, voice = "pedal", delta_velocity = -6 },
+  { step = 4, voice = "shaker", delta_velocity = -8 },
+  { step = 6, voice = "kick", delta_velocity = 10 },
+  { step = 6, voice = "hat", delta_velocity = -8 },
+  { step = 6, voice = "shaker" },
+  { step = 8, voice = "kick", delta_velocity = 14 },
+  { step = 8, voice = "hat" },
+  { step = 8, voice = "shaker", delta_velocity = -8 },
+  { step = 8, voice = "sidestick", delta_velocity = -12, probability = 0.19 },
+  { step = 8, voice = "snare", delta_velocity = -4, probability = 0.238 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.286 },
+  { step = 10, voice = "hat", delta_velocity = 25 },
+  { step = 10, voice = "shaker" },
+  { step = 10, voice = "sidestick", delta_velocity = 9, probability = 0.286 },
+  { step = 10, voice = "snare", delta_velocity = -27, probability = 0.429 },
+  { step = 12, voice = "hat", delta_velocity = 10 },
+  { step = 12, voice = "pedal", delta_velocity = -9 },
+  { step = 12, voice = "shaker", delta_velocity = -8 },
+  { step = 12, voice = "snare", delta_velocity = -11, probability = 0.238 },
+  { step = 14, voice = "kick", delta_velocity = 10 },
+  { step = 14, voice = "hat", delta_velocity = -5 },
+  { step = 14, voice = "shaker" },
+  { step = 14, voice = "snare", delta_velocity = -27, probability = 0.238 },
+]
+
+# 3 : groupe ride_croches (244 mesures), densité 0
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 244
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 3 },
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 2, voice = "ride", delta_velocity = 14 },
+  { step = 4, voice = "pedal", delta_velocity = 8 },
+  { step = 4, voice = "ride", delta_velocity = 5 },
+  { step = 6, voice = "kick", delta_velocity = -3 },
+  { step = 6, voice = "ride", delta_velocity = -13 },
+  { step = 8, voice = "kick", delta_velocity = 5 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 10, voice = "ride", delta_velocity = 25 },
+  { step = 12, voice = "pedal", delta_velocity = 8 },
+  { step = 12, voice = "ride", delta_velocity = -5 },
+  { step = 14, voice = "kick" },
+  { step = 14, voice = "ride", delta_velocity = -4 },
+]
+
+# 4 : groupe ride_croches (244 mesures), densité 1
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 244
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 3 },
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 0, voice = "sidestick", delta_velocity = -2, probability = 0.164 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.492 },
+  { step = 2, voice = "ride", delta_velocity = 14 },
+  { step = 2, voice = "sidestick", delta_velocity = -2, probability = 0.254 },
+  { step = 4, voice = "pedal", delta_velocity = 8 },
+  { step = 4, voice = "ride", delta_velocity = 5 },
+  { step = 4, voice = "sidestick", delta_velocity = 2, probability = 0.287 },
+  { step = 6, voice = "kick", delta_velocity = -3 },
+  { step = 6, voice = "ride", delta_velocity = -13 },
+  { step = 8, voice = "kick", delta_velocity = 5 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 8, voice = "sidestick", delta_velocity = -7, probability = 0.156 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.316 },
+  { step = 10, voice = "ride", delta_velocity = 25 },
+  { step = 10, voice = "sidestick", delta_velocity = -2, probability = 0.258 },
+  { step = 12, voice = "pedal", delta_velocity = 8 },
+  { step = 12, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "sidestick", probability = 0.213 },
+  { step = 14, voice = "kick" },
+  { step = 14, voice = "ride", delta_velocity = -4 },
+]
+
+# 5 : groupe ride_croches (244 mesures), densité 2
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 244
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 3 },
+  { step = 0, voice = "ride", delta_velocity = -5 },
+  { step = 0, voice = "shaker", delta_velocity = -8 },
+  { step = 0, voice = "sidestick", delta_velocity = -2, probability = 0.164 },
+  { step = 0, voice = "snare", delta_velocity = -27, probability = 0.254 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.492 },
+  { step = 2, voice = "ride", delta_velocity = 14 },
+  { step = 2, voice = "shaker" },
+  { step = 2, voice = "sidestick", delta_velocity = -2, probability = 0.254 },
+  { step = 2, voice = "snare", delta_velocity = -24, probability = 0.336 },
+  { step = 4, voice = "pedal", delta_velocity = 8 },
+  { step = 4, voice = "ride", delta_velocity = 5 },
+  { step = 4, voice = "shaker", delta_velocity = -8 },
+  { step = 4, voice = "sidestick", delta_velocity = 2, probability = 0.287 },
+  { step = 4, voice = "snare", delta_velocity = -27, probability = 0.332 },
+  { step = 6, voice = "kick", delta_velocity = -3 },
+  { step = 6, voice = "ride", delta_velocity = -13 },
+  { step = 6, voice = "shaker" },
+  { step = 8, voice = "kick", delta_velocity = 5 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 8, voice = "shaker", delta_velocity = -8 },
+  { step = 8, voice = "sidestick", delta_velocity = -7, probability = 0.156 },
+  { step = 8, voice = "snare", delta_velocity = -27, probability = 0.201 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.316 },
+  { step = 10, voice = "ride", delta_velocity = 25 },
+  { step = 10, voice = "shaker" },
+  { step = 10, voice = "sidestick", delta_velocity = -2, probability = 0.258 },
+  { step = 10, voice = "snare", delta_velocity = 19, probability = 0.352 },
+  { step = 12, voice = "pedal", delta_velocity = 8 },
+  { step = 12, voice = "ride", delta_velocity = -5 },
+  { step = 12, voice = "shaker", delta_velocity = -8 },
+  { step = 12, voice = "sidestick", probability = 0.213 },
+  { step = 12, voice = "snare", delta_velocity = -27, probability = 0.287 },
+  { step = 14, voice = "kick" },
+  { step = 14, voice = "ride", delta_velocity = -4 },
+  { step = 14, voice = "shaker" },
+  { step = 14, voice = "snare", delta_velocity = -27, probability = 0.217 },
+]
+
+# 6 : groupe ride_noires (46 mesures), densité 0
+[[patterns]]
+density = 0
+tag = "ride"
+weight = 46
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 10 },
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 4, voice = "pedal", delta_velocity = 13 },
+  { step = 4, voice = "ride", delta_velocity = 32 },
+  { step = 6, voice = "kick", delta_velocity = -2 },
+  { step = 6, voice = "ride", delta_velocity = -11 },
+  { step = 8, voice = "kick", delta_velocity = 7 },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 10, voice = "ride", delta_velocity = 27 },
+  { step = 12, voice = "pedal", delta_velocity = 13 },
+  { step = 12, voice = "ride", delta_velocity = 16 },
+  { step = 14, voice = "kick", delta_velocity = 2 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+# 7 : groupe ride_noires (46 mesures), densité 1
+[[patterns]]
+density = 1
+tag = "ride"
+weight = 46
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 10 },
+  { step = 0, voice = "pedal", delta_velocity = -35 },
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 0, voice = "sidestick", delta_velocity = -5, probability = 0.217 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.348 },
+  { step = 4, voice = "pedal", delta_velocity = 13 },
+  { step = 4, voice = "ride", delta_velocity = 32 },
+  { step = 4, voice = "sidestick", delta_velocity = 23, probability = 0.478 },
+  { step = 6, voice = "kick", delta_velocity = -2 },
+  { step = 6, voice = "ride", delta_velocity = -11 },
+  { step = 8, voice = "kick", delta_velocity = 7 },
+  { step = 8, voice = "pedal", delta_velocity = -35 },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.348 },
+  { step = 10, voice = "ride", delta_velocity = 27 },
+  { step = 10, voice = "sidestick", delta_velocity = 12, probability = 0.283 },
+  { step = 12, voice = "pedal", delta_velocity = 13 },
+  { step = 12, voice = "ride", delta_velocity = 16 },
+  { step = 12, voice = "sidestick", delta_velocity = 31, probability = 0.217 },
+  { step = 14, voice = "kick", delta_velocity = 2 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.217 },
+]
+
+# 8 : groupe ride_noires (46 mesures), densité 2
+[[patterns]]
+density = 2
+tag = "ride"
+weight = 46
+hits = [
+  { step = 0, voice = "kick", delta_velocity = 10 },
+  { step = 0, voice = "pedal", delta_velocity = -35 },
+  { step = 0, voice = "ride", delta_velocity = 34 },
+  { step = 0, voice = "shaker", delta_velocity = -8 },
+  { step = 0, voice = "sidestick", delta_velocity = -5, probability = 0.217 },
+  { step = 0, voice = "snare", delta_velocity = -2, probability = 0.261 },
+  { step = 1, voice = "kick", delta_velocity = -21, probability = 0.348 },
+  { step = 2, voice = "shaker" },
+  { step = 4, voice = "pedal", delta_velocity = 13 },
+  { step = 4, voice = "ride", delta_velocity = 32 },
+  { step = 4, voice = "shaker", delta_velocity = -8 },
+  { step = 4, voice = "sidestick", delta_velocity = 23, probability = 0.478 },
+  { step = 4, voice = "snare", delta_velocity = -6, probability = 0.478 },
+  { step = 6, voice = "kick", delta_velocity = -2 },
+  { step = 6, voice = "ride", delta_velocity = -11 },
+  { step = 6, voice = "shaker" },
+  { step = 8, voice = "kick", delta_velocity = 7 },
+  { step = 8, voice = "pedal", delta_velocity = -35 },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 8, voice = "shaker", delta_velocity = -8 },
+  { step = 9, voice = "kick", delta_velocity = -21, probability = 0.348 },
+  { step = 10, voice = "ride", delta_velocity = 27 },
+  { step = 10, voice = "shaker" },
+  { step = 10, voice = "sidestick", delta_velocity = 12, probability = 0.283 },
+  { step = 10, voice = "snare", delta_velocity = -24, probability = 0.37 },
+  { step = 12, voice = "pedal", delta_velocity = 13 },
+  { step = 12, voice = "ride", delta_velocity = 16 },
+  { step = 12, voice = "shaker", delta_velocity = -8 },
+  { step = 12, voice = "sidestick", delta_velocity = 31, probability = 0.217 },
+  { step = 12, voice = "snare", delta_velocity = 18, probability = 0.217 },
+  { step = 13, voice = "snare", delta_velocity = -27, probability = 0.37 },
+  { step = 14, voice = "kick", delta_velocity = 2 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+  { step = 14, voice = "shaker" },
+  { step = 15, voice = "kick", delta_velocity = -21, probability = 0.217 },
+  { step = 15, voice = "snare", delta_velocity = -8, probability = 0.239 },
+]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 67
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 67
+patterns = [4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 67
+patterns = [5, 5]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 18
+patterns = [3, 3, 3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 18
+patterns = [4, 4, 4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 18
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 16
+patterns = [6, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 16
+patterns = [7, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 16
+patterns = [8, 5]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 4
+patterns = [0, 0]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 4
+patterns = [1, 1]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 4
+patterns = [2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [3, 6]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [4, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [5, 8]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [3, 3, 6, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [4, 4, 7, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [5, 5, 8, 5]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [6, 3, 3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [7, 4, 4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [8, 5, 5, 5]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 5
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 5
+patterns = [1, 1, 1, 1]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 5
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 11
+patterns = [6, 6]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 11
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 11
+patterns = [7, 7]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 11
+patterns = [7, 7, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 11
+patterns = [8, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 11
+patterns = [8, 8, 8, 8]
+
+# Relances de métier : le GMD n'a aucun fichier fill pour ce style.
+[[fills]]
+density = 1
+tag = "ride"
+weight = 3
+start_step = 12
+bars = [{ hits = [{ step = 12, voice = "snare", delta_velocity = -12 }, { step = 13, voice = "snare", delta_velocity = -24 }, { step = 14, voice = "tom_mid" }, { step = 15, voice = "tom_mid", delta_velocity = -6 }] }]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 2
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "sidestick" }, { step = 10, voice = "sidestick" }, { step = 12, voice = "sidestick" }, { step = 14, voice = "kick" }, { step = 15, voice = "snare", delta_velocity = -18 }] }]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 3
+start_step = 12
+bars = [{ hits = [{ step = 12, voice = "pedal" }, { step = 12, voice = "snare" }, { step = 13, voice = "snare", delta_velocity = -18 }, { step = 14, voice = "tom_mid" }, { step = 14, voice = "kick" }, { step = 15, voice = "tom_mid" }] }]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 2
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "sidestick" }, { step = 10, voice = "sidestick" }, { step = 12, voice = "sidestick" }, { step = 13, voice = "sidestick" }, { step = 14, voice = "kick" }, { step = 15, voice = "snare" }] }]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 3
+start_step = 12
+bars = [{ hits = [{ step = 12, voice = "snare", delta_velocity = -12 }, { step = 13, voice = "snare", delta_velocity = -24 }, { step = 14, voice = "tom_mid" }, { step = 15, voice = "tom_mid", delta_velocity = -6 }] }]
+
+[[fills]]
+density = 1
+tag = "hat"
+weight = 2
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "sidestick" }, { step = 10, voice = "sidestick" }, { step = 12, voice = "sidestick" }, { step = 14, voice = "kick" }, { step = 15, voice = "snare", delta_velocity = -18 }] }]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 3
+start_step = 12
+bars = [{ hits = [{ step = 12, voice = "pedal" }, { step = 12, voice = "snare" }, { step = 13, voice = "snare", delta_velocity = -18 }, { step = 14, voice = "tom_mid" }, { step = 14, voice = "kick" }, { step = 15, voice = "tom_mid" }] }]
+
+[[fills]]
+density = 2
+tag = "hat"
+weight = 2
+start_step = 8
+bars = [{ hits = [{ step = 8, voice = "sidestick" }, { step = 10, voice = "sidestick" }, { step = 12, voice = "sidestick" }, { step = 13, voice = "sidestick" }, { step = 14, voice = "kick" }, { step = 15, voice = "snare" }] }]

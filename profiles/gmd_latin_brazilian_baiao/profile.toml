@@ -1,0 +1,302 @@
+# Profil `gmd_latin_brazilian_baiao` (phase 019, B3) : baião brésilien sous une grille d'accords, sans Odin.
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le style `latin/brazilian-baiao` du Groove MIDI
+# Dataset v1.0.0 (3 fichiers `beat`, 200 mesures, 2 batteurs : « juste », pas « assez » ; 29 fichiers `fill`, un seul
+# batteur). Ce n'est pas « le baião » : deux batteurs jouant un kit électronique Roland TD-11. La batterie du kit
+# (grosse caisse aux pas 0, 3, 8, 11, charleston à la pédale, ride) et le tempo (95..110 BPM) viennent de là ; la basse
+# est calibrée sur WJazzD `LATIN` pour ce qui s'y mesure (registre, approches avant un changement) ; la zabumba écrite,
+# le triangle, l'agogô, les motifs de basse en fondamentale-quinte, le comping, les vamps modaux, l'arc et l'habillage
+# sont des RÈGLES DE MÉTIER (idiome traditionnel du Nordeste), dites telles dans le README : aucun corpus ouvert ne les mesure.
+#
+# Fait pour jouer sous une grille fournie par l'utilisateur : basse, comping et batterie ne dépendent que de l'accord
+# publié et de la graine. Les quatre grilles par défaut sont des formes communes écrites ici, relatives à la tonique
+# (vamps de seize mesures à un ou deux accords : I7, bVII, IV mixolydiens) ; aucune réharmonisation (D4), aucune œuvre.
+# Pas de `[fixed_tonality]` : la tonalité vient de l'habillage (`session.toml`). Aucune mélodie (piste `Melody` absente).
+# Aucun swing : feel droit en 16 pas. Aucune clave : le baião n'en a pas. Tout sonne avec GeneralUser GS.
+
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
+
+[meta]
+id = "gmd_latin_brazilian_baiao"
+name = "Baião brésilien (GMD latin/brazilian-baiao)"
+tradition = "GMD : deux batteurs au kit ; voix traditionnelles du Nordeste écrites par métier"
+tags = ["baiao", "bresil", "latin", "accompagnement", "grille"]
+corpus = """\
+Gillick, Roberts, Engel, Eck, Bamman, Learning to Groove with Inverse Sequence Transformations, ICML 2019 ; Groove MIDI Dataset v1.0.0, Google LLC, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL); individual contents under the Database Contents License (DbCL 1.0).
+GMD : batterie du kit et tempo, style latin/brazilian-baiao (3 fichiers beat, 200 mesures, 2 batteurs ; 29 fill, un seul batteur) ; probabilités par pas agrégées, jamais un enregistrement. WJazzD LATIN : registre et approches de basse seulement (23 solos valides, 1639 mesures, aucune croche observable). Zabumba écrite, triangle, agogô, basse syncopée, comping, vamps, arc, habillage et mixage : règles de métier, non mesurés dans ces corpus. Aucun enregistrement ni suite de notes de solo reproduit."""
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+# GMD : feel droit (rapport médian 0,50) dans tous les fichiers retenus.
+default_swing_ratio = 0.5
+# GMD : fichiers 95, 95, 110 BPM ; p10 95, médiane 95, p90 107. Étendue observée 95..110, sans extension.
+default_bpm = 95.0
+min_bpm = 95.0
+max_bpm = 110.0
+
+# Seize mesures de vamp modal : deux modules de huit, règle de métier.
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Vamp"
+melody_center_offset = 0
+phrase_ends = [16]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que `wjazzd_swing`.
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 7, mode = "mixolydian", weight = 1 }, { key = 2, mode = "mixolydian", weight = 1 }, { key = 0, mode = "mixolydian", weight = 1 }, { key = 5, mode = "mixolydian", weight = 1 }, { key = 9, mode = "mixolydian", weight = 1 }, { key = 10, mode = "mixolydian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+# Formes communes écrites, relatives à la tonique ; aucune œuvre nommée.
+[harmony.parts.Vamp]
+kind = "chord_loop"
+loops = [
+  # I7, seize mesures : vamp modal.
+  { weight = 2, chords = [
+    { semitones = 0, quality = "7", steps = 256 },
+  ] },
+  # I7 quatre mesures, bVII quatre mesures, deux fois.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "7", steps = 64 },
+    { semitones = 10, quality = "", steps = 64 },
+    { semitones = 0, quality = "7", steps = 64 },
+    { semitones = 10, quality = "", steps = 64 },
+  ] },
+  # I7 quatre mesures, IV quatre mesures, deux fois.
+  { weight = 3, chords = [
+    { semitones = 0, quality = "7", steps = 64 },
+    { semitones = 5, quality = "", steps = 64 },
+    { semitones = 0, quality = "7", steps = 64 },
+    { semitones = 5, quality = "", steps = 64 },
+  ] },
+  # Vamp de huit mesures, deux fois : I7, bVII, I7, IV (deux mesures chacun).
+  { weight = 2, chords = [
+    { semitones = 0, quality = "7", steps = 32 },
+    { semitones = 10, quality = "", steps = 32 },
+    { semitones = 0, quality = "7", steps = 32 },
+    { semitones = 5, quality = "", steps = 32 },
+    { semitones = 0, quality = "7", steps = 32 },
+    { semitones = 10, quality = "", steps = 32 },
+    { semitones = 0, quality = "7", steps = 32 },
+    { semitones = 5, quality = "", steps = 32 },
+  ] },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Registre WJazzD LATIN (hauteur p1 31, p50 40, p99 50 ; étendue 28..53). Rythmes et intervalles : métier.
+[accompaniment.bass]
+low = 33
+high = 44
+walk_low = 28
+walk_high = 53
+motifs = [
+  # 0 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  # 1 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 96 }, { step = 3, duration = 1, semitones = 0, velocity = 64 }, { step = 6, duration = 2, semitones = 7, velocity = 84 }, { step = 8, duration = 3, semitones = 0, velocity = 92 }, { step = 11, duration = 1, semitones = 0, velocity = 64 }, { step = 14, duration = 2, semitones = 7, velocity = 82 }] },
+  # 2 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 6, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  # 3 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 96 }, { step = 3, duration = 3, semitones = 0, velocity = 82 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 3, semitones = 0, velocity = 90 }, { step = 11, duration = 3, semitones = 0, velocity = 78 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  # 4 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 0, velocity = 80 }] },
+  # 5 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 80 }, { step = 8, duration = 4, semitones = 0, velocity = 88 }] },
+]
+
+# WJazzD LATIN : approche du temps 4 avant un changement d'accord à la barre, 1205 événements, 22 solos :
+# aucune 60 %, chromatique 22 % (IC 17 à 26 %), diatonique 19 % (IC 11 à 29 %) ; poids 60 / 22 / 19.
+# Le moteur applique la règle à toute note de motif qui change de hauteur au suivant (`next_target_differs`), donc
+# plus souvent que la part mesurée (README, limites).
+[accompaniment.bass.passing]
+none_weight = 60
+density = [[0.0, 0.2], [0.5, 1.0], [1.0, 1.8]]
+phrase = [[0.0, 1.0], [1.0, 1.0]]
+avoid_melody_intervals = []
+rules = [
+  { when = "next_target_differs", before = [4], motion = "chromatic", weight = 22, duration = 2, velocity_delta = -16, min_leap = 0 },
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 19, duration = 2, velocity_delta = -16, min_leap = 0 },
+]
+
+# Baião à l'accordéon, à la guitare nylon ou au piano : rythmes, phrases et voicings de métier, aucune mesure de comping.
+[accompaniment.chords]
+center = 64
+max_drift = 6
+default_pattern = 0
+voicing = "drop2"
+register_drift = { step = 1, max = 4 }
+low = 50
+high = 80
+patterns = [{ hits = [{ step = 0, duration = 3, velocity = 70 }, { step = 6, duration = 2, velocity = 64 }, { step = 8, duration = 3, velocity = 68 }, { step = 14, duration = 2, velocity = 64 }] }]
+comping = [
+  # 0 sparse
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 68 }, { step = 8, duration = 6, velocity = 64 }] },
+  # 1 sparse
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 12, velocity = 66 }] },
+  # 2 sparse
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 70 }, { step = 6, duration = 2, velocity = 60 }, { step = 8, duration = 4, velocity = 66 }] },
+  # 3 medium
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 3, velocity = 70 }, { step = 14, duration = 2, velocity = 68, anticipate = true }] },
+  # 4 medium
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 3, duration = 1, velocity = 60 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 3, velocity = 70 }, { step = 11, duration = 1, velocity = 58 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  # 5 medium
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 72 }, { step = 6, duration = 2, velocity = 64 }, { step = 10, duration = 2, velocity = 62 }, { step = 14, duration = 2, velocity = 68, anticipate = true }] },
+  # 6 dense
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78 }, { step = 3, duration = 1, velocity = 62 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 3, velocity = 74 }, { step = 11, duration = 1, velocity = 62 }, { step = 14, duration = 2, velocity = 70, anticipate = true }] },
+  # 7 dense
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 78 }, { step = 2, duration = 1, velocity = 48, probability = 0.35 }, { step = 3, duration = 1, velocity = 64 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 2, velocity = 74 }, { step = 10, duration = 1, velocity = 48, probability = 0.35 }, { step = 11, duration = 1, velocity = 64 }, { step = 14, duration = 2, velocity = 70, anticipate = true }] },
+  # 8 dense
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78 }, { step = 3, duration = 1, velocity = 64 }, { step = 4, duration = 1, velocity = 50, probability = 0.4 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 3, velocity = 74 }, { step = 11, duration = 1, velocity = 64 }, { step = 12, duration = 1, velocity = 50, probability = 0.4 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+]
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "sparse"
+motifs = [0, 0, 1, 0]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "sparse"
+motifs = [1, 2]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "sparse"
+at = "part_end"
+motifs = [0, 1, 0, 2]
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "medium"
+motifs = [3, 3, 4, 3]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "medium"
+motifs = [4, 5]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "medium"
+at = "part_end"
+motifs = [3, 4, 3, 5]
+
+[[accompaniment.chords.phrases]]
+weight = 3
+tag = "dense"
+motifs = [6, 6, 7, 6]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "dense"
+motifs = [7, 8]
+
+[[accompaniment.chords.phrases]]
+weight = 2
+tag = "dense"
+at = "part_end"
+motifs = [6, 7, 6, 8]
+
+[instruments]
+melody_program = 0
+chords_program = 21
+bass_program = 33
+percussion_bank = 128
+percussion_program = 0
+
+[ornaments]
+rate_scale = 0.0
+
+# Jitter tonal de métier ; médianes par voix du GMD ajoutées plus bas.
+[performance.tracks.Bass]
+jitter = 0.02
+[performance.tracks.Chords]
+jitter = 0.025
+
+[mix]
+master_db = 20.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -12.4
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -12.4
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -9.5
+pan = 0.0
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -9.5
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8
+
+# Médianes GMD par voix, bornées à ±0,2 pas (limite du schéma) ; aucune dispersion reproduite.
+[performance.tracks.PercussionLow]
+voices = [
+  { note = 36, on_beat = -0.0917, off_beat = -0.125 },
+]
+
+[performance.tracks.PercussionHigh]
+voices = [
+  { note = 38, on_beat = -0.1167, off_beat = -0.1167 },
+  { note = 37, on_beat = -0.0208, off_beat = -0.1167 },
+  { note = 42, on_beat = -0.0667, off_beat = -0.1 },
+  { note = 44, on_beat = -0.1583, off_beat = -0.2 },
+  { note = 51, on_beat = -0.0667, off_beat = -0.1083 },
+  { note = 50, on_beat = -0.0833, off_beat = -0.1625 },
+  { note = 43, on_beat = -0.05, off_beat = -0.1667 },
+]

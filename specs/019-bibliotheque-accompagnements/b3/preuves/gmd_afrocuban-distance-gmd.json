@@ -1,0 +1,106 @@
+{
+  "afrocuban": {
+    "any": {
+      "non_calibre": 0.445,
+      "profil": 0.345,
+      "sans_arc": 0.338
+    },
+    "hat": {
+      "non_calibre": 0.787,
+      "profil": 0.411,
+      "sans_arc": 0.398
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.247,
+      "sans_arc": 0.233
+    },
+    "mesures_reference": 98,
+    "moyenne": {
+      "non_calibre": 0.808,
+      "profil": 0.368,
+      "sans_arc": 0.36
+    },
+    "ride": {
+      "non_calibre": 0.582,
+      "profil": 0.645,
+      "sans_arc": 0.631
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.47,
+      "sans_arc": 0.473
+    }
+  },
+  "afrocuban + rhumba": {
+    "any": {
+      "non_calibre": 0.418,
+      "profil": 0.303,
+      "sans_arc": 0.296
+    },
+    "hat": {
+      "non_calibre": 0.727,
+      "profil": 0.288,
+      "sans_arc": 0.273
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.212,
+      "sans_arc": 0.221
+    },
+    "mesures_reference": 201,
+    "moyenne": {
+      "non_calibre": 0.786,
+      "profil": 0.301,
+      "sans_arc": 0.3
+    },
+    "ride": {
+      "non_calibre": 0.699,
+      "profil": 0.52,
+      "sans_arc": 0.508
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.403,
+      "sans_arc": 0.41
+    }
+  },
+  "mesures_rendues": {
+    "non_calibre": 752,
+    "profil": 752,
+    "sans_arc": 752
+  },
+  "rhumba": {
+    "any": {
+      "non_calibre": 0.417,
+      "profil": 0.269,
+      "sans_arc": 0.262
+    },
+    "hat": {
+      "non_calibre": 0.627,
+      "profil": 0.199,
+      "sans_arc": 0.204
+    },
+    "kick": {
+      "non_calibre": 1.0,
+      "profil": 0.327,
+      "sans_arc": 0.338
+    },
+    "mesures_reference": 103,
+    "moyenne": {
+      "non_calibre": 0.761,
+      "profil": 0.324,
+      "sans_arc": 0.327
+    },
+    "ride": {
+      "non_calibre": 0.855,
+      "profil": 0.657,
+      "sans_arc": 0.663
+    },
+    "snare": {
+      "non_calibre": 1.0,
+      "profil": 0.499,
+      "sans_arc": 0.505
+    }
+  }
+}

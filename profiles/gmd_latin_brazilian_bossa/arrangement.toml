@@ -1,0 +1,14 @@
+# Cinq chorus par air (une passe de la grille de seize mesures chacun) : exposition, deux chorus de corps, sommet,
+# retombée. Tout joue dès la première mesure (accompagnement sous une grille, pas de montée en couches) ; l'arc
+# (`arc.toml` ou l'arc nommé de la session) module intensité, densité, comping et batterie. Pas de piste Melody.
+tours_per_tune = 5
+
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0

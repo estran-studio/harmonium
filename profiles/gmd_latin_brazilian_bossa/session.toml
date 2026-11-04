@@ -1,0 +1,247 @@
+# Habillage par graine de `gmd_latin_brazilian_bossa` (A2) : un tirage par groupe, les groupes se combinent ; deux
+# groupes ne règlent jamais le même champ. « New seed » doit s'entendre (D6) : tempo, tonalité, instruments, kit, voicings,
+# registre, énergie et arc changent d'une graine à l'autre, dans les bornes du style.
+#
+# SOURCES. Seul le TEMPO a une source : GMD latin/brazilian-bossa 127 BPM (les deux fichiers) ; WJazzD LATIN : tempo de solo
+# p10 104, médiane 152,7, p90 227,5, classe 120 à 180 « juste » (15 solos), classe < 120 « trop peu » (un solo avec mesures),
+# classe 180 à 240 « trop peu ». Trois plages séparées de plus de 8 BPM, toutes dans la plage mesurée et sans l'étendre :
+# lent 104 à 112 (p10 de WJazzD ; classe « trop peu »), médium 122 à 132 (autour des 127 du GMD, classe « juste »), vif 152
+# à 180 (de la médiane de WJazzD à la borne de la classe « juste »). Le GMD n'a qu'un tempo : l'étendue des tempos de bossa
+# est une limite de la source, écrite dans le README. Tout le reste (tonalités, timbres, kits, voicings, registre, énergie,
+# arc « orchestre ») est de MÉTIER : aucune mesure ne relie une tonalité ou un timbre au style.
+#
+# 3 tempos × 6 tonalités × 5 comping × 3 basses × 4 kits × 5 voicings × 2 registres × 3 énergies × 2 arcs = 64 800 habillages possibles en 33 variantes.
+
+[[variants]]
+group = "tempo"
+name = "lent"
+weight = 1
+bpm = [104.0, 112.0]
+
+[[variants]]
+group = "tempo"
+name = "medium"
+weight = 2
+bpm = [122.0, 132.0]
+
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [152.0, 180.0]
+
+[[variants]]
+group = "tonalite"
+name = "do"
+weight = 1
+tonality = { key = 0, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re"
+weight = 1
+tonality = { key = 2, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "fa"
+weight = 1
+tonality = { key = 5, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "sol"
+weight = 1
+tonality = { key = 7, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "si_bemol"
+weight = 1
+tonality = { key = 10, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "mi_bemol"
+weight = 1
+tonality = { key = 3, mode = "ionian" }
+
+[[variants]]
+group = "comping"
+name = "nylon"
+weight = 3
+instruments = { chords_program = 24 }
+
+[[variants]]
+group = "comping"
+name = "acier"
+weight = 1
+instruments = { chords_program = 25 }
+
+[[variants]]
+group = "comping"
+name = "jazz"
+weight = 1
+instruments = { chords_program = 26 }
+
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 1
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "piano_electrique"
+weight = 1
+instruments = { chords_program = 4 }
+
+[[variants]]
+group = "basse"
+name = "contrebasse"
+weight = 3
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_aux_doigts"
+weight = 2
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "basse"
+name = "fretless"
+weight = 1
+instruments = { bass_program = 35 }
+
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 1
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "jazz"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 32 }
+
+[[variants]]
+group = "kit"
+name = "balais"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+[[variants]]
+group = "voicing"
+name = "notes_guides"
+weight = 1
+voicing = "guide_tones"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 1
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "shell"
+weight = 1
+voicing = "shell"
+
+[[variants]]
+group = "voicing"
+name = "structure_superieure"
+weight = 1
+voicing = "upper_structure"
+
+[[variants]]
+group = "voicing"
+name = "sans_fondamentale"
+weight = 1
+voicing = "rootless"
+
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "registre"
+name = "grave"
+weight = 1
+register_octaves = { Chords = -1 }
+
+[[variants]]
+group = "energie"
+name = "doux"
+weight = 1
+intensity = 0.85
+density = 0.8
+
+[[variants]]
+group = "energie"
+name = "moyen"
+weight = 1
+intensity = 1.0
+density = 1.0
+
+[[variants]]
+group = "energie"
+name = "plein"
+weight = 1
+intensity = 1.1
+density = 1.1
+
+[[variants]]
+group = "arc"
+name = "intime"
+weight = 2
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 1
+arc = "orchestre"
+
+# Arc « orchestre » : l'orchestration change à chaque frontière de chorus. Chorus 1 aux balais (exposition, charleston) ;
+# chorus 2 et 3 : instruments de la session ; sommet : le piano électrique (Tine) prend le comping ; retombée : balais et
+# guitare nylon. Les programmes d'un chorus remplacent ceux de la session ; un chorus qui n'en déclare pas les rend. Mêmes
+# tags, intensités, densités et breaks que `arc.toml` (valeurs de métier).
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 3, instruments = { percussion_program = 40 }, intensity = 0.7, density = 0.6, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, instruments = { percussion_program = 40 }, intensity = 0.8, density = 0.7, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride", weight = 3 }, { tag = "hat", weight = 1 }], breaks = [{ start = 9, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, intensity = 1.15, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { instruments = { chords_program = 4 }, intensity = 1.3, density = 1.3, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.orchestre.fall]]
+instruments = { percussion_program = 40, chords_program = 24 }
+intensity = 0.6
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

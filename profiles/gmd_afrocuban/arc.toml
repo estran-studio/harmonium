@@ -1,0 +1,38 @@
+# Arc de `gmd_afrocuban` sur plusieurs chorus (A3) : règles de métier, aucune mesure de corpus (le GMD isole beat et
+# fill, WJazzD ne donne pas la dynamique d'un chorus). Un chorus = une passe de la grille de seize mesures ; cinq
+# chorus par air, nombre connu :
+#   1      exposition : montuno et section latine clairsemés (clave, congas), doux ;
+#   2-3    corps : montuno médian (parfois dense), cloche de ride, shaker ; un break du comping à mi-chorus ou des
+#          accords et de la basse avant le chorus suivant ;
+#   4      sommet : montuno dense, cowbell, bongos, güiro, timbales, plus fort, stop-time sur les deux dernières mesures
+#          une fois sur deux ;
+#   5      retombée : clairsemé, doux, stop-time sur le un des deux dernières mesures ;
+# au-delà : le sommet puis le corps et le sommet en boucle (`repeat_from`).
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.65, density = 0.65, comping = [{ tag = "sparse" }], percussion = [{ tag = "sparse" }] },
+  { weight = 1, intensity = 0.75, density = 0.75, comping = [{ tag = "sparse", weight = 1 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "sparse" }] },
+]
+
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium" }], percussion = [{ tag = "medium" }], breaks = [{ start = 9, bars = 1, chance = 0.4, tracks = ["Chords"] }] },
+  { weight = 1, intensity = 1.1, density = 1.1, comping = [{ tag = "medium", weight = 1 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "medium" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.25, comping = [{ tag = "dense" }], percussion = [{ tag = "dense" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.6
+density = 0.6
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "sparse" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

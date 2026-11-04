@@ -1,0 +1,540 @@
+# Profil `gmd_afrocuban` (phase 019, B3) : afro-cubain en 16 pas droits, clave son 3-2 / 2-3, montuno, tumbao et section
+# rythmique latine sous une grille d'accords.
+#
+# Le nom est celui de la source qui définit le style (principe VII) : le style `afrocuban` du Groove MIDI Dataset
+# v1.0.0 (3 fichiers `beat`, 2 batteurs, 276 mesures, « juste » au niveau du style ; groupe droit : 1 fichier,
+# 98 mesures, 1 batteur, « trop peu »). Le GMD ne contient AUCUNE percussion latine (kit électronique Roland
+# TD-11) : seul le kit (grosse caisse, charleston pédale, ride, caisse claire, cross-stick, toms) est mesuré, par
+# probabilités par pas. La clave, le montuno, le tumbao, les congas, la cloche, les bongos, les timbales, le shaker,
+# les maracas et le güiro sont des IDIOMES TRADITIONNELS écrits en règles de métier (aucune source ouverte :
+# harmonium_lab `references/l2-ingestion.md` § 5) ; leur statut juridique relève du propriétaire (README).
+# La basse est calibrée sur WJazzD `rhythmfeel = LATIN` pour ce qui y est mesurable (registre, approche avant un
+# changement d'accord) : c'est du hard bop sur rythme latin, PAS du salsa, et les croches du tumbao ne sont pas
+# observables.
+#
+# Fait pour training : l'utilisateur fournit sa grille, le profil joue dessous ; sans grille, cinq boucles de seize
+# mesures tirées par la graine, relatives à la tonique (D4 : aucune réharmonisation). Aucune mélodie. Tout sonne avec
+# GeneralUser GS (piano, guitare nylon, piano électrique ; basse acoustique, aux doigts, fretless ; kits 0, 8, 16, 32) :
+# aucun preset Odin. `session.toml` : habillage par graine.
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
+
+[meta]
+id = "gmd_afrocuban"
+name = "Afro-cubain droit : clave son et montuno (GMD afrocuban)"
+tradition = "Groove MIDI Dataset v1.0.0, style afrocuban droit (1 fichier, 98 mesures, 1 batteur) et afrocuban/rhumba (1 fichier droit, 103 mesures ; 18 fills) : kit électronique Roland TD-11 ; basse : Weimar Jazz Database v2.1, rhythmfeel = LATIN (23 solos, jazz sur rythme latin). Clave, montuno, tumbao et percussions latines : idiomes traditionnels écrits en règles de métier."
+tags = ["afrocubain", "clave", "montuno", "accompagnement", "grille"]
+corpus = """\
+Gillick, Roberts, Engel, Eck, Bamman, Learning to Groove with Inverse Sequence Transformations, ICML 2019 ; Groove MIDI Dataset v1.0.0, Google LLC, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Probabilités par pas, vélocités relatives, micro-timing et queues de relance du kit, agrégés, jamais un enregistrement ; le GMD ne contient aucune percussion latine. \
+Contains information from the Weimar Jazz Database (Jazzomat Research Project, HfM Weimar), which is made available here under the Open Database License (ODbL); individual contents under the Database Contents License (DbCL 1.0). Registre et approches avant un changement d'accord seulement (rhythmfeel = LATIN : 23 solos, 1639 mesures, hard bop sur rythme latin, pas du salsa) ; aucune note de solo copiée, aucun tumbao mesuré. \
+Clave son, montuno, tumbao, congas, cloche, bongos, timbales, shaker, maracas, güiro, grilles par défaut et mixage : règles de métier (idiomes traditionnels, aucune source ouverte) ; leur statut juridique relève du propriétaire. Mesures et manifestes : harmonium_lab references/gmd-afrocuban/, references/wjazzd-latin/, references/l2-ingestion.md."""
+
+[meter]
+time_signature = { numerator = 4, denominator = 4 }
+steps_per_bar = 16
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 4
+# Feel droit en 16 pas : le fichier droit du GMD afrocuban est en doubles croches égales (rapport de swing 0,5). Les
+# deux fichiers ternaires du style (178 mesures) ne sont pas rabattus sur cette grille.
+default_swing_ratio = 0.5
+# Tempos mesurés dans la source (GMD, médiane de chaque fichier) : afrocuban droit 105, rhumba 110 ; les deux fichiers
+# ternaires du style 105 et 128. Bornes = ces extrêmes, pas élargies (WJazzD LATIN a un autre ordre de grandeur :
+# médiane 152,7 ; sa classe 120-180 est « juste », mais c'est du jazz).
+default_bpm = 105.0
+min_bpm = 105.0
+max_bpm = 128.0
+
+# Clave son de deux mesures, sens tiré une fois par air : 3-2 (mesure « trois » puis « deux ») ou 2-3.
+[clave]
+direction = "either"
+
+# Une partie de seize mesures : un chorus. Pas de `[fixed_tonality]` : la tonalité se tire (session et key_modes).
+[form]
+sequence = [0]
+[[form.parts]]
+name = "Grille"
+melody_center_offset = 0
+phrase_ends = [4, 8, 12, 16]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Pas de mélodie jouée : mêmes réglages neutres que `gmd_funk`. Les tonalités tirables sont celles de `session.toml`.
+[melody]
+cell_units = 8
+strong_units = [0, 2, 4, 6]
+weak_units = [1, 3, 5, 7]
+key_modes = [{ key = 0, mode = "ionian", weight = 1 }, { key = 2, mode = "ionian", weight = 1 }, { key = 5, mode = "ionian", weight = 1 }, { key = 7, mode = "ionian", weight = 1 }, { key = 9, mode = "ionian", weight = 1 }, { key = 10, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles relatives à la tonique : formes communes écrites pour ce profil, aucune œuvre nommée. Une boucle fait
+# toujours seize mesures. Le mode tiré par la session n'est qu'une étiquette : les accords ne dépendent pas de lui.
+[harmony]
+model = "loop"
+steps_per_chord = 4
+
+[harmony.parts.Grille]
+kind = "chord_loop"
+loops = [
+  # Vamp à accord unique, seize mesures de I7 (poids 2).
+  { weight = 2, chords = [{ semitones = 0, quality = "7", steps = 256 }] },
+  # I, IV, V7, I : quatre mesures chacun (poids 3).
+  { weight = 3, chords = [{ semitones = 0, quality = "", steps = 64 }, { semitones = 5, quality = "", steps = 64 }, { semitones = 7, quality = "7", steps = 64 }, { semitones = 0, quality = "", steps = 64 }] },
+  # Im7 et IV7 : deux mesures chacun, quatre fois (poids 3).
+  { weight = 3, chords = [{ semitones = 0, quality = "m7", steps = 32 }, { semitones = 5, quality = "7", steps = 32 }, { semitones = 0, quality = "m7", steps = 32 }, { semitones = 5, quality = "7", steps = 32 }, { semitones = 0, quality = "m7", steps = 32 }, { semitones = 5, quality = "7", steps = 32 }, { semitones = 0, quality = "m7", steps = 32 }, { semitones = 5, quality = "7", steps = 32 }] },
+  # ii–V–I : iim7 deux mesures, V7 deux mesures, Imaj7 quatre mesures, deux fois (poids 2).
+  { weight = 2, chords = [{ semitones = 2, quality = "m7", steps = 32 }, { semitones = 7, quality = "7", steps = 32 }, { semitones = 0, quality = "maj7", steps = 64 }, { semitones = 2, quality = "m7", steps = 32 }, { semitones = 7, quality = "7", steps = 32 }, { semitones = 0, quality = "maj7", steps = 64 }] },
+  # Im7, bVII7, bVImaj7, V7 : deux mesures chacun, deux fois (poids 2).
+  { weight = 2, chords = [{ semitones = 0, quality = "m7", steps = 32 }, { semitones = 10, quality = "7", steps = 32 }, { semitones = 8, quality = "maj7", steps = 32 }, { semitones = 7, quality = "7", steps = 32 }, { semitones = 0, quality = "m7", steps = 32 }, { semitones = 10, quality = "7", steps = 32 }, { semitones = 8, quality = "maj7", steps = 32 }, { semitones = 7, quality = "7", steps = 32 }] },
+]
+
+[accompaniment]
+strong_steps = [0, 8]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# Registre : WJazzD LATIN, hauteur de basse p1 31, p50 40, p99 50, étendue 28..53 (1 639 mesures, 23 solos).
+# Fondamentale et quinte (repliée dans la fenêtre) entre 35 et 46 : médiane 40,5, symétrique autour de la médiane
+# mesurée (p1 et p99 de WJazzD sont 9 et 10 demi-tons de part et d'autre). La fenêtre de douze demi-tons ne
+# peut pas atteindre l'étendue mesurée de dix-neuf ; pas d'octave : 46 + 12 dépasserait le maximum mesuré (53).
+[accompaniment.bass]
+low = 35
+high = 46
+walk_low = 28
+walk_high = 53
+
+# Tumbao : idiome traditionnel, aucune source ouverte (WJazzD ne note qu'une hauteur par temps : les croches ne
+# sont pas observables). Attaques aux pas 6 et 12 et anticipation du changement d'accord au pas 14 (`pickup` à
+# chaque barre : la basse de l'accord de la mesure suivante, jouée une croche avant la barre). Le un est joué (le
+# tumbao strict le tait) : la basse arrive ainsi sur la basse publiée à chaque changement, y compris sous un
+# stop-time qui ne garde que le pas 0.
+[[accompaniment.bass.templates]]
+weight = 3
+rhythm = [{ step = 0, duration = 3, velocity = 88 }, { step = 6, duration = 4, velocity = 92 }, { step = 12, duration = 2, velocity = 96 }]
+cycle = [{ degree = "root" }, { degree = "fifth" }, { degree = "root" }]
+pickup = { lead = 2, duration = 2, velocity = 94, when = "bar_end" }
+[[accompaniment.bass.templates]]
+weight = 2
+rhythm = [{ step = 0, duration = 3, velocity = 86 }, { step = 6, duration = 4, velocity = 90 }, { step = 12, duration = 2, velocity = 96 }]
+cycle = [{ degree = "root" }, { degree = "root" }, { degree = "fifth" }]
+pickup = { lead = 2, duration = 2, velocity = 92, when = "bar_end" }
+[[accompaniment.bass.templates]]
+weight = 2
+rhythm = [{ step = 0, duration = 2, velocity = 86 }, { step = 6, duration = 2, velocity = 94 }, { step = 8, duration = 2, velocity = 70 }, { step = 12, duration = 2, velocity = 96 }]
+cycle = [{ degree = "root" }, { degree = "fifth" }, { degree = "root" }, { degree = "root" }]
+pickup = { lead = 2, duration = 2, velocity = 94, when = "bar_end" }
+# Marche posée : le temps 4 est libre, sans anticipation (« bolero » de la basse) ; c'est le seul gabarit où une
+# note de passage peut approcher le changement.
+[[accompaniment.bass.templates]]
+weight = 2
+rhythm = [{ step = 0, duration = 5, velocity = 90 }, { step = 6, duration = 2, velocity = 88 }, { step = 8, duration = 3, velocity = 92 }]
+cycle = [{ degree = "root" }, { degree = "fifth" }, { degree = "root" }]
+
+# Approche d'un changement d'accord à la barre : WJazzD LATIN, 1 205 événements, 22 solos : aucune 60 % [51–66],
+# chromatique 22 % [17–26], diatonique 19 % [11–29]. Poids 60 / 22 / 19 (somme 101, normalisée par le moteur).
+[accompaniment.bass.passing]
+none_weight = 60
+density = [[0.0, 0.5], [0.5, 1.0], [1.0, 1.3]]
+phrase = [[0.0, 1.0], [1.0, 1.0]]
+avoid_melody_intervals = []
+rules = [
+  { when = "next_target_differs", before = [4], motion = "chromatic", weight = 22, duration = 2, velocity_delta = -20, min_leap = 0 },
+  { when = "next_target_differs", before = [4], motion = "scale_step", weight = 19, duration = 2, velocity_delta = -20, min_leap = 0 },
+]
+
+# Montuno (comping) : guajeo syncopé d'une mesure, un motif par côté de clave (« trois » : attaques autour des pas 0,
+# 6, 12 ; « deux » : autour des pas 4, 8), deux variantes par côté et par étiquette `sparse` / `medium` / `dense`
+# (l'arc nomme celles d'un chorus). Les attaques du pas 14 sont anticipées (`anticipate`) : elles jouent l'accord de la
+# mesure suivante. Règles de métier, aucune source ouverte ; les notes fantômes sont des coups probabilistes.
+[accompaniment.chords]
+center = 65
+max_drift = 6
+default_pattern = 0
+voicing = "drop2"
+low = 48
+high = 84
+color = { none_weight = 1, published_weight = 2 }
+register_drift = { step = 1, max = 3 }
+patterns = [{ hits = [{ step = 0, duration = 2, velocity = 68 }, { step = 6, duration = 2, velocity = 64 }, { step = 12, duration = 2, velocity = 68 }] }]
+comping = [
+  { tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 68 }, { step = 6, duration = 2, velocity = 62 }, { step = 12, duration = 2, velocity = 66 }] },
+  { tag = "sparse", hits = [{ step = 0, duration = 2, velocity = 66 }, { step = 8, duration = 3, velocity = 62 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { tag = "sparse", hits = [{ step = 4, duration = 2, velocity = 66 }, { step = 8, duration = 2, velocity = 64 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { tag = "sparse", hits = [{ step = 2, duration = 2, velocity = 60 }, { step = 6, duration = 2, velocity = 64 }, { step = 12, duration = 3, velocity = 66 }] },
+  { tag = "medium", hits = [{ step = 0, duration = 2, velocity = 74 }, { step = 6, duration = 2, velocity = 68 }, { step = 10, duration = 2, velocity = 58 }, { step = 12, duration = 2, velocity = 72 }] },
+  { tag = "medium", hits = [{ step = 2, duration = 2, velocity = 66 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 2, velocity = 60 }, { step = 12, duration = 2, velocity = 72 }] },
+  { tag = "medium", hits = [{ step = 2, duration = 2, velocity = 58 }, { step = 4, duration = 2, velocity = 72 }, { step = 8, duration = 2, velocity = 70 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+  { tag = "medium", hits = [{ step = 0, duration = 2, velocity = 66 }, { step = 4, duration = 2, velocity = 72 }, { step = 7, duration = 1, velocity = 58 }, { step = 10, duration = 2, velocity = 66 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+  { tag = "dense", hits = [{ step = 0, duration = 2, velocity = 80 }, { step = 2, duration = 1, velocity = 58, probability = 0.6 }, { step = 6, duration = 2, velocity = 74 }, { step = 8, duration = 1, velocity = 58, probability = 0.5 }, { step = 10, duration = 2, velocity = 68 }, { step = 12, duration = 2, velocity = 78 }] },
+  { tag = "dense", hits = [{ step = 0, duration = 2, velocity = 78 }, { step = 3, duration = 1, velocity = 58, probability = 0.6 }, { step = 6, duration = 2, velocity = 74 }, { step = 8, duration = 2, velocity = 66 }, { step = 11, duration = 1, velocity = 56, probability = 0.5 }, { step = 12, duration = 2, velocity = 78 }, { step = 14, duration = 2, velocity = 70, anticipate = true }] },
+  { tag = "dense", hits = [{ step = 2, duration = 2, velocity = 66 }, { step = 4, duration = 2, velocity = 78 }, { step = 6, duration = 1, velocity = 58, probability = 0.6 }, { step = 8, duration = 2, velocity = 76 }, { step = 10, duration = 1, velocity = 58, probability = 0.5 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { tag = "dense", hits = [{ step = 0, duration = 1, velocity = 60, probability = 0.6 }, { step = 2, duration = 2, velocity = 68 }, { step = 4, duration = 2, velocity = 78 }, { step = 7, duration = 1, velocity = 58, probability = 0.5 }, { step = 8, duration = 2, velocity = 74 }, { step = 12, duration = 1, velocity = 62, probability = 0.5 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [0, 2]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [1, 3]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [0, 3]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [1, 2]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 2
+at = "any"
+clave = "three"
+motifs = [0, 2, 1, 3]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [0, 3]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [1, 2]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [2, 0]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [3, 1]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [2, 1]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [3, 0]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 2
+at = "any"
+clave = "two"
+motifs = [2, 0, 3, 1]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [2, 1]
+
+[[accompaniment.chords.phrases]]
+tag = "sparse"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [3, 0]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [4, 6]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [5, 7]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [4, 7]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [5, 6]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 2
+at = "any"
+clave = "three"
+motifs = [4, 6, 5, 7]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [4, 7]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [5, 6]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [6, 4]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [7, 5]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [6, 5]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [7, 4]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 2
+at = "any"
+clave = "two"
+motifs = [6, 4, 7, 5]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [6, 5]
+
+[[accompaniment.chords.phrases]]
+tag = "medium"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [7, 4]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [8, 10]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [9, 11]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [8, 11]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "three"
+motifs = [9, 10]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 2
+at = "any"
+clave = "three"
+motifs = [8, 10, 9, 11]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [8, 11]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "part_end"
+clave = "three"
+motifs = [9, 10]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [10, 8]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [11, 9]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [10, 9]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "any"
+clave = "two"
+motifs = [11, 8]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 2
+at = "any"
+clave = "two"
+motifs = [10, 8, 11, 9]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [10, 9]
+
+[[accompaniment.chords.phrases]]
+tag = "dense"
+weight = 1
+at = "part_end"
+clave = "two"
+motifs = [11, 8]
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 0
+
+[ornaments]
+rate_scale = 0.0
+
+# Micro-timing du kit : médiane du décalage à la grille de chaque rôle dans le GMD afrocuban droit (pas ; sur le temps
+# et hors du temps), neutre au-delà de ±0,2 (borne de l'A6). Les voix latines ne sont pas mesurées : aucun décalage.
+[performance.tracks.PercussionLow]
+voices = [{ note = 36, off_beat = -0.175 }]
+[performance.tracks.PercussionHigh]
+voices = [{ note = 44, on_beat = -0.175 }, { note = 51, off_beat = -0.175, on_beat = -0.108 }, { note = 38, off_beat = -0.167, on_beat = -0.175 }, { note = 50, off_beat = -0.133, on_beat = -0.042 }, { note = 37, off_beat = -0.158, on_beat = -0.108 }]
+[performance.tracks.Bass]
+jitter = 0.04
+[performance.tracks.Chords]
+jitter = 0.05
+
+# Mixage de service réglé sur le LUFS en solo de chaque piste (README), aucune mesure de corpus.
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.25
+damping = 0.6
+width = 0.5
+level = 0.1
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -16.9
+pan = -0.2
+reverb_send = 0.1
+[mix.tracks.Bass]
+level_db = -19.1
+pan = 0.0
+reverb_send = 0.03
+[mix.tracks.PercussionLow]
+level_db = -10.4
+pan = 0.0
+reverb_send = 0.06
+[mix.tracks.PercussionHigh]
+level_db = -10.4
+pan = 0.1
+reverb_send = 0.06
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

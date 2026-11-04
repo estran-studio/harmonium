@@ -1,0 +1,23 @@
+# Arc de métier : cinq chorus de seize mesures, sans changement de grille (aucune mesure de corpus).
+# Exposition à la charleston et au comping clairsemé, deux chorus de corps au ride (le second aussi à la caixa, la
+# caisse claire en doubles croches), sommet dense au ride ou à la caixa avec stop-time une fois sur deux sur les deux
+# dernières mesures, retombée à la charleston avec stop-time (accords et basse sur le un seulement).
+repeat_from = 1
+[[stages]]
+choruses = 1
+variants = [{ intensity = 0.65, density = 0.8, comping = [{ tag = "sparse" }], percussion = [{ tag = "hat" }] }]
+[[stages]]
+choruses = 2
+variants = [
+  { intensity = 1.0, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "ride" }, { tag = "hat" }] },
+  { intensity = 1.1, density = 1.1, comping = [{ tag = "medium" }, { tag = "dense" }], percussion = [{ tag = "ride" }, { tag = "caixa" }], breaks = [{ start = 9, bars = 1, chance = 0.5, tracks = ["Chords"] }] },
+]
+[[stages]]
+choruses = 1
+variants = [{ intensity = 1.5, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }, { tag = "caixa" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] }]
+[[fall]]
+intensity = 0.5
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
