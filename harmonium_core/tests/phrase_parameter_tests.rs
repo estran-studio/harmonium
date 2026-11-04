@@ -33,6 +33,7 @@ fn stream(p: &StyleProfile, seed: u64, bars: usize) -> Vec<MeasureSnapshot> {
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    p.session = Default::default();
     p.ornaments = Default::default();
     p.arrangement = Arrangement::from_start(2, Default::default());
     p.form.parts.truncate(1);
@@ -186,6 +187,7 @@ fn numeric_structure_controls_reach_the_snapshot_stream() {
     for &(name, change) in controls {
         let mut p = StyleProfile::default();
         p.performance = Default::default();
+        p.session = Default::default();
         p.arrangement = Arrangement::from_start(1, Default::default());
         let mut modified = p.clone();
         change(&mut modified);

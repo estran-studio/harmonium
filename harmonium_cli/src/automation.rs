@@ -277,6 +277,8 @@ mod tests {
                     };
                     let mut tuning = harmonium_core::TuningParams::default();
                     tuning.profile.performance = Default::default();
+                    // Référence historique : sans l'habillage par graine du profil par défaut.
+                    tuning.profile.session = Default::default();
                     tuning.profile.heterophony = None;
                     if let Some(a) = &mut tuning.profile.accompaniment {
                         a.bass.passing = None;

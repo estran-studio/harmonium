@@ -369,7 +369,10 @@ fn a_forked_profile_saved_edited_and_applied_plays_from_the_next_bar() -> Result
     let root = folder.join("profile.toml");
     let text = std::fs::read_to_string(&root).map_err(|e| e.to_string())?;
     assert!(text.contains("id = \"reel_quebecois_fork\""));
-    let edited = text.replace("default_bpm = 230.0", "default_bpm = 225.0");
+    // Le tempo tiré par la graine l'emporte sur `default_bpm` : le profil édité n'a plus de `[session]`.
+    let edited = text
+        .replace("default_bpm = 230.0", "default_bpm = 225.0")
+        .replace("session = \"session.toml\"\n", "");
     assert_ne!(edited, text);
     std::fs::write(&root, edited).map_err(|e| e.to_string())?;
     click(&mut rig, "Open");

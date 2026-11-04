@@ -50,6 +50,8 @@ fn flat_tuning() -> TuningParams {
     tuning.profile.arrangement.intro = IntroConfig::none();
     tuning.profile.performance = Default::default();
     tuning.profile.set = Default::default();
+    // Ces tests portent sur les tours, pas sur l'habillage par graine du profil par défaut.
+    tuning.profile.session = Default::default();
     tuning
 }
 

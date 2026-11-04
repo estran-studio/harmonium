@@ -338,6 +338,8 @@ fn fixed_roles_gigue_valse_notes_match_the_reference() -> Result<(), Box<dyn std
     for style_id in ["gigue_quebecoise", "valse_quebecoise"] {
         let mut profile = StyleProfile::named(style_id)?;
         profile.performance = Default::default();
+        // La référence est celle des notes du profil sans habillage par graine.
+        profile.session = Default::default();
         profile.heterophony = None;
         profile.ornaments = Default::default();
         profile.accompaniment.as_mut().unwrap().bass.passing = None;

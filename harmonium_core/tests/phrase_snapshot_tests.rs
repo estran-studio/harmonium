@@ -31,6 +31,8 @@ fn choice(roles: &[(ImposedRole, u32)]) -> ProfileRole {
 fn fixture() -> StyleProfile {
     let mut p = StyleProfile::default();
     p.performance = Default::default();
+    // Tonalité et mode viennent de `melody.key_modes` ci-dessous, pas du tirage de session.
+    p.session = Default::default();
     p.ornaments = Default::default();
     p.arrangement = Arrangement::from_start(2, Default::default());
     p.set = Default::default();

@@ -30,7 +30,8 @@ fn a_fork_keeps_every_file_and_comment_under_a_new_identity() -> Result<(), Stri
             "percussion.toml",
             "arrangement.toml",
             "dynamics.toml",
-            "set.toml"
+            "set.toml",
+            "session.toml"
         ],
         "profile.toml, puis les banques dans l'ordre de son [files]"
     );

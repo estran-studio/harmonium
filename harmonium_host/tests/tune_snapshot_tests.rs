@@ -25,6 +25,8 @@ fn flat_tuning() -> TuningParams {
             p.heterophony = None;
             // La forme et l'accompagnement sont testés sans raccord ni clôture de set.
             p.set = Default::default();
+            // Ces tests ne portent pas sur l'habillage par graine du profil par défaut.
+            p.session = Default::default();
             let a = p.accompaniment.as_mut().unwrap();
             a.bass.passing = None;
             a.chords.spread = None;
