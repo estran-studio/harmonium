@@ -1,6 +1,6 @@
 # Un set d'un air (quatre chorus) : le nombre de chorus est connu, la retombée de l'arc joue au dernier. Sans
-# `length`, le set serait sans fin (pas de retombée). La tonalité est verrouillée (`fixed_tonality`) : les
-# poids de changement de tonalité n'ont pas d'effet.
+# `length`, le set serait sans fin (pas de retombée). La tonalité est celle de la variante de session
+# (`session.toml`) : un air par set, les poids de changement de tonalité n'ont pas d'effet.
 length = [{ tunes = 1, weight = 1 }]
 
 [key]

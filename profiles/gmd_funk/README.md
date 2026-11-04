@@ -1,7 +1,7 @@
 # Profil `gmd_funk` (phase 019, B4)
 
 Accompagnement funk, doubles croches droites, sous une grille d'accords : basse, comping et batterie ne
-dépendent que de l'accord publié (profil `loop`, `[fixed_tonality]`, pas de piste `Melody`). Fait pour
+dépendent que de l'accord publié (profil `loop`, pas de `[fixed_tonality]` (tonique tirée par `session.toml`), pas de piste `Melody`). Fait pour
 training : l'utilisateur fournit sa grille, le profil joue dessous ; sans grille, cinq boucles de seize
 mesures tirées par la graine.
 
@@ -40,7 +40,7 @@ dans le dépôt. Mesures du labo : `harmonium_lab/references/gmd-funk/`, `refere
 | Batterie : phrases | 21 suites de 2 et 4 mesures (≥ 3 occurrences sur ≥ 2 batteurs), poids = occurrences, 3 densités, `part_end` pour les suites dont la dernière mesure change de groupe | GMD funk `beat`, fenêtres alignées sur la première mesure |
 | Batterie : relances | 4 groupes de fichiers `fill` (1 mesure du pas 0 : 21 et 5 fichiers ; 2 mesures du pas 14 : 6 ; 2 mesures du pas 0 : 4), densités 1 et 2 | GMD funk `fill` : départ au temps 1 dans 27 fichiers sur 40, au temps 4 dans 7 ; 1 mesure dans 28 fichiers, 2 dans 11 |
 | `fills_none_weight` | 29 (44 % de fins de phrase sans relance) | valeur de service : le GMD isole les relances, la part de fins de phrase sans relance n'y est pas mesurable |
-| `performance.tracks.Percussion*` | décalage −0,04 à −0,07 pas, sans `jitter` | GMD funk, médianes de l'écart à la grille : charleston −0,04, grosse caisse −0,04 (hors temps) à −0,07 (sur le temps), caisse claire −0,02 à −0,07 |
+| `performance.tracks.Percussion*.voices` | une entrée par note GM jouée, `on_beat` et `off_beat` en fraction de pas, sans `jitter` | GMD, médianes en ms de l'écart à la grille par rôle (groupe 4/4 droit, pondérées par l'effectif), converties au tempo par défaut ; table dans « Habillage par graine » |
 | Niveau de chaque voix de batterie | gain par rôle, voir le script | LUFS en solo mesuré sur le kit 128/0 de GeneralUser GS à vélocité 50 et 100, droite en log2 de la vélocité, niveau visé par rôle |
 | `mix.tracks` | accords −17 dB, basse −18,5 dB, percussion −19 dB, maître +25 dB | LUFS intégrés en solo, graine 1, 40 mesures : accords −25,6, basse −25,0, batterie haute −25,7, grosse caisse −31,6, mix −21,2 |
 
@@ -52,7 +52,7 @@ sur cinq chorus, le gratté de la guitare, le mixage.
 
 ## Ce que le profil joue
 
-- **Grille** : cinq boucles de seize mesures en mi dorien (`fixed_tonality` mi, `dorian`), relatives à la
+- **Grille** : cinq boucles de seize mesures en mi dorien (mi dorien par défaut ; la session tire la tonique, voir « Habillage par graine »), relatives à la
   tonique : `I9` pendant seize mesures (poids 3) ; `I9` 4, `IV9` 4, `I9` 4, `IV9` 2, `I9` 2 (3) ;
   `Im7` 4, `IV7` 4, `Im7` 4, `IV7` 2, `bVII7` 2 (3) ; `Im7` et `bVII7` deux mesures chacun (2) ; huit
   mesures `Im7` 2, `IVm7` 2, `Im7` 2, `bVII7`, `V7` à la blanche puis `bVII7`, deux fois (2). La graine en
@@ -73,6 +73,61 @@ sur cinq chorus, le gratté de la guitare, le mixage.
   (`sparse`, stop-time sur le un des deux dernières mesures). Au-delà de cinq chorus : sommet puis corps
   et sommet en boucle.
 
+## Habillage par graine (`session.toml`, A2 ; R2-styles)
+
+Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (9 groupes,
+32 variantes, **73728 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
+le swing, `[fixed_tonality]` du profil de l'hôte (la grille de training, transposée par lui) la tonalité (la variante est
+alors ignorée) ; programmes, voicings, registre, énergie et arc n'ont pas de commande (un hôte qui n'en veut pas installe
+un profil sans `[session]`). Ce profil n'a donc **plus de `[fixed_tonality]`** : la tonalité par défaut (mi dorien) n'est
+que la plus pondérée.
+
+| Groupe | Variantes (poids) | Ce que règle le groupe | D'où vient la valeur |
+|---|---|---|---|
+| `tempo` | lent (2), medium (3), vif (2), rapide (1) | tempo (plage de BPM, un entier tiré) | GMD : centiles des BPM des fichiers `beat` |
+| `tonalite` | mi_dorian (3), la_dorian (2), re_dorian (2), sol_dorian (1) | tonique et mode du premier air (grille relative transposée) | métier : tonalités courantes du style |
+| `comping` | guitare_claire (3), guitare_sourdine (2), clavinet (2), piano_electrique (1) | programme des accords | métier |
+| `basse` | doigts (3), slap (2), synthetique (1), mediator (1) | programme de la basse | métier |
+| `kit` | standard (3), room (2), power (1), electronique (1) | kit de la banque 128 | métier ; le GMD est joué sur un kit électronique Roland TD-11 |
+| `voicing` | notes_guides (3), shell (2), drop_2 (1) | famille de voicings du comping | métier |
+| `registre` | normal (4), haut (1) | octave du comping | métier |
+| `energie` | doux (1), normal (2), fort (1) | multiplicateurs d'intensité et de densité de base | service |
+| `arc` | defaut (3), orchestre (2), direct (1), montee (1) | arc : `[arc]` du profil ou arc nommé de `session.toml` | service (aucun corpus ne donne l'arc d'un morceau) |
+
+Les arcs nommés (`orchestre` : le comping et le kit changent de chorus en chorus et reviennent aux programmes de la session ;
+`direct` : pas d'exposition ; `montee` : un cran par chorus) sont écrits dans `session.toml`, mêmes valeurs de service que
+`arc.toml`. Tous les instruments sont des programmes General MIDI de GeneralUser GS (banque 0) et des kits de la banque 128
+(0, 8, 16, 24, 25), vérifiés dans la banque ; aucune zone Odin (D1).
+
+**Micro-timing par voix** (`performance.tracks.Percussion*.voices`, A6) : médianes de l'écart à la grille mesurées dans le
+GMD (groupe 4/4 droit de `funk`, pondérées par l'effectif), en **fraction de pas au tempo par
+défaut (96 BPM)** : un pas = 15 000 / BPM ms ; les décalages mesurés en ms ne suivent donc pas exactement le tempo tiré
+(à 130 BPM le même retard en ms vaut 24 % de pas de plus). `jitter` : amplitude d'un tirage uniforme dont l'écart-type est celui
+mesuré, plafonnée à 0,1 pas (borne du schéma ; l'écart-type mesuré est de 0,11 à 0,20 pas). Aucun `jitter` : la basse à notes de passage partage son tirage avec la percussion (contrat `passing_keeps_neighbour_tracks…`).
+
+| Voix | Note GM | Sur le temps (pas) | Hors temps (pas) | Jitter (pas) |
+|---|---:|---:|---:|---:|
+| kick | 36 | -0.069 | -0.040 | — |
+| sidestick | 37 | -0.122 | -0.089 | — |
+| snare | 38 | -0.064 | -0.017 | — |
+| hat_closed | 42 | -0.030 | -0.043 | — |
+| tom_low | 43 | -0.131 | -0.111 | — |
+| hat_pedal | 44 | -0.146 | -0.133 | — |
+| hat_open | 46 | -0.030 | -0.080 | — |
+| tom_mid | 47 | -0.107 | -0.104 | — |
+| crash | 49 | -0.061 | -0.028 | — |
+| tom_high | 50 | -0.109 | -0.101 | — |
+| ride | 51 | -0.042 | -0.059 | — |
+| ride_bell | 53 | -0.144 | -0.104 | — |
+
+**Coups probabilistes** (`probability`, A6) : 84 coups de `percussion.toml` jouent avec la probabilité par pas mesurée dans le
+groupe (grosse caisse, caisse claire, cross-stick entre 0,08 et le seuil de la densité ; notes fantômes à la densité 2),
+au lieu d'un coup certain dès 0,25 (0,3 pour funk et New Orleans) ou absent : le tirage est sans état (graine, mesure, pas, note) donc stable par graine.
+
+**Voicings** : `chords.color` (tension 9, 11 ou 13 que la qualité permet, jamais en conflit avec la grille, D4) et
+`chords.register_drift` (dérive bornée du centre) sont déclarés ; ils n'agissent que sur les familles de voicings qui les
+lisent (pas `close_triad`).
+
 ## Contrat et preuves
 
 `harmonium_core/tests/gmd_funk_neworleans_profile_tests.rs` (flux de `MeasureSnapshot`, graines 1, 2, 3, 17
@@ -87,8 +142,7 @@ exposition et retombée plus légères que le sommet, stop-time de la retombée 
 ## Limites
 
 - **Batterie : des composites, pas des mesures.** Chaque pattern est un agrégat de probabilités par pas d'un
-  groupe de mesures (k-moyennes) : rigide (pas de coup probabiliste dans le schéma : L2 § 6 point 5), les
-  notes fantômes de la caisse claire y sont des coups à vélocité faible. Quatre batteurs, un kit
+  groupe de mesures (k-moyennes) : rigide (les notes fantômes de la caisse claire et les grosses caisses rares sont des coups probabilistes, `probability` = fréquence mesurée, A6 : 84 coups ; le reste est un seuil à 0,5). Quatre batteurs, un kit
   électronique : un idiome de batteur, pas du funk en général. Les patterns ne sont pas validés à l'écoute
   (D5) mais mesurés (preuve chiffrée).
 - **Phrases du GMD** : fenêtres de 2 et 4 mesures alignées sur la première mesure de fichiers de 30 à 90
@@ -105,15 +159,11 @@ exposition et retombée plus légères que le sommet, stop-time de la retombée 
   Le plan de motifs de basse est fixé par air : la basse ne change pas d'un chorus à l'autre
   (A4 de la vague 3 l'étendra). 16 solos et 12 pour les parts « au changement » : intervalles de confiance
   larges, 8 solos sur 20 sur un vamp (55 % des mesures).
-- **Micro-timing** : décalages médians seulement (rôle par pas de pulsation ; charleston et caisse claire partagent une piste, `PercussionHigh`) ; la dispersion mesurée (0,13 à 0,20 pas) n'est pas reproduite : un `jitter` de batterie partage son tirage avec la basse à notes de passage et la déplacerait (contrat `passing_keeps_neighbour_tracks_and_strong_bass_unchanged`).
+- **Micro-timing** : médianes par voix (A6, R2) ; la dispersion mesurée (0,11 à 0,20 pas) n'est pas reproduite : un `jitter` de batterie partage son tirage avec la basse à notes de passage et la déplacerait (contrat `passing_keeps_neighbour_tracks_and_strong_bass_unchanged`). Le décalage est mesuré en ms et converti au tempo par défaut : il dérive de la mesure aux autres tempos tirés.
 - **Swing** : droit, 0,5, tous tempos (GMD funk) ; la courbe de swing selon le tempo (A6) ne concerne pas ce
   feel. Rien de ternaire : `funk/purdieshuffle` (B6) n'est pas lu.
 - **Tempo** : WJazzD FUNK n'a rien au-dessus de 160 BPM ; le GMD funk n'a qu'un fichier rapide (125). Le
   tempo ne change pas d'un chorus à l'autre.
-- **Habillage par graine** (A2, vague 4) : n'existe pas encore ; tempo, tonalité, instruments, voicings,
-  kit sont fixes par profil. La seule variété de graine est celle des grilles, du plan de basse, des
-  phrases, des relances et de l'arc.
-- **Instruments** : un seul par piste (guitare claire, basse aux doigts, kit standard). Le comping n'a
-  qu'un voicing (notes guides) ; Rhodes, orgue, basse slap ne sont pas tirables.
+- **Habillage par graine** (R2) : groupes indépendants, aucun lien entre kit, tempo et instruments (un kit « power » peut tomber avec le tempo le plus lent) ; tonalités, instruments, kits, voicings, registre, énergie et arcs sont de métier, jugés par des preuves chiffrées seulement (D5). Les options de marche d'A4 (notes fantômes, croches, notes répétées, arrivée) sont exclusives de `motifs` et de `passing` : la basse garde ses riffs.
 - **Mixage** : réglé au LUFS en solo (graine 1), aucune écoute ; la grosse caisse et le charleston partagent
   le canal 9 du kit GM, le niveau de `PercussionHigh` gagne, la grosse caisse se règle par sa voix.

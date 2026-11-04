@@ -1,0 +1,300 @@
+# Habillage par graine de `gmd_hiphop` (A2 ; phase 019, R2-styles) : un tirage par groupe, les groupes se combinent
+# (311040 habillages possibles). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b8/generer.py` depuis
+# `specs/019-bibliotheque-accompagnements/r2-styles/habillage.py`.
+#
+# Ce qui vient de la source (GMD, CC BY 4.0) : les plages de tempo (centiles des BPM des fichiers `beat`, 70 à 100) et
+# le swing léger (rapport médian des fichiers `swing`). Le reste est de métier (tonalités courantes du style, instruments,
+# kits, familles de voicings, registre, énergie, arcs nommés) : aucun corpus distribuable ne le mesure (décision F3).
+# Programmes General MIDI (0-based) de GeneralUser GS, banque 0 ; kits de la banque 128 : 0 standard, 8 room, 16 power,
+# 24 electronic, 25 808/909. Aucune zone Odin (D1). Le tempo de l'hôte (`SetBpm`), son swing et son `[fixed_tonality]`
+# gagnent sur la variante.
+
+[[variants]]
+group = "tempo"
+name = "lent"
+weight = 2
+bpm = [70.0, 79.0]
+
+[[variants]]
+group = "tempo"
+name = "medium"
+weight = 3
+bpm = [84.0, 95.0]
+
+[[variants]]
+group = "tempo"
+name = "vif"
+bpm = [97.0, 100.0]
+
+[[variants]]
+group = "feel"
+name = "droit"
+weight = 4
+
+[[variants]]
+group = "feel"
+name = "swing_leger"
+swing = 0.59
+
+[[variants]]
+group = "tonalite"
+name = "do_aeolian"
+weight = 3
+tonality = { key = 0, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "la_aeolian"
+weight = 2
+tonality = { key = 9, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "sol_aeolian"
+weight = 2
+tonality = { key = 7, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "fa_aeolian"
+weight = 2
+tonality = { key = 5, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "re_aeolian"
+tonality = { key = 2, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "mi_aeolian"
+tonality = { key = 4, mode = "aeolian" }
+
+[[variants]]
+group = "comping"
+name = "piano_electrique"
+weight = 4
+instruments = { chords_program = 4 }
+
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 2
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "fm"
+instruments = { chords_program = 5 }
+
+[[variants]]
+group = "comping"
+name = "vibraphone"
+instruments = { chords_program = 11 }
+
+[[variants]]
+group = "comping"
+name = "nylon"
+instruments = { chords_program = 24 }
+
+[[variants]]
+group = "basse"
+name = "synth_1"
+weight = 3
+instruments = { bass_program = 38 }
+
+[[variants]]
+group = "basse"
+name = "synth_2"
+weight = 2
+instruments = { bass_program = 39 }
+
+[[variants]]
+group = "basse"
+name = "doigts"
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "kit"
+name = "808"
+weight = 3
+instruments = { percussion_bank = 128, percussion_program = 25 }
+
+[[variants]]
+group = "kit"
+name = "electronique"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 24 }
+
+[[variants]]
+group = "kit"
+name = "standard"
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+weight = 3
+voicing = "drop2"
+
+[[variants]]
+group = "voicing"
+name = "shell"
+weight = 2
+voicing = "shell"
+
+[[variants]]
+group = "voicing"
+name = "structure_superieure"
+voicing = "upper_structure"
+
+[[variants]]
+group = "voicing"
+name = "ouvert"
+voicing = "open"
+
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 4
+
+[[variants]]
+group = "registre"
+name = "haut"
+register_octaves = { Chords = 1 }
+
+[[variants]]
+group = "registre"
+name = "grave"
+register_octaves = { Chords = -1 }
+
+[[variants]]
+group = "energie"
+name = "doux"
+intensity = 0.85
+density = 0.85
+
+[[variants]]
+group = "energie"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "energie"
+name = "fort"
+intensity = 1.15
+density = 1.1
+
+[[variants]]
+group = "arc"
+name = "defaut"
+weight = 3
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 2
+arc = "orchestre"
+
+[[variants]]
+group = "arc"
+name = "direct"
+arc = "direct"
+
+[[variants]]
+group = "arc"
+name = "montee"
+arc = "montee"
+
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 1, intensity = 0.65, density = 0.9, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }], instruments = { chords_program = 11 } },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 1.1, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "hat" }], instruments = { bass_program = 39, chords_program = 5 }, breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.orchestre.fall]]
+intensity = 0.5
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+instruments = { chords_program = 11 }
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.direct]
+repeat_from = 1
+
+[[arcs.direct.stages]]
+choruses = 2
+variants = [
+  { weight = 2, intensity = 0.9, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.direct.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.25, density = 1.25, comping = [{ tag = "dense" }], percussion = [{ tag = "hat" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.direct.fall]]
+intensity = 0.8
+density = 0.7
+comping = [{ tag = "medium" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -1, bars = 1, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.montee]
+repeat_from = 1
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.55, density = 0.8, comping = [{ tag = "sparse" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.8, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.0, density = 1.1, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.3, comping = [{ tag = "dense" }], percussion = [{ tag = "hat" }], instruments = { bass_program = 39, chords_program = 5 } },
+]
+
+[[arcs.montee.fall]]
+intensity = 0.45
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+instruments = { chords_program = 11 }
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

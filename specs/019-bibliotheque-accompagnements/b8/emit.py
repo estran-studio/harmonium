@@ -151,6 +151,11 @@ class Style:
     readme: dict[str, str] = field(default_factory=dict)
     corpus: str = ""
     velocity_curves: dict[str, list[list[float]]] = field(default_factory=dict)
+    # R2-styles : habillage par graine (`session.toml`), micro-timing par voix, couleur et dérive des voicings
+    hab: Any = None  # `r2-styles/habillage.py::Habillage`
+    voices_toml: str = ""  # tables `[performance.tracks.Percussion*]`
+    color: str = ""  # `chords.color` (ligne TOML)
+    register_drift: str = ""  # `chords.register_drift` (ligne TOML)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -179,7 +184,7 @@ def profile_toml(s: Style, header: str) -> str:
     lo, default, hi = s.bpm
     out: list[str] = [header.rstrip("\n"), ""]
     out += ["[files]", 'cells = "cells.toml"', 'percussion = "percussion.toml"', 'arrangement = "arrangement.toml"',
-            'dynamics = "dynamics.toml"', 'set = "set.toml"', 'arc = "arc.toml"', ""]
+            'dynamics = "dynamics.toml"', 'set = "set.toml"', 'arc = "arc.toml"', 'session = "session.toml"', ""]
     out += ["[meta]", f'id = "{s.id}"', f"name = {scalar(s.name)}", f"tradition = {scalar(s.tradition)}",
             f"tags = {scalar(s.tags)}"]
     if s.aliases:
@@ -188,14 +193,15 @@ def profile_toml(s: Style, header: str) -> str:
     out += ["[meter]", 'time_signature = { numerator = 4, denominator = 4 }', "steps_per_bar = 16", "steps_per_unit = 2",
             "steps_per_pulse = 4", "pulses_per_bar = 4", "# GMD : feel droit (rapport médian 0,50) dans tous les fichiers retenus.",
             "default_swing_ratio = 0.5", f"# {s.bpm_note}", f"default_bpm = {default}", f"min_bpm = {lo}", f"max_bpm = {hi}", ""]
-    out += ["[fixed_tonality]", f"key = {s.key}", f'mode = "{s.mode}"', ""]
+    # Pas de `[fixed_tonality]` : la tonalité vient de la variante de session (R2) ; training installe le sien (le
+    # verrou de l'hôte gagne sur la variante).
     out += [s.comments.get("form", "").rstrip("\n"), "[form]", f"sequence = {s.sequence}"]
     for p in s.parts:
         out += ["[[form.parts]]", f'name = "{p.name}"', "melody_center_offset = 0", f"phrase_ends = [{p.bars}]",
                 "roles = " + scalar(["Open"] + ["Free"] * (p.bars - 1)), ""]
     out += ["# Pas de mélodie jouée : mêmes réglages neutres que `wjazzd_swing`.", "[melody]", "cell_units = 8",
             "strong_units = [0, 2, 4, 6]", "weak_units = [1, 3, 5, 7]",
-            f'key_modes = [{{ key = {s.key}, mode = "{s.mode}", weight = 1 }}]', "[melody.params]", "weight_role_run = 3",
+            "key_modes = " + s.hab.key_modes(), "[melody.params]", "weight_role_run = 3",
             "weight_role_arp = 0", "weight_role_turn = 0", "max_continuity_step_distance = 2", "continuity_max_retries = 8",
             "melody_center_midi = 72", "tonic_midi_min = 60", "tonic_midi_max = 72", "tessitura_min = 55",
             "tessitura_max = 88", "base_velocity = 80", "strong_eighth_velocity_offset = 8",
@@ -229,6 +235,10 @@ def profile_toml(s: Style, header: str) -> str:
             f"max_drift = {s.chords_drift}", "default_pattern = 0", f'voicing = "{s.voicing}"']
     if s.note_count != 3:
         out.append(f"note_count = {s.note_count}")
+    if s.color:
+        out.append("color = " + s.color)
+    if s.register_drift:
+        out.append("register_drift = " + s.register_drift)
     out += [f"low = {s.chords_low}", f"high = {s.chords_high}",
             "patterns = [{ hits = [" + ", ".join(comp_hit(h) for h in s.default_comp) + "] }]", "comping = ["]
     for i, c in enumerate(s.comping):
@@ -244,7 +254,7 @@ def profile_toml(s: Style, header: str) -> str:
     out += ["", "[instruments]", "melody_program = 0", f"chords_program = {s.chords_program}",
             f"bass_program = {s.bass_program}", "percussion_bank = 128", f"percussion_program = {s.kit_program}", "",
             "[ornaments]", "rate_scale = 0.0", ""]
-    out += [s.comments.get("timing", "").rstrip("\n"), "[performance.tracks.Bass]", f"jitter = {s.bass_jitter}",
+    out += [s.comments.get("timing", "").rstrip("\n"), s.voices_toml.rstrip("\n"), "[performance.tracks.Bass]", f"jitter = {s.bass_jitter}",
             "[performance.tracks.Chords]"]
     if s.chords_offset:
         out.append("offsets = " + scalar([s.chords_offset] * 16))
@@ -301,13 +311,14 @@ def dynamics_toml(s: Style) -> str:
 # paramètre (README du profil). Arousal : tempo (−{down} à +{up} BPM autour de {default}, la plage de la source),
 # vélocités des trois pistes, niveau de densité de la batterie (0 : timekeeper seul ; 1 : ossature ; 2 : notes
 # fantômes). `density_percussion` ({'{'}-1..+1{'}'} niveau) rend l'arc (intensité et densité par chorus) audible.
-# Aucune bascule de mode : la tonalité est verrouillée (`fixed_tonality`).
+# Tonalité : tirée par la variante de session (`session.toml`) ; les seuils de bascule parallèle sont écartés de la
+# valence neutre (0,3) pour que le mode tiré ne bascule pas de lui-même.
 neutral_valence = 0.3
 valence_range = [-1.0, 1.0]
 mode_shift_boundary = "part"
-dark_below = 0.35
-bright_above = 0.7
-parallel_modes = [{{ bright = "ionian", dark = "aeolian", weight = 1 }}]
+dark_below = 0.1
+bright_above = 0.9
+parallel_modes = {s.hab.parallel_modes()}
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
 tempo_offset = [[0.0, -{down}], [0.5, 0.0], [1.0, {up}]]
@@ -331,13 +342,13 @@ tension_offbeat = [[0.0, 0.0], [1.0, 0.0]]
 tension_duration = [[0.0, 1.0], [1.0, 1.0]]
 tension_dominant = [[0.0, 0.0], [1.0, 0.0]]
 tension_chord_duration = [[0.0, 1.0], [1.0, 1.0]]
-color = [{{ key = {s.key}, mode = "{s.mode}", weight = [[0.0, 1.0], [1.0, 1.0]] }}]
+color = {s.hab.color()}
 """
 
 
 SET_TOML = """# Un set d'un air (quatre chorus) : le nombre de chorus est connu, la retombée de l'arc joue au dernier. Sans
-# `length`, le set serait sans fin (pas de retombée). La tonalité est verrouillée (`fixed_tonality`) : les
-# poids de changement de tonalité n'ont pas d'effet.
+# `length`, le set serait sans fin (pas de retombée). La tonalité est celle de la variante de session
+# (`session.toml`) : un air par set, les poids de changement de tonalité n'ont pas d'effet.
 length = [{ tunes = 1, weight = 1 }]
 
 [key]

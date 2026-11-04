@@ -35,7 +35,7 @@ from styles import PROFILES  # noqa: E402
 REPO = HERE.parents[2]
 CLI = Path(os.environ.get("HARMONIUM_CLI", REPO / "target/release/harmonium-cli"))
 ENGINE_CWD = Path(os.environ.get("HARMONIUM_CWD", Path.home() / "Project/bascanada/harmonium"))
-WORK = Path("/tmp/harmonium-019/b8/distance")
+WORK = Path(os.environ.get("HARMONIUM_DISTANCE_WORK", "/tmp/harmonium-019/b8/distance"))
 ROLES = {"kick": {36, 35}, "snare": {37, 38, 39, 40}, "hat": {42, 44, 46}, "ride": {51, 53, 59}}
 GMD_ROLES = {"kick": {"kick"}, "snare": {"snare", "sidestick"}, "hat": {"hat_closed", "hat_pedal", "hat_open"},
              "ride": {"ride", "ride_bell"}}
@@ -90,7 +90,12 @@ def copy_without_arc(profile: Path, name: str, reference_percussion: Path | None
         shutil.copy(reference_percussion, dst / "percussion.toml")
     (dst / "arc.toml").unlink()
     text = (dst / "profile.toml").read_text()
-    (dst / "profile.toml").write_text(re.sub(r'(?m)^arc = "arc.toml"\n', "", text))
+    text = re.sub(r'(?m)^arc = "arc.toml"\n', "", text)
+    # R2 : sans arc ET sans session (la session peut tirer un arc nommé) : seuls les patterns restent.
+    if (dst / "session.toml").exists():
+        (dst / "session.toml").unlink()
+        text = re.sub(r'(?m)^session = "session.toml"\n', "", text)
+    (dst / "profile.toml").write_text(text)
     return dst
 
 

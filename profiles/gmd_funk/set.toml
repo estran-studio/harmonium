@@ -1,7 +1,7 @@
 # Forme longue : chaque set contient un air de cinq chorus, raccord direct sans pause, pas
 # d'outro, pas de rampe de tempo ni d'intensité (le nombre de chorus est connu : l'arc joue la
-# retombée au dernier). La tonalité est verrouillée (`fixed_tonality`) : les poids de changement de
-# tonalité n'ont pas d'effet.
+# retombée au dernier). La tonalité est celle de la variante de session (`session.toml`) : un air par
+# set, les poids de changement de tonalité n'ont pas d'effet.
 length = [{ tunes = 1, weight = 1 }]
 
 [key]

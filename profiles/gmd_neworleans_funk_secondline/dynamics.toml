@@ -5,12 +5,13 @@
 # syncopes de la grosse caisse et de la caisse claire).
 # Vélocités par piste élargies (0,6 à 1,3) : l'arc (`arc.toml`) multiplie l'intensité (0,35 à 0,65 au neutre) et
 # l'écart entre l'exposition, le sommet et la retombée doit s'entendre (réglage de service, aucune mesure).
-# Aucune bascule de mode : la tonalité est verrouillée (`fixed_tonality`).
+# Tonalité : tirée par la variante de session (`session.toml`) ; les seuils de bascule parallèle sont écartés de la
+# valence neutre (0,3) pour que le mode tiré ne bascule pas de lui-même.
 neutral_valence = 0.3
 valence_range = [-1.0, 1.0]
 mode_shift_boundary = "part"
-dark_below = 0.35
-bright_above = 0.7
+dark_below = 0.1
+bright_above = 0.9
 parallel_modes = [{ bright = "mixolydian", dark = "dorian", weight = 1 }]
 arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
 tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
@@ -35,4 +36,4 @@ tension_offbeat = [[0.0, 0.0], [1.0, 0.0]]
 tension_duration = [[0.0, 1.0], [1.0, 1.0]]
 tension_dominant = [[0.0, 0.0], [1.0, 0.0]]
 tension_chord_duration = [[0.0, 1.0], [1.0, 1.0]]
-color = [{ key = 10, mode = "mixolydian", weight = [[0.0, 1.0], [1.0, 1.0]] }]
+color = [{ key = 10, mode = "mixolydian", weight = [[0.0, 1.0], [1.0, 1.0]] }, { key = 5, mode = "mixolydian", weight = [[0.0, 1.0], [1.0, 1.0]] }, { key = 3, mode = "mixolydian", weight = [[0.0, 1.0], [1.0, 1.0]] }, { key = 0, mode = "mixolydian", weight = [[0.0, 1.0], [1.0, 1.0]] }]

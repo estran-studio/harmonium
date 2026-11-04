@@ -1,0 +1,270 @@
+# Habillage par graine de `gmd_pop` (A2 ; phase 019, R2-styles) : un tirage par groupe, les groupes se combinent
+# (46080 habillages possibles). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b8/generer.py` depuis
+# `specs/019-bibliotheque-accompagnements/r2-styles/habillage.py`.
+#
+# Ce qui vient de la source (GMD, CC BY 4.0) : les plages de tempo (centiles des BPM des fichiers `beat`, 83 à 142) et
+# le swing léger (rapport médian des fichiers `swing`). Le reste est de métier (tonalités courantes du style, instruments,
+# kits, familles de voicings, registre, énergie, arcs nommés) : aucun corpus distribuable ne le mesure (décision F3).
+# Programmes General MIDI (0-based) de GeneralUser GS, banque 0 ; kits de la banque 128 : 0 standard, 8 room, 16 power,
+# 24 electronic, 25 808/909. Aucune zone Odin (D1). Le tempo de l'hôte (`SetBpm`), son swing et son `[fixed_tonality]`
+# gagnent sur la variante.
+
+[[variants]]
+group = "tempo"
+name = "ballade"
+bpm = [83.0, 90.0]
+
+[[variants]]
+group = "tempo"
+name = "rapide"
+weight = 3
+bpm = [132.0, 142.0]
+
+[[variants]]
+group = "tonalite"
+name = "sol_ionian"
+weight = 3
+tonality = { key = 7, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "do_ionian"
+weight = 3
+tonality = { key = 0, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re_ionian"
+weight = 2
+tonality = { key = 2, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "la_ionian"
+tonality = { key = 9, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "fa_ionian"
+weight = 2
+tonality = { key = 5, mode = "ionian" }
+
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 4
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "comping"
+name = "piano_electrique"
+weight = 2
+instruments = { chords_program = 4 }
+
+[[variants]]
+group = "comping"
+name = "guitare_claire"
+weight = 2
+instruments = { chords_program = 27 }
+
+[[variants]]
+group = "comping"
+name = "guitare_acier"
+instruments = { chords_program = 25 }
+
+[[variants]]
+group = "basse"
+name = "doigts"
+weight = 4
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "basse"
+name = "mediator"
+weight = 2
+instruments = { bass_program = 34 }
+
+[[variants]]
+group = "basse"
+name = "fretless"
+instruments = { bass_program = 35 }
+
+[[variants]]
+group = "basse"
+name = "synthetique"
+instruments = { bass_program = 38 }
+
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 4
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "electronique"
+instruments = { percussion_bank = 128, percussion_program = 24 }
+
+[[variants]]
+group = "kit"
+name = "808"
+instruments = { percussion_bank = 128, percussion_program = 25 }
+
+[[variants]]
+group = "voicing"
+name = "triades_serrees"
+weight = 3
+voicing = "close_triad"
+
+[[variants]]
+group = "voicing"
+name = "ouvert"
+weight = 2
+voicing = "open"
+
+[[variants]]
+group = "voicing"
+name = "drop_2"
+voicing = "drop2"
+
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 4
+
+[[variants]]
+group = "registre"
+name = "haut"
+register_octaves = { Chords = 1 }
+
+[[variants]]
+group = "energie"
+name = "doux"
+intensity = 0.85
+density = 0.85
+
+[[variants]]
+group = "energie"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "energie"
+name = "fort"
+intensity = 1.15
+density = 1.1
+
+[[variants]]
+group = "arc"
+name = "defaut"
+weight = 3
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 2
+arc = "orchestre"
+
+[[variants]]
+group = "arc"
+name = "direct"
+arc = "direct"
+
+[[variants]]
+group = "arc"
+name = "montee"
+arc = "montee"
+
+[arcs.orchestre]
+repeat_from = 1
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 1, intensity = 0.65, density = 0.9, comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }], instruments = { chords_program = 0 } },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 2
+variants = [
+  { weight = 2, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
+  { weight = 1, intensity = 1.1, density = 1.1, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }] },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.4, density = 1.4, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], instruments = { chords_program = 27, percussion_bank = 128, percussion_program = 8 }, breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[arcs.orchestre.fall]]
+intensity = 0.5
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+instruments = { chords_program = 0 }
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.direct]
+repeat_from = 1
+
+[[arcs.direct.stages]]
+choruses = 2
+variants = [
+  { weight = 2, intensity = 0.9, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
+  { weight = 1, intensity = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "ride" }] },
+]
+
+[[arcs.direct.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.25, density = 1.25, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[arcs.direct.fall]]
+intensity = 0.8
+density = 0.7
+comping = [{ tag = "medium" }]
+percussion = [{ tag = "ride" }]
+breaks = [{ start = -1, bars = 1, tracks = ["Chords", "Bass"], keep_steps = [0] }]
+
+[arcs.montee]
+repeat_from = 1
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.55, density = 0.8, comping = [{ tag = "sparse" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.8, density = 1.0, comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.0, density = 1.1, comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }] },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.3, density = 1.3, comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], instruments = { chords_program = 27, percussion_bank = 128, percussion_program = 8 } },
+]
+
+[[arcs.montee.fall]]
+intensity = 0.45
+density = 0.5
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+instruments = { chords_program = 0 }
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]
