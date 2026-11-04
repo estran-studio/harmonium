@@ -1,8 +1,236 @@
-# Banque minimale exigée par le chargeur : le profil ne joue pas de mélodie (Melody absente de
-# l'arrangement), ces cellules ne sont jamais entendues.
+# Banque de cellules mélodiques d'une mesure (8 croches) pour `wjazzd_swing` (phase 019, E12).
+#
+# Chaque cellule est SYNTHÉTISÉE depuis des statistiques agrégées des solos du sous-ensemble
+# `rhythmfeel = SWING` de la Weimar Jazz Database v2.1 (rythmes en croches swing, anticipations, pas
+# diatoniques, cibles sur les temps par rapport à l'accord, cadences) ; aucune phrase de solo n'est
+# copiée (ODbL 1.0 §4.3 : Produced Work, usage A) : un tirage est refusé si l'une de ses suites de
+# 6 notes (pas et durées) ou de 7 notes (pas) figure dans un solo. Génération :
+# `python -m harmonium_lab.backing.melody_cells --generate` (graine 12), mesures :
+# `references/wjazzd-melodie/measures-melody.json` du labo.
+#
+# Notation : voir `profiles/reel_quebecois/cells.toml` (degrés 1..14 de la gamme du mode, `-` = tenue).
+# Rôles du moteur lus pour le swing : `open` (début de phrase, première mesure d'une partie), `run`
+# (ligne conjointe), `arp` (arpège d'accord), `turn` (broderie, enclosure), `cad_half` (fin de phrase qui
+# s'appuie sur 2, 5 ou 7), `cad_full` (fin de phrase sur la tonique). `weight` : part de la difficulté de
+# la cellule (niveaux E10 1 à 3, 4 = profil) dans les mesures du rôle du corpus, divisée par le nombre de
+# cellules du niveau ; le tirage d'un rôle est pondéré par ce poids.
+#
+# Niveaux E10 (bornes de référence, plus bas niveau respecté par la cellule) : 1 = saut ≤ 4 demi-tons,
+# ≤ 4 attaques, durée ≥ 2 croches, ambitus ≤ 7 ; 2 = 5, ≤ 6 attaques, ≥ 2, 9 ; 3 = 7, ≤ 8, ≥ 1, 12 ;
+# 4 = au-delà. Le niveau de chaque cellule est en commentaire de fin de ligne.
+
 cells = [
- { role = "open", notes = "1 3 5 3 1 3 5 3", weight = 1 },
- { role = "open", notes = "5 3 1 3 5 3 1 3", weight = 1 },
- { role = "run", notes = "1 2 3 4 5 6 7 8", weight = 1 },
- { role = "run", notes = "8 7 6 5 4 3 2 1", weight = 1 },
+ { role = "open", notes = "4 - 2 - 4 - - -", weight = 29 }, # niveau 1
+ { role = "open", notes = "5 - - - 4 - 2 -", weight = 29 }, # niveau 1
+ { role = "open", notes = "6 - 4 - 6 - - -", weight = 29 }, # niveau 1
+ { role = "open", notes = "11 - 13 - 11 - 12 -", weight = 29 }, # niveau 1
+ { role = "open", notes = "3 - - 6 - - 5 -", weight = 29 }, # niveau 2
+ { role = "open", notes = "4 - 6 - 9 - - -", weight = 29 }, # niveau 2
+ { role = "open", notes = "6 - 4 - 1 - 3 -", weight = 29 }, # niveau 2
+ { role = "open", notes = "11 - 8 - - - - -", weight = 29 }, # niveau 2
+ { role = "open", notes = "3 5 - 7 - 5 - 3", weight = 27 }, # niveau 3
+ { role = "open", notes = "4 - - 2 - - - 4", weight = 27 }, # niveau 3
+ { role = "open", notes = "4 - - 5 8 10 8 6", weight = 27 }, # niveau 3
+ { role = "open", notes = "4 - - 6 4 2 3 2", weight = 27 }, # niveau 3
+ { role = "open", notes = "4 2 - 3 2 - - 1", weight = 27 }, # niveau 3
+ { role = "open", notes = "4 2 4 5 7 - 5 3", weight = 27 }, # niveau 3
+ { role = "open", notes = "5 - 1 2 - 3 - 1", weight = 27 }, # niveau 3
+ { role = "open", notes = "5 2 - 6 - 5 3 2", weight = 27 }, # niveau 3
+ { role = "open", notes = "6 - - 4 5 - 6 8", weight = 27 }, # niveau 3
+ { role = "open", notes = "6 - 5 - 8 - 11 9", weight = 27 }, # niveau 3
+ { role = "open", notes = "6 4 - 5 1 3 - -", weight = 27 }, # niveau 3
+ { role = "open", notes = "6 9 5 - 4 - 6 -", weight = 27 }, # niveau 3
+ { role = "open", notes = "7 - 5 - 6 - 4 2", weight = 27 }, # niveau 3
+ { role = "open", notes = "8 - - - - 6 4 1", weight = 27 }, # niveau 3
+ { role = "open", notes = "8 - 6 - 4 - - 2", weight = 27 }, # niveau 3
+ { role = "open", notes = "9 13 14 12 - - - -", weight = 27 }, # niveau 3
+ { role = "open", notes = "10 - 7 11 13 11 9 13", weight = 27 }, # niveau 3
+ { role = "open", notes = "10 9 13 12 10 13 11 -", weight = 27 }, # niveau 3
+ { role = "open", notes = "11 - 9 - 13 - 14 -", weight = 27 }, # niveau 3
+ { role = "open", notes = "11 - 13 11 9 - 6 7", weight = 27 }, # niveau 3
+ { role = "open", notes = "11 8 10 9 6 9 - 8", weight = 27 }, # niveau 3
+ { role = "open", notes = "11 12 14 - - 12 10 -", weight = 27 }, # niveau 3
+ { role = "open", notes = "11 13 11 9 - - - 8", weight = 27 }, # niveau 3
+ { role = "open", notes = "5 - 6 7 3 9 5 6", weight = 28 }, # niveau 4
+ { role = "open", notes = "6 - 4 5 7 11 4 7", weight = 28 }, # niveau 4
+ { role = "open", notes = "7 - - 11 6 7 6 4", weight = 28 }, # niveau 4
+ { role = "open", notes = "8 - - 14 13 - 12 13", weight = 28 }, # niveau 4
+ { role = "open", notes = "9 - - - 14 - 13 10", weight = 28 }, # niveau 4
+ { role = "run", notes = "4 - - - 6 - 7 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "4 - - 6 - - 7 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "4 - 6 - 7 - 6 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "5 - - - 4 - 2 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "9 - 10 - 9 - 7 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "11 - - 13 - - 14 -", weight = 20 }, # niveau 1
+ { role = "run", notes = "4 - - 5 - 2 - -", weight = 20 }, # niveau 2
+ { role = "run", notes = "5 - - - 6 - 9 -", weight = 20 }, # niveau 2
+ { role = "run", notes = "5 - 4 - - - 1 -", weight = 20 }, # niveau 2
+ { role = "run", notes = "9 - - - 6 - 7 -", weight = 20 }, # niveau 2
+ { role = "run", notes = "9 - 6 - - - 7 -", weight = 20 }, # niveau 2
+ { role = "run", notes = "10 - 9 - 6 - 5 -", weight = 20 }, # niveau 2
+ { role = "run", notes = "3 - 2 - - 3 1 2", weight = 21 }, # niveau 3
+ { role = "run", notes = "3 2 - - - - - 3", weight = 21 }, # niveau 3
+ { role = "run", notes = "4 - 6 7 - - - 6", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 - - - - 4 2 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 - 6 - - - 2 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 4 - - - - 2 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 4 - - 2 - - -", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 4 2 - - - - 3", weight = 21 }, # niveau 3
+ { role = "run", notes = "5 7 - - - - 6 5", weight = 21 }, # niveau 3
+ { role = "run", notes = "6 - - - - 7 5 6", weight = 21 }, # niveau 3
+ { role = "run", notes = "6 - 4 5 4 - 6 5", weight = 21 }, # niveau 3
+ { role = "run", notes = "6 5 - 6 - 7 - 10", weight = 21 }, # niveau 3
+ { role = "run", notes = "6 5 3 2 - - 6 7", weight = 21 }, # niveau 3
+ { role = "run", notes = "6 5 7 - - - 6 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "7 - - 5 6 - - 7", weight = 21 }, # niveau 3
+ { role = "run", notes = "7 5 - - - - - 4", weight = 21 }, # niveau 3
+ { role = "run", notes = "7 6 - 4 - - - -", weight = 21 }, # niveau 3
+ { role = "run", notes = "8 - 6 5 4 1 - -", weight = 21 }, # niveau 3
+ { role = "run", notes = "8 5 4 - 5 6 9 10", weight = 21 }, # niveau 3
+ { role = "run", notes = "9 - - - - - 6 7", weight = 21 }, # niveau 3
+ { role = "run", notes = "9 - 10 - - - - 9", weight = 21 }, # niveau 3
+ { role = "run", notes = "9 - 13 - 14 - - 13", weight = 21 }, # niveau 3
+ { role = "run", notes = "9 10 - 9 10 - 7 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "9 10 - 12 14 - 13 12", weight = 21 }, # niveau 3
+ { role = "run", notes = "10 - 8 - 9 10 7 6", weight = 21 }, # niveau 3
+ { role = "run", notes = "10 9 - 6 4 - 5 4", weight = 21 }, # niveau 3
+ { role = "run", notes = "11 - - 12 10 9 6 5", weight = 21 }, # niveau 3
+ { role = "run", notes = "11 - 12 - 13 12 8 11", weight = 21 }, # niveau 3
+ { role = "run", notes = "11 - 13 - - - - 14", weight = 21 }, # niveau 3
+ { role = "run", notes = "11 12 - - - - 14 -", weight = 21 }, # niveau 3
+ { role = "run", notes = "11 12 - 13 11 - 13 14", weight = 21 }, # niveau 3
+ { role = "run", notes = "3 - 2 - 7 6 4 5", weight = 20 }, # niveau 4
+ { role = "run", notes = "3 2 - - - - - 7", weight = 20 }, # niveau 4
+ { role = "run", notes = "5 - - - 6 - 11 -", weight = 20 }, # niveau 4
+ { role = "run", notes = "8 6 - 5 - 4 9 -", weight = 20 }, # niveau 4
+ { role = "run", notes = "10 - - 9 4 5 6 -", weight = 20 }, # niveau 4
+ { role = "run", notes = "11 - 6 - 7 5 6 5", weight = 20 }, # niveau 4
+ { role = "arp", notes = "5 - - - 7 - 5 -", weight = 29 }, # niveau 1
+ { role = "arp", notes = "7 - 5 - 3 - - -", weight = 29 }, # niveau 1
+ { role = "arp", notes = "8 - - - 6 - 4 -", weight = 29 }, # niveau 1
+ { role = "arp", notes = "10 - 12 - 14 - 12 -", weight = 29 }, # niveau 1
+ { role = "arp", notes = "5 - - - 8 - 5 -", weight = 29 }, # niveau 2
+ { role = "arp", notes = "5 - - 7 - - 10 -", weight = 29 }, # niveau 2
+ { role = "arp", notes = "5 - 8 - - - 5 -", weight = 29 }, # niveau 2
+ { role = "arp", notes = "6 - 8 - - - 11 -", weight = 29 }, # niveau 2
+ { role = "arp", notes = "3 5 - - - - - 7", weight = 34 }, # niveau 3
+ { role = "arp", notes = "3 7 5 - - 8 6 7", weight = 34 }, # niveau 3
+ { role = "arp", notes = "5 2 3 - - - - 1", weight = 34 }, # niveau 3
+ { role = "arp", notes = "6 3 1 3 5 - 7 -", weight = 34 }, # niveau 3
+ { role = "arp", notes = "7 - - - 5 7 5 3", weight = 34 }, # niveau 3
+ { role = "arp", notes = "7 - - 5 - 7 - 5", weight = 34 }, # niveau 3
+ { role = "arp", notes = "7 - 10 - 12 11 8 10", weight = 34 }, # niveau 3
+ { role = "arp", notes = "7 5 3 - - 1 3 -", weight = 34 }, # niveau 3
+ { role = "arp", notes = "8 - 10 8 5 8 12 -", weight = 34 }, # niveau 3
+ { role = "arp", notes = "8 6 7 5 3 7 - -", weight = 34 }, # niveau 3
+ { role = "arp", notes = "8 10 - - - - - 8", weight = 34 }, # niveau 3
+ { role = "arp", notes = "8 10 - - 12 - 14 11", weight = 34 }, # niveau 3
+ { role = "arp", notes = "10 12 14 - - - 12 11", weight = 34 }, # niveau 3
+ { role = "arp", notes = "3 - 1 3 1 3 7 2", weight = 33 }, # niveau 4
+ { role = "arp", notes = "3 - 5 - 10 7 - -", weight = 33 }, # niveau 4
+ { role = "arp", notes = "5 10 9 7 - - - -", weight = 33 }, # niveau 4
+ { role = "arp", notes = "5 11 - - - - - 7", weight = 33 }, # niveau 4
+ { role = "arp", notes = "7 9 14 11 12 - - 9", weight = 33 }, # niveau 4
+ { role = "arp", notes = "8 - - - - 14 10 7", weight = 33 }, # niveau 4
+ { role = "arp", notes = "8 - - - 10 - 9 14", weight = 33 }, # niveau 4
+ { role = "arp", notes = "8 6 5 - 10 - - -", weight = 33 }, # niveau 4
+ { role = "arp", notes = "8 10 14 - - - 9 -", weight = 33 }, # niveau 4
+ { role = "arp", notes = "10 - - - - 5 - 7", weight = 33 }, # niveau 4
+ { role = "turn", notes = "5 - 6 - - 4 - -", weight = 29 }, # niveau 1
+ { role = "turn", notes = "8 - - - 6 - 8 -", weight = 29 }, # niveau 1
+ { role = "turn", notes = "8 - 10 - - - 9 -", weight = 29 }, # niveau 1
+ { role = "turn", notes = "11 - 9 - - - 10 -", weight = 29 }, # niveau 1
+ { role = "turn", notes = "4 - 1 - - 3 - -", weight = 29 }, # niveau 2
+ { role = "turn", notes = "4 - 2 - 5 - - -", weight = 29 }, # niveau 2
+ { role = "turn", notes = "9 - - - 6 - 9 -", weight = 29 }, # niveau 2
+ { role = "turn", notes = "11 - - - 8 - 10 -", weight = 29 }, # niveau 2
+ { role = "turn", notes = "3 6 - 5 9 7 5 7", weight = 27 }, # niveau 3
+ { role = "turn", notes = "3 7 - 4 6 5 6 -", weight = 27 }, # niveau 3
+ { role = "turn", notes = "4 6 - 8 - 10 9 8", weight = 27 }, # niveau 3
+ { role = "turn", notes = "5 4 2 6 - - - 5", weight = 27 }, # niveau 3
+ { role = "turn", notes = "5 6 9 6 - - - 7", weight = 27 }, # niveau 3
+ { role = "turn", notes = "6 3 - 1 2 - 4 6", weight = 27 }, # niveau 3
+ { role = "turn", notes = "6 8 6 - 9 - 6 4", weight = 27 }, # niveau 3
+ { role = "turn", notes = "6 9 6 5 - 6 8 10", weight = 27 }, # niveau 3
+ { role = "turn", notes = "8 - 11 - - 8 11 9", weight = 27 }, # niveau 3
+ { role = "turn", notes = "8 9 11 9 10 6 - 9", weight = 27 }, # niveau 3
+ { role = "turn", notes = "9 - 11 - 9 12 11 9", weight = 27 }, # niveau 3
+ { role = "turn", notes = "9 11 - 9 11 - 13 12", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 - - 13 12 - 8 6", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 - 7 11 9 7 10 8", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 - 12 14 10 - 13 10", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 13 - - - 10 6 10", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 13 9 12 - 14 13 -", weight = 27 }, # niveau 3
+ { role = "turn", notes = "11 13 12 14 13 - 11 -", weight = 27 }, # niveau 3
+ { role = "turn", notes = "4 2 3 1 3 8 6 4", weight = 28 }, # niveau 4
+ { role = "turn", notes = "5 - 2 8 6 8 5 3", weight = 28 }, # niveau 4
+ { role = "turn", notes = "5 6 11 - 9 10 8 -", weight = 28 }, # niveau 4
+ { role = "turn", notes = "5 9 6 9 4 8 - 6", weight = 28 }, # niveau 4
+ { role = "turn", notes = "6 - - 8 10 9 3 6", weight = 28 }, # niveau 4
+ { role = "turn", notes = "6 11 8 9 - 11 13 -", weight = 28 }, # niveau 4
+ { role = "turn", notes = "9 - - 14 12 11 13 14", weight = 28 }, # niveau 4
+ { role = "turn", notes = "9 5 6 - 9 10 12 7", weight = 28 }, # niveau 4
+ { role = "turn", notes = "9 10 13 8 12 - 11 -", weight = 28 }, # niveau 4
+ { role = "turn", notes = "11 8 9 4 5 8 6 -", weight = 28 }, # niveau 4
+ { role = "cad_half", notes = "4 - 6 - 5 - - -", weight = 30 }, # niveau 1
+ { role = "cad_half", notes = "10 - - - 9 - - -", weight = 30 }, # niveau 1
+ { role = "cad_half", notes = "11 - 9 - - - - -", weight = 30 }, # niveau 1
+ { role = "cad_half", notes = "11 - 13 - 12 - - -", weight = 30 }, # niveau 1
+ { role = "cad_half", notes = "5 - - 2 - - - -", weight = 30 }, # niveau 2
+ { role = "cad_half", notes = "7 - - 5 - - 2 -", weight = 30 }, # niveau 2
+ { role = "cad_half", notes = "9 - - 12 - - - -", weight = 30 }, # niveau 2
+ { role = "cad_half", notes = "10 - - - 7 - - -", weight = 30 }, # niveau 2
+ { role = "cad_half", notes = "3 - 1 - 5 - - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "4 2 4 - 5 1 5 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "4 5 1 - 4 5 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "5 - 3 - 7 3 5 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "5 6 8 10 9 12 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "6 - 4 - 5 2 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "6 4 6 5 2 - - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "6 7 - 6 4 7 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "7 - 4 7 - - 9 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "7 - 5 - 6 5 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "7 5 - 3 5 2 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "8 5 - - - 6 5 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "9 - 11 9 12 - - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "10 8 12 9 11 9 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "11 7 10 14 12 11 14 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "11 8 - 10 9 12 - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "11 9 11 12 - 10 9 -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "11 12 13 9 12 - - -", weight = 33 }, # niveau 3
+ { role = "cad_half", notes = "4 9 5 - 4 5 - -", weight = 32 }, # niveau 4
+ { role = "cad_half", notes = "5 9 12 - 6 5 - -", weight = 32 }, # niveau 4
+ { role = "cad_half", notes = "7 6 11 7 - - - -", weight = 32 }, # niveau 4
+ { role = "cad_half", notes = "9 6 5 2 7 9 - -", weight = 32 }, # niveau 4
+ { role = "cad_half", notes = "11 12 5 8 12 11 7 -", weight = 32 }, # niveau 4
+ { role = "cad_full", notes = "5 - - 3 - - 1 -", weight = 30 }, # niveau 1
+ { role = "cad_full", notes = "6 - - 8 - - - -", weight = 30 }, # niveau 1
+ { role = "cad_full", notes = "8 - 10 - 8 - - -", weight = 30 }, # niveau 1
+ { role = "cad_full", notes = "10 - - - 8 - - -", weight = 30 }, # niveau 1
+ { role = "cad_full", notes = "5 - - 8 - - - -", weight = 30 }, # niveau 2
+ { role = "cad_full", notes = "5 - 4 - 1 - - -", weight = 30 }, # niveau 2
+ { role = "cad_full", notes = "11 - - 8 - - - -", weight = 30 }, # niveau 2
+ { role = "cad_full", notes = "11 - 8 - - - - -", weight = 30 }, # niveau 2
+ { role = "cad_full", notes = "4 - 6 - 5 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "4 7 3 - 5 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "5 - - 2 4 1 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "5 - 1 3 - 1 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "5 4 2 3 1 - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 - 5 8 - - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 2 3 - 1 - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 2 3 2 3 - 1 -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 4 6 7 11 - 8 -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 5 2 3 - 1 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 8 11 8 - - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "8 - 10 - 12 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "9 6 5 - 4 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "9 6 5 6 8 - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "11 - - 8 6 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "11 12 14 12 8 - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "11 13 12 - 10 8 - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "11 13 14 12 8 - - -", weight = 34 }, # niveau 3
+ { role = "cad_full", notes = "6 5 10 8 - - - -", weight = 37 }, # niveau 4
+ { role = "cad_full", notes = "8 9 5 12 8 - - -", weight = 37 }, # niveau 4
+ { role = "cad_full", notes = "11 - 14 - - - 8 -", weight = 37 }, # niveau 4
+ { role = "cad_full", notes = "11 12 13 12 - 14 8 -", weight = 37 }, # niveau 4
 ]

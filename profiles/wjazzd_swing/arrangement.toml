@@ -1,9 +1,11 @@
 # Quatre chorus de la séquence (Blues A A B A, 44 mesures) : exposition, corps, sommet, retombée.
 # L'hôte remplace la forme et le nombre de chorus pour sa grille utilisateur.
-# Pas de piste Melody : absente des entrées.
+# La mélodie entre dès le premier chorus (E12) ; les autres pistes comme avant.
 tours_per_tune = 4
 
 [entries]
+# La mélodie joue dès le premier chorus ; `EnableMelody(false)` la coupe (impro de training).
+Melody = { tour = 1, part = 0, pass = 1 }
 Chords = { tour = 1, part = 0, pass = 1 }
 Bass = { tour = 1, part = 0, pass = 1 }
 PercussionLow = { tour = 1, part = 0, pass = 1 }

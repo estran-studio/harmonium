@@ -114,7 +114,7 @@ fn assert_within(
 fn les_bornes_tiennent_sur_les_profils_distribues_qui_ont_une_melodie() {
     let limits = easy();
     let profiles = with_melody();
-    assert_eq!(profiles.len(), 15);
+    assert_eq!(profiles.len(), 16, "15 profils de mélodie + wjazzd_swing (E12)");
     for p in profiles {
         let p = limited(p, limits.clone());
         for seed in SEEDS {

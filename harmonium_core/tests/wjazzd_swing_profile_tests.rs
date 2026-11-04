@@ -624,3 +624,52 @@ fn le_profil_rejoue_la_meme_graine_a_l_identique_et_varie_d_une_graine_a_l_autre
     );
     Ok(())
 }
+
+/// Piste de la mélodie dans les snapshots.
+const MELODY: u8 = 0;
+
+#[test]
+fn la_melodie_swing_joue_dans_l_accord_et_la_tessiture_du_profil_et_se_coupe() -> TestResult {
+    let p = profile()?;
+    let (low, high) = (p.melody.params.tessitura_min, p.melody.params.tessitura_max);
+    for seed in 1..=8 {
+        let flow = stream(seed, CHORUS)?;
+        let played = flow.iter().filter(|s| !track(s, MELODY).is_empty()).count();
+        assert!(played >= CHORUS - 2, "graine {seed} : {played} mesures sur {CHORUS} avec mélodie");
+        let mut distinct = BTreeSet::new();
+        for (bar, snap) in flow.iter().enumerate() {
+            for n in track(snap, MELODY) {
+                assert!(
+                    (low..=high).contains(&n.pitch),
+                    "graine {seed} mesure {} : {n:?}",
+                    bar + 1
+                );
+                // Sous une grille, chaque note est ramenée à une note de l'accord publié (modèle `loop`).
+                assert!(
+                    context_at(snap, n.start_step).pitch_classes.contains(&(n.pitch % 12)),
+                    "graine {seed} mesure {} : {n:?} hors de l'accord",
+                    bar + 1
+                );
+                distinct.insert(n.pitch);
+            }
+        }
+        assert!(distinct.len() >= 6, "graine {seed} : {} hauteurs seulement", distinct.len());
+    }
+    // `EnableMelody(false)` : plus aucune note de mélodie, le reste de l'accompagnement joue.
+    let mut g = TuneGenerator::new(
+        MusicalParams {
+            bpm: p.meter.default_bpm,
+            time_signature: p.meter.time_signature,
+            enable_melody: false,
+            ..Default::default()
+        },
+        TuningParams { profile: p.clone() },
+    );
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
+    for bar in 1..=CHORUS {
+        let snap = MeasureSnapshot::from_measure(&g.generate_measure(bar, &mut rng));
+        assert!(track(&snap, MELODY).is_empty(), "mesure {bar} : mélodie coupée");
+        assert!(!track(&snap, BASS).is_empty(), "mesure {bar} : la basse joue");
+    }
+    Ok(())
+}
