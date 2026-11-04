@@ -1,0 +1,37 @@
+# Pilotage par les quatre émotions. Aucune mesure de corpus ne relie une émotion à un paramètre du jeu : les
+# courbes sont des réglages de service (README du profil).
+# Arousal : le tempo (± 6 BPM autour du tempo tiré par la session, dans la plage 44..84), la vélocité et la
+# densité de la batterie (selon les seuils des patterns 0, 1, 2 ; les patterns `hat` sont identiques en 0 et 1
+# et ajoutent la grosse caisse en 2, les patterns `ride` / `brush` viennent de seuils par voix).
+# `dark_below` et `bright_above` sont aux bornes de la valence (-1..1), pas hors plage ;
+# training peut verrouiller le mode avec `[fixed_tonality]`.
+neutral_valence = 0.3
+valence_range = [-1.0, 1.0]
+mode_shift_boundary = "part"
+dark_below = -1.0
+bright_above = 1.0
+parallel_modes = [{ bright = "ionian", dark = "aeolian", weight = 1 }]
+arousal_intensity = [[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]]
+tension_intensity = [[0.0, 0.0], [1.0, 0.0]]
+tempo_offset = [[0.0, -6.0], [0.5, 0.0], [1.0, 6.0]]
+melody_velocity = [[0.0, 1.0], [1.0, 1.0]]
+chords_velocity = [[0.0, 0.8], [0.5, 1.0], [1.0, 1.15]]
+bass_velocity = [[0.0, 0.85], [0.5, 1.0], [1.0, 1.1]]
+percussion_velocity = [[0.0, 0.7], [0.5, 1.0], [1.0, 1.2]]
+percussion_intensity = [[0.0, -1.0], [0.5, 0.0], [1.0, 1.0]]
+melody_duration = [[0.0, 1.0], [1.0, 1.0]]
+strong_accent = [[0.0, 0.0], [1.0, 0.0]]
+chords_intensity = [[0.0, 0.0], [1.0, 0.0]]
+run_weight = [[0.0, 1.0], [1.0, 1.0]]
+arp_weight = [[0.0, 1.0], [1.0, 1.0]]
+turn_weight = [[0.0, 1.0], [1.0, 1.0]]
+color_register = [[0.0, 0.0], [1.0, 0.0]]
+brightness_accent = [[0.0, 0.0], [1.0, 0.0]]
+density_percussion = [[0.0, 0.0], [1.0, 0.0]]
+density_chords = [[0.0, 0.0], [1.0, 0.0]]
+density_tracks = []
+tension_offbeat = [[0.0, 0.0], [1.0, 0.0]]
+tension_duration = [[0.0, 1.0], [1.0, 1.0]]
+tension_dominant = [[0.0, 0.0], [1.0, 0.0]]
+tension_chord_duration = [[0.0, 1.0], [1.0, 1.0]]
+color = [{ key = 5, mode = "ionian", weight = [[0.0, 1.0], [1.0, 1.0]] }]

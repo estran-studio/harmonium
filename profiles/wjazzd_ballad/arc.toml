@@ -1,0 +1,36 @@
+# Arc de `wjazzd_ballad` sur trois chorus (A3) : valeurs de métier, aucune mesure de corpus (WJazzD ne donne pas
+# la dynamique d'un chorus ; les 10 solos BALLAD n'ont que 12 chorus 4/4). Un chorus = une passe de la forme
+# AABA de trente-deux mesures ; trois chorus par air, nombre connu, donc la retombée joue au dernier :
+#   1  exposition : basse à deux temps, comping clairsemé, charleston (balayage et pédale), doux ;
+#   2  corps : marche lente de la basse (ou deux temps tenu une fois sur quatre), comping médian ou dense ;
+#      la batterie suit l'étiquette de la session (balais ou ride) ; un break de la basse et du comping à la
+#      fin du pont une fois sur deux ;
+#   3  retombée (`fall`) : retour au deux temps, clairsemé, charleston, stop-time sur les deux dernières mesures.
+# Set sans fin : corps en boucle (`repeat_from`), sans retombée ; durée finie prolongée : retombée au dernier chorus.
+repeat_from = 1
+
+# Exposition. Les étiquettes `hat` de la batterie (balayage et pédale) valent pour les deux kits : elles ne
+# dépendent pas de l'instrument tiré par la session.
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.65, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.75, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+# Corps : marche lente ; la variante rare garde le deux temps et un comping dense.
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], breaks = [{ start = 24, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+  { weight = 1, intensity = 1.1, density = 1.1, bass_feel = "two_feel", comping = [{ tag = "dense" }] },
+]
+
+# Retombée du dernier chorus : deux temps, clairsemé, charleston, stop-time sur les deux dernières mesures.
+[[fall]]
+intensity = 0.5
+density = 0.4
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

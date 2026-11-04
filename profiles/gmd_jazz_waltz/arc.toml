@@ -1,0 +1,39 @@
+# Arc de `gmd_jazz_waltz` sur quatre chorus (A3) : valeurs de métier, aucune mesure de corpus (le GMD isole un
+# fichier à 120 BPM et un à 200 BPM, un seul batteur). Un chorus = une passe de la forme AABA de trente-deux
+# mesures de 3/4 ; quatre chorus par air, nombre connu, donc la retombée joue au dernier :
+#   1    exposition : basse à deux temps (une blanche sur le un, une noire sur le trois), comping clairsemé, charleston
+#        (balayage et pédale), doux ;
+#   2-3  corps : marche aux noires, comping médian ou dense, ride ; un break de la basse et du comping à la fin du pont
+#        une fois sur deux, ou un chorus plus fort avec break à la fin ;
+#   4    retombée (`fall`) : retour au deux temps, clairsemé, charleston, stop-time sur les deux dernières mesures ;
+# au-delà (plus de quatre chorus ou set sans fin) : le sommet puis le corps et le sommet en boucle (`repeat_from`),
+# sans retombée.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.6, density = 0.5, bass_feel = "two_feel", comping = [{ tag = "sparse", weight = 3 }, { tag = "medium", weight = 1 }], percussion = [{ tag = "hat" }] },
+  { weight = 1, intensity = 0.7, density = 0.6, bass_feel = "two_feel", comping = [{ tag = "medium" }], percussion = [{ tag = "hat" }] },
+]
+
+[[stages]]
+choruses = 2
+variants = [
+  { weight = 2, bass_feel = "walking", comping = [{ tag = "medium", weight = 2 }, { tag = "dense", weight = 1 }], percussion = [{ tag = "ride" }], breaks = [{ start = 24, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+  { weight = 1, intensity = 1.2, density = 1.2, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["Chords", "Bass"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { intensity = 1.35, density = 1.35, bass_feel = "walking", comping = [{ tag = "dense" }], percussion = [{ tag = "ride" }], breaks = [{ start = -2, bars = 2, chance = 0.5, tracks = ["Chords", "Bass"], keep_steps = [0] }] },
+]
+
+[[fall]]
+intensity = 0.5
+density = 0.4
+bass_feel = "two_feel"
+comping = [{ tag = "sparse" }]
+percussion = [{ tag = "hat" }]
+breaks = [{ start = -2, bars = 2, tracks = ["Chords", "Bass"], keep_steps = [0] }]

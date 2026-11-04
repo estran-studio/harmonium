@@ -1,0 +1,16 @@
+# Quatre chorus par air (une passe de la forme AABA de trente-deux mesures chacun : 128 mesures de 3/4, environ
+# 2 min 30 s à 160 BPM) : exposition, deux chorus de corps, retombée (le nombre de chorus est connu : l'arc joue
+# la retombée au dernier). Tout joue dès la première mesure (accompagnement sous une grille, pas de montée en
+# couches) ; l'arc (`arc.toml`) module l'intensité, la densité, le feel de basse, le comping et la batterie.
+# Pas de piste Melody : absente des entrées.
+tours_per_tune = 4
+
+[entries]
+Chords = { tour = 1, part = 0, pass = 1 }
+Bass = { tour = 1, part = 0, pass = 1 }
+PercussionLow = { tour = 1, part = 0, pass = 1 }
+PercussionHigh = { tour = 1, part = 0, pass = 1 }
+
+[intro]
+forms = []
+pickup_eighths = 0

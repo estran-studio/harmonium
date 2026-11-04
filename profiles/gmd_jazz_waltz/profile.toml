@@ -1,0 +1,259 @@
+# B5 : accompagnement de valse jazz sous grille, sans mélodie ni Odin.
+# Batterie : GMD jazz 3/4, deux fichiers (120 et 200 BPM), 217 mesures, un batteur.
+# Swing : courbes JTD 4/4 portées au 3/4, environ 0,06 au-dessus du GMD (README).
+# Grilles, basse, comping, arc, habillage et mixage : règles de métier, pas mesures de corpus.
+[files]
+cells = "cells.toml"
+percussion = "percussion.toml"
+arrangement = "arrangement.toml"
+dynamics = "dynamics.toml"
+set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
+swing = "swing.toml"
+
+[meta]
+id = "gmd_jazz_waltz"
+name = "Valse jazz (Groove MIDI Dataset, 3/4)"
+tradition = "Groove MIDI Dataset v1.0.0, jazz 3/4 : 86 mesures à 120 BPM et 131 à 200 BPM, un seul batteur ; complété par des règles de métier"
+tags = ["jazz", "valse", "swing", "accompagnement", "grille", "3/4"]
+corpus = """\
+Groove MIDI Dataset v1.0.0, Google LLC, CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ : Jon Gillick, Adam Roberts, Jesse Engel, Douglas Eck, David Bamman, « Learning to Groove with Inverse Sequence Transformations », ICML 2019, https://magenta.withgoogle.com/datasets/groove ; agrégats de batterie jazz 3/4, deux fichiers, un batteur, aucun enregistrement distribué. \
+Jazz Trio Database v0.2, MIT License, Copyright (c) Huw Cheston et al. : H. Cheston, J. L. Schlichting, I. Cross, P. M. C. Harrison, TISMIR 2024, https://doi.org/10.5334/tismir.186 ; courbes de swing par piste mesurées en 4/4 puis portées au 3/4, environ 0,06 au-dessus du GMD. \
+Manifestes : harmonium_lab corpus/gmd, corpus/jtd, references/gmd-jazz/, references/jtd-swing-tempo/. Comping, basse, grilles originales en forme commune, arc, habillage et mixage : règles de métier, voir README.md."""
+
+[meter]
+time_signature = { numerator = 3, denominator = 4 }
+steps_per_bar = 12
+steps_per_unit = 2
+steps_per_pulse = 4
+pulses_per_bar = 3
+default_swing_ratio = 0.7018
+default_bpm = 160.0
+min_bpm = 100.0
+max_bpm = 230.0
+
+# Une passe AABA = un chorus de 32 mesures ; l'arrangement en joue quatre.
+[form]
+sequence = [0, 0, 1, 0]
+[[form.parts]]
+name = "A"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+[[form.parts]]
+name = "B"
+melody_center_offset = 0
+phrase_ends = [8]
+roles = ["Open", "Free", "Free", "Free", "Free", "Free", "Free", "Free"]
+
+# Banque silencieuse exigée par le schéma ; Melody est absente de l'arrangement.
+[melody]
+cell_units = 6
+strong_units = [0, 2, 4]
+weak_units = [1, 3, 5]
+key_modes = [{ key = 5, mode = "ionian", weight = 1 }]
+[melody.params]
+weight_role_run = 3
+weight_role_arp = 0
+weight_role_turn = 0
+max_continuity_step_distance = 2
+continuity_max_retries = 8
+melody_center_midi = 72
+tonic_midi_min = 60
+tonic_midi_max = 72
+tessitura_min = 55
+tessitura_max = 88
+base_velocity = 80
+strong_eighth_velocity_offset = 8
+even_eighth_velocity_offset = -6
+
+# Grilles relatives à la tonique ; toutes les durées sont des multiples d'une noire (4 pas).
+# Aucun changement au pas 6 : la marche doit pouvoir attaquer chaque nouvel accord.
+[harmony]
+model = "loop"
+steps_per_chord = 4
+[harmony.parts.A]
+kind = "chord_loop"
+loops = [
+  # I vi ii V | iii VI | ii V | I | ii V : huit mesures, 96 pas.
+  { weight = 4, chords = [
+    { semitones = 0, quality = "maj7", steps = 12 },
+    { semitones = 9, quality = "m7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 4, quality = "m7", steps = 8 },
+    { semitones = 9, quality = "7", steps = 4 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 4 },
+    { semitones = 0, quality = "maj7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 4 },
+    { semitones = 7, quality = "7", steps = 8 },
+  ] },
+  # I | I7 | IV | iv bVII | I vi | ii V | I | ii V.
+  { weight = 2, chords = [
+    { semitones = 0, quality = "maj7", steps = 12 },
+    { semitones = 0, quality = "7", steps = 12 },
+    { semitones = 5, quality = "maj7", steps = 12 },
+    { semitones = 5, quality = "m7", steps = 8 },
+    { semitones = 10, quality = "7", steps = 4 },
+    { semitones = 0, quality = "maj7", steps = 8 },
+    { semitones = 9, quality = "m7", steps = 4 },
+    { semitones = 2, quality = "m7", steps = 4 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 8 },
+    { semitones = 7, quality = "7", steps = 4 },
+  ] },
+  # I6/9 | I6/9 | IV | iv6 | iii VI | ii | ii V | I.
+  { weight = 2, chords = [
+    { semitones = 0, quality = "6/9", steps = 24 },
+    { semitones = 5, quality = "maj7", steps = 12 },
+    { semitones = 5, quality = "m6", steps = 12 },
+    { semitones = 4, quality = "m7", steps = 8 },
+    { semitones = 9, quality = "7", steps = 4 },
+    { semitones = 2, quality = "m7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 4 },
+    { semitones = 7, quality = "7", steps = 8 },
+    { semitones = 0, quality = "maj7", steps = 12 },
+  ] },
+]
+[harmony.parts.B]
+kind = "chord_loop"
+loops = [
+  # Cycle de dominantes, deux mesures par accord.
+  { weight = 3, chords = [
+    { semitones = 4, quality = "7", steps = 24 },
+    { semitones = 9, quality = "7", steps = 24 },
+    { semitones = 2, quality = "7", steps = 24 },
+    { semitones = 7, quality = "7", steps = 24 },
+  ] },
+  # iii VI ii V | vi II ii V, un accord par mesure.
+  { weight = 3, chords = [
+    { semitones = 4, quality = "m7", steps = 12 },
+    { semitones = 9, quality = "7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+    { semitones = 9, quality = "m7", steps = 12 },
+    { semitones = 2, quality = "7", steps = 12 },
+    { semitones = 2, quality = "m7", steps = 12 },
+    { semitones = 7, quality = "7", steps = 12 },
+  ] },
+]
+
+[accompaniment]
+strong_steps = [0]
+strong_weight = 2
+weak_weight = 1
+tie_priority = ["I", "V", "IV"]
+
+# A4 : réglages de métier inspirés du mécanisme swing, non mesurés sur des basses de valse.
+# `two_feel` = blanche + noire en 3/4, jamais une blanche pointée (manque A7).
+[accompaniment.bass]
+low = 34
+high = 45
+walk_low = 31
+walk_high = 51
+[accompaniment.bass.walking]
+velocity = 76
+accent = 6
+duration = 4
+max_leap = 11
+toward_target_weight = 2
+keep_direction_weight = 1
+approach = { none_weight = 60, chromatic_weight = 8, diatonic_weight = 8, side = { from_weight = 50, other_weight = 10, above_weight = 40 } }
+passing = { chord_tone_weight = 48, scale_step_weight = 25, chromatic_weight = 20, repeat_weight = 24 }
+arrival = { root_weight = 64, third_weight = 12, fifth_weight = 12, seventh_weight = 12 }
+eighths = { none_weight = 94, chromatic_weight = 2, diatonic_weight = 2, ghost_weight = 2, velocity = 54, ghost_velocity = 32 }
+two_feel = { passing_weight = 1, fifth_weight = 3 }
+
+# Comping de valse : temps deux et trois, respiration et anticipations de la mesure suivante.
+# Les tags et phrases sont des règles de métier ; aucune transcription de pianiste.
+[accompaniment.chords]
+center = 62
+max_drift = 8
+default_pattern = 0
+voicing = "rootless"
+low = 52
+high = 78
+color = { none_weight = 3, published_weight = 2, ninth_weight = 3, eleventh_weight = 1, thirteenth_weight = 2 }
+register_drift = { step = 2, max = 5 }
+patterns = [{ hits = [{ step = 4, direction = "block", duration = 3, velocity = 62 }, { step = 8, direction = "block", duration = 4, velocity = 56 }] }]
+comping = [
+  # 0..3 : clairsemé, une attaque tenue ou silence.
+  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 8, velocity = 58 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 8, duration = 4, velocity = 56 }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 10, duration = 2, velocity = 54, anticipate = true }] },
+  { weight = 1, tag = "sparse", hits = [] },
+  # 4..6 : deux et trois ; une variante attend l'anticipation.
+  { weight = 4, tag = "medium", hits = [{ step = 4, duration = 3, velocity = 62 }, { step = 8, duration = 4, velocity = 56 }] },
+  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 4, velocity = 60 }, { step = 10, duration = 2, velocity = 56, anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 60 }, { step = 8, duration = 4, velocity = 58 }] },
+  # 7..9 : relance syncopée, trois à quatre attaques.
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 64 }, { step = 4, duration = 3, velocity = 58 }, { step = 8, duration = 2, velocity = 60 }, { step = 10, duration = 2, velocity = 54, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 54 }, { step = 4, duration = 2, velocity = 62 }, { step = 8, duration = 2, velocity = 58 }, { step = 10, duration = 2, velocity = 56, anticipate = true }] },
+  { weight = 2, tag = "dense", hits = [{ step = 4, duration = 2, velocity = 62, direction = "down" }, { step = 6, duration = 2, velocity = 50, direction = "up" }, { step = 8, duration = 4, velocity = 58, direction = "down" }] },
+]
+phrases = [
+  { weight = 3, tag = "sparse", motifs = [0, 3, 1, 3] },
+  { weight = 2, tag = "sparse", motifs = [1, 0, 1, 2] },
+  { weight = 2, tag = "sparse", motifs = [0, 1] },
+  { weight = 2, tag = "sparse", at = "part_end", motifs = [3, 2] },
+  { weight = 3, tag = "medium", motifs = [4, 4, 6, 5] },
+  { weight = 2, tag = "medium", motifs = [6, 4, 5, 4] },
+  { weight = 2, tag = "medium", motifs = [4, 5] },
+  { weight = 2, tag = "medium", at = "part_end", motifs = [4, 5] },
+  { weight = 3, tag = "dense", motifs = [7, 8, 7, 9] },
+  { weight = 2, tag = "dense", motifs = [9, 7, 8, 7] },
+  { weight = 2, tag = "dense", motifs = [7, 9] },
+  { weight = 2, tag = "dense", at = "part_end", motifs = [9, 8] },
+]
+
+[instruments]
+melody_program = 0
+chords_program = 0
+bass_program = 32
+percussion_bank = 128
+percussion_program = 32
+[ornaments]
+rate_scale = 0.0
+
+# Placement de service, pas une mesure de micro-timing de valse.
+[performance.tracks.Bass]
+jitter = 0.1
+[performance.tracks.Chords]
+offsets = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+jitter = 0.1
+
+[mix]
+master_db = 25.0
+[mix.room]
+room_size = 0.3
+damping = 0.6
+width = 0.6
+level = 0.15
+[mix.tracks.Melody]
+level_db = 0.0
+pan = 0.0
+reverb_send = 0.0
+[mix.tracks.Chords]
+level_db = -14.0
+pan = -0.25
+reverb_send = 0.15
+[mix.tracks.Bass]
+level_db = -16.0
+pan = 0.0
+reverb_send = 0.05
+[mix.tracks.PercussionLow]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.tracks.PercussionHigh]
+level_db = -9.0
+pan = 0.1
+reverb_send = 0.1
+[mix.eq]
+highpass_hz = 35.0
+presence_hz = 3000.0
+presence_db = 1.0
+presence_q = 0.8

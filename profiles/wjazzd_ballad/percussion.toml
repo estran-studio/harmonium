@@ -1,0 +1,1401 @@
+# Batterie du profil `wjazzd_ballad` : GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b25_batterie.py wjazzd_ballad`
+# depuis le Groove MIDI Dataset v1.0.0 (CC BY 4.0, Gillick, Roberts, Engel, Eck, Bamman, ICML 2019 ;
+# Google LLC), wjazzd_ballad : GMD `jazz`, 4/4, 92 à 112 BPM, ride swingué (rapport mesuré ≥ 0,54) : 5 fichiers `beat`, 206 mesures, 3 batteur(s).
+# Mesures ramenées à la grille swinguée de E7 (16 pas : pulsations de quatre pas, pas 2 retardé au rapport du fichier).
+# Étiquette `ride` : patterns MESURÉS. Chaque pattern = un groupe de mesures (k-moyennes sur grosse caisse, caisse
+# claire, ride, pédale) ; chaque coup est un (rôle, pas) dont la probabilité par pas dans le groupe atteint le seuil
+# de la densité (0 : ride et pédale ≥ 0,5, grosse caisse / caisse claire / tom ≥ 0,75 ; 1 : tous ≥ 0,5 ; 2 : grosse
+# caisse, caisse claire, tom ≥ 0,3). Poids = effectif de mesures. Vélocités : forme des accents du groupe,
+# niveau de la voix (gain par rôle de E7).
+# Étiquettes `brush` et `hat` : RÈGLES DE MÉTIER (le GMD est joué aux baguettes ; aucun balai n'y est mesuré) :
+# `brush` = la figure du ride du groupe jouée à la frappe de balai `tap` (note 38) plus `swirl` (note 40) au pas 0
+# (et 8 en 4/4). Ces deux touches sont « Brushed Snares » dans le kit 40, sans preuve de deux gestes acoustiques
+# distincts ; la note 40 du kit 32 est « Jazz Brushed Snare ». `hat` = `swirl` et pédale de charleston aux temps
+# 2 et 4 (3/4 : 2 et 3), plus grosse caisse en densité 2.
+# Phrases : suites de groupes vues dans le GMD (fenêtres de 2 et 4 mesures) ; relances : 22 fichiers `fill` (jazz) groupés par longueur et départ, coups de probabilité ≥ 0,3.
+low_note = 36
+high_note = 51
+low_velocity = 64
+high_velocity = 64
+percussion_gain = 1.0
+velocity_humanize = 3
+# Part de fins de phrase sans relance : 75 % (valeur de service : le GMD isole les relances, la part de
+# fins de phrase sans relance n'y est pas mesurable).
+fills_none_weight = 66
+
+[[voices]]
+name = "kick"
+note = 36
+velocity = 30
+track = "PercussionLow"
+
+[[voices]]
+name = "pedal"
+note = 44
+velocity = 58
+track = "PercussionHigh"
+
+[[voices]]
+name = "ride"
+note = 51
+velocity = 71
+track = "PercussionHigh"
+
+[[voices]]
+name = "snare"
+note = 38
+velocity = 24
+track = "PercussionHigh"
+
+[[voices]]
+name = "swirl"
+note = 40
+velocity = 46
+track = "PercussionHigh"
+
+[[voices]]
+name = "tap"
+note = 38
+velocity = 56
+track = "PercussionHigh"
+
+[[voices]]
+name = "tom"
+note = 43
+velocity = 41
+track = "PercussionHigh"
+
+[[patterns]]
+density = 0
+weight = 50
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -8 },
+  { step = 4, voice = "ride", delta_velocity = 3 },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 9, voice = "snare" },
+  { step = 12, voice = "ride", delta_velocity = 12 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+[[patterns]]
+density = 0
+weight = 40
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 0
+weight = 84
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -9 },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 4 },
+  { step = 6, voice = "ride", delta_velocity = 12 },
+  { step = 8, voice = "ride", delta_velocity = -8 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = 6 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+[[patterns]]
+density = 1
+weight = 50
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -8 },
+  { step = 4, voice = "ride", delta_velocity = 3 },
+  { step = 5, voice = "snare" },
+  { step = 6, voice = "kick" },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 9, voice = "snare" },
+  { step = 10, voice = "kick" },
+  { step = 12, voice = "ride", delta_velocity = 12 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+[[patterns]]
+density = 1
+weight = 40
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 2, voice = "snare", delta_velocity = 1 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 2 },
+  { step = 6, voice = "snare" },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 1
+weight = 84
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -9 },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 4 },
+  { step = 6, voice = "ride", delta_velocity = 12 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 8, voice = "ride", delta_velocity = -8 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = 6 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+[[patterns]]
+density = 2
+weight = 50
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -8 },
+  { step = 1, voice = "snare" },
+  { step = 2, voice = "kick" },
+  { step = 2, voice = "snare" },
+  { step = 4, voice = "ride", delta_velocity = 3 },
+  { step = 5, voice = "snare" },
+  { step = 6, voice = "kick" },
+  { step = 6, voice = "ride", delta_velocity = 2 },
+  { step = 8, voice = "ride", delta_velocity = -4 },
+  { step = 9, voice = "snare" },
+  { step = 10, voice = "kick" },
+  { step = 12, voice = "ride", delta_velocity = 12 },
+  { step = 12, voice = "snare", delta_velocity = 17 },
+  { step = 13, voice = "snare" },
+  { step = 14, voice = "kick" },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+]
+
+[[patterns]]
+density = 2
+weight = 40
+tag = "ride"
+hits = [
+  { step = 0, voice = "ride", delta_velocity = -6 },
+  { step = 2, voice = "snare", delta_velocity = 1 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 2 },
+  { step = 6, voice = "snare" },
+  { step = 8, voice = "ride", delta_velocity = 5 },
+  { step = 10, voice = "snare", delta_velocity = 4 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = -2 },
+  { step = 14, voice = "snare" },
+]
+
+[[patterns]]
+density = 2
+weight = 84
+tag = "ride"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "ride", delta_velocity = -9 },
+  { step = 2, voice = "snare" },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "ride", delta_velocity = 4 },
+  { step = 6, voice = "ride", delta_velocity = 12 },
+  { step = 6, voice = "snare", delta_velocity = 4 },
+  { step = 8, voice = "ride", delta_velocity = -8 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "ride", delta_velocity = 6 },
+  { step = 14, voice = "ride", delta_velocity = -5 },
+  { step = 14, voice = "snare", delta_velocity = 2 },
+]
+
+[[patterns]]
+density = 0
+weight = 50
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -6 },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 6, voice = "tap", delta_velocity = 2 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -3 },
+  { step = 9, voice = "tap", delta_velocity = -11 },
+  { step = 12, voice = "tap", delta_velocity = 9 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 0
+weight = 40
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -5 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = 4 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 0
+weight = 84
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -7 },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 3 },
+  { step = 6, voice = "tap", delta_velocity = 9 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -6 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = 5 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 1
+weight = 50
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -6 },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 5, voice = "tap", delta_velocity = -11 },
+  { step = 6, voice = "kick" },
+  { step = 6, voice = "tap", delta_velocity = 2 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -3 },
+  { step = 9, voice = "tap", delta_velocity = -11 },
+  { step = 10, voice = "kick" },
+  { step = 12, voice = "tap", delta_velocity = 9 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 1
+weight = 40
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -5 },
+  { step = 2, voice = "tap", delta_velocity = -11 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 6, voice = "tap", delta_velocity = -11 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = 4 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = -2 },
+]
+
+[[patterns]]
+density = 1
+weight = 84
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -7 },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 3 },
+  { step = 6, voice = "tap", delta_velocity = 9 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -6 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = 5 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 2
+weight = 50
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -6 },
+  { step = 1, voice = "tap", delta_velocity = -11 },
+  { step = 2, voice = "kick" },
+  { step = 2, voice = "tap", delta_velocity = -11 },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 5, voice = "tap", delta_velocity = -11 },
+  { step = 6, voice = "kick" },
+  { step = 6, voice = "tap", delta_velocity = 2 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -3 },
+  { step = 9, voice = "tap", delta_velocity = -11 },
+  { step = 10, voice = "kick" },
+  { step = 12, voice = "tap", delta_velocity = 9 },
+  { step = 13, voice = "tap", delta_velocity = -11 },
+  { step = 14, voice = "kick" },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 2
+weight = 40
+tag = "brush"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -5 },
+  { step = 2, voice = "tap", delta_velocity = -11 },
+  { step = 3, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 2 },
+  { step = 6, voice = "tap", delta_velocity = -11 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = 4 },
+  { step = 10, voice = "tap", delta_velocity = -11 },
+  { step = 11, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = -2 },
+  { step = 14, voice = "tap", delta_velocity = -11 },
+]
+
+[[patterns]]
+density = 2
+weight = 84
+tag = "brush"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "swirl" },
+  { step = 0, voice = "tap", delta_velocity = -7 },
+  { step = 2, voice = "tap", delta_velocity = -11 },
+  { step = 4, voice = "pedal" },
+  { step = 4, voice = "tap", delta_velocity = 3 },
+  { step = 6, voice = "tap", delta_velocity = 9 },
+  { step = 8, voice = "swirl" },
+  { step = 8, voice = "tap", delta_velocity = -6 },
+  { step = 12, voice = "pedal" },
+  { step = 12, voice = "tap", delta_velocity = 5 },
+  { step = 14, voice = "tap", delta_velocity = -4 },
+]
+
+[[patterns]]
+density = 0
+weight = 84
+tag = "hat"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "pedal" },
+  { step = 8, voice = "swirl" },
+  { step = 12, voice = "pedal" },
+]
+
+[[patterns]]
+density = 1
+weight = 84
+tag = "hat"
+hits = [
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "pedal" },
+  { step = 8, voice = "swirl" },
+  { step = 12, voice = "pedal" },
+]
+
+[[patterns]]
+density = 2
+weight = 84
+tag = "hat"
+hits = [
+  { step = 0, voice = "kick" },
+  { step = 0, voice = "swirl" },
+  { step = 4, voice = "pedal" },
+  { step = 8, voice = "swirl" },
+  { step = 12, voice = "pedal" },
+]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 3
+patterns = [18, 18, 18, 18]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 2
+patterns = [18, 18]
+
+[[phrases]]
+density = 0
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [18, 18]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 3
+patterns = [19, 19, 19, 19]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 2
+patterns = [19, 19]
+
+[[phrases]]
+density = 1
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [19, 19]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 3
+patterns = [20, 20, 20, 20]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 2
+patterns = [20, 20]
+
+[[phrases]]
+density = 2
+tag = "hat"
+weight = 2
+at = "part_end"
+patterns = [20, 20]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 30
+patterns = [11, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 18
+patterns = [9, 9]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 10
+patterns = [11, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 10
+at = "part_end"
+patterns = [11, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 10
+patterns = [11, 11, 11, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 7
+patterns = [9, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [9, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 7
+patterns = [10, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 7
+patterns = [10, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [10, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 5
+patterns = [9, 9, 9, 9]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 5
+patterns = [11, 9]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 5
+at = "part_end"
+patterns = [11, 9]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 3
+patterns = [9, 9, 9, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 3
+at = "part_end"
+patterns = [9, 9, 9, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [9, 9, 10, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [9, 9, 10, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [9, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [9, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 10, 11, 11]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+patterns = [11, 11, 10, 10]
+
+[[phrases]]
+density = 0
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [11, 11, 10, 10]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 30
+patterns = [14, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 18
+patterns = [12, 12]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 10
+patterns = [14, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 10
+at = "part_end"
+patterns = [14, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 10
+patterns = [14, 14, 14, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 7
+patterns = [12, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [12, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 7
+patterns = [13, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 7
+patterns = [13, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [13, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 5
+patterns = [12, 12, 12, 12]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 5
+patterns = [14, 12]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 5
+at = "part_end"
+patterns = [14, 12]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 3
+patterns = [12, 12, 12, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 3
+at = "part_end"
+patterns = [12, 12, 12, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 12, 13, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [12, 12, 13, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [12, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [12, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [14, 13, 14, 14]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+patterns = [14, 14, 13, 13]
+
+[[phrases]]
+density = 1
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [14, 14, 13, 13]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 30
+patterns = [17, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 18
+patterns = [15, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 10
+patterns = [17, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 10
+at = "part_end"
+patterns = [17, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 10
+patterns = [17, 17, 17, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 7
+patterns = [15, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [15, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 7
+patterns = [16, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 7
+patterns = [16, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 7
+at = "part_end"
+patterns = [16, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 5
+patterns = [15, 15, 15, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 5
+patterns = [17, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 5
+at = "part_end"
+patterns = [17, 15]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 3
+patterns = [15, 15, 15, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 3
+at = "part_end"
+patterns = [15, 15, 15, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [15, 15, 16, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [15, 15, 16, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [15, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [15, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [17, 16, 17, 17]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+patterns = [17, 17, 16, 16]
+
+[[phrases]]
+density = 2
+tag = "brush"
+weight = 2
+at = "part_end"
+patterns = [17, 17, 16, 16]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 30
+patterns = [2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 18
+patterns = [0, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 10
+patterns = [2, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 10
+at = "part_end"
+patterns = [2, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 10
+patterns = [2, 2, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+patterns = [0, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [0, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+patterns = [1, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+patterns = [1, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [1, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 5
+patterns = [0, 0, 0, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 5
+patterns = [2, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 5
+at = "part_end"
+patterns = [2, 0]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 3
+patterns = [0, 0, 0, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 3
+at = "part_end"
+patterns = [0, 0, 0, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [0, 0, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [0, 0, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [0, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [0, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [2, 1, 2, 2]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+patterns = [2, 2, 1, 1]
+
+[[phrases]]
+density = 0
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [2, 2, 1, 1]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 30
+patterns = [5, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 18
+patterns = [3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 10
+patterns = [5, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 10
+at = "part_end"
+patterns = [5, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 10
+patterns = [5, 5, 5, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+patterns = [3, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [3, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+patterns = [4, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+patterns = [4, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [4, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 5
+patterns = [3, 3, 3, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 5
+patterns = [5, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 5
+at = "part_end"
+patterns = [5, 3]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 3
+patterns = [3, 3, 3, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 3
+at = "part_end"
+patterns = [3, 3, 3, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [3, 3, 4, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [3, 3, 4, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [3, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [3, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [5, 4, 5, 5]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+patterns = [5, 5, 4, 4]
+
+[[phrases]]
+density = 1
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [5, 5, 4, 4]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 30
+patterns = [8, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 18
+patterns = [6, 6]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 10
+patterns = [8, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 10
+at = "part_end"
+patterns = [8, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 10
+patterns = [8, 8, 8, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+patterns = [6, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [6, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+patterns = [7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+patterns = [7, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 7
+at = "part_end"
+patterns = [7, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 5
+patterns = [6, 6, 6, 6]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 5
+patterns = [8, 6]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 5
+at = "part_end"
+patterns = [8, 6]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 3
+patterns = [6, 6, 6, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 3
+at = "part_end"
+patterns = [6, 6, 6, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [6, 6, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [6, 6, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [6, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [6, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [8, 7, 8, 8]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+patterns = [8, 8, 7, 7]
+
+[[phrases]]
+density = 2
+tag = "ride"
+weight = 2
+at = "part_end"
+patterns = [8, 8, 7, 7]
+
+[[fills]]
+density = 1
+tag = "brush"
+weight = 22
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "tap", delta_velocity = 8 },
+    { step = 0, voice = "tom", delta_velocity = -3 },
+    { step = 1, voice = "tap", delta_velocity = 8 },
+    { step = 2, voice = "tap", delta_velocity = 8 },
+    { step = 3, voice = "tom", delta_velocity = 9 },
+    { step = 4, voice = "tap", delta_velocity = 8 },
+    { step = 5, voice = "tap", delta_velocity = 8 },
+    { step = 8, voice = "tap", delta_velocity = 8 },
+    { step = 8, voice = "tom", delta_velocity = 6 },
+    { step = 9, voice = "tap", delta_velocity = 8 },
+    { step = 11, voice = "tap", delta_velocity = 8 },
+    { step = 12, voice = "tap", delta_velocity = 8 },
+    { step = 13, voice = "tap", delta_velocity = 8 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "brush"
+weight = 22
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "tap", delta_velocity = 8 },
+    { step = 0, voice = "tom", delta_velocity = -3 },
+    { step = 1, voice = "tap", delta_velocity = 8 },
+    { step = 2, voice = "tap", delta_velocity = 8 },
+    { step = 3, voice = "tom", delta_velocity = 9 },
+    { step = 4, voice = "tap", delta_velocity = 8 },
+    { step = 5, voice = "tap", delta_velocity = 8 },
+    { step = 8, voice = "tap", delta_velocity = 8 },
+    { step = 8, voice = "tom", delta_velocity = 6 },
+    { step = 9, voice = "tap", delta_velocity = 8 },
+    { step = 11, voice = "tap", delta_velocity = 8 },
+    { step = 12, voice = "tap", delta_velocity = 8 },
+    { step = 13, voice = "tap", delta_velocity = 8 },
+  ] },
+]
+
+[[fills]]
+density = 1
+tag = "ride"
+weight = 22
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 9 },
+    { step = 0, voice = "tom", delta_velocity = -3 },
+    { step = 1, voice = "snare" },
+    { step = 2, voice = "snare" },
+    { step = 3, voice = "tom", delta_velocity = 9 },
+    { step = 4, voice = "snare" },
+    { step = 5, voice = "snare" },
+    { step = 8, voice = "snare", delta_velocity = 5 },
+    { step = 8, voice = "tom", delta_velocity = 6 },
+    { step = 9, voice = "snare" },
+    { step = 11, voice = "snare", delta_velocity = 5 },
+    { step = 12, voice = "snare", delta_velocity = 16 },
+    { step = 13, voice = "snare", delta_velocity = 5 },
+  ] },
+]
+
+[[fills]]
+density = 2
+tag = "ride"
+weight = 22
+start_step = 0
+bars = [
+  { hits = [
+    { step = 0, voice = "snare", delta_velocity = 9 },
+    { step = 0, voice = "tom", delta_velocity = -3 },
+    { step = 1, voice = "snare" },
+    { step = 2, voice = "snare" },
+    { step = 3, voice = "tom", delta_velocity = 9 },
+    { step = 4, voice = "snare" },
+    { step = 5, voice = "snare" },
+    { step = 8, voice = "snare", delta_velocity = 5 },
+    { step = 8, voice = "tom", delta_velocity = 6 },
+    { step = 9, voice = "snare" },
+    { step = 11, voice = "snare", delta_velocity = 5 },
+    { step = 12, voice = "snare", delta_velocity = 16 },
+    { step = 13, voice = "snare", delta_velocity = 5 },
+  ] },
+]
