@@ -4,6 +4,7 @@ percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
+session = "session.toml"
 
 [meta]
 id = "gigue_britannique_coloniale"

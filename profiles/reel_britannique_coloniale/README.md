@@ -115,3 +115,25 @@ L'essentiel du lot vient d'un recueil (NMD, notation sans ornements ni articulat
 d'ornements et d'articulations sont donc des planchers très bas, et rien dans l'ABC ne distingue un jeu colonial d'un jeu anglais.
 Seules les deux premières parties sont modélisées : le profil joue AABB comme tous les autres, alors que 130 airs sur 437 sont notés
 AABB, 115 AAB, 47 ABCD (parties toutes différentes) et 47 en croches continues sans parties.
+
+## Habillage par graine (019, R2-trad)
+
+`session.toml` : une graine tire un habillage dans les bornes de la tradition, sans toucher aux airs (cellules, rôles, formes et ornements sont ceux du profil ; seule leur réalisation varie). 3 × 6 × 4 × 3 × 2 × 2 × 3 × 3 × 3 × 3 × 4 = 279 936 habillages possibles.
+
+| Groupe | Variantes (poids) | Source |
+|---|---|---|
+| `tempo` | pose 192–201, moyen 202–213, vif 214–224 BPM | sous-plages de `meter.min_bpm..max_bpm` (192–224) |
+| `tonalite` | ré ionien (8), sol ionien (7), la ionien (2), do ionien (2), la éolien (1), mi éolien (1) | `melody.key_modes` du profil et tonalités courantes des airs de violon de la tradition |
+| `melodie` | violon (40), fiddle (110), flute (73), accordeon (21) | métier : instrument de mélodie (et de contre-mélodie) |
+| `comping` | guitare_nylon (24), guitare_acier (25), piano (0) | métier : piano en « vamp » ou guitare |
+| `basse` | contrebasse (32), basse_doigts (33) | métier |
+| `voicing` | `close_triad` (3), `fixed_triad` (2) | triades simples seulement |
+| `registre` | normal (5), haut (1), grave (1) : octave des accords | métier |
+| `kit` | standard (0), room (8), brush (40) | kits de GeneralUser GS, banque 128 |
+| `energie` | doux 0,85 (1), normal (2), fort 1,12 (1) : multiplicateur d'intensité | métier |
+| `pieds` | discrets 0,8 (1), normal (2), fournis 1,2 (1) : multiplicateur de densité des percussions (kit de la banque 128) | métier |
+| `arc` | `defaut` (2), `montee` (3), `sommet` (3), `orchestre` (2) | arcs nommés sur les tours d'un air (un chorus = un tour) |
+
+Arcs nommés (chaque arc reprend à son début à chaque air d'un set ; le dernier tour du set se détache) : `defaut` laisse l'énergie plate ; `montee` (0,8 → 0,95 → 1,1) ; `sommet` (deux tours posés, un sommet à 1,2) ; `orchestre` (exposition à une guitare ou un piano plus doux, sommet à un autre comping et une autre basse) ; le dernier tour du set monte à 1,25 ou 1,3 (`fall`). Sans `fall` (set sans fin), le dernier chorus n'est pas détaché.
+
+L'hôte garde la main : `SetBpm`, `SetSwing` et `[fixed_tonality]` (grille de training) gagnent sur la variante. Les valeurs ci-dessus sont des règles de métier de la tradition, à valider à l'oreille ; aucune n'est mesurée.

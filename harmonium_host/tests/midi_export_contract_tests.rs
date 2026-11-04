@@ -39,6 +39,10 @@ fn render_default_style(
 ) -> Result<Export, String> {
     let (mut composer, mut playback, mut cmd_tx, mut report_rx, _clock, finished) =
         create_offline_engine(None, None, &[], SAMPLE_RATE)?;
+    // Tempo nominal du profil par défaut : sans l'habillage par graine de R2-trad.
+    let mut profile = composer.profile().clone();
+    profile.session = Default::default();
+    composer.set_profile(profile)?;
     if mechanical {
         let mut profile = composer.profile().clone();
         profile.performance = Default::default();

@@ -1,0 +1,300 @@
+# Habillage par graine de `hornpipe_britannique_coloniale` (A2 ; phase 019, R2-trad) : un tirage par groupe, les groupes se combinent
+# (839 808 habillages possibles). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/r2-trad/habillage.py`.
+#
+# Ce qui vient du profil et de son corpus : les sous-plages de tempo (dans `meter.min_bpm..max_bpm`) et les tonalités
+# (`melody.key_modes`, plus quelques tonalités courantes des airs de violon de la tradition). Le reste est de métier
+# (instrument de mélodie, accompagnement, voicings de triade, pieds, énergie, registre, arcs sur les tours d'un air) :
+# aucun corpus distribuable ne le mesure (décision F3). Programmes General MIDI (0-based) de GeneralUser GS, banque 0,
+# vérifiés dans son `phdr`. Les airs ne changent pas : cellules, rôles, formes et ornements sont ceux du profil ; seule
+# leur réalisation varie. Le tempo de l'hôte (`SetBpm`), son swing et son `[fixed_tonality]` gagnent sur la variante.
+
+[[variants]]
+group = "tempo"
+name = "pose"
+weight = 2
+bpm = [80.0, 88.0]
+
+[[variants]]
+group = "tempo"
+name = "moyen"
+weight = 3
+bpm = [89.0, 96.0]
+
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 2
+bpm = [97.0, 104.0]
+
+[[variants]]
+group = "swing"
+name = "leger"
+swing = 0.62
+
+[[variants]]
+group = "swing"
+name = "hornpipe"
+weight = 3
+swing = 0.65
+
+[[variants]]
+group = "swing"
+name = "appuye"
+swing = 0.68
+
+[[variants]]
+group = "tonalite"
+name = "sol_ionian"
+weight = 8
+tonality = { key = 7, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "re_ionian"
+weight = 7
+tonality = { key = 2, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "la_ionian"
+weight = 3
+tonality = { key = 9, mode = "ionian" }
+
+[[variants]]
+group = "tonalite"
+name = "mi_aeolian"
+tonality = { key = 4, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "la_aeolian"
+tonality = { key = 9, mode = "aeolian" }
+
+[[variants]]
+group = "tonalite"
+name = "do_ionian"
+weight = 2
+tonality = { key = 0, mode = "ionian" }
+
+[[variants]]
+group = "melodie"
+name = "violon"
+weight = 6
+instruments = { melody_program = 40 }
+
+[[variants]]
+group = "melodie"
+name = "fiddle"
+weight = 2
+instruments = { melody_program = 110 }
+
+[[variants]]
+group = "melodie"
+name = "flute"
+weight = 2
+instruments = { melody_program = 73 }
+
+[[variants]]
+group = "melodie"
+name = "accordeon"
+instruments = { melody_program = 21 }
+
+[[variants]]
+group = "comping"
+name = "guitare_nylon"
+weight = 3
+instruments = { chords_program = 24 }
+
+[[variants]]
+group = "comping"
+name = "guitare_acier"
+weight = 3
+instruments = { chords_program = 25 }
+
+[[variants]]
+group = "comping"
+name = "piano"
+weight = 3
+instruments = { chords_program = 0 }
+
+[[variants]]
+group = "basse"
+name = "contrebasse"
+weight = 4
+instruments = { bass_program = 32 }
+
+[[variants]]
+group = "basse"
+name = "basse_doigts"
+weight = 2
+instruments = { bass_program = 33 }
+
+[[variants]]
+group = "voicing"
+name = "triades_serrees"
+weight = 3
+voicing = "close_triad"
+
+[[variants]]
+group = "voicing"
+name = "triades_fixes"
+weight = 2
+voicing = "fixed_triad"
+
+[[variants]]
+group = "registre"
+name = "normal"
+weight = 5
+
+[[variants]]
+group = "registre"
+name = "haut"
+register_octaves = { Chords = 1 }
+
+[[variants]]
+group = "registre"
+name = "grave"
+register_octaves = { Chords = -1 }
+
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 4
+instruments = { percussion_bank = 128, percussion_program = 0 }
+
+[[variants]]
+group = "kit"
+name = "room"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 8 }
+
+[[variants]]
+group = "kit"
+name = "brush"
+instruments = { percussion_bank = 128, percussion_program = 40 }
+
+[[variants]]
+group = "energie"
+name = "doux"
+intensity = 0.85
+
+[[variants]]
+group = "energie"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "energie"
+name = "fort"
+intensity = 1.12
+
+[[variants]]
+group = "pieds"
+name = "discrets"
+density = 0.8
+
+[[variants]]
+group = "pieds"
+name = "normal"
+weight = 2
+
+[[variants]]
+group = "pieds"
+name = "fournis"
+density = 1.2
+
+[[variants]]
+group = "arc"
+name = "defaut"
+weight = 2
+
+[[variants]]
+group = "arc"
+name = "montee"
+weight = 3
+arc = "montee"
+
+[[variants]]
+group = "arc"
+name = "sommet"
+weight = 3
+arc = "sommet"
+
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 2
+arc = "orchestre"
+
+[arcs.montee]
+repeat_from = 0
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.8, density = 0.85 },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 0.95, density = 0.95 },
+  { weight = 1, intensity = 1.0 },
+]
+
+[[arcs.montee.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.1, density = 1.1 },
+  { weight = 1, intensity = 1.15, density = 1.05 },
+]
+
+[[arcs.montee.fall]]
+intensity = 1.25
+density = 1.2
+
+[arcs.sommet]
+repeat_from = 0
+
+[[arcs.sommet.stages]]
+choruses = 2
+variants = [
+  { weight = 2, intensity = 0.95, density = 0.95 },
+  { weight = 1, intensity = 1.0, density = 1.05 },
+]
+
+[[arcs.sommet.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.2, density = 1.15 },
+]
+
+[[arcs.sommet.fall]]
+intensity = 1.3
+density = 1.2
+
+[arcs.orchestre]
+repeat_from = 0
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { intensity = 0.85, density = 0.9, instruments = { chords_program = 24 } },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.0, density = 1.0 },
+]
+
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { intensity = 1.15, density = 1.1, instruments = { bass_program = 33, chords_program = 25 } },
+]
+
+[[arcs.orchestre.fall]]
+intensity = 1.25
+density = 1.2
+instruments = { bass_program = 33, chords_program = 25 }
