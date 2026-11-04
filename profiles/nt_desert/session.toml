@@ -1,0 +1,347 @@
+# Habillage par graine de `nt_desert` (phase 019, A2, R2-jeux vague 4) : un tirage par groupe, les groupes
+# se combinent. Le jeu garde son identité : 12/8 ternaire (le swing de la grille ne change pas), phrygien
+# sur la pédale, banque `assets/nt_desert.sf2` (programmes 38, 78, 81, 88, 89 et kit 128/0 seulement : aucun
+# autre programme n'y est nommé), zones Odin existantes (Heel/Toe restent SoundFont). `SetBpm` de l'hôte
+# gagne sur le tempo ; la tonalité est celle du premier air (le set d'un air : la session entière).
+#
+# Tempo : base de la courbe `tempo_offset` de `dynamics` (l'arousal s'y ajoute : ±30 BPM). Plage nominale
+# 204–216 (la noire à 210 = 140 pointées de Fläshyn et de Crystallized Fear, références du labo) la plus
+# lourde (4 sur 6) ; « pose » et « vif » restent dans 150..240, à plus de 8 BPM de la plage nominale
+# et resserrés autour de la référence (le tempo pèse sur la distance audio au corpus).
+
+# 210 = 140 noires pointées, Fläshyn (A) et Crystallized Fear (nt-niveaux.md).
+[[variants]]
+group = "tempo"
+name = "nominal"
+weight = 4
+bpm = [204.0, 216.0]
+
+# plus lourd, resserré sous la référence (la plage du jeu descend à 150) : même 12/8.
+[[variants]]
+group = "tempo"
+name = "pose"
+weight = 1
+bpm = [180.0, 190.0]
+
+# plus vif, resserré au-dessus de la référence (la plage du jeu monte à 240).
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [226.0, 236.0]
+
+# Tonalité : pas de groupe `tonalite`. Le niveau atteste G♯ phrygien (Fläshyn, pédale G♯, section B
+# G/G♯) et, sur une autre piste, A phrygien (A Way, bourdon A) ; mais la distance symbolique au corpus
+# est mesurée sur Fläshyn, dont la basse et les accords sont centrés sur G♯ : un air en A phrygien fait
+# tomber l'histogramme de hauteurs de la basse de ~86 à ~18 (−68 points sur cette graine), bien au-delà
+# de la perte de 1 point tolérée par couche. La tonalité reste donc celle du profil (G♯ phrygien, les
+# bascules de mode restent celles de `dynamics.toml`) ; le bloc A phrygien est donné dans la note R2.
+
+# Basse : scie 81 (nominale) ou « Saw Bass Hold » 38 (même recette, corps sinusoïdal, banque nt_desert.sf2).
+# Odin : les mêmes quatre presets permutent entre les quatre zones, chacun emportant sa transposition et
+# son `level_db` (niveaux appariés au défaut, RMS du solo de piste à ±0,5 dB) ; mêmes `when`, même ordre.
+# Les conditions émotionnelles ne changent pas ; les permutations reprennent exclusivement
+# les presets, niveaux et transpositions déjà présents dans ce profil.
+[[variants]]
+group = "basse"
+name = "growly"
+weight = 3
+instruments = { bass_program = 81 }
+
+[[variants]]
+group = "basse"
+name = "creuse"
+weight = 2
+instruments = { bass_program = 38 }
+
+[[variants.odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Growly FM Bass [XR]"
+transpose = 24
+level_db = -3.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Analog Bass [tx]"
+transpose = 12
+level_db = 4.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "DeepBass [Photonic]"
+transpose = 12
+level_db = 5.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+preset = "Bass Low [RM]"
+transpose = 24
+level_db = -0.5
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+
+
+
+[[variants]]
+group = "basse"
+name = "analogique"
+weight = 1
+instruments = { bass_program = 81 }
+
+[[variants.odin.Bass.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Bass Low [RM]"
+transpose = 24
+level_db = -0.5
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Growly FM Bass [XR]"
+transpose = 24
+level_db = -3.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "DeepBass [Photonic]"
+transpose = 12
+level_db = 5.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+[[variants.odin.Bass.zones]]
+preset = "Analog Bass [tx]"
+transpose = 12
+level_db = 4.0
+morph = [
+  { param = "fil1_freq", arousal = 3500.0, tension = 1500.0 },
+  { param = "fil1_res", tension = 0.3 },
+  { param = "fil1_env", arousal = 0.4 },
+  { param = "env1_release", density = 0.3 }
+]
+
+
+
+# Nappe : pad sombre 89 (nominal) ou pad chaud 88, attaque 80 ms (Crystal Caves : Moonshade ; Desert :
+# pad 88 ou 89, nt-desert/README.md §4). Odin : permutation des quatre presets de zone avec leur level_db.
+[[variants]]
+group = "nappe"
+name = "sombre"
+weight = 3
+instruments = { chords_program = 89 }
+
+[[variants]]
+group = "nappe"
+name = "lune"
+weight = 2
+instruments = { chords_program = 88 }
+
+[[variants.odin.Chords.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Darken Nature [RM]"
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "PAD Open"
+level_db = -2.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Alone in the Subway"
+level_db = -0.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+preset = "Moonshade"
+level_db = -5.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+
+
+
+[[variants]]
+group = "nappe"
+name = "ouverte"
+weight = 1
+instruments = { chords_program = 88 }
+
+[[variants.odin.Chords.zones]]
+when = { tension = [0.6, 1.0] }
+preset = "Moonshade"
+level_db = -5.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+when = { arousal = [0.7, 1.0] }
+preset = "Darken Nature [RM]"
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+when = { valence = [-1.0, -0.3] }
+preset = "Alone in the Subway"
+level_db = -0.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+[[variants.odin.Chords.zones]]
+preset = "PAD Open"
+level_db = -2.5
+morph = [
+  { param = "fil1_freq", arousal = 2000.0, valence = 1000.0 },
+  { param = "env1_attack", tension = -0.15 },
+  { param = "env1_release", density = 0.6 },
+  { param = "env2_sustain", valence = 0.2 }
+]
+
+
+
+# Doublure (hétérophonie, −14 dB) : scie 81 comme le dessus, ou pad chaud 88 (un chœur sous le lead).
+[[variants]]
+group = "choeur"
+name = "scie"
+weight = 3
+instruments = { countermelody_program = 81 }
+
+[[variants]]
+group = "choeur"
+name = "pad"
+weight = 1
+instruments = { countermelody_program = 88 }
+
+# Batterie : tags des patterns, phrases et relances de `percussion.toml`. « plein » : groove écrit avec
+# charleston de temps et relances de toms ; « sec » : groove extrait de Fläshyn (sans charleston, P2) et
+# relances à la caisse claire ; « mixte » : les deux.
+[[variants]]
+group = "batterie"
+name = "plein"
+weight = 3
+percussion = [{ tag = "plein" }]
+
+[[variants]]
+group = "batterie"
+name = "sec"
+weight = 2
+percussion = [{ tag = "sec" }]
+
+[[variants]]
+group = "batterie"
+name = "mixte"
+weight = 2
+percussion = [{ tag = "plein" }, { tag = "sec" }]
+
+# Énergie de base : multiplicateurs modestes ; l'intensité vient des émotions du jeu.
+[[variants]]
+group = "energie"
+name = "calme"
+weight = 1
+intensity = 0.9
+density = 0.9
+
+[[variants]]
+group = "energie"
+name = "nominale"
+weight = 2
+
+[[variants]]
+group = "energie"
+name = "tendue"
+weight = 1
+intensity = 1.1
+density = 1.1
+
+# Arc : `arc.toml` (« montee ») ou l'arc nommé « relais » ci-dessous, qui change l'orchestration au
+# deuxième chorus.
+[[variants]]
+group = "arc"
+name = "montee"
+weight = 3
+
+[[variants]]
+group = "arc"
+name = "relais"
+weight = 2
+arc = "relais"
+
+# Arc « relais » : même montée que `arc.toml`, plus le relais d'orchestration du chorus 2 (la nappe passe
+# au pad 88 ; un chorus qui n'en déclare pas rend les programmes de la session) et une coupe de batterie
+# dans B. La basse ne change jamais de programme en cours d'air : un changement de programme de la basse
+# scinderait la piste MIDI de la basse et fausserait la mesure symbolique de la distance au corpus. Les
+# programmes de l'arc ne dépendent pas de la session : si la session a déjà 88, rien ne change.
+[arcs.relais]
+repeat_from = 1
+
+[[arcs.relais.stages]]
+variants = [
+  { weight = 3, intensity = 0.85, density = 0.85, comping = [{ tag = "tenue" }] },
+  { weight = 1, intensity = 0.9, density = 0.9, comping = [{ tag = "tenue" }] },
+]
+
+[[arcs.relais.stages]]
+variants = [
+  { weight = 2, instruments = { chords_program = 88 }, comping = [{ tag = "tenue", weight = 3 }, { tag = "creux", weight = 1 }], breaks = [{ start = 37, bars = 2, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+  { weight = 1, instruments = { chords_program = 88 }, intensity = 1.1, density = 1.1, comping = [{ tag = "reprise" }] },
+]
+
+[[arcs.relais.stages]]
+variants = [
+  { intensity = 1.15, density = 1.15, comping = [{ tag = "tenue", weight = 2 }, { tag = "reprise", weight = 1 }] },
+]

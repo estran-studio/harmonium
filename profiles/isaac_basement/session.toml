@@ -1,0 +1,193 @@
+# R2-jeux : un tirage indépendant par groupe ; émotions, fenêtres et forme inchangées.
+# Sources : labo references/isaac-basement/README.md §1–4 : Diptera Sonata et Periculum.
+# Tempo de grille 140 BPM ; plage nominale 136–144 majoritaire. Les deux plages extrêmes
+# sont une règle d'interprétation dans les bornes 120..160 du profil, pas des tempos transcrits.
+[[variants]]
+group = "tempo"
+name = "pose"
+weight = 1
+bpm = [120.0, 127.0]
+[[variants]]
+group = "tempo"
+name = "nominal"
+weight = 8
+bpm = [136.0, 144.0]
+[[variants]]
+group = "tempo"
+name = "vif"
+weight = 1
+bpm = [153.0, 160.0]
+
+# Tonalité : D mineur harmonique seul, donc aucun groupe `tonalite` (une variante unique ne tirerait
+# rien). Pédale D1 et sensible C# attestées dans les DEUX références du niveau (Diptera Sonata,
+# Periculum). C# mineur de Caves et F# de Fundamentum sont d'autres niveaux : exclus. L'inflexion
+# phrygienne locale de Periculum ne justifie pas un mode phrygien global ; le mixolydien du profil
+# reste porté par `dynamics.color`, à valence haute.
+
+# Programmes GM 0-based vérifiés dans les phdr de GeneralUser GS : Finger Bass 33,
+# Pick Bass 34, Synth Bass 1 38. §4 : basse électrique saturée / fuzz (confiance moyenne).
+# Les variantes Odin ne font QUE permuter les zones de ce profil, preset ET level_db
+# ensemble : Bass Low -14.5, Growly -13, DeepBass -7, Bass Crusher 0 dB.
+# Même ordre tension/combat/menace/défaut, mêmes conditions et morphings, aucune mesure Odin.
+[[variants]]
+group = "basse"
+name = "doigts"
+weight = 4
+instruments = { bass_program = 33 }
+[[variants]]
+group = "basse"
+name = "mediator"
+weight = 1
+instruments = { bass_program = 34 }
+odin = { Bass = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Bass Low [RM]", level_db = -14.5, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Bass Crusher [RM]", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "DeepBass [Photonic]", level_db = -7.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { preset = "Growly FM Bass [XR]", level_db = -13.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+] } }
+[[variants]]
+group = "basse"
+name = "synthetique"
+weight = 1
+instruments = { bass_program = 38 }
+odin = { Bass = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Bass Low [RM]", level_db = -14.5, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "Growly FM Bass [XR]", level_db = -13.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Bass Crusher [RM]", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+  { preset = "DeepBass [Photonic]", level_db = -7.0, morph = [{ param = "fil1_freq", arousal = 3000.0, tension = 1500.0 }, { param = "fil1_res", tension = 0.3 }] },
+] } }
+
+# Nappe tenue sombre §4 (confiance moyenne) : Space Voice 91 / Warm Pad 89 / Pipe Organ 19.
+# Odin : mêmes permutations de presets déjà calibrés ici : Moonshade -7.5, PAD Open -4,
+# Church Organ -4.5, Haunt 0 dB. Le son par défaut de chaque variante est donc réellement différent.
+[[variants]]
+group = "nappe"
+name = "chorale"
+weight = 4
+instruments = { chords_program = 91 }
+[[variants]]
+group = "nappe"
+name = "chaude"
+weight = 1
+instruments = { chords_program = 89 }
+odin = { Chords = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Haunt [RM]", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "PAD Open", level_db = -4.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Church Organ", level_db = -4.5, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Moonshade", level_db = -7.5, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+] } }
+[[variants]]
+group = "nappe"
+name = "orgue"
+weight = 1
+instruments = { chords_program = 19 }
+odin = { Chords = { zones = [
+  { when = { tension = [0.6, 1.0] }, preset = "Moonshade", level_db = -7.5, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { arousal = [0.7, 1.0] }, preset = "PAD Open", level_db = -4.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { when = { valence = [-1.0, -0.3] }, preset = "Haunt [RM]", level_db = 0.0, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+  { preset = "Church Organ", level_db = -4.5, morph = [{ param = "fil1_freq", arousal = 2000.0, valence = 1000.0 }, { param = "env1_release", density = 0.6 }] },
+] } }
+
+# §4 : chœur épars, pas de solo. 52 Concert Choir, 53 Voice Oohs vérifiés dans la banque.
+[[variants]]
+group = "choeur"
+name = "aah"
+weight = 3
+instruments = { melody_program = 52 }
+[[variants]]
+group = "choeur"
+name = "ooh"
+weight = 2
+instruments = { melody_program = 53 }
+
+# §4 : kit rock sec et compressé. Les kits Standard et Power sont vérifiés en banque 128 ;
+# Power est une règle d'orchestration de ce même stomp, pas le backbeat de Fundamentum.
+[[variants]]
+group = "kit"
+name = "standard"
+weight = 3
+instruments = { percussion_bank = 128, percussion_program = 0 }
+[[variants]]
+group = "kit"
+name = "power"
+weight = 2
+instruments = { percussion_bank = 128, percussion_program = 16 }
+
+# Élargissements de la nappe, mêmes triades (aucune 7e/tension jazz ni marche de basse).
+# La pédale reste serrée ; drop2/open n'agissent que sur les accords typés d'A2/D/Pont.
+[[variants]]
+group = "voicing"
+name = "serre"
+weight = 4
+voicing = "close_triad"
+[[variants]]
+group = "voicing"
+name = "etage"
+weight = 1
+voicing = "drop2"
+[[variants]]
+group = "voicing"
+name = "ouvert"
+weight = 1
+voicing = "open"
+
+# Multiplicateurs modestes : les émotions restent le pilote principal du jeu.
+[[variants]]
+group = "energie"
+name = "sobre"
+weight = 1
+intensity = 0.9
+density = 0.9
+[[variants]]
+group = "energie"
+name = "habituelle"
+weight = 3
+[[variants]]
+group = "energie"
+name = "appuyee"
+weight = 1
+intensity = 1.1
+density = 1.1
+
+[[variants]]
+group = "patterns"
+name = "stomp_tenu"
+weight = 3
+comping = [{ tag = "tenue", weight = 3 }, { tag = "souffle" }]
+percussion = [{ tag = "stomp", weight = 3 }, { tag = "reponse" }]
+[[variants]]
+group = "patterns"
+name = "reponses"
+weight = 2
+comping = [{ tag = "tenue", weight = 2 }, { tag = "souffle" }]
+percussion = [{ tag = "stomp" }, { tag = "reponse", weight = 3 }]
+
+[[variants]]
+group = "arc"
+name = "respiration"
+weight = 3
+[[variants]]
+group = "arc"
+name = "orchestre"
+weight = 1
+arc = "orchestre"
+
+# Alternative d'orchestration : le kit change par chorus (aucune piste Odin n'est changée par
+# programme). Même forme infinie, pas de fall. Les programmes absents rendent ceux de la session.
+[arcs.orchestre]
+repeat_from = 1
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [{ intensity = 0.95, density = 0.95, instruments = { percussion_program = 0 } }]
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.05, density = 1.05, instruments = { percussion_program = 16 }, percussion = [{ tag = "stomp" }, { tag = "reponse" }] },
+  { weight = 1, intensity = 1.1, density = 1.1, instruments = { percussion_program = 16 }, comping = [{ tag = "souffle" }], percussion = [{ tag = "reponse" }] },
+]
+[[arcs.orchestre.stages]]
+choruses = 1
+variants = [
+  { weight = 2, intensity = 1.0, density = 1.0, instruments = { melody_program = 53 }, percussion = [{ tag = "stomp" }, { tag = "reponse" }] },
+  { weight = 1, intensity = 0.95, density = 0.95, breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]

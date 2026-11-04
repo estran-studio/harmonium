@@ -242,12 +242,12 @@ fn seuls_les_profils_a_nappes_lient() {
     let compose = distributed.iter().filter(|p| p.harmony.model != "loop").count();
     assert_eq!(compose, 10, "dix profils à airs distribués");
     for p in distributed {
-        let tied = p
-            .accompaniment
-            .as_ref()
-            .is_some_and(|a| a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie));
+        let tied = p.accompaniment.as_ref().is_some_and(|a| {
+            a.chords.patterns.iter().flat_map(|pat| &pat.hits).any(|h| h.tie)
+                || a.chords.comping.iter().flat_map(|motif| &motif.hits).any(|h| h.tie)
+        });
         let comping = p.accompaniment.as_ref().is_some_and(|a| !a.chords.comping.is_empty());
-        if p.harmony.model == "loop" && !comping {
+        if p.harmony.model == "loop" && (!comping || tied) {
             assert!(tied, "{} : nappe liée attendue", p.meta.id);
             continue;
         }

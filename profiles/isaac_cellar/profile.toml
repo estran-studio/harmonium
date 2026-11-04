@@ -6,12 +6,17 @@
 # Variantes par graine : A2 prolonge ou déplace la sensible, pont avec retour
 # Dm ; ostinatos à voisines et réponses de basse pondérés par partie, stomp
 # alternatif aux densités 1/2 et chœur lent enrichi, sans changer la forme.
+# R2 (phase 019, vague 4) : `session.toml` (tempo, timbres, kit, voicing, arc par graine),
+# `arc.toml` (deux chorus, sans retombée), phrases et relances de batterie, pédale d'A à alternative
+# (D#) et boucles générées (A', pont) ; voir specs/019-bibliotheque-accompagnements/r2-jeux.md.
 [files]
 cells = "cells.toml"
 percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
+arc = "arc.toml"
+session = "session.toml"
 
 [meta]
 id = "isaac_cellar"
@@ -86,6 +91,11 @@ steps_per_chord = 16
 [harmony.parts.A]
 kind = "pedal"
 degree = 1
+# R2 (phase 019, vague 4) : pédale à alternatives, tirée une fois par partie et par air. La pédale D1 de
+# Periculum (poids 4) ou la même pédale avec sa voisine chromatique D# (tonique + 1, poids 2) : « D# = `b2`
+# rampant » des références isaac-basement §2 (confiance moyenne : pyin voit plutôt un glissando).
+weight = 4
+alternatives = [{ weight = 2, degree = 1, neighbor_semitones = 1 }]
 [harmony.parts.A2]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -96,6 +106,11 @@ loops = [{ weight = 1, chords = [
   { semitones = 5, quality = "m", steps = 32 },
   { semitones = 7, quality = "", steps = 32 },
 ] }]
+# R2, P1 : une boucle générée de deux accords sur quatre mesures (répétée sur les huit), dont
+# toutes les notes tiennent dans la gamme du mode actif (D mineur harmonique : Dm, Gm, A, Bb), au-dessus
+# de la même basse D (pédale tonique + 0, accords slash) comme les boucles écrites ; mouvements par
+# quinte, quarte et seconde. Poids 2 = total des boucles écrites.
+generated = [{ weight = 2, bars = 4, count = 2, qualities = ["m", ""], key_fit = "within", start = 0, pedal = 0, motion = { kind = "intervals", intervals = [{ semitones = 7, weight = 3 }, { semitones = 5, weight = 3 }, { semitones = -5, weight = 2 }, { semitones = -7, weight = 2 }, { semitones = 2, weight = 1 }] } }]
 [harmony.parts.Pont]
 kind = "chord_loop"
 loops = [{ weight = 1, chords = [
@@ -109,6 +124,10 @@ loops = [{ weight = 1, chords = [
   { semitones = 11, quality = "m", steps = 32 },
   { semitones = 0, quality = "m", steps = 32 },
 ] }]
+# R2, P1 : descente chromatique de quatre accords mineurs, deux mesures chacun, depuis G#m (tonique + 6) :
+# G#m Gm F#m Fm. Même vocabulaire que le pont de Periculum (G#m Gm Fm C#m) et que la descente chromatique de
+# *River of Despair* (références isaac-basement §6.3). Poids 1 contre 2 aux écrites.
+generated = [{ weight = 1, bars = 8, count = 4, qualities = ["m"], motion = { kind = "chromatic", direction = "down" }, start = 6 }]
 
 [accompaniment]
 strong_steps = [0, 8]
@@ -234,6 +253,8 @@ notes = [
 [accompaniment.chords]
 center = 60
 max_drift = 6
+low = 45
+high = 76
 note_count = 4
 default_pattern = 0
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 16, velocity = 54, tie = true }] }]

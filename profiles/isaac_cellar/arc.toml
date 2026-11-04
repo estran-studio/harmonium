@@ -1,0 +1,27 @@
+# Arc d'`isaac_cellar` sur plusieurs chorus (R2, phase 019 vague 4). Un chorus = un tour de la forme
+# (48 mesures, A A' A A' Pont A') ; un air = un set = deux tours, mais le jeu n'annonce pas de fin :
+# aucune retombée (`fall`), le dernier chorus se tient ou reprend (`repeat_from`). Pas de réharmonisation
+# (les accords publiés ne changent jamais). Valeurs d'exercice, jugées à l'écoute seulement.
+#
+#   chorus 1 : descente. Intensité un peu sous le profil, stomp, une fois sur quatre l'ossature
+#              de River of Despair ; une fois sur quatre un silence de batterie sur la dernière mesure
+#              (mise en place avant la reprise) ;
+#   chorus 2 et au-delà : le chorus pesant. Intensité au-dessus du profil, stomp et demi-temps
+#              (backbeat de Fundamentum) en alternance, un arrêt de batterie sur la dernière mesure
+#              quatre fois sur cinq.
+# Pas de multiplicateur `density` dans l'arc : avec `intensity`, il fait changer la densité de la batterie.
+repeat_from = 1
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 0.9, percussion = [{ tag = "stomp", weight = 4 }, { tag = "sparse", weight = 1 }] },
+  { weight = 1, intensity = 0.85, percussion = [{ tag = "sparse", weight = 2 }, { tag = "stomp", weight = 1 }], breaks = [{ start = -1, bars = 1, chance = 0.5, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]
+
+[[stages]]
+choruses = 1
+variants = [
+  { weight = 3, intensity = 1.1, percussion = [{ tag = "stomp", weight = 3 }, { tag = "rock", weight = 1 }] },
+  { weight = 2, intensity = 1.05, percussion = [{ tag = "rock", weight = 3 }, { tag = "stomp", weight = 1 }], breaks = [{ start = -1, bars = 1, chance = 0.8, tracks = ["PercussionLow", "PercussionHigh"] }] },
+]

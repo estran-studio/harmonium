@@ -92,6 +92,20 @@ leur en-tête de `profile.toml` et ce paragraphe tiennent lieu. Mesures
 avant/après : `specs/019-bibliotheque-accompagnements/r1-integration-p1-p2.md`.
 
 
+## Habillage, arc, phrases (R2-jeux, phase 019)
+
+- `session.toml` : groupes tempo (nominal 136-144, poids 8 ; 120-127 et 153-160, poids 1, règle
+  d'interprétation dans les bornes 120..160, non transcrite), basse (33/34/38, avec permutations
+  Odin des zones existantes, preset et `level_db` ensemble), nappe (91/89/19, idem), chœur (52/53),
+  kit (128/0 et 128/16), voicing (close_triad/drop2/open), énergie (0,9-1,1), tags de patterns, arc.
+  Aucun groupe de tonalité : D mineur harmonique est la seule tonalité attestée par les deux références
+  du niveau (pédale D1, sensible C#) ; C# de Caves et F# de Fundamentum sont d'autres niveaux.
+- `arc.toml` : trois étapes d'un chorus, `repeat_from = 1`, aucun `fall` ; arc nommé `orchestre`
+  (kit par chorus) dans `session.toml`.
+- `percussion.toml` : phrases de 4 et 8 mesures et relances remplaçant les trois cadences ; mêmes
+  patterns, aucune nouvelle frappe de grosse caisse ni de caisse claire. Comping de nappe tenue
+  (tags `tenue`, `souffle`) sans marche ni accord de jazz.
+
 ## Timbres
 
 - SoundFont (GeneralUser GS) : basse doigts 33, nappe chœur 91, chœur

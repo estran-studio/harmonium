@@ -25,6 +25,8 @@ percussion = "percussion.toml"
 arrangement = "arrangement.toml"
 dynamics = "dynamics.toml"
 set = "set.toml"
+session = "session.toml"
+arc = "arc.toml"
 
 [meta]
 id = "nt_desert"
@@ -231,6 +233,26 @@ max_drift = 6
 note_count = 4
 default_pattern = 0
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 24, velocity = 53, tie = true }] }]
+# R2 : nappes tenues, jamais du comping de jazz. La respiration enlève seulement
+# le dernier pulse ; la reprise réarticule à mi-mesure. Pont maintenu tenu par phrases.
+comping = [
+  { weight = 4, tag = "tenue", hits = [{ step = 0, direction = "block", duration = 24, velocity = 53, tie = true }] },
+  { weight = 1, tag = "creux", hits = [{ step = 0, direction = "block", duration = 18, velocity = 53 }] },
+  { weight = 1, tag = "reprise", hits = [{ step = 0, direction = "block", duration = 12, velocity = 53 }, { step = 12, direction = "block", duration = 12, velocity = 49, tie = true }] },
+]
+
+[[accompaniment.chords.phrases]]
+part = "Pont"
+tag = "tenue"
+motifs = [0, 0, 0, 0]
+[[accompaniment.chords.phrases]]
+part = "Pont"
+tag = "creux"
+motifs = [0, 0, 0, 0]
+[[accompaniment.chords.phrases]]
+part = "Pont"
+tag = "reprise"
+motifs = [0, 0, 0, 0]
 
 [instruments]
 # Lead 2 sawtooth (81) en dessus : attaque nette, registre médium distinct de
