@@ -1,8 +1,15 @@
 # Phase 019 — Bibliothèque d'accompagnements pour training, variance procédurale
 
-**Statut** : planifiée le 2026-11-02, sous la constitution 4.5.0. Rien n'est lancé. Démarrage dans
-une nouvelle session d'orchestration. Phase précédente : 018 (`specs/018-grille-et-moteur-neutre/plan.md`),
-toutes tâches fusionnées et poussées ; restes reportés ici (section « Reprise de 018 »).
+**Statut** : **toutes les tâches fusionnées** (2026-11-04, `TUNING_VERSION` 33), non poussées sur
+GitHub (sur demande du propriétaire). 32 profils distribués (16 avant 019), habillage par graine partout
+(15 à 16 habillages distincts sur 16 graines pour les styles et les trads, 10 à 14 pour les jeux),
+mélodie jazz pour `wjazzd_swing`, table style iReal → profil et doc d'usage pour training (T1).
+Vérification finale sur `ovh-inner` (`46b5570` + `e7acbef`) : 1 090 tests workspace, 156 Odin, 11 Bevy,
+studio, fmt, natif = wasm 195 / 195 ; seul `seek_to_bar_64_under_50ms` échoue sur `ovh-inner` (machine
+plus lente) et passe sur le Mac (5 / 5) : **risque sur la CI GitHub**, qui frôlait déjà 55–57 ms avant
+019. Restes pour la phase suivante : « Non fait » d'A7 (`a7-manques-schema.md`), variance par chorus des
+trads et des jeux sous les seuils de V2 (`v2-variance.md`). Planifiée le 2026-11-02 sous la constitution
+4.5.0 ; phase précédente : 018 (`specs/018-grille-et-moteur-neutre/plan.md`).
 
 ## Problème
 
