@@ -34,8 +34,8 @@ const ODIN_RS_URL: &str = "https://github.com/estran-studio/odin-rs";
 const ODIN2_URL: &str = "https://github.com/TheWaveWarden/odin2";
 const GENERALUSER_URL: &str = "https://github.com/mrbumpy409/GeneralUser-GS";
 
-/// Avis gardés au bas de l'écran.
-const NOTICES_KEPT: usize = 4;
+/// Pistes récentes gardées en bulles au bas de l'écran (la plus récente d'abord).
+const RECENT_KEPT: usize = 6;
 
 /// Ce qui a été chargé, pour les crédits du panneau « About ».
 #[derive(Clone, Debug, Default)]
@@ -49,6 +49,33 @@ pub struct Credits {
 struct Notice {
     text: String,
     error: bool,
+}
+
+/// Une piste ouverte par un lien : une bulle du bas de l'écran la rouvre.
+struct Recent {
+    /// « profil · graine ».
+    label: String,
+    /// Le lien, pour l'infobulle et pour reconnaître une piste déjà dans la liste.
+    link: String,
+    opening: Opening,
+}
+
+impl Recent {
+    fn new(opening: Opening) -> Self {
+        let request = &opening.request;
+        let profile = match &request.profile {
+            Some(ProfileRef::Id(id)) => id.clone(),
+            Some(ProfileRef::Folder(path)) => path
+                .file_name()
+                .map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into()),
+            None => "seed".to_string(),
+        };
+        let label = match request.seed {
+            Some(seed) => format!("{profile} · {seed}"),
+            None => profile,
+        };
+        Self { label, link: share_link(request), opening }
+    }
 }
 
 /// Le dossier d'où vient le profil qui joue : ses fichiers sont surveillés, et le lien copié le
@@ -95,7 +122,9 @@ pub struct LiveScreen {
     tab: Tab,
     workbench: WorkbenchScreen,
     about_open: bool,
-    notices: Vec<Notice>,
+    /// Dernier avis seulement : la barre du bas ne garde pas d'historique.
+    notice: Option<Notice>,
+    recent: Vec<Recent>,
     seed_text: String,
     /// Tempo audible à imposer et sa rampe (champ de saisie).
     audible_tempo: Option<(f32, u8)>,
@@ -122,7 +151,8 @@ impl LiveScreen {
             tab: Tab::Live,
             workbench: WorkbenchScreen::new(),
             about_open: false,
-            notices: Vec::new(),
+            notice: None,
+            recent: Vec::new(),
             seed_text: String::new(),
             audible_tempo: None,
             time_signature: None,
@@ -137,10 +167,7 @@ impl LiveScreen {
     }
 
     pub fn notify(&mut self, text: impl Into<String>, error: bool) {
-        self.notices.push(Notice { text: text.into(), error });
-        if self.notices.len() > NOTICES_KEPT {
-            self.notices.remove(0);
-        }
+        self.notice = Some(Notice { text: text.into(), error });
     }
 
     /// Exécute une demande d'ouverture (lien, `--open`, URL de la page) : profil, graine, mesure,
@@ -152,12 +179,20 @@ impl LiveScreen {
             None => (None, None),
         };
         let profile_id = profile.as_ref().map(|profile| profile.meta.id.clone());
-        match self.session.with(|session| session.open(&request, profile)) {
+        match self.session.with(|session| session.open(&request, profile.clone())) {
             Ok(()) => {
                 if let Some(profile_id) = profile_id {
-                    self.folder = watch.map(|watch| Watched { watch, profile_id, status: None });
+                    self.folder =
+                        watch.clone().map(|watch| Watched { watch, profile_id, status: None });
                 }
-                self.notify(format!("Opened {}", share_link(&request)), false);
+                // La piste ouverte devient la première bulle ; un avis périmé s'efface.
+                let profile =
+                    profile.map(|profile| crate::link::ResolvedProfile { profile, watch });
+                let recent = Recent::new(Opening { request, profile });
+                self.recent.retain(|other| other.link != recent.link);
+                self.recent.insert(0, recent);
+                self.recent.truncate(RECENT_KEPT);
+                self.notice = None;
             }
             Err(error) => self.notify(format!("Could not open the link: {error}"), true),
         }
@@ -390,28 +425,46 @@ impl LiveScreen {
         });
     }
 
-    fn notices_bar(&self, ui: &mut egui::Ui) {
+    /// Barre du bas : bulles des pistes récentes (un clic rouvre la piste depuis le début, sans
+    /// arrêter la lecture), puis le dernier avis ou, sans avis, l'aide de l'onglet.
+    fn notices_bar(&mut self, ui: &mut egui::Ui) {
+        let mut reopen = None;
         ui.horizontal_wrapped(|ui| {
-            if self.notices.is_empty() {
-                ui.weak(match self.tab {
-                    Tab::Live => {
-                        "Click a bar to seek · drag across bars to loop (up to 16) · right-click a bar for more."
-                    }
-                    Tab::Workbench => {
-                        "Fork a distributed profile, edit its files, then Apply: it plays from the next bar."
-                    }
-                });
+            for (index, recent) in self.recent.iter().enumerate() {
+                let bubble = egui::Button::selectable(index == 0, recent.label.as_str())
+                    .corner_radius(10.0);
+                if ui.add(bubble).on_hover_text(recent.link.as_str()).clicked() && index > 0 {
+                    reopen = Some(recent.opening.clone());
+                }
             }
-            for notice in self.notices.iter().rev() {
-                let color = if notice.error {
-                    Color32::LIGHT_RED
-                } else {
-                    Color32::from_rgb(150, 200, 150)
-                };
-                ui.colored_label(color, notice.text.as_str());
+            if !self.recent.is_empty() {
                 ui.separator();
             }
+            match &self.notice {
+                Some(notice) => {
+                    let color = if notice.error {
+                        Color32::LIGHT_RED
+                    } else {
+                        Color32::from_rgb(150, 200, 150)
+                    };
+                    ui.colored_label(color, notice.text.as_str());
+                }
+                None => {
+                    ui.weak(match self.tab {
+                        Tab::Live => {
+                            "Click a bar to seek · drag across bars to loop (up to 16) · right-click a bar for more."
+                        }
+                        Tab::Workbench => {
+                            "Fork a distributed profile, edit its files, then Apply: it plays from the next bar."
+                        }
+                    });
+                }
+            }
         });
+        if let Some(mut opening) = reopen {
+            opening.request.play = self.session.with(|session| session.desk().playing);
+            self.open(opening);
+        }
     }
 
     // === Commandes (gauche) ===
