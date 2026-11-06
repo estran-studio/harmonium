@@ -54,6 +54,7 @@ gigue ; deux ennemis). Pour la musique, le seul besoin à court terme est **J5-m
 | J2 émotions avec vitesse de changement | **reportée** jusqu'à ce que le prologue ait la coop ; note d'arrêt `j2-note.md` (branche `wquintal/j2-vitesse`) |
 | J3 transitions de style | **reportée** jusqu'à ce que le prologue ait la coop |
 | J5 rebrancher le jeu (complet) | remplacée à court terme par J5-min |
+| Prêt pour 1837 (demande du studio, 2026-11-06) | rapport `pret-pour-1837.md` : `harmonium_bevy` compile et joue avec l'engine `alacod` `022c7c7c`, natif et Chrome ; rien à corriger côté moteur ; correctif minimal et lots M1–M4 proposés à `alacod` |
 
 - **J5-min — le moteur actuel joué dans le jeu** : un profil, une émotion fixe, via
   `create_offline_engine` ; sans J1b, J2 ni J3 (ni horloge partagée dans la simulation). Vit dans le
