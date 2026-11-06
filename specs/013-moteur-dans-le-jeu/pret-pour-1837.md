@@ -118,7 +118,7 @@ Pour l'alpha, où les deux joueurs sont dans Chrome, donc deux clients wasm32, l
 
 **Principe II** : l'option b fait lire au jeu un temps qui ne vient pas du playhead. Le texte actuel du principe dit que « la position lue par le jeu vient du playhead ». L'amendement proposé au § 10 de `horloge-etude.md` attend la décision de William. Ce rapport **n'amende rien**.
 
-**Ordre suggéré pour le 20 déc** : réactiver la feature (§ 3, une salle et un profil) → M1 et M2 → M3 → M4 en version alpha (rien ne change pendant une salle). Le détail est dans les propositions d'`alacod` (`propositions.md`, entrées datées du 2026-11-06), sur la branche locale `harmonium/pret-pour-1837` d'`alacod` (commit `c85b1dc0`, depuis `022c7c7c`, non poussée).
+**Ordre suggéré pour le 20 déc** (avant la décision du § 6) : réactiver la feature (§ 3, une salle et un profil) → M1 et M2 → M3 → M4 en version alpha (rien ne change pendant une salle). Les propositions sont dans `propositions.md` d'`alacod` (entrées datées du 2026-11-06), sur la branche locale `harmonium/pret-pour-1837` d'`alacod` (dernier commit `2449d434`, depuis `022c7c7c`, non poussée).
 
 ## 6. Décision de William (2026-11-06)
 
