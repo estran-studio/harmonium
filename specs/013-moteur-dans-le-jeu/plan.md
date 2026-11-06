@@ -55,6 +55,7 @@ gigue ; deux ennemis). Pour la musique, le seul besoin à court terme est **J5-m
 | J3 transitions de style | **reportée** jusqu'à ce que le prologue ait la coop |
 | J5 rebrancher le jeu (complet) | remplacée à court terme par J5-min |
 | Prêt pour 1837 (demande du studio, 2026-11-06) | rapport `pret-pour-1837.md` : `harmonium_bevy` compile et joue avec l'engine `alacod` `022c7c7c`, natif et Chrome ; rien à corriger côté moteur ; correctif minimal et lots M1–M4 proposés à `alacod` |
+| J6 horloge externe (décision de William, 2026-11-06 : option a) | **en cours** sur `ovh-inner` (omp, Sonnet), branche `wquintal/j6-horloge-externe` ; contrat ci-dessous |
 
 - **J5-min — le moteur actuel joué dans le jeu** : un profil, une émotion fixe, via
   `create_offline_engine` ; sans J1b, J2 ni J3 (ni horloge partagée dans la simulation). Vit dans le
@@ -110,6 +111,30 @@ flowchart LR
   quadrille et cotillon québécois, gigue/valse/marche acadiennes, reel/valse britanniques…), mesurés
   au labo, écoutés au comparateur. Puis, dans une phase ultérieure (la 014 est devenue « styles de
   jeu ») : test à l'aveugle équitable réel/généré (BT2).
+- **J6 — Horloge externe** (décision de William, 2026-11-06 ; `pret-pour-1837.md` § 6) : la
+  simulation du jeu est la source du temps, harmonium la suit. Contrat :
+  - **Entrée** : une horloge externe = fréquence de simulation (`sim_hz`, 60 dans `alacod`), frame
+    d'ancrage (début de la pulsation 1 de la mesure 1) et **période d'une pulsation dansée en frames,
+    fraction** `num/den` (`3600/230` permis) ; puis, à chaque frame de présentation, la frame de
+    simulation courante (avec sa fraction de frame si le jeu la connaît) et l'`Instant` où elle vaut.
+    Une nouvelle horloge (autre salle, autre tempo) remplace la précédente.
+  - **Tempo** : la pulsation du profil (`meter`, pulsation dansée) dure exactement la période ; le
+    tempo d'émotion, la rampe de set et la variante de tempo de session ne s'appliquent pas (même
+    priorité que `SetBpm`). Le reste de la génération est inchangé : même graine, mêmes entrées, mêmes
+    snapshots.
+  - **Démarrage et reprise** (geste web, pause, onglet revenu) : l'audio ne part pas de sa mesure 1 ;
+    il saute (seek déterministe) à la première mesure dont l'instant audible, latence de sortie
+    comprise, est encore à venir, et attend en silence cet instant.
+  - **Suivi** : écart = position audible − position de l'horloge externe au même instant mur, filtré
+    (la frame de simulation tremble d'une frame) ; politique `time_plan::correction` (zone morte
+    10 ms, ±1 à 5 ‰ sur 8 pulsations par la conversion instants → frames du playback, saut à la
+    mesure suivante au-delà) ; seuils réglés à l'oreille par William après livraison.
+  - **Publication** : `BeatInfo` / `MusicClock` restent le playhead (principe II) ; l'écart filtré
+    et la dernière correction sont publiés pour le diagnostic. Callback sans allocation ni verrou
+    (principe III).
+  - **Plugin** : `harmonium_bevy` expose l'horloge et la frame courante ; le plugin fournit l'`Instant`.
+  - **Retrait** (principe IV) : `SharedTimePlan`, `DatedCommand`, `ScoreCommand`, `CommandDate`,
+    `apply_score_command` et leurs tests ; `BarTiming`, `TimePlan` et `correction` restent.
 
 ## Acceptation de la phase
 

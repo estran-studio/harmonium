@@ -120,6 +120,16 @@ Pour l'alpha, où les deux joueurs sont dans Chrome, donc deux clients wasm32, l
 
 **Ordre suggéré pour le 20 déc** : réactiver la feature (§ 3, une salle et un profil) → M1 et M2 → M3 → M4 en version alpha (rien ne change pendant une salle). Le détail est dans les propositions d'`alacod` (`propositions.md`, entrées datées du 2026-11-06), sur la branche locale `harmonium/pret-pour-1837` d'`alacod` (commit `c85b1dc0`, depuis `022c7c7c`, non poussée).
 
+## 6. Décision de William (2026-11-06)
+
+- **Option a** : la simulation du jeu est la source du temps ; **harmonium suit une horloge externe**.
+- **Unité** : un temps de l'horloge du jeu = **la pulsation dansée** du profil (blanche au reel 2/2, noire pointée en gigue 6/8, noire en 4/4).
+- **Tempo fractionnaire accepté** : harmonium prend une période en frames de simulation sous forme de fraction (`3600/230` est permis). Compter des fractions de frame est l'affaire de l'horloge d'`alacod`.
+- **Le plan partagé est retiré** (option b, `SharedTimePlan`, commandes datées) : principe IV. Restent le plan entier qui fixe les durées de pas (`BarTiming`, `TimePlan`) et la politique de correction.
+- **Principe II** : le jeu ne lit plus la position d'harmonium pour son gameplay ; il lit sa propre horloge. `MusicClock` / `BeatInfo` restent le playhead, que le moteur règle sur l'horloge externe par la vitesse et la phase du playback, sans jamais interpoler la position publiée. Lecture de l'orchestrateur : le texte actuel est respecté. Aucun amendement.
+
+Conséquence : M1, M2 et M3 deviennent la tâche **J6 — horloge externe** de la phase 013, côté moteur (`plan.md`). M4 se réduit pour l'alpha à « rien ne change pendant une salle », et l'option b n'en a plus besoin.
+
 ## Reproduire
 
 - Worktrees jetables : `alacod` `022c7c7c` → `/tmp/harmonium-1837/alacod` ; `harmonium` `a0b9a60` → `/tmp/harmonium-1837/harmonium`.
