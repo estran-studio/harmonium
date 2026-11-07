@@ -77,3 +77,9 @@ ce dossier, liens d'écoute `harmonium://open?profile=<id>&seed=<n>`.
 | Q0 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/q0-corrections-rapides` |
 | S1 | lancée (2026-11-07), `ovh-inner`, labo, branche `wquintal/s1-sources` |
 | B1 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/b1-banque-sons` |
+
+**Incident de lancement (2026-11-07)** : lancés par `orca worktree create --agent omp --model …`, les agents
+prennent la configuration globale d'omp sur `ovh-inner`, dont le relais par défaut est **Opus** puis Codex.
+Sonnet et Codex épuisés : S1 et B1 ont tourné brièvement sur Opus (8 et 5 réponses), puis les trois se sont
+arrêtés. Repris dans leur terminal avec la surcouche `~/orca/harmonium-020/sonnet.yml` (Sonnet → Codex →
+muse-spark, jamais Opus ; `relancer.sh`). Tout agent de la phase se lance désormais avec cette surcouche.
