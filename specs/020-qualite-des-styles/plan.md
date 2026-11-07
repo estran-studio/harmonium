@@ -83,3 +83,6 @@ prennent la configuration globale d'omp sur `ovh-inner`, dont le relais par déf
 Sonnet et Codex épuisés : S1 et B1 ont tourné brièvement sur Opus (8 et 5 réponses), puis les trois se sont
 arrêtés. Repris dans leur terminal avec la surcouche `~/orca/harmonium-020/sonnet.yml` (Sonnet → Codex →
 muse-spark, jamais Opus ; `relancer.sh`). Tout agent de la phase se lance désormais avec cette surcouche.
+Puis muse-spark refuse les appels d'omp (403 : l'abonnement Muse Code ne couvre que le client Muse Code) et
+Codex (5 h) comme Sonnet (7 jours à 86 %, réserve de 15 %) sont épuisés : **les trois agents sont en pause
+jusqu'à la remise à zéro des quotas** (≈ 4 h), puis repris avec le relais Sonnet → Codex, muse-spark retiré.
