@@ -55,7 +55,7 @@ gigue ; deux ennemis). Pour la musique, le seul besoin à court terme est **J5-m
 | J3 transitions de style | **reportée** jusqu'à ce que le prologue ait la coop |
 | J5 rebrancher le jeu (complet) | remplacée à court terme par J5-min |
 | Prêt pour 1837 (demande du studio, 2026-11-06) | rapport `pret-pour-1837.md` : `harmonium_bevy` compile et joue avec l'engine `alacod` `022c7c7c`, natif et Chrome ; rien à corriger côté moteur ; correctif minimal et lots M1–M4 proposés à `alacod` |
-| J6 horloge externe (décision de William, 2026-11-06 : option a) | **livrée, non fusionnée** (2026-11-07), branche `wquintal/j6-horloge-externe` (depuis `8826d64`) : `ExternalClock` + `LiveHost::{set_external_clock, observe_external}` + `GameClock` dans `harmonium_bevy` ; plan partagé retiré ; preuves hors ligne et réglages à l'oreille dans `j6-horloge-externe.md` |
+| J6 horloge externe (décision de William, 2026-11-06 : option a) | **fusionnée** (2026-11-07, `6c3e4c5`), revérifiée sur le Mac (tests workspace, odin, bevy, `bevy/check`, fmt, clippy sans avertissement nouveau, natif = wasm) : `ExternalClock` + `LiveHost::{set_external_clock, observe_external}` + `GameClock` dans `harmonium_bevy` ; plan partagé retiré ; preuves hors ligne et réglages à l'oreille dans `j6-horloge-externe.md` |
 
 - **J5-min — le moteur actuel joué dans le jeu** : un profil, une émotion fixe, via
   `create_offline_engine` ; sans J1b, J2 ni J3 (ni horloge partagée dans la simulation). Vit dans le
