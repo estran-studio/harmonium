@@ -89,3 +89,9 @@ jusqu'à la remise à zéro des quotas** (≈ 4 h), puis repris avec le relais S
 **Règle de William (2026-11-07)** : ne jamais mêler l'environnement de travail (Mac du travail, réseau Zscaler) aux
 VPS et aux comptes personnels : aucun tunnel, mandataire ni certificat entre les deux. Gemini (Antigravity) est
 refusé depuis `ovh-inner` ; il n'est pas utilisé.
+
+**Décision de William (2026-11-07, soir) : tout le développement sur le Mac.** D8 ne vaut plus pour 020. Q0, S1 et B1 sont
+arrêtées sur `ovh-inner` ; leur état est commité sur leurs branches (`wip(020/…)` : Q0 `d4454ff`, B1 `9fba47d`, labo S1
+`8cb6c56`, dont les mesures par style déjà faites) et elles reprennent sur le Mac dans `~/orca/workspaces/…`, omp avec la
+surcouche `~/orca/harmonium-020/mac.yml` (Sonnet → Codex → Gemini 4 ; jamais Opus ; muse-spark exclu). Règles communes :
+`~/orca/harmonium-020/commun-020.md`.
