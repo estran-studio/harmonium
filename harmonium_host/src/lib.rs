@@ -13,6 +13,11 @@ pub use soundfont::{load_percussion_soundfont, load_soundfont};
 // Predictive transport clock (D1/D2): TransportClock, BeatInfo, ClockReader.
 pub mod clock;
 pub use clock::{BeatInfo, ClockReader, TransportClock};
+// Suivi d'une horloge externe (J6) : machine à états pure, pilotée par `LiveHost`.
+pub mod external;
+pub use external::{
+    Applied, ExternalFollower, ExternalStatus, FollowConfig, Phase, SimObservation,
+};
 // Re-exports from workspace crates
 pub use harmonium_audio::{backend, realtime, voice_manager};
 pub use harmonium_core::{events, log, mapper, params};

@@ -3,6 +3,14 @@
 **Statut** : étude + prototype (2026-10-26) | **Moteur** : branche `wquintal/j1-horloge` depuis `957920f`
 | **Jeu** : `alacod` lu, non modifié
 
+> **Mise à jour (J6, 2026-11-07).** La décision de William du 6 novembre retire le plan partagé
+> décrit ci-dessous (`SharedTimePlan`, `DatedCommand`, `ScoreCommand`, `CommandDate`,
+> `MusicComposer::apply_score_command`) : la simulation du jeu est la source du temps et harmonium
+> la suit (`j6-horloge-externe.md`). Restent `BarTiming`, `TimePlan`, `Flicks`, `Tempo`, `Swing` et
+> `correction`, désormais branchée. Ce document garde son sens pour l'arithmétique entière (§ 3), le
+> suivi par le playback et la correction (§ 6) ; les sections sur le plan partagé et les commandes
+> datées sont historiques.
+
 ## En bref
 
 Aujourd'hui, « où en est la musique » se lit sur la carte son : le playhead avance au rythme des

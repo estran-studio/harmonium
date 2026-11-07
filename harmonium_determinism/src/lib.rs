@@ -13,8 +13,7 @@ use std::fmt::Write as _;
 
 use harmonium::LiveHost;
 use harmonium_core::{
-    EngineCommand, MeasureSnapshot, StyleProfile, events::RecordFormat,
-    time_plan::score::session_start,
+    EngineCommand, MeasureSnapshot, StyleProfile, events::RecordFormat, session::session_start,
 };
 use web_time::Instant;
 
@@ -200,7 +199,7 @@ const SWING_FIXTURES: [Fixture; 4] = [
 /// Fixture illisible ou invalide.
 pub fn swing_fixtures_probe() -> Result<String, String> {
     use harmonium_core::{
-        MusicalParams, TuningParams, compose::TuneGenerator, time_plan::score::session_rng,
+        MusicalParams, TuningParams, compose::TuneGenerator, session::session_rng,
     };
 
     let mut text = String::new();

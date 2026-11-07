@@ -14,6 +14,7 @@ pub mod params;
 pub mod performance;
 mod profile_source;
 pub mod report;
+pub mod session;
 pub mod style_profile;
 pub mod swing;
 pub mod theory;

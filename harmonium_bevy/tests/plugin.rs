@@ -4,7 +4,8 @@ use std::time::{Duration, Instant};
 use bevy::{asset::AssetPlugin, ecs::message::Messages, prelude::*, time::TimeUpdateStrategy};
 use harmonium::{LiveHost, playback::PlaybackEngine};
 use harmonium_bevy::{
-    Bar, Beat, HarmoniumConfig, HarmoniumControl, HarmoniumPlugin, HarmoniumRuntime, MusicClock,
+    Applied, Bar, Beat, ExternalClock, GameClock, HarmoniumConfig, HarmoniumControl,
+    HarmoniumPlugin, HarmoniumRuntime, MusicClock, Phase,
 };
 
 const SAMPLE_RATE: f64 = 44_100.0;
@@ -500,5 +501,122 @@ fn game_volume_scales_the_actual_soundfont_signal_and_zero_is_silent() -> TestRe
         mute[after_ramp..].iter().all(|sample| *sample == 0.0),
         "zéro : silence exact après rampe"
     );
+    Ok(())
+}
+
+/// Le jeu joue à 60 Hz ; son périphérique audio rend un tampon dès qu'il est dû. Le temps de
+/// Bevy (`Time<Real>`, avancé à la main) est le seul temps mur : le plugin y lit l'instant de
+/// chaque frame, le périphérique simulé y date chaque tampon.
+struct Room {
+    game: Game,
+    sim_frame: u64,
+    rendered: u64,
+    started: Option<Instant>,
+}
+
+const GAME_HZ: f64 = 60.0;
+const LATENCY: Duration = Duration::from_millis(60);
+
+impl Room {
+    fn new(profile: &str) -> Result<Self, String> {
+        let mut control = HarmoniumControl { seed: 11, ..Default::default() };
+        control.set_profile_id(profile)?;
+        let game = Game::new(config(), control)?;
+        Ok(Self { game, sim_frame: 0, rendered: 0, started: None })
+    }
+
+    fn now(&self) -> Instant {
+        self.game.app.world().resource::<Time<Real>>().last_update().unwrap_or_else(Instant::now)
+    }
+
+    fn set_clock(&mut self, clock: Option<ExternalClock>) {
+        self.game.app.world_mut().resource_mut::<GameClock>().clock = clock;
+    }
+
+    /// Une frame de simulation : le jeu écrit la frame, Bevy avance de 1/60 s, puis le
+    /// périphérique rend les tampons dus.
+    fn frame(&mut self) {
+        self.sim_frame += 1;
+        self.game.app.world_mut().resource_mut::<GameClock>().sim_frame = self.sim_frame;
+        self.game.update(Duration::from_secs_f64(1.0 / GAME_HZ));
+        let now = self.now();
+        let started = *self.started.get_or_insert(now);
+        loop {
+            let audible =
+                started + LATENCY + Duration::from_secs_f64(self.rendered as f64 / SAMPLE_RATE);
+            if audible > now + LATENCY + Duration::from_millis(20) {
+                break;
+            }
+            let mut output = [0.0; FRAMES * 2];
+            self.game.playback.process_buffer(&mut output, 2, audible);
+            self.rendered += FRAMES as u64;
+        }
+    }
+
+    fn run(&mut self, seconds: f64) {
+        for _ in 0..(seconds * GAME_HZ) as u64 {
+            self.frame();
+        }
+    }
+}
+
+#[test]
+fn the_game_clock_sets_the_tempo_holds_the_start_and_is_followed() -> TestResult {
+    let mut room = Room::new("reel_quebecois")?;
+    // La musique n'a pas d'horloge à suivre : tempo du profil, rien ne change.
+    assert!(room.game.runtime().host().external_status().is_none());
+    assert_eq!(room.game.runtime().host().musical_params().bpm, 230.0);
+
+    // La pulsation (la blanche du reel) dure 40 frames à 60 Hz : 180 BPM à la noire.
+    let first = ExternalClock::new(60, 90, 40, 1).map_err(|e| e.to_string())?;
+    room.set_clock(Some(first));
+    room.frame();
+    assert_eq!(room.game.runtime().host().external_clock(), Some(&first));
+    assert_eq!(room.game.runtime().host().musical_params().bpm, 180.0);
+    room.run(0.2);
+    assert!(!room.game.clock().valid, "rien ne sonne avant la mesure de l'horloge");
+
+    room.run(8.0);
+    let clock = *room.game.clock();
+    let follow = clock.follow.ok_or("le suivi n'est pas publié")?;
+    assert!(clock.valid && clock.playing, "{clock:?}");
+    assert_eq!(follow.phase, Phase::Tracking, "{follow:?}");
+    assert!(matches!(follow.last_correction, Some(Applied::Start { .. })), "{follow:?}");
+    // L'audio tombe sur l'horloge : la mesure entendue est celle que la simulation compte.
+    let sim_secs = room.sim_frame as f64 / GAME_HZ - 90.0 / GAME_HZ;
+    let expected_bar = (sim_secs / (2.0 * 40.0 / GAME_HZ)) as usize + 1;
+    assert!(clock.bar.abs_diff(expected_bar) <= 1, "mesure {} attendue {expected_bar}", clock.bar);
+    assert_close(clock.bpm, 180.0);
+    assert!(follow.gap_ms().is_none_or(|gap| gap.abs() < 10.0), "{follow:?}");
+
+    // Autre salle, autre tempo : 50 frames, 144 BPM ; l'audio se réaligne sans repartir de 1.
+    let second = ExternalClock::new(60, room.sim_frame - 300, 50, 1).map_err(|e| e.to_string())?;
+    room.set_clock(Some(second));
+    room.run(14.0);
+    assert_eq!(room.game.runtime().host().musical_params().bpm, 144.0);
+    let follow = room.game.clock().follow.ok_or("le suivi n'est pas publié")?;
+    assert_eq!(follow.phase, Phase::Tracking, "{follow:?}");
+    assert!(matches!(follow.last_correction, Some(Applied::Jump { .. })), "{follow:?}");
+    assert!(follow.gap_ms().is_none_or(|gap| gap.abs() < 10.0), "{follow:?}");
+    assert_close(room.game.clock().bpm, 144.0);
+
+    // Le jeu retire l'horloge : les émotions reprennent le tempo, le suivi disparaît.
+    room.set_clock(None);
+    room.frame();
+    assert!(room.game.runtime().host().external_clock().is_none());
+    assert!(room.game.clock().follow.is_none());
+    assert_ne!(room.game.runtime().host().musical_params().bpm, 144.0);
+    Ok(())
+}
+
+#[test]
+fn an_unreachable_period_is_refused_and_keeps_the_previous_state() -> TestResult {
+    let mut room = Room::new("reel_quebecois")?;
+    // 1 frame par blanche : 3 600 BPM à la noire, hors de 40 à 300.
+    let absurd = ExternalClock::new(60, 0, 1, 1).map_err(|e| e.to_string())?;
+    room.set_clock(Some(absurd));
+    room.frame();
+    assert!(room.game.runtime().host().external_clock().is_none());
+    assert_eq!(room.game.runtime().host().musical_params().bpm, 230.0);
     Ok(())
 }

@@ -1,22 +1,19 @@
-//! Le playback suit le plan de temps partagé (phase 013, J1).
+//! Le playback suit le plan de temps (phase 013, J1).
 //!
-//! Pour chacun des 7 profils distribués, avec et sans automation (émotions, tempo direct,
+//! Pour chacun des profils distribués, avec et sans automation (émotions, tempo direct,
 //! retour aux émotions, énergie), le moteur offline joue 48 mesures — changements de tempo,
 //! rampe de set et frontières d'air comprises — et chaque pas réellement rendu tombe à
-//! ± 1 frame de l'instant que le plan calcule seul, depuis la graine et les mêmes commandes
-//! datées, sans audio. Le playhead publie un écart nul avec le plan ; un sous-débit
-//! (mesure absente) apparaît dans l'écart publié au lieu d'être corrigé en silence.
+//! ± 1 frame de l'instant que le plan construit depuis les en-têtes des snapshots
+//! ([`BarTiming::of_snapshot`]) calcule seul. Le playhead publie un écart nul avec le plan ;
+//! un sous-débit (mesure absente) apparaît dans l'écart publié au lieu d'être corrigé en
+//! silence.
 
 use std::{collections::BTreeMap, time::Instant};
 
 use harmonium::{audio::create_offline_engine, composer::MusicComposer, playback::PlaybackCommand};
 use harmonium_core::{
     StyleProfile,
-    time_plan::{
-        Flicks, Tempo,
-        score::{CommandDate, DatedCommand, ScoreCommand, SharedTimePlan},
-    },
-    tuning::TuningParams,
+    time_plan::{BarTiming, Flicks, Tempo, TimePlan},
 };
 
 const SAMPLE_RATE: u32 = 44_100;
@@ -24,27 +21,40 @@ const BUFFER: usize = 512;
 const BARS: usize = 48;
 const SEED: u64 = 11;
 
-fn at_bar(bar: usize, order: u64, command: ScoreCommand) -> DatedCommand {
-    DatedCommand { order, command, date: CommandDate::Bar(bar) }
+/// Commande de jeu appliquée juste avant de générer la mesure à laquelle elle est datée.
+#[derive(Clone, Copy)]
+enum Command {
+    Emotions { arousal: f32, valence: f32, density: f32, tension: f32 },
+    Intensity(f32),
+    Tempo(Tempo),
+    ReleaseTempo,
+}
+
+type Dated = (usize, Command);
+
+impl Command {
+    fn apply(self, composer: &mut MusicComposer) {
+        match self {
+            Self::Emotions { arousal, valence, density, tension } => {
+                composer.use_emotion_mode();
+                composer.set_emotions(arousal, valence, density, tension);
+            }
+            Self::Intensity(value) => composer.set_intensity(value),
+            Self::Tempo(tempo) => composer.set_bpm(tempo.bpm()),
+            Self::ReleaseTempo => composer.reset_bpm(),
+        }
+    }
 }
 
 /// Automation de jeu datée à la mesure, relative au tempo nominal du profil.
-fn automation(default_bpm: f32) -> Vec<DatedCommand> {
+fn automation(default_bpm: f32) -> Vec<Dated> {
     let direct = Tempo::from_milli_bpm((default_bpm * 1000.0) as u32 + 7_250);
     vec![
-        at_bar(
-            4,
-            1,
-            ScoreCommand::Emotions { arousal: 950, valence: -300, density: 800, tension: 800 },
-        ),
-        at_bar(11, 2, ScoreCommand::Tempo(direct)),
-        at_bar(17, 3, ScoreCommand::ReleaseTempo),
-        at_bar(17, 4, ScoreCommand::Intensity(150)),
-        at_bar(
-            30,
-            5,
-            ScoreCommand::Emotions { arousal: 200, valence: 500, density: 400, tension: 100 },
-        ),
+        (4, Command::Emotions { arousal: 0.95, valence: -0.3, density: 0.8, tension: 0.8 }),
+        (11, Command::Tempo(direct)),
+        (17, Command::ReleaseTempo),
+        (17, Command::Intensity(0.15)),
+        (30, Command::Emotions { arousal: 0.2, valence: 0.5, density: 0.4, tension: 0.1 }),
     ]
 }
 
@@ -61,12 +71,17 @@ fn forward_drop(composer: &mut MusicComposer, commands: &mut rtrb::Producer<Play
     }
 }
 
+/// Ce que le moteur a joué : les pas rendus, le nombre d'airs traversés et le plan que les
+/// en-têtes des snapshots (le flux du contrat audio) construisent pour les mêmes mesures.
+struct Played {
+    steps: BTreeMap<(usize, usize), RenderedStep>,
+    tunes: usize,
+    plan: TimePlan,
+}
+
 /// Joue `BARS` mesures du profil en appliquant chaque commande juste avant de générer sa
-/// mesure ; renvoie les pas rendus et les airs traversés.
-fn render(
-    profile: &StyleProfile,
-    commands: &[DatedCommand],
-) -> Result<(BTreeMap<(usize, usize), RenderedStep>, usize), String> {
+/// mesure.
+fn render(profile: &StyleProfile, commands: &[Dated]) -> Result<Played, String> {
     let (mut composer, mut playback, mut queue, mut reports, mut clock, _recordings) =
         create_offline_engine(None, None, &[], f64::from(SAMPLE_RATE))?;
     composer.set_profile(profile.clone())?;
@@ -80,6 +95,7 @@ fn render(
 
     let mut steps = BTreeMap::new();
     let mut tunes = std::collections::BTreeSet::new();
+    let mut timings = BTreeMap::new();
     let mut buffer = [0.0f32; BUFFER * 2];
     loop {
         let playhead = composer.playhead_bar();
@@ -87,12 +103,13 @@ fn render(
             && composer.writehead_position() < playhead + 2
         {
             let bar = composer.writehead_position();
-            for dated in commands.iter().filter(|c| c.date == CommandDate::Bar(bar)) {
-                composer.apply_score_command(dated.command);
+            for (_, command) in commands.iter().filter(|(at, _)| *at == bar) {
+                command.apply(&mut composer);
             }
             composer.sync_generator();
             composer.generate_bars(bar + 1 - playhead);
             for snapshot in composer.take_snapshots() {
+                timings.insert(snapshot.index, BarTiming::of_snapshot(&snapshot));
                 if let Some(position) = snapshot.position {
                     tunes.insert(position.tune_index);
                 }
@@ -111,13 +128,17 @@ fn render(
             );
         }
         if published.position.bar > BARS {
-            return Ok((steps, tunes.len()));
+            let mut plan = TimePlan::new();
+            for bar in 1..=timings.len() {
+                plan.push(*timings.get(&bar).ok_or_else(|| format!("snapshot {bar} absent"))?);
+            }
+            return Ok(Played { steps, tunes: tunes.len(), plan });
         }
     }
 }
 
 #[test]
-fn rendered_steps_land_on_the_shared_plan_for_every_profile() -> Result<(), String> {
+fn rendered_steps_land_on_the_snapshot_plan_for_every_profile() -> Result<(), String> {
     let profiles = StyleProfile::distributed();
     assert!(!profiles.is_empty());
     let mut set_ramp_runs = 0;
@@ -129,18 +150,8 @@ fn rendered_steps_land_on_the_shared_plan_for_every_profile() -> Result<(), Stri
                 if automated { automation(profile.meter.default_bpm) } else { Vec::new() };
             let label = format!("{} (automation {automated})", profile.meta.id);
 
-            // La simulation : graine + profil + commandes, sans audio.
-            let mut shared = SharedTimePlan::new(
-                TuningParams { profile: profile.clone(), ..TuningParams::default() },
-                SEED,
-            );
-            for command in &commands {
-                shared.insert(*command);
-            }
-            shared.extend_to_bar(BARS + 1);
-            let plan = shared.plan();
-
-            let (steps, tunes) = render(&profile, &commands)?;
+            let Played { steps, tunes, plan } = render(&profile, &commands)?;
+            assert!(plan.bars() > BARS, "{label} : {} mesures composées", plan.bars());
             let steps_per_bar = usize::from(plan.timing(1).map_or(0, |t| t.steps));
             assert!(steps.len() >= BARS * steps_per_bar, "{label} : {} pas vus", steps.len());
             for (&(bar, step), rendered) in &steps {

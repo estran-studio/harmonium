@@ -18,7 +18,7 @@ use harmonium_core::{
     log,
     odin::OdinPatches,
     params::{MusicalParams, SessionConfig, TimeSignature},
-    time_plan::score::session_rng,
+    session::session_rng,
     timeline::Writehead,
     tuning::TuningParams,
 };
@@ -496,7 +496,7 @@ impl MusicComposer {
         let target_bar = target_bar.max(1);
 
         // 1. Re-seed RNG from session seed (past initial key/scale draws)
-        let mut rng = harmonium_core::time_plan::score::session_rng(self.session_seed);
+        let mut rng = harmonium_core::session::session_rng(self.session_seed);
         // 3. Reset generator to initial state
         self.generator.reset_to_initial();
 
@@ -525,6 +525,16 @@ impl MusicComposer {
     pub fn seek(&mut self, target_bar: usize) {
         self.deterministic_seek(target_bar);
         self.pending_seek = Some(target_bar.max(1));
+    }
+
+    /// [`Self::seek`] qui recompose depuis `target_bar` avec les paramètres courants : les
+    /// mesures déjà composées à partir de cette mesure sont jetées au lieu d'être rejouées
+    /// telles quelles. Pour un saut en arrière après un changement de tempo, qui ne touche que
+    /// les mesures à venir (suivi d'une horloge externe : le tempo de l'horloge doit sonner).
+    pub fn seek_recompose(&mut self, target_bar: usize) {
+        let target_bar = target_bar.max(1);
+        self.writehead.timeline.invalidate_from(target_bar);
+        self.seek(target_bar);
     }
 
     /// Whether a seek commanded by the composer is not yet published by the
@@ -608,12 +618,6 @@ impl MusicComposer {
     /// Rend le tempo aux émotions et à la rampe de set.
     pub fn reset_bpm(&mut self) {
         self.controls.reset_bpm(&mut self.musical_params);
-    }
-
-    /// Applique une commande du plan de temps partagé avec la même sémantique que le plan
-    /// (`SharedTimePlan`) : à appeler avant de générer la mesure à laquelle elle est datée.
-    pub fn apply_score_command(&mut self, command: harmonium_core::time_plan::score::ScoreCommand) {
-        command.apply(&mut self.controls, &mut self.musical_params, &self.generator.tuning);
     }
 
     pub fn set_time_signature(&mut self, numerator: usize, denominator: usize) {

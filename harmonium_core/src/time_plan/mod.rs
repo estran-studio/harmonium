@@ -1,8 +1,8 @@
-//! Plan de temps musical partagé (phase 013, J1).
+//! Plan de temps musical (phase 013, J1 puis J6).
 //!
-//! La simulation du jeu est maîtresse du temps : chaque client calcule la même
-//! carte « mesure/pas ↔ instant » à partir des en-têtes temporels des mesures
-//! ([`BarTiming`]), sans lire l'audio. Tout le calcul est entier : instants en
+//! La simulation du jeu est maîtresse du temps : harmonium suit son horloge
+//! ([`external::ExternalClock`]) et le playback place chaque pas avec les en-têtes temporels
+//! des mesures ([`BarTiming`]), sans lire l'audio. Tout le calcul est entier : instants en
 //! [`Flicks`] (705 600 000 par seconde, divisible par les cadences de simulation
 //! 24 à 240 Hz et par les fréquences 44,1, 48 et 96 kHz), tempo en millièmes de
 //! BPM ([`Tempo`]), swing en dix-millièmes ([`Swing`]). Les seules conversions
@@ -12,12 +12,12 @@
 //! Le playback suit ce plan par construction : il gèle chaque pulse avec
 //! [`BarTiming::step_offset`] au tempo de [`ramp_tempo`] et convertit les instants
 //! cumulés en frames ([`Flicks::to_frames`]) ; aucune durée n'est arrondie
-//! isolément, donc aucune dérive. [`score::SharedTimePlan`] construit le même plan
-//! depuis la graine, le profil et des commandes datées, sans audio.
+//! isolément, donc aucune dérive. [`correction`] décide comment ramener l'audio sur une
+//! horloge externe (phase 013, J6) ; [`external`] décrit cette horloge.
 #![deny(clippy::float_arithmetic)]
 
 pub mod correction;
-pub mod score;
+pub mod external;
 
 use serde::{Deserialize, Serialize};
 

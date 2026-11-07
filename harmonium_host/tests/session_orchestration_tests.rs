@@ -22,7 +22,7 @@ use harmonium_core::{
     events::{AudioRecordFormat, RecordFormat},
     params::MusicalParams,
     report::MeasureSnapshot,
-    time_plan::score::session_rng,
+    session::session_rng,
 };
 use midly::{MidiMessage, Smf, TrackEventKind};
 

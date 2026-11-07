@@ -32,8 +32,7 @@ impl EmotionMapper {
     }
 }
 
-/// Commandes du jeu sur le tempo et les émotions : état et sémantique uniques, partagés par
-/// le composer (commandes immédiates) et le plan de temps partagé (commandes datées).
+/// Commandes du jeu sur le tempo et les émotions : état et sémantique du composer.
 ///
 /// Le tempo direct du jeu (`set_bpm`) gagne sur les émotions et la rampe de set jusqu'à
 /// `reset_bpm`, qui rend le tempo issu des émotions.
