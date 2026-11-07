@@ -23,6 +23,10 @@ use crate::clock::TransportClock;
 /// Duration of a full-scale (0 ↔ 1) listening-volume change.
 const MASTER_RAMP_SECONDS: f32 = 0.01;
 
+/// Borne du micro-ajustement du suivi d'horloge externe : 5 %, loin au-dessus des 5 ‰ de la
+/// politique de correction ; une commande aberrante ne détraque pas le tempo.
+const MAX_NUDGE_PPM: i32 = 50_000;
+
 /// Capacity of the composer → playback staged-measure ring and of the
 /// playback prefetch window. A loop longer than this is refused on the main
 /// thread (see [`check_loop_len`]).
@@ -209,6 +213,26 @@ pub enum PlaybackCommand {
     },
     /// Revert to the measure tempo at the next pulse boundary.
     ClearTempo,
+    /// Micro-ajustement de la conversion instants du plan → frames (suivi d'une horloge
+    /// externe, J6) : pendant `pulses` pulsations à partir de la prochaine, les durées de
+    /// pas sont multipliées par `1 − ppm / 10⁶` (`ppm > 0` : l'audio va plus vite). Les
+    /// instants du plan, le tempo et les notes ne changent pas ; aucun rééchantillonnage.
+    /// Borné à ±5 %. `pulses == 0` annule l'ajustement en cours. Remplace le précédent.
+    Nudge {
+        ppm: i32,
+        pulses: u32,
+    },
+    /// Réalignement sur une horloge externe : saute à la mesure `bar` (`0` : ne bouge pas)
+    /// et reste silencieux jusqu'à la frame de moteur `frame` (`u64::MAX` : attente
+    /// indéfinie, `0` : lève l'attente), puis joue. Immédiat, ou à la fin de la mesure en
+    /// cours si `at_bar_end` (la mesure en cours se termine alors normalement). Les mesures
+    /// d'avant `bar` ne sont pas jouées ; `bar` doit être composée ou en cours de composition
+    /// (l'hôte réalise le `Seek` du composeur quand `bar` n'est pas dans la fenêtre).
+    Resync {
+        bar: usize,
+        frame: u64,
+        at_bar_end: bool,
+    },
 }
 
 #[derive(Clone, Copy, Default)]
@@ -293,6 +317,17 @@ pub struct PlaybackEngine {
     audible_tempo: Tempo,
     // Active tempo override (D4). `None` = follow the measure tempo.
     tempo_override: Option<TempoRamp>,
+    // Suivi d'une horloge externe (J6) : micro-ajustement commandé (`Nudge`), pulses restantes
+    // à lui consacrer et valeur en vigueur pour la pulse gelée en cours.
+    nudge_ppm: i32,
+    nudge_pulses_left: u32,
+    active_nudge_ppm: i32,
+    // Le prochain chargement de mesure suit un `Resync` : pas de rampe de tempo depuis l'avant-saut.
+    fresh_start: bool,
+    // Silence jusqu'à cette frame de moteur (attente d'un instant de l'horloge externe).
+    silence_until: Option<u64>,
+    // Réalignement différé à la fin de la mesure en cours : (mesure, frame).
+    pending_resync: Option<(usize, u64)>,
     // An explicit SetTempo wins over data-driven measure ramps.
     tempo_override_explicit: bool,
     // Programmes de la mesure sous la tête (`Measure.instruments`) et derniers programmes
@@ -479,6 +514,12 @@ impl PlaybackEngine {
             measure_tempo: tempo,
             audible_tempo: tempo,
             tempo_override: None,
+            nudge_ppm: 0,
+            nudge_pulses_left: 0,
+            active_nudge_ppm: 0,
+            silence_until: None,
+            fresh_start: false,
+            pending_resync: None,
             tempo_override_explicit: false,
             measure_instruments: None,
             announced_instruments: None,
@@ -651,6 +692,8 @@ impl PlaybackEngine {
         // mapping the reader interpolates from.
         self.clock.buffer_start_frame = self.frame_counter;
         self.clock.buffer_start_instant = buffer_start_instant;
+        self.clock.nudge_ppm = self.active_nudge_ppm;
+        self.clock.holding = self.silence_until.is_some();
         self.publish_clock();
 
         // Pre-load the first measure (or the measure after a seek) before
@@ -669,6 +712,31 @@ impl PlaybackEngine {
         let mut processed = 0;
 
         while processed < total_samples {
+            // Attente d'un instant de l'horloge externe (J6) : silence, rien ne se rend ni
+            // ne s'avance dans la grille.
+            if let Some(until) = self.silence_until {
+                if self.frame_counter >= until {
+                    self.silence_until = None;
+                } else {
+                    let wait = until - self.frame_counter;
+                    let chunk = (total_samples - processed)
+                        .min(usize::try_from(wait).unwrap_or(usize::MAX));
+                    output[processed * channels..(processed + chunk) * channels].fill(0.0);
+                    self.frame_counter += chunk as u64;
+                    processed += chunk;
+                    continue;
+                }
+            }
+            // Réalignement différé : à l'entrée de la prochaine mesure, la mesure finie a été
+            // jouée en entier.
+            if self.sample_counter == 0
+                && self.pending_resync.is_some()
+                && self.playhead.position.step_in_bar(TICKS_PER_BEAT) == 0
+                && let Some((bar, frame)) = self.pending_resync.take()
+            {
+                self.resync(bar, frame);
+                continue;
+            }
             // Step entry: freeze the pulse if this step opens one (the D1
             // invariant), voice the step's notes at the exact frame where the
             // step begins (clock/audio coincidence), then render the entered
@@ -738,6 +806,8 @@ impl PlaybackEngine {
 
         self.apply_master_volume(output, channels);
         self.clock.output_gain = self.master_gain;
+        self.clock.nudge_ppm = self.active_nudge_ppm;
+        self.clock.holding = self.silence_until.is_some();
         self.publish_clock();
 
         // Le mute de sortie s'applique aussi à la voie jouée.
@@ -960,6 +1030,58 @@ impl PlaybackEngine {
         }
     }
 
+    /// Saute à `bar` : coupe le pas en cours, rend les mesures quittées au composeur et
+    /// repart du pas 0 de `bar` (le composeur a déjà fait son propre `Seek` si besoin).
+    ///
+    /// `keep_current` : si la mesure déjà chargée est celle de `target_bar`, elle reste
+    /// (comme `SeekPlayhead`) au lieu d'être rendue puis rechargée.
+    fn hard_seek(&mut self, target_bar: usize, keep_current: bool) {
+        for track in harmonium_core::timeline::TrackId::ALL {
+            self.renderer.handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
+        }
+        {
+            let _rt = RtGuard::enter();
+            self.evict_for_seek(target_bar, keep_current);
+        }
+        self.playhead.seek_to_bar(target_bar);
+        self.publish_jump(target_bar);
+        // A jump cuts the in-flight step: drop its remainder and its
+        // pending completion publication, so the next entry starts
+        // the target bar from step 0.
+        self.sample_counter = 0;
+        self.step_open = false;
+        // L'ancienne pulse n'est plus une horloge valide après ce saut.
+        self.clock.next_pulse_frame = 0;
+    }
+
+    /// Réalignement sur l'horloge externe (`PlaybackCommand::Resync`) : saut à `bar` (sauf
+    /// `0`), puis silence jusqu'à `frame`. Un micro-ajustement en cours ne vaut plus.
+    fn resync(&mut self, bar: usize, frame: u64) {
+        if bar > 0 {
+            // La mesure chargée reste si elle est celle visée et de la génération courante
+            // (déjà prête, jamais rendue deux fois au composeur). Le tempo de l'horloge
+            // s'applique tout de suite : pas de rampe depuis le tempo de l'avant-saut.
+            let keep = self.loaded_epoch == Some(self.epoch);
+            self.hard_seek(bar, keep);
+            if !self.tempo_override_explicit {
+                self.tempo_override = None;
+                self.audible_tempo = self.measure_tempo;
+            }
+            self.fresh_start = !keep;
+        } else {
+            for track in harmonium_core::timeline::TrackId::ALL {
+                self.renderer.handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
+            }
+            self.sample_counter = 0;
+            self.step_open = false;
+            self.clock.next_pulse_frame = 0;
+        }
+        self.nudge_ppm = 0;
+        self.nudge_pulses_left = 0;
+        self.active_nudge_ppm = 0;
+        self.silence_until = (frame > self.frame_counter).then_some(frame);
+    }
+
     /// Start a tempo ramp from the audible tempo, landing on `target` after
     /// `pulses` pulse boundaries (`0` jumps at the next boundary).
     fn start_tempo_ramp(&mut self, target: Tempo, pulses: u8) {
@@ -982,6 +1104,13 @@ impl PlaybackEngine {
             ramp.done += 1;
             self.audible_tempo = ramp_tempo(ramp.from, ramp.target, ramp.done, ramp.total);
         }
+        // Micro-ajustement (J6) : valable pour les pulses qui suivent la commande.
+        if self.nudge_pulses_left > 0 {
+            self.nudge_pulses_left -= 1;
+            self.active_nudge_ppm = self.nudge_ppm;
+        } else {
+            self.active_nudge_ppm = 0;
+        }
         self.compute_pulse_steps(steps_per_pulse);
         self.step_index = 0;
 
@@ -1002,7 +1131,19 @@ impl PlaybackEngine {
         self.pulse_plan_start = self.next_step_plan;
         let (base, rate, timing, tempo) =
             (self.pulse_plan_start, self.sample_rate_hz, self.pulse_timing, self.pulse_tempo);
-        let frame_of = |offset: u64| Flicks(base + offset).to_frames(rate);
+        // Micro-ajustement : seule la conversion instants → frames change, jamais l'instant du
+        // plan. L'échelle porte sur l'instant absolu, donc les pulses consécutives sous le
+        // même ajustement se raccordent sans arrondi cumulé.
+        let scale = (1_000_000 - i64::from(self.active_nudge_ppm)) as u128;
+        let nudged = self.active_nudge_ppm != 0;
+        let frame_of = |offset: u64| {
+            let instant = base + offset;
+            if nudged {
+                Flicks((u128::from(instant) * scale / 1_000_000) as u64).to_frames(rate)
+            } else {
+                Flicks(instant).to_frames(rate)
+            }
+        };
         let start = frame_of(0);
         let mut previous = start;
         for (k, slot) in self.step_durations[..steps_per_pulse].iter_mut().enumerate() {
@@ -1211,6 +1352,7 @@ impl PlaybackEngine {
             // the audible tempo; anything else jumps.
             if !self.tempo_override_explicit {
                 if self.first_measure_loaded
+                    && !self.fresh_start
                     && self.bar_timing.ramp_in
                     && self.measure_tempo != self.audible_tempo
                 {
@@ -1222,6 +1364,7 @@ impl PlaybackEngine {
                     self.audible_tempo = self.measure_tempo;
                 }
             }
+            self.fresh_start = false;
             self.measure_sig = slot.measure.time_signature;
 
             // Update chord info for reports
@@ -1370,25 +1513,21 @@ impl PlaybackEngine {
                         self.clock.volume_revision = revision;
                     }
                 }
-                PlaybackCommand::Seek(bar) => {
-                    let target_bar = bar.max(1);
-                    for track in harmonium_core::timeline::TrackId::ALL {
-                        self.renderer
-                            .handle_event(AudioEvent::AllNotesOff { channel: track.channel() });
+                PlaybackCommand::Seek(bar) => self.hard_seek(bar.max(1), false),
+                PlaybackCommand::Nudge { ppm, pulses } => {
+                    self.nudge_ppm = ppm.clamp(-MAX_NUDGE_PPM, MAX_NUDGE_PPM);
+                    self.nudge_pulses_left = pulses;
+                    if pulses == 0 {
+                        self.nudge_ppm = 0;
                     }
-                    {
-                        let _rt = RtGuard::enter();
-                        self.evict_for_seek(target_bar, false);
+                }
+                PlaybackCommand::Resync { bar, frame, at_bar_end } => {
+                    if at_bar_end {
+                        self.pending_resync = Some((bar, frame));
+                    } else {
+                        self.pending_resync = None;
+                        self.resync(bar, frame);
                     }
-                    self.playhead.seek_to_bar(target_bar);
-                    self.publish_jump(target_bar);
-                    // A jump cuts the in-flight step: drop its remainder and its
-                    // pending completion publication, so the next entry starts
-                    // the target bar from step 0.
-                    self.sample_counter = 0;
-                    self.step_open = false;
-                    // L'ancienne pulse n'est plus une horloge valide après ce saut.
-                    self.clock.next_pulse_frame = 0;
                 }
                 PlaybackCommand::SeekPlayhead(bar) => {
                     let target_bar = bar.max(1);

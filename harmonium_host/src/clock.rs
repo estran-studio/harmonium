@@ -56,6 +56,12 @@ pub struct TransportClock {
     /// Gain de sortie atteint, après la rampe du dernier tampon rendu.
     /// Avec `volume_revision`, permet d'attendre un silence réellement rendu.
     pub output_gain: f32,
+    /// Micro-ajustement de la conversion instants → frames en vigueur pour la pulsation
+    /// courante, en millionièmes (suivi d'une horloge externe ; `> 0` : l'audio va plus vite).
+    pub nudge_ppm: i32,
+    /// Le callback attend en silence un instant de l'horloge externe (démarrage, reprise,
+    /// saut) : la position et la pulsation publiées ne sont pas celles d'une mesure jouée.
+    pub holding: bool,
 }
 
 impl TransportClock {
@@ -78,6 +84,8 @@ impl TransportClock {
             plan_gap_frames: 0,
             volume_revision: 0,
             output_gain: 1.0,
+            nudge_ppm: 0,
+            holding: false,
         }
     }
 }

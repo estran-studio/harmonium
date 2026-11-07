@@ -9,14 +9,16 @@ use harmonium_core::{
     compose::{BarRole, TunePlan},
     events::RecordFormat,
     params::SessionConfig,
+    time_plan::{BarTiming, Swing, Tempo, external::ExternalClock},
 };
 use web_time::Instant;
 
 use crate::{
     FinishedRecordings,
     audio::{self, EngineControls},
-    clock::{BeatInfo, ClockReader},
+    clock::{BeatInfo, ClockReader, TransportClock},
     composer::MusicComposer,
+    external::{Action, ExternalFollower, ExternalStatus, FollowConfig, SimObservation},
     live_notes::LiveNoteSender,
     playback::{PlaybackCommand, PlaybackEngine, TransportPosition},
 };
@@ -77,6 +79,8 @@ pub struct LiveHost {
     /// Last report received from the audio thread.
     cached_state: Option<EngineReport>,
     volume_revision: u64,
+    /// Suivi de l'horloge du jeu (J6) ; `None` : comportement historique.
+    external: Option<ExternalFollower>,
 }
 
 impl LiveHost {
@@ -109,7 +113,7 @@ impl LiveHost {
         odin_presets: &[harmonium_audio::odin_source::OdinPresetSource],
         buffer_frames: Option<u32>,
     ) -> Result<Self, String> {
-        let host = Self::start(sf2_bytes, percussion_sf2_bytes, odin_presets, buffer_frames)?;
+        let mut host = Self::start(sf2_bytes, percussion_sf2_bytes, odin_presets, buffer_frames)?;
         host.pause()?;
         Ok(host)
     }
@@ -154,6 +158,7 @@ impl LiveHost {
             recorder: controls.recorder,
             cached_state: None,
             volume_revision: 0,
+            external: None,
         };
         host.publish()?;
         Ok(host)
@@ -162,14 +167,19 @@ impl LiveHost {
     // === Transport ===
 
     /// Resume the output stream (no-op on a detached host).
-    pub fn resume(&self) -> Result<(), String> {
+    ///
+    /// Avec une horloge externe, le playback reste silencieux jusqu'à son réalignement sur
+    /// l'horloge : il ne part pas de sa mesure 1 au premier tampon.
+    pub fn resume(&mut self) -> Result<(), String> {
         use cpal::traits::StreamTrait;
         self.stream.as_ref().map_or(Ok(()), |s| s.0.play().map_err(|e| e.to_string()))
     }
 
-    /// Pause the output stream (no-op on a detached host).
-    pub fn pause(&self) -> Result<(), String> {
+    /// Pause the output stream (no-op on a detached host). Avec une horloge externe, le
+    /// playback est mis en attente : à la reprise il se réaligne sur l'horloge.
+    pub fn pause(&mut self) -> Result<(), String> {
         use cpal::traits::StreamTrait;
+        self.hold_external()?;
         self.stream.as_ref().map_or(Ok(()), |s| s.0.pause().map_err(|e| e.to_string()))
     }
 
@@ -331,6 +341,25 @@ impl LiveHost {
     /// commands reach the audio thread through the lock-free ring. Composing
     /// the replacement bars is left to [`Self::pump`].
     pub fn apply(&mut self, command: EngineCommand) -> Result<(), String> {
+        // Avec une horloge externe, le tempo est celui de l'horloge : toute commande qui le
+        // réinitialise est suivie de sa réinstallation (même priorité que `SetBpm`).
+        let retempo = self.external.is_some()
+            && matches!(
+                command,
+                EngineCommand::SetBpm(_)
+                    | EngineCommand::ResetBpm
+                    | EngineCommand::SetTimeSignature { .. }
+                    | EngineCommand::SetStyleProfile(_)
+                    | EngineCommand::Reset
+            );
+        self.execute(command)?;
+        if retempo {
+            self.apply_external_tempo()?;
+        }
+        Ok(())
+    }
+
+    fn execute(&mut self, command: EngineCommand) -> Result<(), String> {
         match command {
             // === Emotions and tempo of the measures ===
             EngineCommand::SetEmotionParams { arousal, valence, density, tension } => {
@@ -540,6 +569,158 @@ impl LiveHost {
         self.publish()?;
         self.send(PlaybackCommand::Seek(1))?;
         self.composer.stage_playhead_bar();
+        // Une nouvelle pièce repart de la mesure 1 : avec une horloge externe, elle attend son
+        // instant au lieu de jouer hors du temps du jeu.
+        self.hold_external()
+    }
+
+    // === Horloge externe (phase 013, J6) ===
+
+    /// Suit l'horloge de simulation du jeu : `clock` donne la fréquence de simulation,
+    /// l'ancrage (frame où commence la pulsation 1 de la mesure 1) et la durée d'une
+    /// pulsation dansée en frames (fraction permise).
+    ///
+    /// La pulsation du profil dure exactement cette période : le tempo d'émotion, la rampe de
+    /// set et la variante de tempo de session ne s'appliquent plus (même priorité que
+    /// [`EngineCommand::SetBpm`], réinstallé après chaque commande qui le réinitialise). Le
+    /// playback attend en silence l'instant d'une mesure de l'horloge ; les observations
+    /// ([`Self::observe_external`]) le démarrent puis le corrigent.
+    ///
+    /// Une horloge posée alors qu'une autre suit déjà la remplace (autre salle, autre tempo) :
+    /// l'audio finit sa mesure, puis se réaligne à la mesure suivante de la nouvelle horloge.
+    ///
+    /// # Errors
+    /// Période hors de 40 à 300 BPM à la noire pour le mètre du profil actif, ou file de
+    /// commandes pleine. L'état précédent est alors conservé.
+    pub fn set_external_clock(&mut self, clock: ExternalClock) -> Result<(), String> {
+        self.external_tempo(&clock)?;
+        if let Some(follower) = &mut self.external {
+            follower.replace_clock(clock);
+        } else {
+            self.external = Some(ExternalFollower::new(clock, FollowConfig::default()));
+            self.send(Self::hold())?;
+        }
+        self.apply_external_tempo()
+    }
+
+    /// Cesse de suivre l'horloge externe : le tempo revient aux émotions et à la rampe de
+    /// set, le playback reprend où il est.
+    ///
+    /// # Errors
+    /// File de commandes pleine.
+    pub fn clear_external_clock(&mut self) -> Result<(), String> {
+        if self.external.take().is_none() {
+            return Ok(());
+        }
+        self.send(PlaybackCommand::Nudge { ppm: 0, pulses: 0 })?;
+        self.send(PlaybackCommand::Resync { bar: 0, frame: 0, at_bar_end: false })?;
+        self.execute(EngineCommand::ResetBpm)
+    }
+
+    /// Réglages du suivi (zone morte, latence supplémentaire…) ; sans effet sans horloge.
+    pub fn set_follow_config(&mut self, config: FollowConfig) {
+        if let Some(follower) = &mut self.external {
+            follower.set_config(config);
+        }
+    }
+
+    /// Une observation de la simulation : la frame courante (et sa fraction) et l'`Instant`
+    /// où elle vaut, avec la dernière horloge publiée par le callback (`ClockReader::read`).
+    /// À appeler à chaque frame de présentation. Sans horloge externe, ne fait rien.
+    ///
+    /// Démarre le playback sur une mesure de l'horloge, puis mesure l'écart et le corrige
+    /// (micro-ajustement de la conversion instants → frames, saut à la mesure suivante au-delà).
+    ///
+    /// # Errors
+    /// File de commandes pleine.
+    pub fn observe_external(
+        &mut self,
+        observation: SimObservation,
+        published: &TransportClock,
+    ) -> Result<(), String> {
+        let pulses = self.composer.profile().meter.pulses_per_bar as u32;
+        let Some(follower) = &mut self.external else {
+            return Ok(());
+        };
+        match follower.observe(observation, published, pulses) {
+            None => Ok(()),
+            Some(Action::Hold) => self.send(Self::hold()),
+            Some(Action::Nudge { ppm, pulses }) => {
+                self.send(PlaybackCommand::Nudge { ppm, pulses })
+            }
+            Some(Action::Resync { bar, frame, at_bar_end, hard }) => {
+                if hard {
+                    // Le composeur rejoue jusqu'à la mesure visée, comme pour `Seek`, mais
+                    // recompose depuis elle : le tempo de l'horloge a pu changer depuis.
+                    self.composer.seek_recompose(bar);
+                    self.publish()?;
+                }
+                self.send(PlaybackCommand::Resync { bar, frame, at_bar_end })?;
+                if hard {
+                    self.composer.stage_playhead_bar();
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// État du suivi ; `None` sans horloge externe.
+    #[must_use]
+    pub fn external_status(&self) -> Option<ExternalStatus> {
+        self.external.as_ref().map(ExternalFollower::status)
+    }
+
+    /// L'horloge externe suivie, s'il y en a une.
+    #[must_use]
+    pub fn external_clock(&self) -> Option<&ExternalClock> {
+        self.external.as_ref().map(ExternalFollower::clock)
+    }
+
+    /// Tempo à la noire dont la pulsation du profil actif dure la période de `clock`.
+    fn external_tempo(&self, clock: &ExternalClock) -> Result<Tempo, String> {
+        let meter = &self.composer.profile().meter;
+        let timing = BarTiming {
+            tempo: Tempo::MIN,
+            swing: Swing::STRAIGHT,
+            numerator: meter.time_signature.numerator as u16,
+            denominator: meter.time_signature.denominator as u16,
+            steps: meter.steps_per_bar as u16,
+            steps_per_pulse: meter.steps_per_pulse as u8,
+            pulses_per_bar: meter.pulses_per_bar as u8,
+            ramp_in: false,
+        };
+        clock.tempo_for(&timing).ok_or_else(|| {
+            let (num, den) = clock.pulse_frames();
+            format!(
+                "horloge externe : une pulsation de {num}/{den} frames à {} Hz donne un tempo hors de 40 à 300 BPM pour ce profil",
+                clock.sim_hz()
+            )
+        })
+    }
+
+    /// Installe le tempo de l'horloge externe comme tempo direct du composeur.
+    fn apply_external_tempo(&mut self) -> Result<(), String> {
+        let Some(follower) = &self.external else {
+            return Ok(());
+        };
+        let bpm = self.external_tempo(follower.clock())?.bpm();
+        let params = self.composer.musical_params();
+        if params.bpm == bpm && params.bpm_explicit {
+            return Ok(());
+        }
+        self.execute(EngineCommand::SetBpm(bpm))
+    }
+
+    fn hold() -> PlaybackCommand {
+        PlaybackCommand::Resync { bar: 0, frame: u64::MAX, at_bar_end: false }
+    }
+
+    /// Met le playback en attente et le suivi au départ, si une horloge externe est posée.
+    fn hold_external(&mut self) -> Result<(), String> {
+        if let Some(follower) = &mut self.external {
+            follower.restart();
+            self.send(Self::hold())?;
+        }
         Ok(())
     }
 

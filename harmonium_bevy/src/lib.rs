@@ -12,13 +12,18 @@ use bevy::{
     asset::{AssetLoader, LoadContext, LoadState, io::Reader},
     prelude::*,
 };
+pub use harmonium::external::{Applied, ExternalStatus, FollowConfig, Phase};
 use harmonium::{
     LiveHost,
     clock::{BeatInfo, ClockReader, TransportClock},
+    external::SimObservation,
 };
 use harmonium_audio::odin_source::OdinPresetSource;
 use harmonium_core::EngineCommand;
-pub use harmonium_core::StyleProfile;
+pub use harmonium_core::{
+    StyleProfile,
+    time_plan::external::{ExternalClock, ExternalClockError},
+};
 use web_time::Instant;
 
 #[cfg(target_arch = "wasm32")]
@@ -37,6 +42,9 @@ pub struct HarmoniumConfig {
     pub fade_duration: Duration,
     pub buffer_frames: Option<u32>,
     pub start_paused: bool,
+    /// Réglages du suivi de l'horloge du jeu ([`GameClock`]) : zone morte, micro-ajustement,
+    /// latence de sortie que la plateforme ne fournit pas.
+    pub follow: FollowConfig,
 }
 
 impl Default for HarmoniumConfig {
@@ -55,6 +63,7 @@ impl Default for HarmoniumConfig {
             fade_duration: Duration::from_millis(500),
             buffer_frames: None,
             start_paused: false,
+            follow: FollowConfig::default(),
         }
     }
 }
@@ -88,6 +97,22 @@ impl HarmoniumControl {
         self.profile = StyleProfile::named(id).map_err(|error| error.to_string())?;
         Ok(())
     }
+}
+
+/// L'horloge du jeu, que la musique suit (voir « Suivre l'horloge du jeu » dans le `README`).
+///
+/// Le jeu pose `clock` quand la salle commence ou change de tempo, et écrit `sim_frame` à
+/// chaque frame de présentation ; le plugin y joint l'instant de la frame (`Time<Real>`) et
+/// transmet l'observation à l'hôte. Tant que `clock` vaut `None`, la musique joue comme avant :
+/// tempo des émotions, mesure 1 au démarrage, aucun suivi.
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct GameClock {
+    /// Fréquence de simulation, frame d'ancrage et durée d'une pulsation dansée en frames.
+    pub clock: Option<ExternalClock>,
+    /// Frame de simulation courante (la dernière simulée, ou celle qu'on présente).
+    pub sim_frame: u64,
+    /// Fraction de la frame écoulée, `0.0..1.0`, si le jeu la connaît.
+    pub frame_fraction: f32,
 }
 
 /// Octets conservés par l'`AssetServer` ; le nom court d'un preset est son nom de fichier.
@@ -160,6 +185,8 @@ pub struct MusicClock {
     pub phase: f32,
     /// Tempo à la noire de la mesure entendue.
     pub bpm: f32,
+    /// Écart filtré avec l'horloge du jeu et dernière correction (`None` sans [`GameClock`]).
+    pub follow: Option<ExternalStatus>,
 }
 
 #[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
@@ -200,6 +227,7 @@ impl Plugin for HarmoniumPlugin {
             .init_resource::<HarmoniumControl>()
             .init_resource::<HarmoniumStatus>()
             .init_resource::<MusicClock>()
+            .init_resource::<GameClock>()
             .init_asset::<HarmoniumAsset>()
             .init_asset_loader::<HarmoniumLoader>()
             .add_message::<Beat>()
@@ -309,6 +337,8 @@ pub struct HarmoniumRuntime {
     notices: HashSet<String>,
     /// Mètres réellement composés, pour calculer le tempo entendu, même après changement.
     meters: std::collections::BTreeMap<usize, usize>,
+    /// Horloge du jeu que l'hôte suit actuellement.
+    game_clock: Option<ExternalClock>,
     #[cfg(target_arch = "wasm32")]
     web: Option<web::WebDriver>,
 }
@@ -333,6 +363,7 @@ impl HarmoniumRuntime {
             notices: HashSet::new(),
             meters: std::collections::BTreeMap::new(),
             restart_frame: None,
+            game_clock: None,
             #[cfg(target_arch = "wasm32")]
             web: None,
         })
@@ -354,6 +385,49 @@ impl HarmoniumRuntime {
     fn notice(&mut self, message: String) {
         if self.notices.insert(message.clone()) {
             warn!("Harmonium : {message}");
+        }
+    }
+
+    /// Pose, remplace ou retire l'horloge du jeu sur l'hôte, puis lui transmet l'observation de
+    /// la frame de simulation courante avec l'instant de la frame.
+    fn follow(
+        &mut self,
+        game: &GameClock,
+        config: &HarmoniumConfig,
+        at: Instant,
+        clock: &TransportClock,
+    ) {
+        if game.clock != self.game_clock {
+            let result = match game.clock {
+                Some(external) => {
+                    let mut host = self.host.borrow_mut();
+                    host.set_external_clock(external)
+                        .map(|()| host.set_follow_config(config.follow))
+                }
+                None => self.host.borrow_mut().clear_external_clock(),
+            };
+            match result {
+                Ok(()) => {
+                    self.game_clock = game.clock;
+                    // Un autre tempo ou un autre ancrage : les mètres composés sont à refaire.
+                    self.last_beat = None;
+                }
+                Err(error) => {
+                    self.notice(error);
+                    return;
+                }
+            }
+        }
+        if self.game_clock.is_some() {
+            let observation = SimObservation {
+                sim_frame: game.sim_frame,
+                frame_fraction: game.frame_fraction,
+                at,
+            };
+            let result = self.host.borrow_mut().observe_external(observation, clock);
+            if let Err(error) = result {
+                self.notice(error);
+            }
         }
     }
 
@@ -501,6 +575,7 @@ fn fraction(elapsed: Duration, duration: Duration) -> f32 {
 fn drive_host(
     runtime: Option<NonSendMut<HarmoniumRuntime>>,
     target: Res<HarmoniumControl>,
+    game: Res<GameClock>,
     config: Res<HarmoniumConfig>,
     time: Res<Time<Real>>,
     mut status: ResMut<HarmoniumStatus>,
@@ -556,6 +631,8 @@ fn drive_host(
         runtime.restart_frame = Some(published.buffer_start_frame);
         runtime.meters.clear();
     }
+    let frame_instant = time.last_update().unwrap_or_else(Instant::now);
+    runtime.follow(&game, &config, frame_instant, &published);
     let paused = target.paused;
     #[cfg(target_arch = "wasm32")]
     let paused = {
@@ -567,8 +644,11 @@ fn drive_host(
         }
     };
     if paused != runtime.paused {
-        let result =
-            if paused { runtime.host.borrow().pause() } else { runtime.host.borrow().resume() };
+        let result = if paused {
+            runtime.host.borrow_mut().pause()
+        } else {
+            runtime.host.borrow_mut().resume()
+        };
         match result {
             Ok(()) => runtime.paused = paused,
             Err(error) => runtime.notice(error),
@@ -587,6 +667,7 @@ fn drive_host(
         runtime.meters.extend(meters);
     }
     publish_clock(&mut runtime, published, &mut clock, &mut beats, &mut bars);
+    clock.follow = runtime.host.borrow().external_status();
 }
 
 fn publish_clock(
@@ -597,15 +678,20 @@ fn publish_clock(
     bars: &mut MessageWriter<Bar>,
 ) {
     clock.playing = !runtime.paused;
-    if published.next_pulse_frame == 0 {
+    if published.next_pulse_frame == 0 || published.holding {
+        // Attente d'un instant de l'horloge du jeu : rien de joué, et les temps passés
+        // pendant l'attente ne se rattrapent pas.
         clock.valid = false;
+        runtime.last_beat = None;
         return;
     }
     if runtime.paused {
         return;
     }
     if let Some(frame) = runtime.restart_frame {
-        if published.buffer_start_frame == frame || published.position.bar != 1 {
+        // Suivant l'horloge du jeu, la première mesure jouée est celle de l'horloge, pas la 1.
+        let first_bar = runtime.game_clock.is_some() || published.position.bar == 1;
+        if published.buffer_start_frame == frame || !first_bar {
             clock.valid = false;
             return;
         }
@@ -625,6 +711,7 @@ fn publish_clock(
         pulses_per_bar: info.pulses_per_bar,
         phase: info.phase,
         bpm,
+        follow: clock.follow,
     };
     let current = (info.bar, info.pulse);
     if runtime.last_beat != Some(current) {

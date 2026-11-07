@@ -60,7 +60,7 @@ impl WebDriver {
         let failed = Cell::new(false);
         let gesture = Closure::new(move |_: Event| {
             if !active.get() && !paused.get() {
-                match host.borrow().resume() {
+                match host.borrow_mut().resume() {
                     Ok(()) => active.set(true),
                     Err(error) if !failed.replace(true) => {
                         bevy::log::error!("Harmonium : reprise au geste refusée : {error}")
