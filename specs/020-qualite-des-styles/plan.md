@@ -86,3 +86,6 @@ muse-spark, jamais Opus ; `relancer.sh`). Tout agent de la phase se lance désor
 Puis muse-spark refuse les appels d'omp (403 : l'abonnement Muse Code ne couvre que le client Muse Code) et
 Codex (5 h) comme Sonnet (7 jours à 86 %, réserve de 15 %) sont épuisés : **les trois agents sont en pause
 jusqu'à la remise à zéro des quotas** (≈ 4 h), puis repris avec le relais Sonnet → Codex, muse-spark retiré.
+**Règle de William (2026-11-07)** : ne jamais mêler l'environnement de travail (Mac du travail, réseau Zscaler) aux
+VPS et aux comptes personnels : aucun tunnel, mandataire ni certificat entre les deux. Gemini (Antigravity) est
+refusé depuis `ovh-inner` ; il n'est pas utilisé.
