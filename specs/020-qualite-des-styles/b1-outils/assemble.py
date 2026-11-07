@@ -2,7 +2,9 @@
 """Banque GM d'essai B1 : banque complète + presets échantillonnés libres.
 
 Exécuter : H020_B1_ROOT=<sources> H020_B1_GU=<GeneralUser-GS.sf2> python assemble.py gu|msb
-Dépend de sf2build.py, sfzlib.py (dans ce dossier), archives FreePats et dépôts sfzinstruments.
+Dépend de sf2build.py, sfzlib.py (dans ce dossier), archives FreePats et dépôts sfzinstruments (voir b1-banque-sons.md § 3).
+Variables : H020_B1_NORMALIZE=0 (banque brute, sans gains de niveau) ; H020_B1_SKIP=29,30 (ne pas importer ces programmes).
+Sortie : <ROOT>/merged/b1-{gu,msb}.sf2, déterministe (même SHA-256 à la reconstruction).
 """
 import collections
 import glob
@@ -12,8 +14,8 @@ from pathlib import Path
 from sf2build import Bank, Out
 from sfzlib import BankZone, sfz_to_zones, read_audio, note_num
 
-ROOT = Path(os.environ.get('H020_B1_ROOT', '/home/debian/h020-b1'))
-GU = Path(os.environ.get('H020_B1_GU', '/home/debian/workspace/harmonium/assets/GeneralUser-GS.sf2'))
+ROOT = Path(os.environ.get('H020_B1_ROOT', '/tmp/h020-b1'))
+GU = Path(os.environ.get('H020_B1_GU', str(Path.home() / 'Project/bascanada/harmonium/assets/GeneralUser-GS.sf2')))
 BANK = sys.argv[1]
 assert BANK in ('gu', 'msb')
 base_path = GU if BANK == 'gu' else ROOT / 'dl/MS_Basic-v2.0.0.sf2'
@@ -34,12 +36,26 @@ def src(repo, pattern):
 
 
 # Les échantillons communs à plusieurs presets sont copiés une seule fois par Out.
-replaced = {(0, p) for p in (4, 7, 16, 17, 18, 24, 26, 27, 29, 30, 32, 33, 34, 66)}
-replaced.update((128, p) for p in (0, 8, 16, 24, 25, 32, 40))
+# H020_B1_SKIP=29,30 : ne pas importer ces programmes (la banque de base garde les siens) ; mesure du coût d'une partie (poids, décodage).
+SKIP = {int(p) for p in os.environ.get('H020_B1_SKIP', '').split(',') if p}
+replaced = {(0, p) for p in (4, 7, 16, 17, 18, 24, 26, 27, 29, 30, 32, 33, 34, 66) if p not in SKIP}
+# Kits acoustiques seulement : les kits électroniques 24 (Electronic) et 25 (808/909) restent ceux de la banque de base.
+KITS = (0, 8, 16, 32, 40)
+replaced.update((128, p) for p in KITS)
 for i in range(len(base.phdr) - 1):
     b, p = base.phdr[i][2], base.phdr[i][1]
     if (b, p) not in replaced:
         out.add_preset(base, i, b, p)
+
+# Niveaux : `palette.py` (mêmes notes, un programme à la fois) donne l'écart de chaque preset importé à celui de GeneralUser GS ;
+# on ramène à GeneralUser GS (que le mixage des profils suppose) les presets plus forts. Les presets plus faibles ne sont pas
+# remontés (écrêtage du PCM 16 bits : Sneakybass a déjà une crête à 0,94 pour −5 LU, le kick de Swirly est à 0,85) : écart
+# restant = proposition de mixage du compte rendu.
+# H020_B1_NORMALIZE=0 : banque brute (c'est elle que `palette.py` mesure pour calculer ces gains).
+GAIN_DB = {17: -2.1, 18: -1.6, 24: -2.3, 26: -1.4, 27: -6.1, 29: -5.0, 30: -5.0, 33: -1.6, 34: -1.4, 66: -8.9}
+GAIN_EP_DB = {4: -2.6}
+if os.environ.get('H020_B1_NORMALIZE', '1') == '0':
+    GAIN_DB, GAIN_EP_DB = {}, {}
 
 replacements = [
     (0, 16, 'DrawbarOrgan*/*.sf2'), (0, 17, 'PercussiveOrgan*/*.sf2'),
@@ -51,11 +67,12 @@ replacements = [
 ]
 fonts = {}
 for bank, prog, pattern in replacements:
+    if prog in SKIP:
+        continue
     font = fonts.get(pattern)
     if font is None:
         font = fonts[pattern] = Bank(fp(pattern))
-    gain_db = -8.0 if prog in (29, 30) else -5.0 if prog == 27 else 0.0
-    out.add_preset(font, font.preset(0, 0), bank, prog, extend=True, gain_db=gain_db)
+    out.add_preset(font, font.preset(0, 0), bank, prog, extend=True, gain_db=GAIN_DB.get(prog, 0.0))
     print(f'SF2 {bank}:{prog} {pattern}', flush=True)
 
 # Wurlitzer réel (CC BY 3.0), au slot GM EP1 : pas un Rhodes ; Pianet au slot clavinet : pas un D6.
@@ -65,7 +82,7 @@ for prog, label, pattern in (
 ):
     zones, dropped = sfz_to_zones(src('GregSullivan.E-Pianos', pattern), max_seconds=8)
     assert zones and all(reason == 'trigger' for _, reason in dropped), (prog, collections.Counter(reason for _, reason in dropped))
-    out.add_zones_preset(label, 0, prog, zones)
+    out.add_zones_preset(label, 0, prog, zones, gain_db=GAIN_EP_DB.get(prog, 0.0))
     print(f'SFZ 0:{prog} {label}, {len(zones)} zones', flush=True)
     del zones
 
@@ -142,12 +159,12 @@ for key, family in latin.items():
 assert len(percs) >= 10, sorted(percs)
 print('Latin VCSL', sorted(percs), flush=True)
 kit_base = base if BANK == 'gu' else Bank(str(GU))
-for prog in (0, 8, 16, 24, 25, 32, 40):
+for prog in KITS:
     zz = (brush if prog == 40 else std) + list(percs.values())
     out.overlay_kit(kit_base, kit_base.preset(128, prog), prog, zz, name=f'B1 Swirly {prog}')
     print('kit', prog, len(zz), flush=True)
 
-output = ROOT / 'merged' / f'b1-{BANK}.sf2'
+output = ROOT / 'merged' / (f'b1-{BANK}.sf2' if os.environ.get('H020_B1_NORMALIZE', '1') != '0' else f'raw-{BANK}.sf2').replace('.sf2', ''.join(f'-sans{p}' for p in sorted(SKIP)) + '.sf2')
 output.parent.mkdir(exist_ok=True)
 out.write(str(output))
 print(output, output.stat().st_size, len(out.presets), 'presets', flush=True)

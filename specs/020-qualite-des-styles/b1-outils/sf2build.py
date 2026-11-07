@@ -85,6 +85,20 @@ class Out:
         self._samples = {}
         self._insts = {}
         self._new_samples = {}
+        self._names = set()
+
+    def _unique_name(self, name):
+        """Nom d'échantillon unique dans la banque de sortie. oxisynth retrouve l'échantillon d'une zone PAR SON NOM (premier
+        trouvé, `core/soundfont/instrument.rs`) : deux échantillons de même nom, venus de banques sources différentes, se
+        confondent à la lecture (le second preset joue les échantillons du premier). Un suffixe `~n` les distingue."""
+        base = bytes(name).split(b'\0')[0]
+        out, i = base, 0
+        while out in self._names:
+            i += 1
+            tag = b'~' + (b'%d' % i)
+            out = base[:19 - len(tag)] + tag
+        self._names.add(out)
+        return out.ljust(20, b'\0')
 
     def sample(self, bank, k, gain_db=0.0):
         key = (id(bank), k, round(gain_db, 2))
@@ -102,7 +116,7 @@ class Out:
         d = new_st - st
         idx = len(self.shdr)
         self._samples[key] = idx
-        self.shdr.append([name, st + d, en + d, sl + d, el + d, rate, pitch, corr, link, typ, bank, k, gain_db])
+        self.shdr.append([self._unique_name(name), st + d, en + d, sl + d, el + d, rate, pitch, corr, link, typ, bank, k, gain_db])
         return idx
 
     def new_sample(self, name, pcm_i16, rate, root, loop=None):
@@ -119,7 +133,7 @@ class Out:
         self.smpl += pcm.tobytes() + b'\0' * (46 * 2)
         ls, le = (st + loop[0], st + loop[1]) if loop else (st, st + n)
         idx = len(self.shdr)
-        self.shdr.append([name[:19].encode('latin1', 'replace').ljust(20, b'\0'), st, st + n, ls, le, rate, root, 0, 0, 1, None, None, 0.0])
+        self.shdr.append([self._unique_name(name[:19].encode('latin1', 'replace')), st, st + n, ls, le, rate, root, 0, 0, 1, None, None, 0.0])
         return idx
 
     def instrument(self, bank, j, extend=False, gain_db=0.0, keymap=None, drop_keys=None):

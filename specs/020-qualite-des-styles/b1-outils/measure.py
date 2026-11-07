@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rendus E1 : mix et pistes isolées, LUFS ebur128 comme L1 §8, mêmes notes/seed.
 
-Exécuter : python measure.py nom banque.sf2|sf3. Stocke uniquement les mesures et SHA MIDI, pas les WAV.
+Exécuter : python measure.py nom banque.sf2|sf3 (graine de chaque style : `seeds.json` de seeds.py, 64 mesures). Stocke uniquement les mesures et SHA MIDI, pas les WAV.
 """
 import concurrent.futures
 import hashlib
@@ -13,21 +13,22 @@ import os
 from pathlib import Path
 
 repo = Path(os.environ.get('H020_B1_REPO', '.')).resolve()
-base = Path(os.environ.get('H020_B1_ROOT', '/home/debian/h020-b1'))
-trad = Path(os.environ.get('H020_B1_TRAD', '/home/debian/workspace/harmonium/assets/harmonium_trad.sf2'))
+base = Path(os.environ.get('H020_B1_ROOT', '/tmp/h020-b1'))
+trad = Path(os.environ.get('H020_B1_TRAD', str(Path.home() / 'Project/bascanada/harmonium/assets/harmonium_trad.sf2')))
 name, font = sys.argv[1], Path(sys.argv[2]).resolve()
-seed = 7
+bars = os.environ.get('H020_B1_BARS', '64')
+seeds = {k: v['seed'] for k, v in json.loads((base / 'seeds.json').read_text())['best'].items()}  # seeds.py
 styles = ('wjazzd_swing', 'wjazzd_ballad', 'gmd_jazz_waltz', 'gmd_latin_brazilian_bossa',
           'gmd_latin_brazilian_samba', 'gmd_latin_brazilian_baiao', 'gmd_afrocuban',
           'gmd_funk', 'gmd_soul', 'gmd_reggae', 'gmd_rock', 'gmd_pop', 'gmd_blues_shuffle')
-tracks = ('mix', 'Chords', 'Bass', 'PercussionLow', 'PercussionHigh')
+tracks = tuple(os.environ.get('H020_B1_TRACKS', 'mix,Chords,Bass,PercussionLow,PercussionHigh').split(','))
 
 def measure(style, track):
     file = base / 'render' / f'{name}-{style}-{track}'
     wav = file.with_suffix('.wav')
     midi = file.with_suffix('.mid')
-    cmd = [str(repo / 'target/release/harmonium-cli'), '--export', '--bars', '8', '--style', style,
-           '--seed', str(seed), '--soundfont', str(font),
+    cmd = [str(repo / 'target/release/harmonium-cli'), '--export', '--bars', bars, '--style', style,
+           '--seed', str(seeds[style]), '--soundfont', str(font),
            '--percussion-soundfont', str(trad),
            '--record-wav', str(wav), '--record-midi', str(midi)]
     if track != 'mix':
@@ -52,7 +53,7 @@ def measure(style, track):
 
 if __name__ == '__main__':
     (base / 'render').mkdir(exist_ok=True)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(lambda pair: measure(*pair), ((s,t) for s in styles for t in tracks)))
     path = base / 'render' / f'{name}.json'
     path.write_text(json.dumps(results, indent=2))

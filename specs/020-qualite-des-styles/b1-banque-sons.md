@@ -1,107 +1,275 @@
-# B1 — banques de sons pour la phase 020
+# B1 — banque de sons plus riche (phase 020, vague 1)
 
-**Statut : trois banques prêtes pour l'écoute de William ; aucune substitution définitive décidée.** Les profils et le moteur ne changent pas. Comparaison sur les 13 identifiants d'E1, graine 7, huit mesures, sans Odin et sans écouter les fichiers. La banque trad reste strictement identique. Le choix est à faire à l'oreille : L1 n'avait pas permis à William de distinguer les banques entières.
+**État : terminée (2026-11-07, Mac). Trois dossiers de banques prêts pour l'écoute de William ; aucun choix fait.** Branche
+`wquintal/b1-banque-sons`. Ni profil ni code du moteur ne changent ; outils hors moteur dans [`b1-outils/`](b1-outils/) ;
+mesures détaillées dans [`b1-mesures.md`](b1-mesures.md). Aucune banque, aucun échantillon dans le diff.
 
-## Sources examinées et droit de distribution
+**Ce que cette étude ne dit pas.** L'agent n'écoute pas. Les chiffres disent ce qui se charge, ce que ça pèse, à quel niveau
+ça joue ; ils ne disent pas si c'est meilleur. L1 n'avait fait entendre aucune différence entre banques entières à William ;
+ici seuls les programmes faibles des 13 profils d'E1 sont remplacés, le reste de GeneralUser GS est conservé.
 
-« Libre » signifie ici redistribution du **fichier de samples** avec un jeu fermé et depuis un site web, pas seulement utilisation de sa sortie audio. Les tailles sont des ordres de grandeur des téléchargements/sources examinés ; les tailles exactes des trois banques assemblées sont plus bas. Une licence du code du synthé ne s'étend pas automatiquement aux samples.
+## 0. Trouvailles qui dépassent B1
 
-| Source ; preuve de licence à la source | Couverture et provenance ; taille | Décision |
+1. **oxisynth retrouve l'échantillon d'une zone par son nom, premier trouvé** (`oxisynth/src/core/soundfont/instrument.rs`
+   l. 119-127, fork `a8643ca`). Une banque assemblée dont deux échantillons de sources différentes portent le même nom joue,
+   pour le second preset, les échantillons du premier. Cas mesuré dans l'assemblage de B1 : les guitares FreePats jazz (26)
+   et claire (27) ont toutes deux un échantillon `C2_s1_01` ; avant correction, 26 et 27 rendaient **le même WAV octet pour
+   octet**. Les LUFS ne le montrent pas (valeurs plausibles). `sf2build.py` rend maintenant les noms uniques
+   (`Out._unique_name`) ; 67 noms dupliqués dans `b1-gu`, 74 dans `b1-msb` avant, 0 après. GeneralUser GS et MS Basic n'ont
+   aucun doublon.
+2. **`assets/harmonium_trad.sf2` est touché par le même défaut** (non corrigé : la banque trad doit rester identique,
+   hors périmètre). Ses 8 échantillons s'appellent `01`..`04` pour la touche 36 et `01`..`04` pour la touche 37 ; ceux de la touche 37
+   (`02` : 3 376 points, `03` : 6 611) retombent sur ceux de la touche 36 (11 025 points chacun), joués un demi-ton plus haut
+   [INFERENCE depuis le code et l'en-tête ; non écouté]. À vérifier à l'oreille par l'orchestrateur ; correction possible : renommer
+   les échantillons de la touche 37 dans la source de la banque trad (hors dépôt).
+3. **MS Basic 2.0.0 brute écrête au mix** : crête du mix à +8,3 dBFS (bossa), +8,0 (baião), +7,2 (afro-cubain) avec les mixages
+   actuels, calibrés sur GeneralUser GS (§ 4). Une banque différente impose de recalibrer le mixage.
+
+## 1. Candidats
+
+Critère : redistribution du **fichier d'échantillons** dans un jeu fermé et sur le web ; attribution permise ; pas de NC ni
+d'« usage personnel » ; SA signalée. Licences lues dans le fichier de licence ou le README de **l'archive téléchargée**
+(colonne « lu à la source ») ou, à défaut, sur la page du dépôt (« dépôt ») ; le catalogue
+<https://sfzinstruments.github.io/> (consulté le 2026-11-07) n'est qu'un index. Les banques GM complètes écartées ont été relues
+au texte en L1 (`l1-banques-soundfont.md` §§ 3 et 5, 2026-11-02) ; on ne les relit pas ici.
+
+### Retenues (dans les banques d'écoute)
+
+| Source | Licence (lu à la source) | Sert pour | Poids (PCM → SF3 q4) | Provenance et réserves |
+|---|---|---|---|---|
+| **GeneralUser GS 2.0.3** (réf.) | [GeneralUser GS License v2.0](https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/main/documentation/LICENSE.txt) (L1) | base de `b1-gu`, kits non remplacés | 32 Mo → 7,6 Mo | Redistribution permise ; l'auteur ne garantit pas la provenance de tous les échantillons (L1 § 3). |
+| **MS Basic 2.0.0** | MIT (L1 § 3) | `ms-basic`, base de `b1-msb` | 216 Mo → 26,8 Mo (q4), 40,1 Mo (q8) | Piano Splendid (domaine public selon l'auteur), le reste = échantillons FluidR3 (L1 § 7). Notices de copyright à livrer avec la banque ; binaire = miroir tiers, à figer par SHA-256. |
+| **FreePats**, 10 SF2 : orgues Drawbar / Percussive / Rock (16-18), guitare nylon (24), FSBS jazz (26), clean (27), dist2 (29-30), basses Finger / Picked YR (33-34), sax ténor (66) | **CC0** dans le `readme`/`LICENSE.txt` de chaque archive | programmes 16-18, 24, 26, 27, 29, 30, 33, 34, 66 | 7 Mo à 393 Mo (dist2) → 0,3 à 30,2 Mo | Orgues : enregistrements de la sortie de setBfree (logiciel GPL ; pas son code). Sax : échantillons VCSL CC0. Plage de touches élargie à 0-127 (extrémités transposées). |
+| **Greg Sullivan E-Pianos** : Wurlitzer EP200 (→ prog. 4), Hohner Pianet T (→ prog. 7) | **CC BY 3.0**, attribution requise (`README.md` de l'arbre, rév. `8c3e581`) | 4 et 7 | 21,5 Mo source → 0,65 et 1,41 Mo | **Pas un Rhodes, pas un clavinet.** Le Pianet est un piano à anches (timbre clair, attaque nette) : substitut pour le funk, à juger. Plages de touches : 33-96 et 29-88 (les accords ne descendent pas sous la touche 48). |
+| **Karoryfer Sneakybass** (→ prog. 32) | **CC0** (`LICENSE`, rév. `cc1a67e`) | contrebasse pizzicato 32 | 419 Mo source → 0,83 Mo | Contrebasse Otto Rubner 1958, cordes Spirocore, jouée « très doucement » : crête à 0,94 pour −5,3 LU sous GeneralUser, non montable sans écrêter (§ 4). |
+| **Karoryfer Swirly Drums** (→ kits 0, 8, 16, 32, 40) | **CC0** (`license`, rév. `c40dafe`) | kick, caisse claire, charleston, toms ; balais (« stir » sur 38/40 du kit 40) | 1,83 Go source → 4,6 Mo pour les 5 kits | Un seul tour de round-robin ; articulations et keyswitches abandonnés (non représentables en SF2) ; échantillons normalisés. Les 5 kits partagent les mêmes échantillons principaux. |
+| **VCSL** (`sgossner/VCSL`, rév. `c1ea7bc`) : cowbell, bongos, congas, agogo, shakers, claves, guiro | **CC0** (`LICENSE` à la racine) | touches latines GM 56, 60-64, 67-68, 70, 73-75, 82 des 5 kits | 27 Mo sélectionnés | Pas de timbales, cuíca, surdo (touches GM de la base conservées). |
+
+### Examinées et écartées ou non intégrées
+
+| Source | Licence | Décision |
 |---|---|---|
-| [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS/blob/main/documentation/LICENSE.txt), autorisation de redistribution de la banque, réserves sur l'origine de certains samples | GM complet, SF2 de référence déjà distribué ; hash en manifeste | Référence et base de `b1-gu`. Ne pas prétendre que chaque échantillon a une provenance individuelle garantie. |
-| [MuseScore General 0.2 / MS Basic 2.0.0](https://github.com/musescore/MuseScore/blob/main/share/sound/MS%20Basic_License.md), MIT pour l'assemblage et les samples autorisés ; notices de composants à conserver | GM entier, ~216 Mo SF2 / ~40 Mo SF3, piano Splendid public domain, autres emprunts à FluidR3 sous les autorisations indiquées | `ms-basic` et base mélodique de `b1-msb`. MS Basic est la version complète disponible ; MuseScore General 0.2 déjà essayé en L1, sans bénéfice général à l'écoute. Conserver les notices d'amont avant toute distribution. |
-| [FluidR3](https://github.com/musescore/MuseScore/blob/main/share/sound/MS%20Basic_License.md) et notice embarquée du SF2, ~150 Mo | GM, samples d'origines multiples ; certaines notices embarquées portent « DO NOT REDISTRIBUTE ANY OF THESE SAMPLES » | Pas de distribution directe d'une nouvelle banque FluidR3 sans résolution de cette contradiction ; MS Basic sous sa notice propre est l'alternative examinée. |
-| [FreePats](https://freepats.zenvoid.org/licenses.html), vérifier chaque instrument, **CC0** pour ceux importés | 10 SF2 isolées, ~4–393 Mo suivant l'instrument ; prises FreePats de sax ténor, orgues, guitare nylon/jazz/clean/distorsion, basses doigts/médiator | Retenues dans les deux assemblages, détail et empreintes ci-dessous. Le catalogue GM entier mélange d'autres licences (GPL+exception, etc.) et ne couvre pas tout : pas de substitution globale. |
-| [Salamander Grand Piano](https://raw.githubusercontent.com/sfzinstruments/SalamanderGrandPiano/master/README.md), CC BY 3.0 | Piano acoustique seul ; ~99 Mo même en SF3 q4 selon L1, chargement 16–25 s | Écarté : gonfle le web/chargement pour un programme qui n'est pas la faiblesse principale d'E1 ; piano de la base conservé. |
-| [Arachno](https://www.arachnosoft.com/main/soundfont.php?documentation), attribution/permissions de tiers à négocier | GM complet, provenance hétérogène | Écarté : redistribution commerciale non acquise pour tous les samples. |
-| [Timbres of Heaven](https://www.midkar.com/SoundFonts/), permission écrite du créateur exigée | GM complet, ensemble de fontes tierces | Écarté : pas de permission de redistribution dans un jeu fermé. |
-| [SGM V2.01](https://github.com/open-soundfonts/SGM_V2_01_soundfonts/blob/master/LICENSE), miroir GPL-3.0 | GM complet, autre description « attribution only » sur Musical Artifacts | Écarté : droits contradictoires, GPL du miroir incompatible avec le besoin sans permission complémentaire. |
-| [Musyng Kite](https://www.kvraudio.com/forum/viewtopic.php?t=351893), fil de l'auteur | GM d'environ 990 Mo ; provenance et droit de redistribution des samples non vérifiables | Écarté ; ne pas inférer le droit d'embarquer une banque à partir d'un téléchargement gratuit. |
-| [Sonivox EAS](https://github.com/EmbeddedSynth/sonivox/blob/master/README.md), Apache-2.0 pour le projet | Synthèse/table d'ondes et samples embarqués dans du code, pas banque GM SF2/SF3 prête à charger | Écarté pour l'essai oxisynth : changer de moteur ou extraire la table ne répond pas au brief. |
-| [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/), CC0 | Orchestre SFZ (~3 Go), sections de cuivres et solistes classiques, pas stabs de big band/section funk | Examiné ; écarté du paquet pour poids et pertinence. Les cuivres GM restent de la base, limite d'écoute signalée. |
-| [VCSL — Versilian Community Sample Library](https://github.com/sgossner/VCSL/blob/master/LICENSE), CC0 | Percussions isolées ; sélection locale ~163 Mo, bongos/congas, cloche, agogo, shaker, clave, guiro | Retenue pour les touches GM disponibles des kits assemblés. Ne contient pas de surdo GM ni de cuica/timbales isolées vérifiées : touches correspondantes de la base conservées. |
-| [jRhodes3d](https://raw.githubusercontent.com/sfzinstruments/jlearman.jRhodes3d/master/LICENSE), CC BY-NC | Vrai Rhodes SFZ, environ quelques centaines de Mo | Écarté : clause NC interdit l'usage commercial demandé. |
-| [Greg Sullivan E-Pianos](https://raw.githubusercontent.com/sfzinstruments/GregSullivan.E-Pianos/master/README.md), CC BY 3.0, attribution obligatoire | Wurlitzer EP200 et Pianet T, ~21 Mo de source | Retenus sur programmes GM 4 (EP1) et 7 (clavinet), **substituts de timbre**, non pas un Rhodes ou un Clavinet D6. Aucun vrai Rhodes libre et redistribuable trouvé. |
-| [FreePats guitares](https://freepats.zenvoid.org/ElectricGuitar/clean-electric-guitar.html) ; [distorsion](https://freepats.zenvoid.org/ElectricGuitar/distorted-electric-guitar.html), CC0 sur les instruments retenus | Jazz 26, clean 27, distorsion 29/30 ; nylon 24 ; jusqu'à ~393 Mo SF2 distorsion | Retenues. Le programme muted 28 reste celui de la base (autres SFZ testés, trop fort au niveau de référence). Overdrive 29 et distorsion 30 partagent la même prise : limite de variété. |
-| [Karoryfer Sneakybass](https://raw.githubusercontent.com/sfzinstruments/karoryfer.sneakybass/main/readme.txt), CC0 | ~419 Mo source, contrebasse pizzicato 32 | Retenue. Les basses électriques FreePats 33/34 ; slap 35 et fretless 36 demeurent ceux de la base. Black and Blue Basses CC0 testé puis retiré : niveau disproportionné sur les rendus E1. |
-| [Karoryfer Swirly Drums](https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/main/license), CC0 | ~1,83 Go source, batterie acoustique SFZ : caisse, grosse caisse, cymbales, charley, toms, balais « stir » | Retenue, échantillons sélectionnés dans les kits GM 0/8/16/24/25/32/40 ; autres touches des kits de base. Une seule variante de round-robin pour éviter des articulations non représentables dans SF2. |
-| [MuldjordKit](https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html), CC BY 4.0, attribution | SF2 ~209 Mo, touches de batterie hors placement GM attendu (48–66), ~53 Mo d'archive | Écarté : exige remappage substantiel et ajoute du poids sans kit jazz/latin distinct. |
-| [Salamander Drumkit](https://sfzinstruments.github.io/drums/salamander), CC BY-SA 3.0 | Batterie acoustique SFZ | Écarté : banque recomposée dérivée soumise au partage à l'identique ; à signaler dans un jeu fermé. |
-| [AVL Drumkits](https://github.com/x42/avldrums.lv2/blob/master/sf2/README), CC BY-SA 3.0, exception sur les enregistrements de musique produite | Kits SF2 et LV2 | Écarté : exception pour l'audio généré ≠ autorisation de redistribuer une banque dérivée fermée. |
-| [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums), CC0 ; [Big Rusty Drums](https://github.com/sfzinstruments/karoryfer.big-rusty-drums), CC0 | SFZ batteries d'environ 1,2 et 2,3 Go | Libres mais écartées pour le coût de conversion/téléchargement et le faible gain démontré face au kit acoustique déjà choisi. |
+| FluidR3 GM seule | MIT au README, mais « DO NOT REDISTRIBUTE » dans le champ commentaire du SF2 (L1 § 3) | Écartée : MS Basic a le même contenu hors piano. |
+| MuseScore General 0.2 | MIT (L1) | Même contenu qu'MS Basic hors piano ; sans bénéfice à l'écoute en L1. |
+| Salamander Grand Piano | CC BY 3.0 | Piano non faible ; 99 Mo en SF3, chargement 16-25 s (L1 § 6). |
+| Arachno ; Timbres of Heaven ; SGM ; Musyng Kite | non commercial ; permission écrite exigée ; droits contradictoires ; provenance non vérifiable (L1 § 5) | Écartées. |
+| Sonivox EAS | Apache-2.0 pour le code | Table d'ondes embarquée, pas une banque SF2/SF3 chargeable dans oxisynth. |
+| VSCO 2 CE (CC0) | CC0 | Orchestral (cuivres classiques), ~3 Go SFZ ; pas de stabs de jazz ni de section funk. Cuivres de la base conservés. |
+| **jRhodes3d / jRhodes3c** | **CC BY-NC(-SA)** (dépôt, catalogue) | Écartées : NC. **Aucun vrai Rhodes libre de redistribution trouvé.** |
+| MuldjordKit ; DRS Kit ; Naked Drums | CC BY 4.0 (catalogue) | Pas de kit à balais ; MuldjordKit hors placement GM (touches 48-66), 209 Mo. Non intégrés. |
+| Salamander Drumkit ; AVL Drumkits ; Sam's Sonor | CC BY-SA 3.0 / 3.0 / 4.0 | Écartées : SA sur une banque dérivée livrée fermée. |
+| **SM Drums** | « Public Domain », 2,2 Go+ (catalogue ; licence non relue à l'archive) | Non intégré : poids ; à relire si Swirly déçoit. |
+| Virtuosity Drums ; Big Rusty ; Unruly ; Frankensnare | CC0 (dépôt, GitHub API) | Libres, 0,3 à 2,3 Go ; pas de balais ; non intégrés. Piste si le kit de Swirly déçoit. |
+| **Karoryfer Black and Green Guitars, Shinyguitar, Emilyguitar** | CC0 (dépôt, GitHub API) | **Piste non explorée pour la guitare de jazz 26** : deux guitares hollowbody (Black and Green) et une archtop (Shinyguitar), 98 à 443 Mo de SFZ. FreePats FSBS « jazz » est une Fender de base enregistrée en direct puis passée dans un ampli et un rack d'effets (README de l'archive) : pas une guitare creuse. À monter si William trouve la 26 de `b1-gu` insuffisante. |
+| Karoryfer Fashionbass, Pastabass, Growlybass, Swagbass, Black and Blue Basses | CC0 (dépôt, GitHub API) | Basses électriques ; Black and Blue testée en B1-ovh puis retirée (niveau disproportionné). Non intégrées. |
+| Karoryfer Bear Sax, Weresax (CC0) ; MTG Solo Sax (CC BY 4.0) | catalogue / dépôt | Alternatives au sax FreePats ; non intégrées. |
+| Accurate-Salamander ; Headroom Piano ; LivingRoom Upright | CC BY ; CC BY 4.0 ; CC BY-SA 4.0 (catalogue) | Piano non faible ; non intégrés. |
+| Kits ripés de claviers (Yamaha, Roland, Korg), Mike77154, Studio Rhodes LA, « Rhodes Electric Piano » (Pianoteq) | copyright, NC, licences floues (L1 § 5) | Écartés. |
 
-### Construction reproductible et manifeste
+**Pas de solution libre pour** : Rhodes réel, clavinet réel, guitare muted (28), slap (36), fretless (35), cuivres de section
+(61), timbales, cuíca, surdo, pandeiro. Ces programmes restent ceux de la banque de base : **ne pas les présenter comme résolus**.
 
-Outils **hors moteur** dans [`b1-outils/`](b1-outils/) : `assemble.py`, `sfzlib.py`, `sf2build.py`, `measure.py` ; Python avec `numpy scipy soundfile`, `ffmpeg`, `oggenc`. `sf2build.py` adapte le fusionneur PCM 16 bits de [l'annexe L1](../019-bibliotheque-accompagnements/l1-annexe-outils.md) : conserve tous les presets non remplacés, copie les banques sources FreePats, convertit les zones SFZ ; kits de la base avec les seules touches sélectionnées remplacées. Les touches hors zone FreePats sont étendues aux extrêmes, sans nouveau programme côté moteur. Les SFZ perdent les round-robins, certaines nuances/CC, et les effets qui n'ont pas d'équivalent SF2 ; l'interprétation est donc une **conversion d'essai**, pas l'instrument original. Swirly est normalisé par couche de vélocité avec au plus +18 dB (+36 dB au plus pour les grosses caisses de faible vélocité, crête ciblée à 0,85), VCSL au plus +24 dB ; guitares 27 à -5 dB, 29/30 à -8 dB. Ce sont des changements de sample/preset dans la banque, **aucun** `mix` de profil modifié. Les kits `b1-msb` réemploient le socle de kits GU pour isoler la comparaison des instruments mélodiques ; `ms-basic` est entièrement d'origine.
+## 2. Chargement et taille
 
-Pour reconstruire : déposer les SF2 FreePats extraits dans `<ROOT>/sf2/<nom-archive>/*.sf2`, MS Basic dans `<ROOT>/dl/MS_Basic-v2.0.0.sf2`, les répertoires zip GitHub dans `<ROOT>/src/<dépôt>/<dépôt>-HEAD/` et les WAV sélectionnés de VCSL dans `<ROOT>/src/vcsl/`, puis, depuis le répertoire des scripts, lancer `H020_B1_ROOT=<ROOT> H020_B1_GU=<GENERALUSER> python assemble.py gu` et `… python assemble.py msb`. Résultats `<ROOT>/merged/b1-{gu,msb}.sf2`. Stocker les sources elles-mêmes **hors dépôt** ; vérifier leur empreinte avant toute distribution. Le nom de banque final est `GeneralUser-GS.sf2` pour le studio. Conversion du SF3 q4 (qualité du studio) par `python harmonium_studio/scripts/sf2_to_sf3.py <sf2> <sf3> 4`.
+Toutes les banques se chargent dans oxisynth (SF2 et SF3 q4), **rendus hors ligne sans erreur** (`harmonium-cli --export`, code 0,
+aucune ligne d'avertissement) : 13 profils × (mix + 4 pistes en solo) en SF2 pour chaque candidate, 13 mix en SF3 q4 pour
+chacune ; les notes MIDI sont identiques entre banques sur les 65 rendus (SHA-256). Le mix SF3 q4 s'écarte du mix SF2 de 0,1 LU au plus
+(0,2 pour `ms-basic`). Conversion : `harmonium_studio/scripts/sf2_to_sf3.py` (qualité 4 du studio ; qualité 8 en plus pour comparer) ;
+celle de GeneralUser GS redonne le SHA-256 de `web-resources.json` (`290b0081…`).
 
-Empreinte de l'archive SF2 telle qu'utilisée, SHA256 ; toutes les fontes FreePats ci-dessous sont CC0 sous la notice de leur page d'instrument, pas sous une licence supposée pour l'ensemble du catalogue :
+| Banque | SF2 (octets) | SF3 q4 (octets) | SF3 q8 (octets) | SF3 q4 + trad (octets) | Décodage SF3 q4 (rendu 2 mesures, Mac) |
+|---|---:|---:|---:|---:|---:|
+| GeneralUser GS (réf.) | 32 319 396 | 7 620 750 | — | 7 774 936 | 1,9 s |
+| `ms-basic` | 215 641 790 | 26 826 196 | 40 073 962 | 26 980 382 | 5,6 s |
+| `b1-gu` | 607 751 490 | **53 881 154** | 87 287 974 | 54 035 340 | **12,1 s** |
+| `b1-msb` | 786 710 192 | **72 884 902** | 116 309 530 | 73 039 088 | **15,6 s** |
+| (variante de mesure) `b1-gu` sans 29 et 30 | 215 062 760 | 23 602 178 | — | 23 756 364 | 6,4 s |
 
-| Source FreePats | SHA256 du SF2 |
+La banque trad (`harmonium_trad.sf2`, 154 186 octets) est téléchargée en plus. Le web télécharge **et décode** la banque : coûts
+mesurés avec le CLI natif ; le décodage en wasm est plus lent [INFERENCE, non mesuré].
+
+**Où va le poids de `b1-gu`** (SF3 q4, octets du flux Vorbis des échantillons du preset, mesurés dans l'en-tête) : **guitare saturée
+dist2 (29 et 30, même échantillons) 30,2 Mo sur 53,9** ; sax 3,2 ; kits Swirly + VCSL 4,6 pour les cinq ; nylon 1,6 ; Pianet 1,4 ;
+orgue rock 1,3 ; reste de chaque preset < 1 Mo. Le piano de MS Basic ajoute 10,1 Mo à `b1-msb`. **La question de poids est donc
+celle de dist2** : sans 29 et 30, `b1-gu` pèse 23,6 Mo (décodage 6,4 s) ; avec, 53,9 Mo. Les programmes 29 et 30 ne jouent que
+dans `gmd_rock` et `gmd_blues_shuffle` de la liste E1.
+
+## 3. Construction des banques (reproductible)
+
+Base + presets importés + kits recomposés, écrits par `b1-outils/assemble.py` (`sf2build.py` : fusionneur PCM 16 bits de l'annexe L1,
+avec zones SFZ converties par `sfzlib.py`). Python avec `numpy scipy soundfile` (venv du labo), `ffmpeg`, `oggenc`.
+
+| Programme (GM, 0-based) | Source | Niveau (gain appliqué pour ramener à GeneralUser GS) |
+|---|---|---|
+| 4 (EP) | Wurlitzer EP200 (SFZ, 48 zones) | −2,6 dB |
+| 7 (clavinet) | Hohner Pianet T (33 zones) | 0 |
+| 16, 17, 18 (orgues) | FreePats Drawbar / Percussive / Rock | 0 ; −2,1 ; −1,6 |
+| 24 (nylon) ; 26 (jazz) ; 27 (claire) | FreePats Spanish Classical ; FSBS jazz ; FSBS clean (bridge small) | −2,3 ; −1,4 ; −6,1 |
+| 29, 30 (overdrive, distorsion) | FreePats FSBS dist2 (un seul preset d'échantillons pour les deux) | −5,0 |
+| 32 (contrebasse) | Sneakybass pizzicato (40 zones) | 0 (voir § 4) |
+| 33, 34 (basse doigts, médiator) | FreePats Finger / Picked Bass YR | −1,6 ; −1,4 |
+| 66 (sax ténor) | FreePats Tenor Saxophone | −8,9 dB |
+| kits 0, 8, 16, 32, 40 (128:n) | Swirly (kick 35-36, caisse claire 38/40, charleston 42/44/46, toms 41-50, cymbales 49/51/53 ; balais « stir » 38/40 du kit 40) + VCSL (touches latines) sur le reste du kit de la base (GeneralUser même dans `b1-msb`) | voir § 4 |
+| **inchangés** : 0, 3, 21, 25, 28, 35, 36, 38, 61, kits 24 et 25 | banque de base | — |
+
+Les kits **électroniques 24 et 25 restent ceux de la banque de base** : les remplacer par un kit acoustique aurait supprimé le
+timbre voulu de `gmd_funk`, `gmd_reggae` et `gmd_pop`. Les gains viennent de `palette.py` (un programme à la fois, mêmes notes,
+brute puis finale ; `b1-mesures.md`) ; seuls les **abaissements** sont appliqués (monter un échantillon PCM 16 bits déjà à pleine
+crête l'écrêterait). `b1-gu` = base GeneralUser GS ; `b1-msb` = base MS Basic (piano de concert 144 échantillons, accordéon,
+acier, muted, fretless, slap, synth, section, kits 24 et 25 de MS Basic) avec les mêmes presets importés.
+
+```sh
+R=/tmp/h020-b1; mkdir -p $R/{dl,sf2,src,merged,sf3,render}   # sources hors dépôt ; ~2,5 Go
+# FreePats : 10 archives SF2 (URLs : pages d'instruments du § 1), bsdtar -xf dans $R/sf2/<archive>/, un seul .sf2 par dossier
+# GitHub, révisions figées : GregSullivan.E-Pianos 8c3e581, karoryfer.sneakybass cc1a67e, karoryfer.swirly-drums c40dafe
+#   (https://codeload.github.com/sfzinstruments/<dépôt>/zip/<rév>) dans $R/src/<dépôt>/ ;
+# VCSL c1ea7bc : git clone --filter=blob:none --no-checkout, puis `git checkout c1ea7bc -- <fichiers .wav des dossiers
+#   Agogo Bells, Bongos, Conga, Cowbells, Guiro, Claves, Shaker Small/Large>` copiés dans $R/src/vcsl/ (+ LICENSE)
+curl -sSL -o $R/dl/MS_Basic-v2.0.0.sf2 https://github.com/Meowchestra/SoundFonts/releases/download/v2.0.0/MS_Basic-v2.0.0.sf2
+cd specs/020-qualite-des-styles/b1-outils; export H020_B1_ROOT=$R H020_B1_GU=$R/dl/generaluser.sf2 H020_B1_REPO=<worktree>
+PY=~/Project/bascanada/harmonium_lab/.venv/bin/python
+$PY assemble.py gu; $PY assemble.py msb                # $R/merged/b1-{gu,msb}.sf2 (déterministe : même SHA-256 à la reconstruction)
+$PY seeds.py 40 && $PY palette.py … && $PY measure.py b1-gu $R/merged/b1-gu.sf2 && $PY report.py   # mesures et liens
+python3 manifest.py                                    # empreintes
+python3 harmonium_studio/scripts/sf2_to_sf3.py $R/merged/b1-gu.sf2 $R/sf3/b1-gu-q4.sf3 4
+```
+
+### Manifeste (principe VII)
+
+Tous les fichiers sont hors dépôt ; ces empreintes valent pour **ces fichiers précis** (reconstruits ici, sur ce Mac ; elles diffèrent de
+celles du premier essai sur `ovh-inner`, dont les banques ont été refaites). Arbres de fichiers : SHA-256 des couples
+`chemin UTF-8 + NUL + SHA-256 hexadécimal du fichier`, chemins triés (authentifie aussi README et licences).
+
+| Archive FreePats (CC0), SF2 extrait | SHA-256 |
 |---|---|
-| EGuitarFSBS clean bridge small | `bcea7d4c92a1cc6a26e545a218b34e59037d4bab6cf0fce24396428e6934d69c` |
-| EGuitarFSBS dist2 | `0ed99135d955940c1200e09ca9e36e261dfebbe8767ae58da6f298fe29fdd146` |
-| EGuitarFSBS jazz bridge small | `d2090931a0339ba6b60c6713bc6d701393d3a420c20e56ad69a8d50de645135d` |
-| FingerBassYR | `f5b5cfe04435a9e9037d1f97d515dc596535acf26637db9579d724cd757f179e` |
-| PickedBassYR | `e6bff767c352cd27de2de8cfff326d0849a76bb38d876075eecd5ffd2dc5afd0` |
-| SpanishClassicalGuitar | `8c192f1fc640a553199a4a43a17ae12354a6a05e3d6aad79bd43b5d29314ff51` |
-| DrawbarOrgan | `9b41fa8418f6f1a14924381bc6ccbddbb665bbec2b5f46d4ab549e8d88a2e178` |
-| PercussiveOrgan | `42c4e000444c0cef2264392e8ef00818784a1ec2fb49936c394bebbe4720062c` |
-| RockOrgan | `5be252317cc511d0d92e94b07e2289540b57e4381ec34b26392e685f9b1d505d` |
-| TenorSaxophone | `f7640cf2039662b15b4521bb5615e1ddc426731559b4c31079cb5e9f50e16fa0` |
+| `DrawbarOrganEmulation-20190712.sf2` | `200b7d762fb1d4d7dbee34760a768319c7548e94b1a6ba76108f0702888b33ce` |
+| `PercussiveOrganEmulation-20190715.sf2` | `468bd7a250849002afc28e28d11579e62b26a291e64724047d7880d3b149e9ab` |
+| `RockOrganEmulation-20190715.sf2` | `994f79822699ca17174641864583ec8d32042c188ec85dcc90c28d29830eddf9` |
+| `SpanishClassicalGuitar-20190618.sf2` | `0d4c08ea8c1c8924b3829084b0c8778f6d6b906f331e44fde51bc159f76b03b9` |
+| `EGuitarFSBS-jazz bridge small 20260807.sf2` | `1baca0ebb66627bbd4c08d4137c41728253588ce85504ed5148f06ea7c000d22` |
+| `EGuitarFSBS-clean bridge small 20260807.sf2` | `a58803acd8640a06a0a1a277a16ff4cd2610d9eab5fd6793741db4730c12f594` |
+| `EGuitarFSBS-dist2 bridge 20220911.sf2` | `2859f619d97de590fe94bf57102b741eacefd2782de22a88b7e26a4de512d488` |
+| `FingerBassYR 20190930.sf2` | `bd1332696f61c0cb254ce7f202fb6b945ff46ccb1dcdd62e345a50bde3afb165` |
+| `PickedBassYR 20190930.sf2` | `b16f6666486f42c6c4bde19a62462f0cda8b0f1d0ce72ad8ec51a557118d03ae` |
+| `TenorSaxophone-20200717.sf2` | `3b4f4cdabe5c9a9825cd0dd1469a35117b86876256a089bba5f97d4abf1e9b46` |
 
-Pour les arbres SFZ, SHA256 calculé en triant les chemins relatifs et en ajoutant pour chaque fichier `chemin UTF-8 + NUL + SHA256(octets du fichier)` dans le hachage final. Cela authentifie aussi README/licences présents dans l'arbre, sans stocker les WAV sous Git :
+| Arbre GitHub (révision) | Fichiers ; octets | SHA-256 de l'arbre |
+|---|---|---|
+| `sfzinstruments/GregSullivan.E-Pianos` (`8c3e581acda3594b553948ff0222d4f84a698376`), CC BY 3.0 | 178 ; 21 484 396 | `d9b2f9a006067ab1959948b3be936a7d99ed4c4488aff34cf24457a72485e32d` |
+| `sfzinstruments/karoryfer.sneakybass` (`cc1a67e5c913678b85eaad1a3b5cb180d3be3e2d`), CC0 | 715 ; 418 713 231 | `f8a60cd27c662f05d314803839b4542efa143d6e32bcab3a5c80e4fa18ba9dc3` |
+| `sfzinstruments/karoryfer.swirly-drums` (`c40dafe0011cb2e54c0c220ff0fa308a11fc60f5`), CC0 | 5 103 ; 1 826 949 043 | `dd1c0ab519d4608bec527c8aba60c5e3d6d80a9abdcca38f1b6ecc55db00dac6` |
+| `sgossner/VCSL` (`c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e`), CC0, sous-arbre des 8 familles + `LICENSE` | 139 ; 27 438 088 | `fb5c5800c540ae6ba4867c35fb3083493f39dcbd9726cdb6d9afc1762cd082ac` |
 
-| Arbre GitHub ; révision | Nombre de fichiers, octets ; SHA256 de l'arbre |
+| Fichier | Octets | SHA-256 |
+|---|---:|---|
+| GeneralUser GS 2.0.3 (= `assets/`) | 32 319 396 | `9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe` |
+| `harmonium_trad.sf2` (identique dans chaque dossier) | 154 186 | `4dc8159837b44c754d3bac9eb645e6fb85e53983d9e52a551f8256b67ef28443` |
+| MS Basic 2.0.0 SF2 (`ms-basic/GeneralUser-GS.sf2`) | 215 641 790 | `f4ed62be6986e70438c995c03fb457610c75d01976bdc3248da9d0cc43a5613c` |
+| `b1-gu` SF2 | 607 751 490 | `6b0fc769308d81c1ef0d14845f954b14720a39fe64840a7073932a6e8d559b4c` |
+| `b1-msb` SF2 | 786 710 192 | `79e0f2fc80c7d36928c875687a57f14277147a512cd2ad750c5116aebc86e5b4` |
+
+SF3 q4 complets : `ms-basic` `59ef8e01fec5a5e27f3915014df0a4d5bb50f62c17d62bfaa91c7384c4bcb594` ; `b1-gu`
+`b367c389c4c4f6f40c04c50616359e9cda0102948fe01e2e2147252ab1e725bf` ; `b1-msb`
+`5cadf34e3a72c451a562050ce6b1fc9bdc8a0ea8cb0683e3876486990e36ec91`. Les SF3 ne sont pas dans les dossiers d'écoute (le
+studio lit le SF2 local ; le SF3 chiffre le futur téléchargement).
+
+**Licences à livrer avec une banque retenue** : texte MIT et notices de MS Basic (`ms-basic`, `b1-msb`) ou licence GeneralUser GS
+(`b1-gu`) ; **crédit CC BY 3.0 : Greg Sullivan** (Wurlitzer, Pianet) ; les modules CC0 n'imposent rien. Aucun avis juridique :
+lecture des textes de licence.
+
+## 4. Niveaux : mesures et corrections de mix proposées (non appliquées)
+
+Le mixage de chaque profil est calibré sur GeneralUser GS. LUFS par piste en solo et écarts à GeneralUser GS, mêmes notes
+(MIDI identiques), 64 mesures à la graine du lien d'écoute, méthode de L1 § 8 : **tableaux complets par profil dans
+[`b1-mesures.md`](b1-mesures.md)** (LUFS, écarts, crêtes, nouveau `level_db` proposé pour `Chords`, `Bass`, `PercussionLow`,
+`PercussionHigh`, par banque).
+
+Écart au mix complet (LU, candidate − GeneralUser GS) et crête, sur les 13 profils :
+
+| Banque | mix | accords | basse | perc. grave | perc. aiguë | pire crête du mix |
+|---|---|---|---|---|---|---|
+| `ms-basic` | **+0,6 à +7,7** | −3,1 à +8,1 | −0,9 à +4,7 | **+2,4 à +8,4** | −3,9 à **+14,8** | **+8,3 dBFS** (bossa) ; 5 profils au-dessus de 0 dBFS, 9 au-dessus de −1 |
+| `b1-gu` | −3,3 à +2,2 | −2,0 à +3,5 | **−5,0 à +1,2** | **−10,1 à 0** | −10,6 à +4,4 | −1,1 dBFS (bossa) |
+| `b1-msb` | −3,5 à +2,2 | −2,4 à +3,5 | −5,0 à +1,2 | −10,1 à +2,7 | −10,6 à +4,4 | −1,1 dBFS (bossa) |
+
+GeneralUser GS lui-même atteint +0,4 dBFS (funk, afro-cubain) avec ces mixages.
+
+Lecture :
+- **`ms-basic` brute n'est pas écoutable aux niveaux actuels** : ride et charleston jusqu'à +14,8 LU, grosse caisse jusqu'à
+  +8,4, écrêtage (5 profils). Il faudrait rabaisser la batterie jusqu'à environ 13 dB (tableau « Correction de mix proposée »
+  de l'annexe). C'est le contrôle « autre banque GM », pas un candidat de production.
+- **`b1-gu` et `b1-msb`** : chaque preset importé est ramené à GeneralUser GS en palette (accords : écart ≤ 1,1 LU, clavinet −1,1 ;
+  `palette.py`). **La palette n'est pas le profil** : au mix d'un profil les accords restent jusqu'à +3,5 LU (bossa) au-dessus de GeneralUser,
+  car le registre et les voicings du profil ne sont pas ceux du balayage. Restent aussi : **contrebasse 32 : −5,3 LU** en palette
+  (Sneakybass, non montable sans écrêter ; −1,7 à −5,0 au mix des profils où elle joue) ; **grosse caisse et caisse claire de Swirly :
+  −4 à −10 LU** (0 pour `gmd_reggae`, dont le kit 24 est inchangé) ; ride et charleston de +4,4 (bossa, swing) à −10,6 (soul)
+  selon le motif du profil. Proposition, profil par profil (annexe) : `Bass` +1,7 à +5 dB là où joue la contrebasse,
+  `PercussionLow` +4 à +10 dB, `PercussionHigh` de −4 à +10 dB ; vérifier la crête après.
+- `gmd_reggae` : `b1-gu` joue le kit 24 inchangé (écart 0,0) ; `b1-msb` utilise le kit 24 de MS Basic (+2,7 / +2,2).
+- **La palette sur `wjazzd_swing` ne dit pas tout du mix par profil** : l'habillage tire des programmes différents selon la graine,
+  donc un même profil joue plusieurs programmes ; les corrections par profil de l'annexe valent pour la graine du lien.
+
+## 5. Prêt pour l'écoute de William (D7)
+
+Dossiers (SF2 hors dépôt, nom `GeneralUser-GS.sf2`, plus le même `harmonium_trad.sf2`) :
+
+| Dossier `~/orca/harmonium-020/b1/` | Contenu |
 |---|---|
-| `sfzinstruments/GregSullivan.E-Pianos` `8c3e581acda3594b553948ff0222d4f84a698376` | 178 ; 21 484 396 ; `8bf952064c83ac86e63d052688eb6ba9bed2f8c24e00eabd8cd3537c88051fa9` |
-| `sfzinstruments/karoryfer.sneakybass` `cc1a67e5c913678b85eaad1a3b5cb180d3be3e2d` | 715 ; 418 713 231 ; `42abd5e08970bca64c9b91f96722c9789a4ae513a59ff59cd32d965eb5bb8462` |
-| `sfzinstruments/karoryfer.swirly-drums` `c40dafe0011cb2e54c0c220ff0fa308a11fc60f5` | 5 103 ; 1 826 949 043 ; `b09752235efcf8c5a244613e632f111e53b5d1e6599c163201a1064280da2d2e` |
-| `sgossner/VCSL` `c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e` ; sous-arbre WAV sélectionnés | 354 ; 163 373 032 ; `82e65c4344a912ffec2f0ca31742aedb564500c9de4fe7fe1627489e2cfc6509` |
+| `gu/` | **Référence** : GeneralUser GS d'origine (SHA-256 `9575028c…` = `assets/`). |
+| `ms-basic/` | MS Basic 2.0.0 intact (contrôle). **Baisser la batterie** pour l'écouter (§ 4). |
+| `b1-gu/` | GeneralUser GS + programmes FreePats / Wurlitzer / Pianet / Sneakybass + kits Swirly et percussions VCSL. **Candidate principale.** |
+| `b1-msb/` | Idem sur base MS Basic : ajoute surtout le piano de concert, accordéon, acier, section. |
 
-La licence de chaque composant incorporé doit accompagner la redistribution finale (MIT/CC BY 3.0/CC0 et éventuelles notices de GeneralUser et de MS Basic). Pas de SF2/SF3/WAV dans Git. Attribution explicitement requise pour Greg Sullivan et pour les éléments MS Basic concernés.
+Ouvrir un dossier à la fois, **les mêmes liens dans le même ordre** pour `gu/` puis chaque candidate. Graine choisie par
+`b1-outils/seeds.py` : celle (de 1 à 40) dont l'habillage expose le plus de couples (rôle, programme) concernés par B1 sur les
+64 premières mesures ; « mesure n » = première mesure où le programme joue. Les graines dépendent de l'habillage de `main` à
+`9937b3c` : si Q0 ou S1 le changent, **refaire `seeds.py`** avant d'écouter. Le studio affiche les mesures ; si le tempo
+de la graine le permet, écouter d'abord la mesure 1 puis les mesures citées.
 
-## Trois dossiers prêts pour le studio
+| Lien | Programmes exposés (mesure n) | Ce qu'il faut écouter |
+|---|---|---|
+| [wjazzd_swing](harmonium://open?profile=wjazzd_swing&seed=32) | orgue perc. 17, contrebasse 32, kit balais 40 (1) ; guitare jazz 26, kit jazz 32 (45) | Contrebasse de Sneakybass contre celle de GeneralUser (4 échantillons) : attaque, longueur de note, présence en bas ; caisse claire aux balais (« stir » de Swirly, mesure 1) puis ride et caisse claire du kit jazz (mesure 45) ; guitare 26 : timbre de comping. |
+| [wjazzd_ballad](harmonium://open?profile=wjazzd_ballad&seed=1) | orgue 16, contrebasse 32, balais 40 (1) ; kit jazz 32 (33) | Orgue drawbar FreePats (setBfree) contre celui de GeneralUser ; balais sur tempo lent ; contrebasse. |
+| [gmd_jazz_waltz](harmonium://open?profile=gmd_jazz_waltz&seed=2) | orgue 16, basse fretless 35 (inchangée), balais 40 (1) ; kit jazz 32 (33) | Orgue et balais ; la basse 35 n'est **pas** remplacée (témoin). |
+| [gmd_latin_brazilian_bossa](harmonium://open?profile=gmd_latin_brazilian_bossa&seed=24) | guitare jazz 26, contrebasse 32, balais 40 (1) ; kit jazz 32 (17) ; **Wurlitzer 4 (49)** ; **nylon 24 (65)** | Nylon FreePats contre GeneralUser ; Wurlitzer ; percussions latines VCSL (cloche, bongo, conga, claves). |
+| [gmd_latin_brazilian_samba](harmonium://open?profile=gmd_latin_brazilian_samba&seed=6) | nylon 24, contrebasse 32, balais 40 (1) ; Wurlitzer 4, kit standard 0 (17) ; acier 25 (inchangé), kit power 16 (49) | Énergie des accents (batterie Swirly −7 à −9 LU sous GeneralUser : le motif sera plus faible) ; manque de surdo et de cuíca (non résolu). |
+| [gmd_latin_brazilian_baiao](harmonium://open?profile=gmd_latin_brazilian_baiao&seed=7) | nylon 24, contrebasse 32, balais 40 (1) ; kit room 8 (17) | Poids de la grosse caisse (−6 LU) ; cohérence avec les syncopes. |
+| [gmd_afrocuban](harmonium://open?profile=gmd_afrocuban&seed=6) | nylon 24, contrebasse 32, balais 40 (1) ; kit room 8 (17) ; **section de cuivres 61 (49)** | Section 61 **non remplacée** (limite) ; claves, bongos, congas de VCSL sans masque. |
+| [gmd_funk](harmonium://open?profile=gmd_funk&seed=1) | muted 28 (inchangé), basse doigts 33, kit power 16 (1) ; **Pianet 7, slap 36 (inchangé) (49)** ; **guitare claire 27 (65)** | **Pianet à la place du clavinet** : l'attaque funk y est-elle ? Basse doigts FreePats ; guitare claire FSBS contre GeneralUser ; kit power de Swirly. |
+| [gmd_soul](harmonium://open?profile=gmd_soul&seed=1) | **Pianet 7**, basse doigts 33, kit room 8 (1) ; **Wurlitzer 4 (49)** | Wurlitzer EP200 contre « Tine EP » : le seul son proche d'un piano électrique de soul ; basse 33. |
+| [gmd_reggae](harmonium://open?profile=gmd_reggae&seed=7) | muted 28 (inchangé), basse 33, kit électronique 24 (inchangé) (1) ; guitare claire 27 (17) | Contretemps secs 28 puis 27 ; basse 33 YR. Le kit 24 est celui de la base. |
+| [gmd_rock](harmonium://open?profile=gmd_rock&seed=2) | guitare claire 27, basse médiator 34, kit standard 0 (1) ; **orgue rock 18, kit room 8 (17)** | Basse au médiator ; orgue rock ; kit Swirly standard puis room. |
+| [gmd_pop](harmonium://open?profile=gmd_pop&seed=3) | guitare claire 27, basse 33, kit standard 0 (1) | Peu de programmes exposés (score 3 sur les 40 graines) : sert de témoin pour le changement de basse et de batterie. |
+| [gmd_blues_shuffle](harmonium://open?profile=gmd_blues_shuffle&seed=7) | contrebasse 32, kit standard 0 (1) ; orgue 16 (13) ; guitare claire 27 (25) ; **overdrive 29, basse médiator 34 (37)** | Guitare saturée dist2 contre GeneralUser (celle qui pèse 30 Mo : vaut-elle son poids ?) ; orgue 16 ; contrebasse 32. |
 
-| Banque / dossier `~/orca/harmonium-020/b1/` | Contenu et intention | SF2 (octets) | SF3 q4 (octets, banque générale) |
-|---|---|---:|---:|
-| `ms-basic/` | MS Basic 2.0.0 intact, contrôle « autre banque GM » | 215 641 790 | 26 825 958 (conversion q4 ; SF3 du miroir q8 : 39 926 686) |
-| `b1-gu/` | GeneralUser + programmes isolés, kit Swirly/VCSL | 607 766 210 | 53 710 982 |
-| `b1-msb/` | MS Basic mélodique + mêmes programmes isolés et kits sur socle GU | 785 939 234 | 72 626 426 |
+La mesure 1 d'un lien est celle de l'habillage tiré ; les programmes « (n) » apparaissent à la mesure n du premier air
+(`--record-truth`, 64 mesures) et peuvent revenir ensuite selon l'arc.
 
-Chaque dossier contient `GeneralUser-GS.sf2` et **le même** `harmonium_trad.sf2` (154 186 octets ; SHA256 `4dc8159837b44c754d3bac9eb645e6fb85e53983d9e52a551f8256b67ef28443`). Le studio consomme le SF2 local, tandis que la taille du SF3 chiffre le futur transfert web ; ce sont deux fichiers alternatifs, pas à additionner. Si le client web télécharge aussi la banque trad, le coût total des SF3 q4 + trad est de 26 980 144 / 53 865 168 / 72 780 612 octets respectivement (`ms-basic` / `b1-gu` / `b1-msb`), contre 7 774 936 octets pour GeneralUser GS q4 + trad selon L1. Les SF3 mesurés ne sont pas placés dans les dossiers d'écoute. Toutes les tailles et empreintes ne valent que pour ces fichiers précis :
+**À écouter dans chaque lien, dans cet ordre** : (1) la basse (32/33/34) ; (2) la batterie (kick, caisse claire, charleston) ;
+(3) les accords (guitare, orgue, EP) ; (4) les percussions latines. Comparer `gu/` à `b1-gu/` d'abord ; `b1-msb/` ne diffère de `b1-gu/`
+que par le piano (0), l'accordéon, l'acier, le muted, le slap, le fretless et la section ; `ms-basic/` d'abord avec la batterie
+rabaissée.
 
-| Fichier de banque | SHA256 |
-|---|---|
-| `ms-basic/GeneralUser-GS.sf2` | `f4ed62be6986e70438c995c03fb457610c75d01976bdc3248da9d0cc43a5613c` |
-| `b1-gu/GeneralUser-GS.sf2` | `119cc908114a404afc4ae1c4460d41519b3d747acdad4c5e9b141847be659203` |
-| `b1-msb/GeneralUser-GS.sf2` | `a3239bd5bda89e3b4efdcf0716fba8f8bec915d28326d84de8329e096dca4ea1` |
-| SF3 q4 `b1-gu` / `b1-msb` | `5628da785b97022706f98a7c8d5b335043120c04ad560daf9a9d5106d2fb4f78` / `56692000931c3e6f2e4999c090d0c312316724583d3c4f24b745bb6be9957f4d` |
-| SF3 q4 `ms-basic` ; SF3 miroir q8 | `74f261b02fb7a0decb5f3c38569546dc8d853a77af5d6d7375d918ae7c3cdd86` ; `3e7c855b8956b68fe03112bca98d629c6656ce7f24d7ecdce0919646b19f5e9c` |
+## 6. Recommandation
 
-La sélection couvre les programmes GM 4, 7, 16–18, 24, 26–30, 32–36 et 66 dans les trois banques (certains par conservation de la base) et les kits GM 0, 8, 16, 24, 25, 32, 40. La présence du preset ne garantit pas que chaque touche possède un sample distinct ou que le son soit meilleur. Les cuivres/section, le piano acoustique, le vrai Rhodes, le slap/fretless, la guitare muted, les timbales/cuica/surdo restent les limites les plus visibles : ne pas présenter ces sons comme « résolus ».
+1. **Écouter `b1-gu` contre `gu`**. C'est la seule des trois qui isole le changement utile (basse 32, guitares, orgues, sax,
+   Wurlitzer, kits) sur une base GeneralUser GS qui avait la préférence de William en L1. Les points où un gain est attendu :
+   contrebasse 32, nylon 24, balais 40, orgue 16-18 ; les points où il n'y en a **aucun** : cuivres 61, muted 28, slap, fretless,
+   timbales, cuíca, surdo.
+2. **`b1-msb`** : à n'écouter que si le piano de concert compte (L1 n'avait pas fait entendre de gain) ; coût +19 Mo SF3.
+3. **`ms-basic`** : contrôle, pas de gain attendu hors piano (L1 : 100 % des échantillons de FluidR3). Ne pas retenir.
+4. **Poids** : `b1-gu` coûte 53,9 Mo de SF3 et 12 s de décodage (contre 7,6 Mo et 1,9 s) **dont 30,2 Mo et environ 6 s pour la
+   seule guitare saturée**. Si William retient `b1-gu` mais pas dist2 (rock et blues seulement), la variante sans 29 et 30 pèse
+   23,6 Mo. Décision après l'écoute des liens `gmd_rock` et `gmd_blues_shuffle`.
+5. **Avant tout changement de banque** : recalibrer `Bass` et `PercussionLow` des profils (tableau de l'annexe), ou ajouter un
+   étalonnage de banque pour la contrebasse et les kits (impossible en PCM 16 bits sans compresseur ; piste : gain par preset
+   avec `initialAttenuation` négatif si oxisynth le tolère, non testé).
+6. **Pistes si le résultat déçoit** : guitare de jazz archtop (Shinyguitar, Black and Green Guitars, CC0), autre kit à balais
+   (SM Drums, domaine public selon le catalogue), vrai clavinet (aucun libre trouvé).
 
-## Écoute demandée à William
+## Reprise sur `ovh-inner`
 
-Ouvrir **un seul dossier de banque à la fois** dans le studio, puis répéter **les mêmes liens, dans le même ordre** avec GeneralUser GS d'origine comme référence, `ms-basic`, `b1-gu` et `b1-msb`. Les agents n'ouvrent aucun lien ni audio. La graine 7 expose les programmes et kits ci-dessous sur les huit premières mesures contrôlées ; l'habillage ultérieur peut faire varier les programmes. La piste `harmonium_trad.sf2` reste la même.
-
-| Profil et lien | Ce qui change / point à écouter |
-|---|---|
-| [wjazzd_swing](harmonium://open?profile=wjazzd_swing&seed=7) | Sax ténor 66 en mélodie, guitare jazz 26 dans les accords, contrebasse 32 ; attaque/sustain du walking et articulation du swing. |
-| [wjazzd_ballad](harmonium://open?profile=wjazzd_ballad&seed=7) | Contrebasse 32, kit jazz 32 et piano de base ; présence de la basse sans écraser la ballade. |
-| [gmd_jazz_waltz](harmonium://open?profile=gmd_jazz_waltz&seed=7) | Piano et Wurlitzer programme 4 aux accords, contrebasse 32 ; balance des trois temps. |
-| [gmd_latin_brazilian_bossa](harmonium://open?profile=gmd_latin_brazilian_bossa&seed=7) | Guitare nylon 24 et programme 25 de la base, contrebasse 32, bongo/conga/clave ; netteté du pattern léger. |
-| [gmd_latin_brazilian_samba](harmonium://open?profile=gmd_latin_brazilian_samba&seed=7) | Guitare 24, kit balais 40 et percussions latines ; énergie des accents, manque éventuel de surdo/cuica. |
-| [gmd_latin_brazilian_baiao](harmonium://open?profile=gmd_latin_brazilian_baiao&seed=7) | Guitare 24, basse 32/33, kit 40 ; poids de la grosse caisse et cohérence avec les syncopes. |
-| [gmd_afrocuban](harmonium://open?profile=gmd_afrocuban&seed=7) | Piano/Wurlitzer 4, contrebasse 32 et percussion latine ; claves/bongos audibles sans masque. |
-| [gmd_funk](harmonium://open?profile=gmd_funk&seed=7) | Guitare clean 27, basse doigts 33, kit 24 ; attaques funk, vérifier l'absence de vrai clavinet/slap. |
-| [gmd_soul](harmonium://open?profile=gmd_soul&seed=7) | Wurlitzer 4, basse doigts 33, kit 40 ; éviter un EP ou des balais trop en avant. |
-| [gmd_reggae](harmonium://open?profile=gmd_reggae&seed=7) | Guitare clean/muted 27/28, basse 33, kit 24 ; contretemps secs et basse souple. |
-| [gmd_rock](harmonium://open?profile=gmd_rock&seed=7) | Distorsion 29/30, basse 33/34, kit 16 ; densité et équilibre de la saturation et du backbeat. |
-| [gmd_pop](harmonium://open?profile=gmd_pop&seed=7) | Piano de base, basse 33/34 et kit standard ; test témoin de l'effet d'un changement de batterie/basse sans guitare. |
-| [gmd_blues_shuffle](harmonium://open?profile=gmd_blues_shuffle&seed=7) | Piano de base, basse 32/33 ; relief du shuffle et notes graves de contrebasse. |
-
-## Méthode des mesures
-
-`harmonium-cli --export --bars 8 --seed 7 --style <id> --soundfont <banque> --percussion-soundfont <trad> --record-wav <wav> --record-midi <midi>` puis les quatre rendus isolés `--solo-track Chords|Bass|PercussionLow|PercussionHigh`, exactement la procédure de L1 §8. `ffmpeg -af ebur128=peak=true -f null -` relève la valeur intégrée `I` (LUFS) et la crête vraie dBFS ; fichier WAV et MIDI temporaires effacés après lecture. Les pistes muettes mesurées à -70 LUFS ne définissent pas un gain utile : inscrire « — ». Identité des SHA256 MIDI sur des rendus de même style/piste = contrôle des mêmes notes entre les banques, pas validation du timbre ou des performances. Les LUFS comparent l'énergie, **pas** la qualité musicale. Pour la proposition de mix, une correction initiale de `mix` de `-Δ LU` dB par piste (candidate – référence) réduirait l'écart, à valider à l'oreille et en crête ; les pistes muettes n'ont pas de correction. Ne pas appliquer ces corrections avant la décision de William.
+Le premier essai (commit `wip(020/B1)`) avait les mêmes outils et les mêmes tailles de banque ; il est **refait ici** et corrigé sur
+quatre points : noms d'échantillons uniques (§ 0), kits 24 et 25 conservés, gains de niveau par preset, graines choisies par
+exposition (au lieu de la graine 7 fixe, 8 mesures). Ses empreintes de banque et le jeu de 354 fichiers VCSL (aujourd'hui 139) ne
+sont pas reproductibles à l'identique.

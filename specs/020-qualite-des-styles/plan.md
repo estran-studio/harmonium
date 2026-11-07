@@ -76,4 +76,4 @@ ce dossier, liens d'écoute `harmonium://open?profile=<id>&seed=<n>`.
 |---|---|
 | Q0 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/q0-corrections-rapides` |
 | S1 | lancée (2026-11-07), `ovh-inner`, labo, branche `wquintal/s1-sources` |
-| B1 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/b1-banque-sons` |
+| B1 | **livrée (2026-11-07, Mac)**, branche `wquintal/b1-banque-sons` : `b1-banque-sons.md`, `b1-mesures.md`, `b1-outils/`. Trois banques prêtes à écouter dans `~/orca/harmonium-020/b1/` (`ms-basic`, `b1-gu` 53,9 Mo en SF3 q4 dont 30,2 Mo de guitare saturée, `b1-msb` 72,9 Mo ; référence `gu`), liens d'écoute au compte rendu ; aucun choix fait (décision de William après écoute). Trouvaille : oxisynth résout les échantillons **par nom** (assemblages : noms uniques requis ; `harmonium_trad.sf2` a 4 noms dupliqués). Mixage des profils à recalibrer pour toute autre banque. |
