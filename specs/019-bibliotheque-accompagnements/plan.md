@@ -138,6 +138,9 @@ graines (D5, D6). Les noms exacts se décident avec les sources (L2) ; aucun nom
   local 24 → 26 ms. **Décision du propriétaire (2026-11-02) : rien à changer** (ni le chemin de
   seek ni le seuil). Les tâches A ajoutent du travail par mesure : mesurer la durée du seek à
   chaque fusion et revenir au propriétaire si elle monte.
+  **Suite (2026-11-06)** : au push de 019 sur GitHub, 62 ms au premier passage de la CI, vert à la
+  relance ; en local 25–26 ms avant comme après 019 (pas de régression, bruit de la machine de CI).
+  **Décision du propriétaire** : seuil de 50 ms gardé, mesure = **meilleur de 5 essais**.
 
 ## Demandes de training (spec 010, reçues le 2026-11-02)
 
