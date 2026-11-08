@@ -22,7 +22,7 @@ high_velocity = 64
 percussion_gain = 1.0
 velocity_humanize = 3
 
-fills_none_weight = 3
+fills_none_weight = 48
 
 [[voices]]
 name = "kick"
@@ -114,7 +114,7 @@ hits = [
   { step = 6, voice = "hat", delta_velocity = -28 },
   { step = 8, voice = "kick", delta_velocity = 3, probability = 0.38 },
   { step = 8, voice = "hat", delta_velocity = 37 },
-  { step = 10, voice = "kick", delta_velocity = -4 },
+  { step = 10, voice = "kick", delta_velocity = -4, probability = 0.8 },
   { step = 10, voice = "hat", delta_velocity = -27 },
   { step = 12, voice = "kick", delta_velocity = 18, probability = 0.41 },
   { step = 12, voice = "hat", delta_velocity = 44 },
@@ -233,11 +233,11 @@ hits = [
   { step = 4, voice = "pedal", delta_velocity = 6 },
   { step = 4, voice = "ride", delta_velocity = 36 },
   { step = 4, voice = "snare", delta_velocity = 1 },
-  { step = 6, voice = "kick", delta_velocity = -36 },
+  { step = 6, voice = "kick", delta_velocity = -36, probability = 0.8 },
   { step = 8, voice = "pedal", delta_velocity = 3 },
   { step = 8, voice = "ride", delta_velocity = 26 },
   { step = 10, voice = "ride", delta_velocity = -36 },
-  { step = 10, voice = "snare", delta_velocity = -62 },
+  { step = 10, voice = "snare", delta_velocity = -62, probability = 0.8 },
   { step = 12, voice = "pedal", delta_velocity = 1 },
   { step = 12, voice = "ride", delta_velocity = 43 },
   { step = 12, voice = "snare", delta_velocity = 5 },
@@ -250,6 +250,8 @@ density = 2
 tag = "ride"
 weight = 9
 hits = [
+  { step = 6, voice = "sidestick", delta_velocity = -24, probability = 0.2 },
+  { step = 14, voice = "sidestick", delta_velocity = -24, probability = 0.2 },
   { step = 0, voice = "kick", delta_velocity = -23 },
   { step = 0, voice = "pedal", delta_velocity = 6 },
   { step = 0, voice = "ride", delta_velocity = 21 },
@@ -300,11 +302,11 @@ hits = [
   { step = 4, voice = "pedal", delta_velocity = -3 },
   { step = 4, voice = "ride", delta_velocity = 35 },
   { step = 4, voice = "snare", delta_velocity = -3 },
-  { step = 6, voice = "kick", delta_velocity = -40 },
+  { step = 6, voice = "kick", delta_velocity = -40, probability = 0.8 },
   { step = 6, voice = "ride", delta_velocity = -39 },
   { step = 8, voice = "pedal", delta_velocity = -5 },
   { step = 8, voice = "ride", delta_velocity = 15 },
-  { step = 10, voice = "kick", delta_velocity = -59 },
+  { step = 10, voice = "kick", delta_velocity = -59, probability = 0.8 },
   { step = 10, voice = "ride", delta_velocity = -37 },
   { step = 12, voice = "pedal", delta_velocity = -5 },
   { step = 12, voice = "ride", delta_velocity = 32 },
@@ -373,7 +375,7 @@ hits = [
   { step = 12, voice = "bell", delta_velocity = -3 },
   { step = 12, voice = "snare", delta_velocity = 13 },
   { step = 14, voice = "kick", delta_velocity = -14, probability = 0.29 },
-  { step = 14, voice = "snare", delta_velocity = -42 },
+  { step = 14, voice = "snare", delta_velocity = -42, probability = 0.8 },
 ]
 
 # 13 : ride_bell:quarters
@@ -427,19 +429,19 @@ weight = 6
 hits = [
   { step = 0, voice = "kick", delta_velocity = 2 },
   { step = 0, voice = "hat", delta_velocity = 30 },
-  { step = 1, voice = "snare", delta_velocity = -78 },
+  { step = 1, voice = "snare", delta_velocity = -78, probability = 0.8 },
   { step = 2, voice = "kick", delta_velocity = -2, probability = 0.33 },
   { step = 2, voice = "hat", delta_velocity = -40 },
   { step = 4, voice = "hat", delta_velocity = 42 },
   { step = 4, voice = "snare", delta_velocity = 12 },
-  { step = 6, voice = "kick", delta_velocity = -16 },
+  { step = 6, voice = "kick", delta_velocity = -16, probability = 0.8 },
   { step = 6, voice = "hat", delta_velocity = -41 },
   { step = 7, voice = "snare", delta_velocity = -81, probability = 0.33 },
   { step = 8, voice = "kick", delta_velocity = 7, probability = 0.33 },
   { step = 8, voice = "hat", delta_velocity = 33 },
   { step = 8, voice = "snare", delta_velocity = -91, probability = 0.33 },
   { step = 9, voice = "snare", delta_velocity = -80, probability = 0.33 },
-  { step = 10, voice = "kick", delta_velocity = -15 },
+  { step = 10, voice = "kick", delta_velocity = -15, probability = 0.8 },
   { step = 10, voice = "hat", delta_velocity = -37 },
   { step = 12, voice = "hat", delta_velocity = 47 },
   { step = 12, voice = "snare", delta_velocity = 20 },
@@ -451,6 +453,7 @@ density = 2
 tag = "hat"
 weight = 6
 hits = [
+  { step = 14, voice = "sidestick", delta_velocity = -24, probability = 0.2 },
   { step = 0, voice = "kick", delta_velocity = 2 },
   { step = 0, voice = "hat", delta_velocity = 30 },
   { step = 0, voice = "snare", delta_velocity = -86, probability = 0.17 },
@@ -502,15 +505,15 @@ weight = 6
 hits = [
   { step = 0, voice = "kick", delta_velocity = -6 },
   { step = 0, voice = "hat", delta_velocity = 44 },
-  { step = 2, voice = "kick", delta_velocity = -6 },
+  { step = 2, voice = "kick", delta_velocity = -6, probability = 0.8 },
   { step = 2, voice = "hat", delta_velocity = -53 },
   { step = 4, voice = "hat", delta_velocity = 42 },
   { step = 4, voice = "snare", delta_velocity = 20 },
-  { step = 6, voice = "kick", delta_velocity = -20 },
+  { step = 6, voice = "kick", delta_velocity = -20, probability = 0.8 },
   { step = 8, voice = "kick", delta_velocity = 12, probability = 0.33 },
   { step = 8, voice = "hat", delta_velocity = 42 },
   { step = 9, voice = "snare", delta_velocity = -80, probability = 0.33 },
-  { step = 10, voice = "kick", delta_velocity = -19 },
+  { step = 10, voice = "kick", delta_velocity = -19, probability = 0.8 },
   { step = 10, voice = "hat", delta_velocity = -56 },
   { step = 12, voice = "hat", delta_velocity = 46 },
   { step = 12, voice = "snare", delta_velocity = 20 },
@@ -523,6 +526,8 @@ density = 2
 tag = "hat"
 weight = 6
 hits = [
+  { step = 6, voice = "sidestick", delta_velocity = -24, probability = 0.2 },
+  { step = 14, voice = "sidestick", delta_velocity = -24, probability = 0.2 },
   { step = 0, voice = "kick", delta_velocity = -6 },
   { step = 0, voice = "hat", delta_velocity = 44 },
   { step = 0, voice = "snare", delta_velocity = -79, probability = 0.17 },
@@ -552,61 +557,61 @@ hits = [
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 26
+weight = 52
 patterns = [0, 0]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 26
+weight = 52
 patterns = [1, 1]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 26
+weight = 52
 patterns = [2, 2]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 13
+weight = 26
 patterns = [0, 0]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 13
+weight = 26
 patterns = [3, 3]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 13
+weight = 26
 patterns = [4, 4]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 8
+weight = 16
 patterns = [0, 0, 0, 0]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 8
+weight = 16
 patterns = [1, 1, 1, 1]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 8
+weight = 16
 patterns = [2, 2, 2, 2]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 7
+weight = 14
 patterns = [0, 0]
 
 [[phrases]]
@@ -624,7 +629,7 @@ patterns = [4, 2]
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 5
+weight = 10
 patterns = [0, 0]
 
 [[phrases]]
@@ -642,7 +647,7 @@ patterns = [2, 4]
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 3
+weight = 6
 patterns = [0, 0, 0, 0]
 
 [[phrases]]
@@ -660,7 +665,7 @@ patterns = [4, 2, 2, 2]
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 2
+weight = 4
 patterns = [0, 0, 0, 0]
 
 [[phrases]]
@@ -678,91 +683,91 @@ patterns = [2, 2, 4, 2]
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 9
+weight = 18
 patterns = [5, 5, 5, 5]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 9
+weight = 18
 patterns = [6, 6, 6, 6]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 9
+weight = 18
 patterns = [7, 7, 7, 7]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [8, 8, 8, 8]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [9, 9, 9, 9]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [10, 10, 10, 10]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [11, 11, 11, 11]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [12, 12, 12, 12]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 7
+weight = 14
 patterns = [13, 13, 13, 13]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [14, 14, 14, 14]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [15, 15, 15, 15]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [16, 16, 16, 16]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [17, 17, 17, 17]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [18, 18, 18, 18]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 6
+weight = 12
 patterns = [19, 19, 19, 19]
 
 [[fills]]

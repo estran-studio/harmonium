@@ -571,10 +571,13 @@ fn l_arc_joue_exposition_corps_et_retombee_sur_les_quatre_chorus() -> TestResult
             }
             // Le corps joue plus fort que l'exposition et que la retombée : vélocité moyenne de la basse
             // (l'intensité de l'arc règle `bass_velocity` ; les notes fantômes de la batterie fausseraient la mesure).
+            // Mesurée sur le premier temps : les accents de Q0 donnent aux autres places un écart propre à chaque motif,
+            // et la retombée (stop-time) ne joue que le premier temps.
             let level = |bars: &[MeasureSnapshot]| {
                 let v: Vec<usize> = bars
                     .iter()
                     .flat_map(|s| track(s, BASS))
+                    .filter(|n| n.start_step == 0)
                     .map(|n| usize::from(n.velocity))
                     .collect();
                 v.iter().sum::<usize>() / v.len().max(1)

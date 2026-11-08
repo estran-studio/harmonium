@@ -52,7 +52,7 @@ trois chorus par air (96 mesures, 6 min 37 s à 58 BPM).
 | Accords | voicings `drop2` par défaut, fenêtre 52–78, `color` (aucune 2, publiée 2, 9 : 3, 11 : 1, 13 : 3), `register_drift` ±5 ; onze rythmes d'une mesure (5 `sparse`, 3 `medium`, 3 `dense`) et quinze phrases de 2 et 4 mesures |
 | Batterie | kit balais 128/40 par défaut : `tap` (note 38) et `swirl` (note 40, « Brushed Snares » dans le kit 40 : deux touches, pas la preuve de deux gestes distincts), pédale 44, grosse caisse 36 ; kit jazz 128/32 : ride 51 |
 | Arc (`arc.toml`) | exposition à deux temps (comping clairsemé, étiquette `hat` : balayage et pédale), corps en marche lente (un break de la basse et du comping à la mesure 24 une fois sur deux), retombée à deux temps avec stop-time sur les deux dernières mesures |
-| Timing | basse sur la batterie (jitter 0,1 pas), accords en retard de 0,2 pas (valeurs de `wjazzd_swing` ; aucune piste JTD sous 102 BPM) |
+| Timing | basse et accords sur la batterie (0 pas, Q0), jitter 0,02 pas |
 | Mixage | niveaux de `wjazzd_swing`, batterie à −10 dB ; **non mesuré au LUFS** pour ce profil |
 
 ## Habillage par graine (`session.toml`)
@@ -102,3 +102,15 @@ le calage s'arrête là (la source est « trop peu »). La batterie rendue est c
 `percussion.toml` est généré :
 `cd ~/Project/bascanada/harmonium_lab && .venv/bin/python <moteur>/specs/019-bibliotheque-accompagnements/b25_batterie.py wjazzd_ballad > <moteur>/profiles/wjazzd_ballad/percussion.toml`.
 Les autres fichiers sont écrits à la main, avec la mesure ou la règle en commentaire.
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : accords tenus : accent sur le « et » du 2 et l'anticipation, temps légers). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `ballade_comp`, amplitude 24, décalage de niveau -1 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : croche de contretemps (+0,6), attaque anticipée (+1), pas 6 (+1) ; légers : temps 3 (-0,5), contretemps 2 et 4 (-0,5), 1re double croche (-0,8), 3e double croche (-0,8) ; coups probabilistes : -0,6 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (deux-temps et marche : courbe de phrase ±18 (A6), arrivées +20) : vélocité de la marche 61, arrivées +20, courbe de phrase ±18.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,7, 4 note(s) fantôme(s) à 0,2, exposant des probabilités 1, phrases tenues ×6, part de fins de phrase sans relance ×2.
+- **Mise en place** : basse et accords sans décalage systématique (la batterie n'a aucun décalage par voix ; le retard de +0,2 pas du piano est retiré : aucun instrument ne dérive de la grille plus que la batterie) ; `jitter` 0,02 pas.
+
+<!-- q0:fin -->

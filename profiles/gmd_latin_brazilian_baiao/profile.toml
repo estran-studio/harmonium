@@ -129,17 +129,17 @@ walk_low = 28
 walk_high = 53
 motifs = [
   # 0 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 102 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 91 }, { step = 14, duration = 2, semitones = 7, velocity = 82 }] },
   # 1 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 96 }, { step = 3, duration = 1, semitones = 0, velocity = 64 }, { step = 6, duration = 2, semitones = 7, velocity = 84 }, { step = 8, duration = 3, semitones = 0, velocity = 92 }, { step = 11, duration = 1, semitones = 0, velocity = 64 }, { step = 14, duration = 2, semitones = 7, velocity = 82 }] },
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 104 }, { step = 3, duration = 1, semitones = 0, velocity = 51 }, { step = 6, duration = 2, semitones = 7, velocity = 84 }, { step = 8, duration = 3, semitones = 0, velocity = 93 }, { step = 11, duration = 1, semitones = 0, velocity = 51 }, { step = 14, duration = 2, semitones = 7, velocity = 84 }] },
   # 2 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 6, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 102 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 6, semitones = 0, velocity = 91 }, { step = 14, duration = 2, semitones = 7, velocity = 82 }] },
   # 3 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 96 }, { step = 3, duration = 3, semitones = 0, velocity = 82 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 3, semitones = 0, velocity = 90 }, { step = 11, duration = 3, semitones = 0, velocity = 78 }, { step = 14, duration = 2, semitones = 7, velocity = 80 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 3, semitones = 0, velocity = 104 }, { step = 3, duration = 3, semitones = 0, velocity = 69 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 3, semitones = 0, velocity = 91 }, { step = 11, duration = 3, semitones = 0, velocity = 65 }, { step = 14, duration = 2, semitones = 7, velocity = 82 }] },
   # 4 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 0, velocity = 80 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 102 }, { step = 6, duration = 2, semitones = 7, velocity = 82 }, { step = 8, duration = 4, semitones = 0, velocity = 91 }, { step = 14, duration = 2, semitones = 0, velocity = 82 }] },
   # 5 : Métier : fondamentale sur le un et le trois, quinte en contretemps.
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 94 }, { step = 6, duration = 2, semitones = 7, velocity = 80 }, { step = 8, duration = 4, semitones = 0, velocity = 88 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 102 }, { step = 6, duration = 2, semitones = 7, velocity = 80 }, { step = 8, duration = 4, semitones = 0, velocity = 89 }] },
 ]
 
 # WJazzD LATIN : approche du temps 4 avant un changement d'accord à la barre, 1205 événements, 22 solos :
@@ -165,26 +165,26 @@ voicing = "drop2"
 register_drift = { step = 1, max = 4 }
 low = 50
 high = 80
-patterns = [{ hits = [{ step = 0, duration = 3, velocity = 70 }, { step = 6, duration = 2, velocity = 64 }, { step = 8, duration = 3, velocity = 68 }, { step = 14, duration = 2, velocity = 64 }] }]
+patterns = [{ hits = [{ step = 0, duration = 3, velocity = 81 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 3, velocity = 65 }, { step = 14, duration = 2, velocity = 72 }] }]
 comping = [
   # 0 sparse
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 68 }, { step = 8, duration = 6, velocity = 64 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 79 }, { step = 8, duration = 6, velocity = 61 }] },
   # 1 sparse
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 12, velocity = 66 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 12, velocity = 77 }] },
   # 2 sparse
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 70 }, { step = 6, duration = 2, velocity = 60 }, { step = 8, duration = 4, velocity = 66 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 81 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 4, velocity = 63 }] },
   # 3 medium
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 3, velocity = 70 }, { step = 14, duration = 2, velocity = 68, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 85 }, { step = 6, duration = 2, velocity = 72 }, { step = 8, duration = 3, velocity = 67 }, { step = 14, duration = 2, velocity = 76, anticipate = true }] },
   # 4 medium
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 3, duration = 1, velocity = 60 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 3, velocity = 70 }, { step = 11, duration = 1, velocity = 58 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 85 }, { step = 3, duration = 1, velocity = 40 }, { step = 6, duration = 2, velocity = 72 }, { step = 8, duration = 3, velocity = 67 }, { step = 11, duration = 1, velocity = 38 }, { step = 14, duration = 2, velocity = 74, anticipate = true }] },
   # 5 medium
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 72 }, { step = 6, duration = 2, velocity = 64 }, { step = 10, duration = 2, velocity = 62 }, { step = 14, duration = 2, velocity = 68, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 83 }, { step = 6, duration = 2, velocity = 70 }, { step = 10, duration = 2, velocity = 48 }, { step = 14, duration = 2, velocity = 76, anticipate = true }] },
   # 6 dense
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78 }, { step = 3, duration = 1, velocity = 62 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 3, velocity = 74 }, { step = 11, duration = 1, velocity = 62 }, { step = 14, duration = 2, velocity = 70, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 89 }, { step = 3, duration = 1, velocity = 42 }, { step = 6, duration = 2, velocity = 76 }, { step = 8, duration = 3, velocity = 71 }, { step = 11, duration = 1, velocity = 42 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
   # 7 dense
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 78 }, { step = 2, duration = 1, velocity = 48, probability = 0.35 }, { step = 3, duration = 1, velocity = 64 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 2, velocity = 74 }, { step = 10, duration = 1, velocity = 48, probability = 0.35 }, { step = 11, duration = 1, velocity = 64 }, { step = 14, duration = 2, velocity = 70, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 89 }, { step = 2, duration = 1, velocity = 32, probability = 0.35 }, { step = 3, duration = 1, velocity = 44 }, { step = 6, duration = 2, velocity = 76 }, { step = 8, duration = 2, velocity = 71 }, { step = 10, duration = 1, velocity = 32, probability = 0.35 }, { step = 11, duration = 1, velocity = 44 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
   # 8 dense
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78 }, { step = 3, duration = 1, velocity = 64 }, { step = 4, duration = 1, velocity = 50, probability = 0.4 }, { step = 6, duration = 2, velocity = 70 }, { step = 8, duration = 3, velocity = 74 }, { step = 11, duration = 1, velocity = 64 }, { step = 12, duration = 1, velocity = 50, probability = 0.4 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 89 }, { step = 3, duration = 1, velocity = 44 }, { step = 4, duration = 1, velocity = 32, probability = 0.4 }, { step = 6, duration = 2, velocity = 76 }, { step = 8, duration = 3, velocity = 71 }, { step = 11, duration = 1, velocity = 44 }, { step = 12, duration = 1, velocity = 32, probability = 0.4 }, { step = 14, duration = 2, velocity = 80, anticipate = true }] },
 ]
 
 [[accompaniment.chords.phrases]]
@@ -247,9 +247,15 @@ rate_scale = 0.0
 
 # Jitter tonal de métier ; médianes par voix du GMD ajoutées plus bas.
 [performance.tracks.Bass]
+offsets = [-0.0917, -0.125, -0.125, -0.125, -0.0917, -0.125, -0.125, -0.125, -0.0917, -0.125, -0.125, -0.125, -0.0917, -0.125, -0.125, -0.125]
 jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.025
+offsets = [-0.0917, -0.1084, -0.1084, -0.1084, -0.0917, -0.1084, -0.1084, -0.1084, -0.0917, -0.1084, -0.1084, -0.1084, -0.0917, -0.1084, -0.1084, -0.1084]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 [mix]
 master_db = 20.0

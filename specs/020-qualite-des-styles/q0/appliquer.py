@@ -4,14 +4,13 @@
 Les profils `gmd_*` et `wjazzd_*` sont écrits par des générateurs (`specs/019-*/b8/generer.py`, `b47_*`, `b3/*`, `b25_*`, `b6/*`,
 `b1/*`). Q0 n'y touche pas : ce script part des fichiers de `main` à `BASE` (`git show BASE:chemin`), applique les points 1, 2 et 4
 du brief et écrit le résultat dans `profiles/<id>/` ; il est idempotent (même sortie à chaque lancement). Le point 3 (groove de
-batterie) est `q0/batterie.py`, qui lit `PARAMS` plus bas via `q0/batterie_params.json`.
+batterie) est `q0/batterie.py`.
 
     python3 specs/020-qualite-des-styles/q0/appliquer.py [--profil <id>] [--out <dossier racine>]
 """
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import subprocess
 import sys
@@ -27,74 +26,73 @@ E1 = ["wjazzd_swing", "wjazzd_ballad", "gmd_jazz_waltz", "gmd_latin_brazilian_bo
 SANS_SWING_LEGER = ["gmd_rock", "gmd_hiphop"]
 
 # --------------------------------------------------------------------------------------------------------------------
-# Point 2 : accents du comping et de la basse, par style.
+# Point 2 : accents et notes fantômes, par style.
 #
-# Classe d'un pas dans la pulsation (`spb` pas par pulsation : 4 en 16 pas, 3 en 12 pas ternaire) :
-#   b1 premier temps · b3 troisième temps · bk contretemps 2 et 4 (backbeat) · and croche de contretemps · e, a doubles croches
-#   (ternaire : and = deuxième triolet, e = triolet du milieu) · ant attaque anticipée (`anticipate`, ou pas 14 en 16 pas).
-# Un coup de probabilité < 1 est une note fantôme : sa vélocité est plafonnée à `ghost`. Une corde montante (`up`) perd `up`.
-# Les valeurs sont des vélocités MIDI avant l'intensité et la dynamique du moteur (± 4 de jitter et 4 de pente de strum).
+# Chaque coup garde la vélocité que son générateur lui a donnée (niveau du style, calé au mixage) ; Q0 y ajoute un écart
+# selon la place du coup dans la mesure. Une forme (`SHAPES`) donne, par classe de place, un coefficient entre -1 et +1 ;
+# l'amplitude (`AMPLITUDE`, en vélocités MIDI) le met à l'échelle. Les coups probabilistes (notes fantômes) reçoivent en plus
+# `ghost` (coefficient, négatif). Classes (`spb` pas par pulsation : 4 en 16 pas, 3 en 12 pas ternaires) :
+#   b1 premier temps · b3 troisième temps · bk contretemps 2 et 4 (backbeat) · and croche de contretemps (ternaire : dernier
+#   triolet) · e, a doubles croches (ternaire : triolet du milieu) · ant attaque anticipée (`anticipate`, avant-dernière croche)
+# `s` : pas précis (syncopes, clave) qui l'emportent sur la classe.
+# Valse (3/4, 12 pas, `spb` = 4) : `bk` est le temps 2, `b3` le temps 3.
 
-COMPING = {
-    # Jazz : charleston (and du 2, anticipation), temps légers, notes fantômes très douces.
-    "wjazzd_swing": dict(b1=76, b3=62, bk=58, and_=64, e=46, a=46, ant=88, s={6: 92}, ghost=44, up=0),
-    "wjazzd_ballad": dict(b1=80, b3=60, bk=54, and_=68, e=44, a=44, ant=72, s={6: 78}, ghost=42, up=0),
-    "gmd_jazz_waltz": dict(b1=76, b3=60, bk=58, and_=66, e=46, a=46, ant=84, s={}, ghost=44, up=0),
-    # Latin
-    "gmd_latin_brazilian_bossa": dict(b1=84, b3=70, bk=68, and_=64, e=50, a=54, ant=92, s={6: 92, 14: 92}, ghost=48, up=6),
-    "gmd_latin_brazilian_samba": dict(b1=80, b3=82, bk=98, and_=68, e=48, a=88, ant=90, s={}, ghost=46, up=4),
-    "gmd_latin_brazilian_baiao": dict(b1=96, b3=84, bk=70, and_=70, e=50, a=56, ant=92, s={6: 90}, ghost=48, up=0),
-    "gmd_afrocuban": dict(b1=84, b3=74, bk=74, and_=88, e=60, a=60, ant=100, s={6: 98, 14: 100, 2: 80}, ghost=54, up=0),
+SHAPES = {
+    # Jazz : charleston (et du 2, anticipation), temps légers, notes fantômes très douces.
+    "jazz_comp": dict(b1=-0.3, b3=-0.5, bk=-0.4, and_=0.5, e=-0.8, a=-0.8, ant=1.0, s={6: 1.0}, ghost=-0.6),
+    "ballade_comp": dict(b1=-0.2, b3=-0.5, bk=-0.5, and_=0.6, e=-0.8, a=-0.8, ant=1.0, s={6: 1.0}, ghost=-0.6),
+    "valse_comp": dict(b1=-0.6, b3=-0.8, bk=1.0, and_=0.0, e=-0.8, a=-0.8, ant=0.2, s={}, ghost=-0.6),
+    # Latin : bossa (syncope pas 6 et 14), samba (surdo : accent des 2/4, tamborim), baião (zabumba), afro-cubain (clave)
+    "bossa_comp": dict(b1=0.4, b3=0.0, bk=-0.1, and_=-0.2, e=-0.6, a=-0.4, ant=0.8, s={6: 1.0, 14: 1.0}, ghost=-0.7),
+    "samba_comp": dict(b1=-0.2, b3=0.3, bk=0.9, and_=-0.2, e=-0.7, a=0.6, ant=0.7, s={}, ghost=-0.7),
+    "baiao_comp": dict(b1=0.9, b3=0.4, bk=-0.1, and_=0.0, e=-0.6, a=-0.2, ant=0.8, s={6: 0.7}, ghost=-0.7),
+    "afrocubain_comp": dict(b1=0.0, b3=0.0, bk=0.0, and_=0.5, e=-0.6, a=-0.4, ant=0.9, s={6: 0.9, 14: 1.0, 2: 0.3}, ghost=-0.7),
     # Groove
-    "gmd_funk": dict(b1=112, b3=88, bk=78, and_=70, e=44, a=64, ant=98, s={}, ghost=44, up=6),
-    "gmd_soul": dict(b1=100, b3=82, bk=84, and_=72, e=44, a=70, ant=96, s={}, ghost=44, up=4),
-    "gmd_reggae": dict(b1=60, b3=64, bk=66, and_=84, e=50, a=54, ant=96, s={6: 104, 14: 104}, ghost=48, up=0),
-    # Rock / pop
-    "gmd_rock": dict(b1=106, b3=96, bk=88, and_=72, e=58, a=58, ant=100, s={}, ghost=46, up=8),
-    "gmd_pop": dict(b1=98, b3=86, bk=78, and_=66, e=52, a=52, ant=92, s={}, ghost=46, up=6),
-    "gmd_blues_shuffle": dict(b1=96, b3=84, bk=92, and_=66, e=48, a=48, ant=76, s={}, ghost=46, up=6),
-    "gmd_hiphop": None,
+    "funk_comp": dict(b1=1.0, b3=0.3, bk=0.2, and_=-0.2, e=-0.8, a=0.3, ant=0.7, s={}, ghost=-0.9),
+    "soul_comp": dict(b1=0.8, b3=0.3, bk=0.5, and_=-0.2, e=-0.7, a=0.1, ant=0.7, s={}, ghost=-0.9),
+    "reggae_comp": dict(b1=-0.8, b3=-0.5, bk=-0.4, and_=1.0, e=-0.8, a=-0.6, ant=0.8, s={6: 1.0, 14: 1.0}, ghost=-0.8),
+    # Rock / pop / shuffle
+    "rock_comp": dict(b1=0.9, b3=0.5, bk=0.7, and_=-0.4, e=-0.9, a=-0.9, ant=0.8, s={}, ghost=-0.9),
+    "pop_comp": dict(b1=0.8, b3=0.4, bk=0.5, and_=-0.4, e=-0.8, a=-0.8, ant=0.7, s={}, ghost=-0.9),
+    "shuffle_comp": dict(b1=0.9, b3=0.5, bk=0.8, and_=0.0, e=-0.9, a=-0.9, ant=0.5, s={}, ghost=-0.9),
+    # Basse : racine accentuée au temps 1, reprises de croche plus légères, notes mortes aux doubles croches.
+    "rock_bass": dict(b1=1.0, b3=0.5, bk=0.2, and_=-0.4, e=-0.9, a=-0.9, ant=0.5, s={}, ghost=-0.9),
+    "pop_bass": dict(b1=0.9, b3=0.5, bk=0.2, and_=-0.4, e=-0.8, a=-0.8, ant=0.5, s={}, ghost=-0.9),
+    "soul_bass": dict(b1=1.0, b3=0.3, bk=0.1, and_=-0.4, e=-0.9, a=0.3, ant=0.5, s={}, ghost=-0.9),
+    "reggae_bass": dict(b1=0.5, b3=1.0, bk=0.2, and_=-0.2, e=-0.6, a=-0.6, ant=0.4, s={}, ghost=-0.8),
+    "bossa_bass": dict(b1=1.0, b3=0.4, bk=0.1, and_=-0.2, e=-0.7, a=-0.7, ant=0.6, s={6: 0.4}, ghost=-0.8),
+    "samba_bass": dict(b1=-0.3, b3=-0.1, bk=1.0, and_=-0.2, e=-0.8, a=-0.8, ant=0.4, s={}, ghost=-0.8),
+    "afrocubain_bass": dict(b1=0.0, b3=0.0, bk=-0.3, and_=0.4, e=-0.6, a=-0.6, ant=1.0, s={6: 0.7, 12: 0.7}, ghost=-0.8),
+    "baiao_bass": dict(b1=1.0, b3=0.5, bk=0.0, and_=0.0, e=-0.7, a=-0.5, ant=0.6, s={6: 0.4}, ghost=-0.8),
 }
-# Basse : accent du premier temps et des temps, croches plus légères, notes mortes aux doubles croches.
-BASS = {
-    "gmd_latin_brazilian_bossa": dict(b1=102, b3=92, bk=86, and_=84, e=60, a=60, ant=88, s={6: 86}),
-    "gmd_latin_brazilian_samba": dict(b1=90, b3=88, bk=106, and_=76, e=58, a=66, ant=82, s={}),
-    "gmd_latin_brazilian_baiao": dict(b1=104, b3=96, bk=88, and_=82, e=58, a=62, ant=88, s={6: 90}),
-    "gmd_afrocuban": dict(b1=84, b3=76, bk=84, and_=84, e=60, a=60, ant=108, s={6: 102, 12: 108}),
-    "gmd_funk": dict(b1=114, b3=94, bk=88, and_=80, e=50, a=82, ant=98, s={}),
-    "gmd_soul": dict(b1=104, b3=90, bk=86, and_=74, e=56, a=78, ant=92, s={}),
-    "gmd_reggae": dict(b1=92, b3=106, bk=88, and_=78, e=66, a=66, ant=92, s={}),
-    "gmd_rock": dict(b1=108, b3=98, bk=94, and_=80, e=70, a=70, ant=100, s={}),
-    "gmd_pop": dict(b1=102, b3=92, bk=88, and_=76, e=66, a=66, ant=92, s={}),
-    "gmd_blues_shuffle": dict(b1=110, b3=96, bk=94, and_=76, e=64, a=64, ant=88, s={}),
+
+#: (forme du comping, amplitude) et (forme de la basse, amplitude) ; `None` : la basse a déjà des accents (écart-type ≥ 8).
+AMPLITUDE = {
+    "wjazzd_swing": (("jazz_comp", 28, -10), None),
+    "wjazzd_ballad": (("ballade_comp", 24, -1), None),
+    "gmd_jazz_waltz": (("valse_comp", 20, -2), None),
+    "gmd_latin_brazilian_bossa": (("bossa_comp", 28, -7), ("bossa_bass", 17, -10)),
+    "gmd_latin_brazilian_samba": (("samba_comp", 36, -11), ("samba_bass", 28, -2)),
+    "gmd_latin_brazilian_baiao": (("baiao_comp", 28, -14), ("baiao_bass", 14, -6)),
+    "gmd_afrocuban": (("afrocubain_comp", 28, -8), ("afrocubain_bass", 14, -6)),
+    "gmd_funk": (("funk_comp", 20, -3), None),
+    "gmd_soul": (("soul_comp", 26, -8), ("soul_bass", 14, -3)),
+    "gmd_reggae": (("reggae_comp", 22, -15), ("reggae_bass", 18, -6)),
+    "gmd_rock": (("rock_comp", 24, -11), ("rock_bass", 15, -3)),
+    "gmd_pop": (("pop_comp", 30, -10), ("pop_bass", 19, -6)),
+    "gmd_blues_shuffle": (("shuffle_comp", 20, -8), None),
 }
-# Basse en marche (jazz) : vélocité de base et surcroît des arrivées ; les croches fantômes gardent leur vélocité.
-# Marche : accents d'arrivée, et courbe de phrase pour la ballade et la valse à une note
-# par mesure (une vélocité unique par note de la marche ne peut nuancer autrement le deux-temps).
+# Basse en marche (jazz) : la vélocité de base de la marche et le surcroît des arrivées (`accent`) sont dans `[accompaniment.bass.walking]` ;
+# une courbe de phrase (A6 : `phrase`, delta de vélocité selon la phase de la phrase) nuance le deux-temps de la ballade et de la valse.
 WALKING = {
     "wjazzd_swing": dict(velocity=72, accent=20),
-    "wjazzd_ballad": dict(velocity=66, accent=20),
-    "gmd_jazz_waltz": dict(velocity=72, accent=20),
+    "wjazzd_ballad": dict(velocity=61, accent=20),
+    "gmd_jazz_waltz": dict(velocity=66, accent=20),
+}
+PHRASE = {
+    "wjazzd_swing": 18, "wjazzd_ballad": 18, "gmd_jazz_waltz": 18,
 }
 VEL_MIN, VEL_MAX = 32, 118  # plage audible : voir le compte rendu (modulateur de vélocité SF2 : -40 log10(v/127) dB)
-
-# Les variantes clairsemées n'atteignent pas 12 malgré les accents de position : élargissement
-# des seules tables concernées, sans modifier les notes déjà fantômes du funk et du shuffle.
-COMPING_BOOST = set(E1) - {"gmd_funk", "gmd_reggae", "gmd_blues_shuffle"}
-BASS_BOOST = {"gmd_latin_brazilian_bossa", "gmd_latin_brazilian_samba", "gmd_latin_brazilian_baiao",
-              "gmd_soul", "gmd_reggae", "gmd_rock", "gmd_pop"}
-
-def boost_table(rule: dict, factor: float) -> None:
-    for k in ("b1", "b3", "bk", "and_", "e", "a", "ant", "ghost"):
-        if k in rule:
-            rule[k] = max(VEL_MIN, min(112, round(70 + (rule[k] - 70) * factor)))
-    for s, v in rule["s"].items():
-        rule["s"][s] = max(VEL_MIN, min(112, round(70 + (v - 70) * factor)))
-
-for _pid in COMPING_BOOST:
-    boost_table(COMPING[_pid], 1.42)
-for _pid in BASS_BOOST:
-    boost_table(BASS[_pid], 1.45)
 
 
 def classify(step: int, spb: int, anticipate: bool, steps_per_bar: int) -> str:
@@ -108,14 +106,13 @@ def classify(step: int, spb: int, anticipate: bool, steps_per_bar: int) -> str:
     return "and_" if r == 2 else "e"
 
 
-def vel(rule: dict, step: int, spb: int, spbar: int, *, anticipate=False, prob=1.0, up=False) -> int:
-    cls = classify(step, spb, anticipate, spbar)
-    v = rule["s"].get(step) or rule[cls]
+def vel(shape: dict, amp: float, bias: float, base: int, step: int, spb: int, spbar: int, *, anticipate=False, prob=1.0) -> int:
+    coef = shape["s"].get(step)
+    if coef is None:
+        coef = shape[classify(step, spb, anticipate, spbar)]
     if prob < 1.0:
-        v = min(v, rule.get("ghost", v))
-    if up and rule.get("up"):
-        v -= rule["up"]
-    return max(VEL_MIN, min(VEL_MAX, v))
+        coef += shape["ghost"]
+    return max(VEL_MIN, min(VEL_MAX, round(base + bias + amp * coef)))
 
 
 def git_show(rel: str) -> str:
@@ -138,31 +135,36 @@ def region(text: str, start: str, ends: tuple[str, ...]) -> tuple[int, int]:
 
 
 def retouch_comping(pid: str, text: str, spb: int, spbar: int) -> str:
-    rule = COMPING[pid]
+    name, amp, bias = AMPLITUDE[pid][0]
+    shape = SHAPES[name]
     a, b = region(text, "[accompaniment.chords]", (r"^\[accompaniment\.chords\.", r"^\[\[accompaniment\.chords\.", r"^\[instruments\]"))
 
     def sub(m: re.Match) -> str:
-        step, dur, _v, rest = int(m[1]), m[2], m[3], m[4]
+        step, dur, base, rest = int(m[1]), m[2], int(m[3]), m[4]
         prob = re.search(r"probability = ([0-9.]+)", rest)
-        v = vel(rule, step, spb, spbar, anticipate="anticipate = true" in rest,
-                prob=float(prob[1]) if prob else 1.0, up='direction = "up"' in rest)
+        v = vel(shape, amp, bias, base, step, spb, spbar, anticipate="anticipate = true" in rest,
+                prob=float(prob[1]) if prob else 1.0)
         return f"{{ step = {step}, duration = {dur}, velocity = {v}{rest}}}"
 
     return text[:a] + HIT.sub(sub, text[a:b]) + text[b:]
 
 
 def retouch_bass(pid: str, text: str, spb: int, spbar: int) -> str:
-    rule = BASS[pid]
+    name, amp, bias = AMPLITUDE[pid][1]
+    shape = SHAPES[name]
     a, b = region(text, "[accompaniment.bass]", (r"^\[accompaniment\.chords\]",))
     seg = text[a:b]
 
     def note(m: re.Match) -> str:
-        step = int(m[1])
-        v = vel(rule, step % spbar, spb, spbar)
-        return f"{{ step = {step}, duration = {m[2]}, {m[3] or ''}velocity = {v}{m[5]}}}"
+        step = int(m[1]) % spbar
+        v = vel(shape, amp, bias, int(m[4]), step, spb, spbar)
+        return f"{{ step = {m[1]}, duration = {m[2]}, {m[3] or ''}velocity = {v}{m[5]}}}"
 
     def tpl(m: re.Match) -> str:
-        return f"{{ step = {m[1]}, duration = {m[2]}, velocity = {vel(rule, int(m[1]) % spbar, spb, spbar)} }}"
+        return f"{{ step = {m[1]}, duration = {m[2]}, velocity = {vel(shape, amp, bias, int(m[3]), int(m[1]) % spbar, spb, spbar)} }}"
+
+    def pickup(m: re.Match) -> str:
+        return f"{m[1]}{vel(shape, amp, bias, int(m[2]), spbar - 2, spb, spbar)}"
 
     out = []
     for line in seg.splitlines(keepends=True):
@@ -172,29 +174,30 @@ def retouch_bass(pid: str, text: str, spb: int, spbar: int) -> str:
         elif s.startswith("{") or s.startswith("motifs") or "notes = [" in line:
             line = BASS_NOTE.sub(note, line)
         if "pickup = {" in line:
-            line = re.sub(r"(pickup = \{[^}]*velocity = )(\d+)", lambda m: f"{m[1]}{rule['ant']}", line)
+            line = re.sub(r"(pickup = \{[^}]*velocity = )(\d+)", pickup, line)
         out.append(line)
     return text[:a] + "".join(out) + text[b:]
 
 
 def retouch_walking(pid: str, text: str) -> str:
     w = WALKING[pid]
-    text = re.sub(r"(\[accompaniment\.bass\.walking\]\nvelocity = )\d+(\naccent = )\d+",
+    return re.sub(r"(\[accompaniment\.bass\.walking\]\nvelocity = )\d+(\naccent = )\d+",
                   lambda m: f"{m[1]}{w['velocity']}{m[2]}{w['accent']}", text, count=1)
-    return text
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# Point 4 : mise en place. La basse suit la grosse caisse, le comping suit la caisse claire et le timekeeper (moyenne des
-# décalages par voix de la batterie), pas par pas ; gigue réduite ; jazz : pas de décalage systématique.
+# Point 4 : mise en place. La basse suit la grosse caisse et le comping la caisse claire et le timekeeper (moyenne des
+# décalages par voix de la batterie, A6), pas par pas ; la dispersion propre de la basse et du comping est réduite à presque rien
+# (celle de la batterie, mesurée, reste) ; le geste d'égrenage commence sur la référence (`anchor = 0`).
+# Jazz : la batterie n'a aucun décalage par voix ; le retard de +20 ms du piano mesuré par la JTD est retiré (aucun instrument
+# ne dérive de la grille plus que la batterie).
 
-BASS_JITTER, CHORDS_JITTER = 0.02, 0.03
-COMPING_CORRECTION = {
-    "gmd_rock": 0.08,                    # première corde du strum ~11 ms avant la caisse claire
-    "gmd_latin_brazilian_bossa": 0.06,   # première corde du strum ~12 ms avant la cross-stick
-}
-JAZZ_COMPING_LAG = 0.0
-OFFSET_BASS_LAG = 0.0  # la basse sur la grosse caisse, sans retard systématique
+BASS_JITTER, CHORDS_JITTER = 0.02, 0.02
+# Dispersion de la batterie seule : les quatre profils de B8 portaient le plafond de l'A6 (0,1 pas, soit un écart-type de 0,058 pas)
+# partout. Le GMD donne, DANS un fichier, un écart-type de 0,03 à 0,05 pas par voix (grosse caisse, caisse claire, charleston :
+# médiane des fichiers `beat` droits du groupe) ; la dispersion mesurée entre fichiers (0,14 pas) est celle des batteurs, pas d'un
+# batteur. Amplitude de la dispersion uniforme = √3 × écart-type médian des trois voix (arrondi à 0,005).
+DRUM_JITTER = {"gmd_rock": 0.07, "gmd_soul": 0.045, "gmd_reggae": 0.06, "gmd_pop": 0.06}
 
 
 def voices(profile: dict) -> dict[int, tuple[float, float]]:
@@ -210,7 +213,7 @@ def clamp(x: float) -> float:
     return round(max(-0.2, min(0.2, x)), 4)
 
 
-def placement(pid: str, profile: dict) -> tuple[list[float], list[float]]:
+def placement(profile: dict) -> tuple[list[float], list[float]]:
     spbar = profile["meter"]["steps_per_bar"]
     pulse = profile["meter"]["steps_per_pulse"]
     v = voices(profile)
@@ -220,38 +223,40 @@ def placement(pid: str, profile: dict) -> tuple[list[float], list[float]]:
     bass, chords = [], []
     for s in range(spbar):
         i = 0 if s % pulse == 0 else 1
-        bass.append(clamp(kick[i] + OFFSET_BASS_LAG) if kick else 0.0)
+        bass.append(clamp(kick[i]) if kick else 0.0)
         refs = [x[i] for x in (snare, tk) if x]
-        chords.append(clamp((sum(refs) / len(refs) if refs else JAZZ_COMPING_LAG)
-                            + COMPING_CORRECTION.get(pid, 0.0)))
+        chords.append(clamp(sum(refs) / len(refs)) if refs else 0.0)
     return bass, chords
 
 
 def retouch_performance(pid: str, text: str, profile: dict) -> str:
-    bass, chords = placement(pid, profile)
+    bass, chords = placement(profile)
     fmt = lambda xs: "[" + ", ".join(f"{x:g}" for x in xs) + "]"
-    if pid in WALKING:
-        phrase = "phrase = [[0.0, -18.0], [0.5, 16.0], [1.0, -18.0]]\n"
-    elif pid in {"gmd_latin_brazilian_bossa", "gmd_reggae", "gmd_pop", "gmd_soul"}:
-        phrase = "phrase = [[0.0, -16.0], [0.5, 16.0], [1.0, -16.0]]\n"
-    else:
-        phrase = ""
-    bound = "velocity_min = 32\nvelocity_max = 120\n"
-    new_bass = f"[performance.tracks.Bass]\noffsets = {fmt(bass)}\njitter = {BASS_JITTER}\n{phrase}{bound}" if any(bass) else f"[performance.tracks.Bass]\njitter = {BASS_JITTER}\n{phrase}{bound}"
-    new_chords = f"[performance.tracks.Chords]\noffsets = {fmt(chords)}\njitter = {CHORDS_JITTER}\n{bound}"
+    phrase = f"phrase = [[0.0, {-PHRASE[pid]:g}], [0.5, {PHRASE[pid]:g}], [1.0, {-PHRASE[pid]:g}]]\n" if pid in PHRASE else ""
+    bound = f"velocity_min = {VEL_MIN}\nvelocity_max = {VEL_MAX}\n"
+    new_bass = "[performance.tracks.Bass]\n" + (f"offsets = {fmt(bass)}\n" if any(bass) else "") + f"jitter = {BASS_JITTER}\n{phrase}{bound}"
+    new_chords = "[performance.tracks.Chords]\n" + (f"offsets = {fmt(chords)}\n" if any(chords) else "") + f"jitter = {CHORDS_JITTER}\n{bound}"
     text, n1 = re.subn(r"\[performance\.tracks\.Bass\]\n(?:(?!\[)[^\n]*\n)*?(?=\n|\[|\Z)", lambda m: new_bass, text, count=1)
     text, n2 = re.subn(r"\[performance\.tracks\.Chords\]\n(?:(?!\[)[^\n]*\n)*?(?=\n|\[|\Z)", lambda m: new_chords, text, count=1)
     assert n1 == n2 == 1, (pid, n1, n2)
+    if pid in DRUM_JITTER:
+        a = text.index("[performance.tracks.PercussionLow]")
+        b = text.index("[performance.tracks.Bass]")
+        text = text[:a] + text[a:b].replace("jitter = 0.1", f"jitter = {DRUM_JITTER[pid]:g}") + text[b:]
+    text = re.sub(r"(\[accompaniment\.chords\.spread\]\n(?:[^\[\n][^\n]*\n)*?)anchor = [0-9.]+", r"\1anchor = 0.0", text)
     return text
 
 
 # --------------------------------------------------------------------------------------------------------------------
 
 
-def swing_leger(text: str) -> str:
-    """Retire la variante `swing_leger` et le groupe `feel` qui n'a plus qu'un seul choix (feel droit : celui du profil)."""
+def session(text: str) -> str:
+    """Point 1 : retire le groupe `feel` (variantes `droit` et `swing_leger`) : le feel droit du profil reste seul."""
     out = re.sub(r"\[\[variants\]\]\ngroup = \"feel\"\nname = \"(?:droit|swing_leger)\"\n(?:[a-z_]+ = [^\n]*\n)*\n", "", text)
     assert 'group = "feel"' not in out
+    out = re.sub(r"\(([0-9]+) habillages possibles\)", lambda m: f"({int(m[1]) // 2} habillages possibles)", out, count=1)
+    out = re.sub(r"(centiles des BPM des fichiers `beat`, [0-9 à]+\)) et\n# le swing léger \(rapport médian des fichiers `swing`\)\.",
+                 r"\1.", out, count=1)
     return out
 
 
@@ -259,22 +264,20 @@ def build(pid: str, out_root: Path) -> None:
     rel = f"profiles/{pid}"
     out = out_root / rel
     out.mkdir(parents=True, exist_ok=True)
-    prof_text = git_show(f"{rel}/profile.toml")
-    profile = tomllib.loads(prof_text)
-    spbar = profile["meter"]["steps_per_bar"]
-    num = profile["meter"]["time_signature"]["numerator"]
-    spb = spbar // num
-    if pid in COMPING and COMPING[pid]:
-        prof_text = retouch_comping(pid, prof_text, spb, spbar)
-    if pid in BASS:
-        prof_text = retouch_bass(pid, prof_text, spb, spbar)
-    if pid in WALKING:
-        prof_text = retouch_walking(pid, prof_text)
     if pid in E1:
+        prof_text = git_show(f"{rel}/profile.toml")
+        profile = tomllib.loads(prof_text)
+        spbar = profile["meter"]["steps_per_bar"]
+        spb = spbar // profile["meter"]["time_signature"]["numerator"]
+        prof_text = retouch_comping(pid, prof_text, spb, spbar)
+        if AMPLITUDE[pid][1]:
+            prof_text = retouch_bass(pid, prof_text, spb, spbar)
+        if pid in WALKING:
+            prof_text = retouch_walking(pid, prof_text)
         prof_text = retouch_performance(pid, prof_text, profile)
-    (out / "profile.toml").write_text(prof_text)
+        (out / "profile.toml").write_text(prof_text)
     if pid in SANS_SWING_LEGER:
-        (out / "session.toml").write_text(swing_leger(git_show(f"{rel}/session.toml")))
+        (out / "session.toml").write_text(session(git_show(f"{rel}/session.toml")))
 
 
 def main() -> int:

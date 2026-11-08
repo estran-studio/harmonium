@@ -74,6 +74,6 @@ ce dossier, liens d'écoute `harmonium://open?profile=<id>&seed=<n>`.
 
 | Tâche | État |
 |---|---|
-| Q0 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/q0-corrections-rapides` |
+| Q0 | **livrée** (2026-11-07, reprise sur le Mac), branche `wquintal/q0-corrections-rapides`, `TUNING_VERSION` 34 : [compte rendu](q0-corrections-rapides.md) ; en attente de l'écoute de William |
 | S1 | lancée (2026-11-07), `ovh-inner`, labo, branche `wquintal/s1-sources` |
 | B1 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/b1-banque-sons` |

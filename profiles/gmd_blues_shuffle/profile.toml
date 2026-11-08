@@ -312,68 +312,68 @@ high = 76
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 5, velocity = 70 }, { step = 6, direction = "block", duration = 5, velocity = 66 }] }]
 comping = [
   # 0. Accord tenu toute la mesure.
-  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 11, velocity = 70, direction = "block" }] },
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 11, velocity = 80, direction = "block" }] },
   # 1. Deux tenues, une par demi-mesure.
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 5, velocity = 72, direction = "block" }, { step = 6, duration = 5, velocity = 64, direction = "block" }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 5, velocity = 82, direction = "block" }, { step = 6, duration = 5, velocity = 66, direction = "block" }] },
   # 2. Tenue puis relance du temps 4, la dernière note annonce l'accord suivant.
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 74, direction = "block" }, { step = 9, duration = 2, velocity = 62, direction = "down" }, { step = 11, duration = 1, velocity = 66, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 84, direction = "block" }, { step = 9, duration = 2, velocity = 70, direction = "down" }, { step = 11, duration = 1, velocity = 68, direction = "up", anticipate = true }] },
   # 3. Silence.
   { weight = 1, tag = "sparse", hits = [] },
   # 4. Une frappe par temps (blues lent).
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 78, direction = "down" }, { step = 3, duration = 2, velocity = 70, direction = "down" }, { step = 6, duration = 2, velocity = 76, direction = "down" }, { step = 9, duration = 2, velocity = 70, direction = "down" }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 88, direction = "down" }, { step = 3, duration = 2, velocity = 78, direction = "down" }, { step = 6, duration = 2, velocity = 78, direction = "down" }, { step = 9, duration = 2, velocity = 78, direction = "down" }] },
   # 5. Contretemps des temps 2 et 4, longue-brève.
-  { weight = 3, tag = "medium", hits = [{ step = 3, duration = 2, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 60, direction = "up" }, { step = 9, duration = 2, velocity = 78, direction = "down" }, { step = 11, duration = 1, velocity = 60, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 3, duration = 2, velocity = 88, direction = "down" }, { step = 5, duration = 1, velocity = 52, direction = "up" }, { step = 9, duration = 2, velocity = 86, direction = "down" }, { step = 11, duration = 1, velocity = 62, direction = "up", anticipate = true }] },
   # 6. Contretemps de chaque temps (la brève du shuffle).
-  { weight = 3, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 68, direction = "up" }, { step = 5, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 1, velocity = 68, direction = "up" }, { step = 11, duration = 1, velocity = 62, direction = "up" }] },
+  { weight = 3, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 60, direction = "up" }, { step = 5, duration = 1, velocity = 54, direction = "up" }, { step = 8, duration = 1, velocity = 60, direction = "up" }, { step = 11, duration = 1, velocity = 54, direction = "up" }] },
   # 7. Accords sur les temps 1 et 3, rebond sur 2 et 4.
-  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "block" }, { step = 3, duration = 2, velocity = 68, direction = "down" }, { step = 6, duration = 3, velocity = 76, direction = "block" }, { step = 9, duration = 2, velocity = 68, direction = "down" }, { step = 11, duration = 1, velocity = 62, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 88, direction = "block" }, { step = 3, duration = 2, velocity = 76, direction = "down" }, { step = 6, duration = 3, velocity = 78, direction = "block" }, { step = 9, duration = 2, velocity = 76, direction = "down" }, { step = 11, duration = 1, velocity = 64, direction = "up", anticipate = true }] },
   # 8. Paires longue-brève à chaque temps (shuffle plein).
   { weight = 4, tag = "dense", hits = [
-    { step = 0, duration = 2, velocity = 82, direction = "down" },
-    { step = 2, duration = 1, velocity = 62, direction = "up" },
-    { step = 3, duration = 2, velocity = 70, direction = "down" },
-    { step = 5, duration = 1, velocity = 58, direction = "up" },
-    { step = 6, duration = 2, velocity = 80, direction = "down" },
-    { step = 8, duration = 1, velocity = 62, direction = "up" },
-    { step = 9, duration = 2, velocity = 70, direction = "down" },
-    { step = 11, duration = 1, velocity = 58, direction = "up" },
+    { step = 0, duration = 2, velocity = 92, direction = "down" },
+    { step = 2, duration = 1, velocity = 54, direction = "up" },
+    { step = 3, duration = 2, velocity = 78, direction = "down" },
+    { step = 5, duration = 1, velocity = 50, direction = "up" },
+    { step = 6, duration = 2, velocity = 82, direction = "down" },
+    { step = 8, duration = 1, velocity = 54, direction = "up" },
+    { step = 9, duration = 2, velocity = 78, direction = "down" },
+    { step = 11, duration = 1, velocity = 50, direction = "up" },
   ] },
   # 9. Shuffle, dernière brève probabiliste.
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 2, velocity = 84, direction = "down" },
-    { step = 2, duration = 1, velocity = 64, direction = "up" },
-    { step = 3, duration = 2, velocity = 68, direction = "down" },
-    { step = 5, duration = 1, velocity = 56, direction = "up" },
-    { step = 6, duration = 2, velocity = 80, direction = "down" },
-    { step = 8, duration = 1, velocity = 62, direction = "up" },
-    { step = 9, duration = 2, velocity = 68, direction = "down" },
-    { step = 11, duration = 1, velocity = 58, direction = "up", probability = 0.6 },
+    { step = 0, duration = 2, velocity = 94, direction = "down" },
+    { step = 2, duration = 1, velocity = 56, direction = "up" },
+    { step = 3, duration = 2, velocity = 76, direction = "down" },
+    { step = 5, duration = 1, velocity = 48, direction = "up" },
+    { step = 6, duration = 2, velocity = 82, direction = "down" },
+    { step = 8, duration = 1, velocity = 54, direction = "up" },
+    { step = 9, duration = 2, velocity = 76, direction = "down" },
+    { step = 11, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
   ] },
   # 10. Shuffle, accents du backbeat (temps 2 et 4).
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 2, velocity = 80, direction = "down" },
-    { step = 2, duration = 1, velocity = 60, direction = "up" },
-    { step = 3, duration = 2, velocity = 92, direction = "down" },
-    { step = 5, duration = 1, velocity = 60, direction = "up" },
-    { step = 6, duration = 2, velocity = 78, direction = "down" },
-    { step = 8, duration = 1, velocity = 60, direction = "up" },
-    { step = 9, duration = 2, velocity = 92, direction = "down" },
-    { step = 11, duration = 1, velocity = 60, direction = "up" },
+    { step = 0, duration = 2, velocity = 90, direction = "down" },
+    { step = 2, duration = 1, velocity = 52, direction = "up" },
+    { step = 3, duration = 2, velocity = 100, direction = "down" },
+    { step = 5, duration = 1, velocity = 52, direction = "up" },
+    { step = 6, duration = 2, velocity = 80, direction = "down" },
+    { step = 8, duration = 1, velocity = 52, direction = "up" },
+    { step = 9, duration = 2, velocity = 100, direction = "down" },
+    { step = 11, duration = 1, velocity = 52, direction = "up" },
   ] },
   # 11. Triolets de piano (douze frappes, celles du milieu à 80 %).
   { weight = 2, tag = "dense", hits = [
-    { step = 0, duration = 1, velocity = 76, direction = "down" },
-    { step = 1, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
-    { step = 2, duration = 1, velocity = 62, direction = "down" },
-    { step = 3, duration = 1, velocity = 76, direction = "down" },
-    { step = 4, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
-    { step = 5, duration = 1, velocity = 62, direction = "down" },
-    { step = 6, duration = 1, velocity = 76, direction = "down" },
-    { step = 7, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
-    { step = 8, duration = 1, velocity = 62, direction = "down" },
-    { step = 9, duration = 1, velocity = 76, direction = "down" },
-    { step = 10, duration = 1, velocity = 54, direction = "up", probability = 0.8 },
-    { step = 11, duration = 1, velocity = 62, direction = "down" },
+    { step = 0, duration = 1, velocity = 86, direction = "down" },
+    { step = 1, duration = 1, velocity = 32, direction = "up", probability = 0.8 },
+    { step = 2, duration = 1, velocity = 54, direction = "down" },
+    { step = 3, duration = 1, velocity = 84, direction = "down" },
+    { step = 4, duration = 1, velocity = 32, direction = "up", probability = 0.8 },
+    { step = 5, duration = 1, velocity = 54, direction = "down" },
+    { step = 6, duration = 1, velocity = 78, direction = "down" },
+    { step = 7, duration = 1, velocity = 32, direction = "up", probability = 0.8 },
+    { step = 8, duration = 1, velocity = 54, direction = "down" },
+    { step = 9, duration = 1, velocity = 84, direction = "down" },
+    { step = 10, duration = 1, velocity = 38, direction = "up", probability = 0.8 },
+    { step = 11, duration = 1, velocity = 54, direction = "down" },
   ] },
 ]
 # Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de métier : deux mesures du même
@@ -404,7 +404,7 @@ down_gap_ms = 7.0
 up_gap_ms = 5.0
 up_note_count = 3
 gap_jitter = 0.3
-anchor = 0.5
+anchor = 0.0
 tempo_exponent = 0.0
 ref_bpm = 112.0
 max_spread_ratio = 0.4
@@ -440,9 +440,15 @@ voices = [
   { note = 50, on_beat = -0.001 },
 ]
 [performance.tracks.Bass]
-jitter = 0.04
+offsets = [-0.072, -0.086, -0.086, -0.072, -0.086, -0.086, -0.072, -0.086, -0.086, -0.072, -0.086, -0.086]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.05
+offsets = [-0.0265, -0.0535, -0.0535, -0.0265, -0.0535, -0.0535, -0.0265, -0.0535, -0.0535, -0.0265, -0.0535, -0.0535]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service (rien de mesuré sur un corpus) : réglé sur le LUFS en solo de chaque piste, voir README.
 [mix]

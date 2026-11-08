@@ -40,7 +40,7 @@ de session en tire une autre, voir « Habillage par graine »), pas copiées d'u
 
 ## Écriture
 
-4/4, 16 pas par mesure, une pulsation de 4 pas, feel droit (rapport de swing 0,5 : le GMD mesure 0,50 (médiane des 161 fichiers droits)). Tempo
+4/4, 16 pas par mesure, une pulsation de 4 pas, feel droit (rapport de swing 0,5 : le GMD mesure 0,50 (médiane des 161 fichiers droits)) ; la variante de session `swing_leger` a été retirée en phase 020 (Q0 : croches en contretemps retardées de ~50 ms pendant que les doubles croches de la batterie et de la guitare restaient droites). Tempo
 105 noires/min par défaut, plage 90 à 130 : tempo des 154 fichiers `beat` du GMD (BPM du nom de fichier) : centile 10 = 90, médiane = 105, centile 90 = 130. Un chorus = 16 mesures ; 4 chorus par air
 (un air par set) : le nombre de chorus est connu, la retombée de l'arc joue au dernier.
 
@@ -50,7 +50,7 @@ de session en tire une autre, voir « Habillage par graine »), pas copiées d'u
 | Accords | guitare saturée (programme 29), triade doublée à 4 sons conduite par les voix communes, grattée vers le bas (écart 7 ms) ; huit rythmes d'une mesure étiquetés `sparse`, `medium`, `dense`, douze phrases de 2 à 4 mesures dont quatre de mise en place `part_end` |
 | Batterie | kit GeneralUser GS banque 128, programme 8 (kit « Room ») ; 22 patterns, 38 phrases distinctes, 6 relances ; densité 0 timekeeper, 1 ossature, 2 notes fantômes |
 | Arc | exposition, corps, sommet, retombée : `arc.toml` (valeurs de service) |
-| Timing | basse et accords sur la batterie (0 pas), jitter 0,1 pas (valeur de service : aucun corpus de placement rock) |
+| Timing | basse sur la grosse caisse, accords sur la caisse claire et le charleston (décalages par voix, Q0), jitter 0,02 pas ; batterie 0,07 pas |
 | Mixage | master 20.0 dB, accords -19.8 dB, basse -10.6 dB, batterie -16.2 dB : réglages de service calés hors ligne (section Mixage) |
 
 Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont ceux de GeneralUser GS (D1).
@@ -65,7 +65,7 @@ Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont
 | Phrases de batterie | 42 entrées (3 densités) | mesurées : suites de groupes vues ≥ 3 fois (≥ 2 si la suite change de groupe) dans ≥ 2 fichiers ; 9 phrases de groove tenu 4 mesures ajoutées pour les groupes sans suite mesurée (règle de métier) | GMD |
 | Relances | 6 groupes × 2 étiquettes × 2 densités | fichiers `fill` (82) | GMD |
 | Basse, comping, grilles | — | **aucune mesure** : règles de métier (motifs de basse de rock, rythmes de guitare en noires, croches et syncopes) | règles |
-| Plages de tempo de la session, swing léger | voir « Habillage par graine » | centiles des BPM du GMD ; rapport médian des fichiers `swing` | GMD |
+| Plages de tempo de la session | voir « Habillage par graine » | centiles des BPM du GMD | GMD |
 | Micro-timing par voix, coups probabilistes | voir « Habillage par graine » et `percussion.toml` | médianes en ms par rôle ; probabilité par pas du groupe | GMD |
 | Tonalités, instruments, kits, voicings, registre, énergie, arcs nommés, mixage, vélocités | — | réglages de service (règles de métier) | — |
 
@@ -130,8 +130,8 @@ d'environ −21,5 LUFS (`wjazzd_swing` : −22,2).
 
 ## Habillage par graine (`session.toml`, A2 ; R2-styles)
 
-Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (10 groupes,
-29 variantes, **27648 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
+Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (9 groupes,
+27 variantes, **13824 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
 le swing, `[fixed_tonality]` du profil de l'hôte (la grille de training, transposée par lui) la tonalité (la variante est
 alors ignorée) ; programmes, voicings, registre, énergie et arc n'ont pas de commande (un hôte qui n'en veut pas installe
 un profil sans `[session]`). Ce profil n'a donc **plus de `[fixed_tonality]`** : la tonalité par défaut (mi mixolydien) n'est
@@ -140,7 +140,6 @@ que la plus pondérée.
 | Groupe | Variantes (poids) | Ce que règle le groupe | D'où vient la valeur |
 |---|---|---|---|
 | `tempo` | lent (2), medium (3), vif (2) | tempo (plage de BPM, un entier tiré) | GMD : centiles des BPM des fichiers `beat` |
-| `feel` | droit (5), swing_leger (1) | rapport de swing | GMD : rapport médian des fichiers `swing` du style (patterns mesurés droits : voir limites) |
 | `tonalite` | mi_mixolydian (3), la_mixolydian (3), re_mixolydian (2), sol_mixolydian (2) | tonique et mode du premier air (grille relative transposée) | métier : tonalités courantes du style |
 | `comping` | overdrive (4), saturee (2), claire (2), orgue_rock (1) | programme des accords | métier |
 | `basse` | mediator (3), doigts (2) | programme de la basse | métier |
@@ -234,3 +233,15 @@ Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `re
 `percussion.toml` est généré : `{venv du labo}/bin/python specs/019-bibliotheque-accompagnements/b8/generer.py gmd_rock`
 (lit le GMD en cache vérifié, n'écrit rien dans le labo). Les autres valeurs sont portées à la main dans `profile.toml`
 (`styles.py` les génère aussi : le script réécrit tout, README compris).
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : temps 1, backbeat et temps 3 appuyés, croches de contretemps et doubles croches fantômes, anticipation poussée). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `rock_comp`, amplitude 24, décalage de niveau -11 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 1 (+0,9), temps 3 (+0,5), contretemps 2 et 4 (+0,7), attaque anticipée (+0,8) ; légers : croche de contretemps (-0,4), 1re double croche (-0,9), 3e double croche (-0,9) ; coups probabilistes : -0,9 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (temps 1 appuyé, croches de contretemps et doubles croches plus légères) : forme `rock_bass`, amplitude 15, décalage -3 ; appuyés : temps 1 (+1), temps 3 (+0,5), attaque anticipée (+0,5) ; légers : croche de contretemps (-0,4), 1re double croche (-0,9), 3e double croche (-0,9) ; coups probabilistes : -0,9 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 1, 1 note(s) fantôme(s) à 0,05, exposant des probabilités 2, phrases tenues ×2, part de fins de phrase sans relance ×4.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas ; `jitter` de la batterie 0,07 pas (écart-type intra-fichier du GMD) ; égrenage ancré sur la première corde (`anchor = 0`).
+
+<!-- q0:fin -->

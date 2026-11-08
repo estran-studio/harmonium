@@ -1,9 +1,8 @@
 # Habillage par graine de `gmd_rock` (A2 ; phase 019, R2-styles) : un tirage par groupe, les groupes se combinent
-# (27648 habillages possibles). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b8/generer.py` depuis
+# (13824 habillages possibles). GÉNÉRÉ par `specs/019-bibliotheque-accompagnements/b8/generer.py` depuis
 # `specs/019-bibliotheque-accompagnements/r2-styles/habillage.py`.
 #
-# Ce qui vient de la source (GMD, CC BY 4.0) : les plages de tempo (centiles des BPM des fichiers `beat`, 90 à 130) et
-# le swing léger (rapport médian des fichiers `swing`). Le reste est de métier (tonalités courantes du style, instruments,
+# Ce qui vient de la source (GMD, CC BY 4.0) : les plages de tempo (centiles des BPM des fichiers `beat`, 90 à 130). Le reste est de métier (tonalités courantes du style, instruments,
 # kits, familles de voicings, registre, énergie, arcs nommés) : aucun corpus distribuable ne le mesure (décision F3).
 # Programmes General MIDI (0-based) de GeneralUser GS, banque 0 ; kits de la banque 128 : 0 standard, 8 room, 16 power,
 # 24 electronic, 25 808/909. Aucune zone Odin (D1). Le tempo de l'hôte (`SetBpm`), son swing et son `[fixed_tonality]`
@@ -26,16 +25,6 @@ group = "tempo"
 name = "vif"
 weight = 2
 bpm = [120.0, 130.0]
-
-[[variants]]
-group = "feel"
-name = "droit"
-weight = 5
-
-[[variants]]
-group = "feel"
-name = "swing_leger"
-swing = 0.6
 
 [[variants]]
 group = "tonalite"

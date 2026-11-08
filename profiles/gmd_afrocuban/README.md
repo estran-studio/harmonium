@@ -203,3 +203,15 @@ python3 specs/019-bibliotheque-accompagnements/b3/gmd_afrocuban_mix.py --out spe
 # preuves (depuis ~/Project/bascanada/harmonium, binaire du worktree) : voir specs/019-bibliotheque-accompagnements/b3/gmd_afrocuban.md
 cargo test -p harmonium_core --test gmd_afrocuban_profile_tests
 ```
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : clave : pas 6, 14 et anticipation accentués, temps plats, doubles croches fantômes). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `afrocubain_comp`, amplitude 28, décalage de niveau -8 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : croche de contretemps (+0,5), attaque anticipée (+0,9), pas 6 (+0,9), pas 14 (+1), pas 2 (+0,3) ; légers : 1re double croche (-0,6), 3e double croche (-0,4) ; coups probabilistes : -0,7 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (tumbao : anticipation et pas 6 et 12 accentués) : forme `afrocubain_bass`, amplitude 14, décalage -6 ; appuyés : croche de contretemps (+0,4), attaque anticipée (+1), pas 6 (+0,7), pas 12 (+0,7) ; légers : contretemps 2 et 4 (-0,3), 1re double croche (-0,6), 3e double croche (-0,6) ; coups probabilistes : -0,8 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,5, 5 note(s) fantôme(s) à 0,1, exposant des probabilités 0,5, phrases tenues ×16, part de fins de phrase sans relance ×0,25.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas (celui de la batterie est déjà mesuré) ; égrenage ancré sur la première corde quand le profil en a un (`anchor = 0`).
+
+<!-- q0:fin -->

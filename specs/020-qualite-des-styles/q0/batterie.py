@@ -14,25 +14,35 @@ from pathlib import Path
 
 from appliquer import BASE, E1, REPO, git_show
 
-# Probabilités des coups secondaires et ajouts discrets ; valeurs de métier après mesure
-# des signatures kick/snare (GMD : tempo, feel et batterie uniquement, CC BY 4.0).
-# `fixed` : les coups déjà présents aux pas secondaires deviennent optionnels ; le premier
-# temps et le backbeat du batteur ne sont pas touchés. `extra` : notes fantômes ajoutées à
-# des places libres. Aucun morceau ni note MIDI d'un fichier du corpus n'est copié.
-PARAMS = {
-    "wjazzd_swing": (0.65, 4),
-    "wjazzd_ballad": (0.7, 4),
-    "gmd_jazz_waltz": (0.75, 3),
-    "gmd_latin_brazilian_bossa": (1.0, 0),
-    "gmd_latin_brazilian_samba": (0.80, 2),
-    "gmd_latin_brazilian_baiao": (0.72, 3),
-    "gmd_afrocuban": (0.90, 1),
-    "gmd_funk": (1.0, 1),
-    "gmd_soul": (1.0, 0),
-    "gmd_reggae": (1.0, 0),
-    "gmd_rock": (1.0, 0),
-    "gmd_pop": (1.0, 0),
-    "gmd_blues_shuffle": (1.0, 0),
+# Réglages par profil, trouvés par `specs/020-qualite-des-styles/q0/tuner_batterie.py` (recherche coordonnée par coordonnée sur 16 graines, groove de la
+# batterie rendue contre le groupe GMD du profil ; voir le compte rendu). Aucun morceau ni note MIDI d'un fichier du corpus n'est
+# copié : les phrases et les patterns de 019 restent, Q0 ne touche qu'aux probabilités, à l'ajout de notes fantômes, aux poids
+# des phrases tenues et à la part de fins de phrase sans relance.
+#   fixed       probabilité des coups de grosse caisse et de caisse claire hors temps forts qui étaient certains (1 : inchangés) ;
+#               le premier temps et le backbeat ne sont jamais touchés
+#   extra       nombre de notes fantômes de caisse claire ajoutées (places libres : contretemps d'abord, puis doubles croches)
+#   ghost_chance probabilité de chaque note fantôme
+#   prob_exp    exposant des probabilités existantes des coups de grosse caisse et de caisse claire (> 1 : plus de variation)
+#   hold        poids des phrases qui répètent un seul pattern (groove tenu sur la phrase), multiplicateur
+#   fill_scale  multiplicateur de `fills_none_weight` (part des fins de phrase sans relance)
+JAZZ = ('wjazzd_swing', 'wjazzd_ballad', 'gmd_jazz_waltz')
+#: Voix à ne jamais rendre probabilistes, par profil.
+SKIP: dict[str, set[str]] = {'gmd_latin_brazilian_baiao': {'kick'}}
+
+PARAMS: dict[str, dict] = {
+    "wjazzd_swing": dict(fixed=0.8, extra=3, ghost_chance=0.35, prob_exp=1, hold=1, fill_scale=1),
+    "wjazzd_ballad": dict(fixed=0.7, extra=4, ghost_chance=0.2, prob_exp=1, hold=6, fill_scale=2),
+    "gmd_jazz_waltz": dict(fixed=0.9, extra=5, ghost_chance=0.3, prob_exp=0.75, hold=6, fill_scale=4),
+    "gmd_latin_brazilian_bossa": dict(fixed=1, extra=0, ghost_chance=0.5, prob_exp=1, hold=16, fill_scale=1),
+    "gmd_latin_brazilian_samba": dict(fixed=1, extra=0, ghost_chance=0.45, prob_exp=1, hold=1, fill_scale=1),
+    "gmd_latin_brazilian_baiao": dict(fixed=0.5, extra=8, ghost_chance=0.45, prob_exp=2, hold=24, fill_scale=1),
+    "gmd_afrocuban": dict(fixed=0.5, extra=5, ghost_chance=0.1, prob_exp=0.5, hold=16, fill_scale=0.25),
+    "gmd_funk": dict(fixed=0.95, extra=0, ghost_chance=0.45, prob_exp=1, hold=1, fill_scale=2),
+    "gmd_soul": dict(fixed=0.95, extra=0, ghost_chance=0.45, prob_exp=3, hold=16, fill_scale=8),
+    "gmd_reggae": dict(fixed=1, extra=3, ghost_chance=0.05, prob_exp=1, hold=64, fill_scale=1),
+    "gmd_rock": dict(fixed=1, extra=1, ghost_chance=0.05, prob_exp=2, hold=2, fill_scale=4),
+    "gmd_pop": dict(fixed=0.8, extra=2, ghost_chance=0.2, prob_exp=1, hold=2, fill_scale=16),
+    "gmd_blues_shuffle": dict(fixed=0.95, extra=3, ghost_chance=0.2, prob_exp=2, hold=4, fill_scale=1),
 }
 
 
@@ -47,7 +57,7 @@ def update(pid: str, text: str, fixed: float, extra: int, prob_exp: float = 1.0,
     protected = {0, 4, 8, 12} if spbar == 16 else {0, 3, 6, 9}
     # Notes de complément à faible vélocité : la caisse claire de jazz (22) est trop faible
     # pour entrer dans la mesure de signatures >= 40, `tap` est la frappe de balai à 52.
-    ghost_voice = 'tap' if pid == 'wjazzd_swing' else next(
+    ghost_voice = 'tap' if pid in JAZZ else next(
         (v['name'] for v in data.get('voices', []) if v['note'] in (37, 38, 40) and v['velocity'] >= 44),
         None,
     )
@@ -55,19 +65,25 @@ def update(pid: str, text: str, fixed: float, extra: int, prob_exp: float = 1.0,
         raise ValueError(f'{pid}: aucune caisse claire audible pour les coups fantômes')
     ghost_vel = voice[ghost_voice]['velocity'] if ghost_voice else 0
     ghost_delta = max(-24, min(0, 48 - ghost_vel))
-    # 2, 6, 10, 14 (16 pas) : syncopes entre temps ; 2, 5, 8, 11 (12 pas) : fin des triolets.
-    ghost_steps = [2, 6, 10, 14] if spbar == 16 else [2, 5, 8, 11]
+    # 16 pas : contretemps 6 et 14 d'abord, puis 2 et 10, puis les doubles croches 3, 11, 7, 15 ; 12 pas : fins de triolets 5, 11, 2, 8 puis 1, 4, 7, 10.
+    ghost_steps = [6, 14, 2, 10, 3, 11, 7, 15] if spbar == 16 else [5, 11, 2, 8, 1, 4, 7, 10]
     pattern = re.compile(r'(?m)^\[\[patterns\]\]\n.*?(?=^\[\[(?:patterns|phrases|fills)\]\]|\Z)', re.S | re.M)
-    hi = {name for name, v in voice.items() if v['note'] in (35, 36, 37, 38, 40)}
+    # Voix de la charpente du style, jamais rendues probabilistes : le contrat de leur profil l'exige (la grosse caisse du baião est la zabumba).
+    hi = {name for name, v in voice.items() if v['note'] in (35, 36, 37, 38, 40) and name not in SKIP.get(pid, ())}
     def sub(m):
         block = m.group(0)
         present = set()
+        # Seule la densité 1 (l'ossature) est retouchée : la densité 0 reste le timekeeper seul et la densité 2 garde ses notes
+        # fantômes mesurées (contrats des tests de profil : les coups montent de densité en densité).
+        density = int(re.search(r'(?m)^density = (\d)$', block)[1])
         def hit(mm):
             nonlocal present
             line = mm.group(0)
             step = int(mm[1]); vname = mm[2]
             if vname in hi:
                 present.add((step, 'k' if voice[vname]['note'] in (35, 36) else 's'))
+            if density != 1:
+                return line
             if vname in hi and 'probability' in line and prob_exp != 1.0:
                 line = re.sub(r'probability = ([0-9.]+)',
                               lambda p: f'probability = {max(0.001, min(1.0, float(p[1]) ** prob_exp)):.3f}', line)
@@ -77,7 +93,12 @@ def update(pid: str, text: str, fixed: float, extra: int, prob_exp: float = 1.0,
             # seule sa frappe secondaire varie d'une mesure à l'autre.
             return line[:-2] + f', probability = {fixed:g} }}'
         block = re.sub(r'\{ step = (\d+), voice = "([^"]+)"[^}]*\}', hit, block)
-        if extra and 'hits = [' in block:
+        # La note fantôme ne s'ajoute qu'aux patterns qui jouent déjà cette voix : l'orchestration d'une étiquette (surdo seul de
+        # l'exposition de la samba) reste celle de 019. Jazz : `tap` (note 38, frappe de balai ou caisse claire des baguettes à 52)
+        # va dans tous les patterns de densité 1 et 2 ; le balayage `swirl` (40), lui, n'est jamais ajouté (le contrat interdit
+        # le balayage aux baguettes).
+        if extra and 'hits = [' in block and density in (1, 2) and (
+                pid in JAZZ or f'voice = "{ghost_voice}"' in block):
             add = []
             for step in ghost_steps[:extra]:
                 if (step, 's') not in present:
@@ -106,25 +127,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--profil', action='append')
     ap.add_argument('--out', type=Path, default=REPO)
-    ap.add_argument('--fixed', type=float)
-    ap.add_argument('--extra', type=int)
-    ap.add_argument('--prob-exp', type=float)
-    ap.add_argument('--hold', type=float)
-    ap.add_argument('--fill-scale', type=float)
-    ap.add_argument('--ghost-chance', type=float)
     a = ap.parse_args()
     for pid in a.profil or E1:
-        fixed, extra = PARAMS[pid]
-        if a.fixed is not None: fixed = a.fixed
-        if a.extra is not None: extra = a.extra
+        p = PARAMS[pid]
         path = a.out / 'profiles' / pid / 'percussion.toml'
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(update(pid, git_show(f'profiles/{pid}/percussion.toml'), fixed, extra,
-                               a.prob_exp if a.prob_exp is not None else 1.0,
-                               a.hold if a.hold is not None else 1.0,
-                               a.fill_scale if a.fill_scale is not None else 1.0,
-                               a.ghost_chance if a.ghost_chance is not None else 0.45))
-        print('ok', pid, fixed, extra)
+        path.write_text(update(pid, git_show(f'profiles/{pid}/percussion.toml'), p['fixed'], p['extra'], p['prob_exp'],
+                               p['hold'], p['fill_scale'], p['ghost_chance']))
+        print('ok', pid, p)
+
 
 if __name__ == '__main__':
     main()

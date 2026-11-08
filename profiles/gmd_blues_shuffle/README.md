@@ -167,3 +167,15 @@ bornes (tempo, tonalités mixolydiennes écrites) ; l'hôte garde la tonalité e
 
 Groove MIDI Dataset v1.0.0 : © Google LLC, CC BY 4.0 ; Weimar Jazz Database : ODbL 1.0 / DbCL 1.0 (mentions complètes dans `[meta] corpus`).
 Les données dérivées sont des agrégats ; le reste du profil est sous la licence du dépôt.
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : temps 1 et backbeat (2 et 4) très appuyés, triolet du milieu fantôme). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `shuffle_comp`, amplitude 20, décalage de niveau -8 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 1 (+0,9), temps 3 (+0,5), contretemps 2 et 4 (+0,8), attaque anticipée (+0,5) ; légers : 1re double croche (-0,9), 3e double croche (-0,9) ; coups probabilistes : -0,9 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** : motifs de 019 (longue-brève déjà accentuée, écart-type ≥ 9,2) : inchangés.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,95, 3 note(s) fantôme(s) à 0,2, exposant des probabilités 2, phrases tenues ×4, part de fins de phrase sans relance ×1.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas (celui de la batterie est déjà mesuré) ; égrenage ancré sur la première corde quand le profil en a un (`anchor = 0`).
+
+<!-- q0:fin -->

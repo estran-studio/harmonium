@@ -6,7 +6,7 @@ B4 + B7) et écriture de `session.toml`, des tables de tonalité de `dynamics.to
 
 D'où vient chaque valeur :
 - plages de tempo : centiles des BPM des fichiers `beat` du GMD (`references/gmd-*/measures-drums.json`, L2) ;
-- swing léger : rapport médian des fichiers `swing` du GMD (hip-hop, 10 fichiers `fill` ; rock, 7 fichiers `beat`) ;
+- swing léger : retiré par la phase 020 (Q0) : les croches en contretemps retardaient pendant que les doubles croches restaient droites ;
 - micro-timing par voix : médianes en millisecondes du GMD (groupe 4/4 droit, tous styles du profil, pondérées par
   l'effectif), converties en fraction de pas au tempo par défaut du profil ;
 - tonalités, instruments, kits, familles de voicings, registres, énergie et arcs : règles de métier de chaque style
@@ -349,7 +349,6 @@ add(Habillage(
     id="gmd_rock", mode="mixolydian", dark="dorian", keys=[(4, 3), (9, 3), (2, 2), (7, 2)],
     groups=[
         *tempos([("lent", 2, 90.0, 99.0), ("medium", 3, 102.0, 116.0), ("vif", 2, 120.0, 130.0)]),
-        Variant("feel", "droit", 5), Variant("feel", "swing_leger", 1, swing=0.60),
         *tonalities([(4, 3), (9, 3), (2, 2), (7, 2)], "mixolydian"),
         *instruments("comping", "chords_program", [("overdrive", 4, 29), ("saturee", 2, 30), ("claire", 2, 27), ("orgue_rock", 1, 18)]),
         *instruments("basse", "bass_program", [("mediator", 3, 34), ("doigts", 2, 33)]),
@@ -380,7 +379,6 @@ add(Habillage(
     id="gmd_hiphop", mode="aeolian", dark="ionian", keys=[(0, 3), (9, 2), (7, 2), (5, 2), (2, 1), (4, 1)],
     groups=[
         *tempos([("lent", 2, 70.0, 79.0), ("medium", 3, 84.0, 95.0), ("vif", 1, 97.0, 100.0)]),
-        Variant("feel", "droit", 4), Variant("feel", "swing_leger", 1, swing=0.59),
         *tonalities([(0, 3), (9, 2), (7, 2), (5, 2), (2, 1), (4, 1)], "aeolian"),
         *instruments("comping", "chords_program", [("piano_electrique", 4, 4), ("piano", 2, 0), ("fm", 1, 5), ("vibraphone", 1, 11), ("nylon", 1, 24)]),
         *instruments("basse", "bass_program", [("synth_1", 3, 38), ("synth_2", 2, 39), ("doigts", 1, 33)]),
@@ -503,7 +501,6 @@ DRIFT = {"gmd_rock": "{ step = 2, max = 4 }", "gmd_pop": "{ step = 2, max = 4 }"
 
 GROUP_ROLE = {
     "tempo": ("tempo (plage de BPM, un entier tiré)", "GMD : centiles des BPM des fichiers `beat`"),
-    "feel": ("rapport de swing", "GMD : rapport médian des fichiers `swing` du style (patterns mesurés droits : voir limites)"),
     "tonalite": ("tonique et mode du premier air (grille relative transposée)", "métier : tonalités courantes du style"),
     "comping": ("programme des accords", "métier"),
     "basse": ("programme de la basse", "métier"),

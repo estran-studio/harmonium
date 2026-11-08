@@ -65,7 +65,7 @@ Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont
 | Phrases de batterie | 29 entrées (3 densités) | mesurées : suites de groupes vues ≥ 3 fois (≥ 2 si la suite change de groupe) dans ≥ 2 fichiers ; 11 phrases de groove tenu 4 mesures ajoutées pour les groupes sans suite mesurée (règle de métier) | GMD |
 | Relances | 4 groupes × 1 étiquettes × 2 densités | fichiers `fill` (48) | GMD |
 | Basse, comping, grilles | — | **aucune mesure** : règles de métier (sub tenu et syncopé, accords de touches clairsemés) | règles |
-| Plages de tempo de la session, swing léger | voir « Habillage par graine » | centiles des BPM du GMD ; rapport médian des fichiers `swing` | GMD |
+| Plages de tempo de la session | voir « Habillage par graine » | centiles des BPM du GMD | GMD |
 | Micro-timing par voix, coups probabilistes | voir « Habillage par graine » et `percussion.toml` | médianes en ms par rôle ; probabilité par pas du groupe | GMD |
 | Tonalités, instruments, kits, voicings, registre, énergie, arcs nommés, mixage, vélocités | — | réglages de service (règles de métier) | — |
 
@@ -119,8 +119,8 @@ d'environ −21,5 LUFS (`wjazzd_swing` : −22,2).
 
 ## Habillage par graine (`session.toml`, A2 ; R2-styles)
 
-Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (10 groupes,
-37 variantes, **311040 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
+Une graine tire **un habillage** : un tirage indépendant par groupe, tous les groupes se combinent (9 groupes,
+35 variantes, **155520 habillages possibles**). Le tirage est stable par graine, rejoué après un seek, et **l'hôte gagne** : `SetBpm` impose le tempo, `SetSwing`
 le swing, `[fixed_tonality]` du profil de l'hôte (la grille de training, transposée par lui) la tonalité (la variante est
 alors ignorée) ; programmes, voicings, registre, énergie et arc n'ont pas de commande (un hôte qui n'en veut pas installe
 un profil sans `[session]`). Ce profil n'a donc **plus de `[fixed_tonality]`** : la tonalité par défaut (do éolien) n'est
@@ -129,7 +129,6 @@ que la plus pondérée.
 | Groupe | Variantes (poids) | Ce que règle le groupe | D'où vient la valeur |
 |---|---|---|---|
 | `tempo` | lent (2), medium (3), vif (1) | tempo (plage de BPM, un entier tiré) | GMD : centiles des BPM des fichiers `beat` |
-| `feel` | droit (4), swing_leger (1) | rapport de swing | GMD : rapport médian des fichiers `swing` du style (patterns mesurés droits : voir limites) |
 | `tonalite` | do_aeolian (3), la_aeolian (2), sol_aeolian (2), fa_aeolian (2), re_aeolian (1), mi_aeolian (1) | tonique et mode du premier air (grille relative transposée) | métier : tonalités courantes du style |
 | `comping` | piano_electrique (4), piano (2), fm (1), vibraphone (1), nylon (1) | programme des accords | métier |
 | `basse` | synth_1 (3), synth_2 (2), doigts (1) | programme de la basse | métier |
@@ -206,7 +205,7 @@ Mesuré par `harmonium-lab seed-variety --chorus 4` (16 graines × 4 chorus, `re
 ## Limites
 
 - **Un seul timekeeper** : le hip-hop du GMD est joué à la charleston fermée ; les étiquettes d'arc n'ont donc que `hat` (pas de ride) et le corps de l'arc ne change pas de timekeeper.
-- **Swing** : dix fichiers à swing léger écartés (feel droit seulement).
+- **Swing** : dix fichiers à swing léger écartés (feel droit seulement) ; la variante de session `swing_leger` a été retirée en phase 020 (Q0 : croches en contretemps retardées de ~50 ms pendant que les doubles croches restaient droites).
 - **Basse et comping : règles de métier**, jugées à l'écoute seulement (D5 : aucune écoute exigée ; des preuves chiffrées,
   compte rendu `specs/019-bibliotheque-accompagnements/b8-profils-gmd.md`). WJazzD ne mesure que la basse du jazz ; aucun corpus distribuable de
   voicings ni de rythmes de comping (décision F3).

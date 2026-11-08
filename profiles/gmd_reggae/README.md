@@ -49,7 +49,7 @@ de session en tire une autre, voir « Habillage par graine »), pas copiées d'u
 | Accords | guitare claire (programme 27), triades jouées vers le haut sur les trois cordes aiguës (`up_note_count = 3`, écart 4 ms) : huit rythmes d'une mesure étiquetés `sparse`, `medium`, `dense` (skank sur les contretemps, doublé en doubles croches), douze phrases de 2 à 4 mesures dont quatre `part_end` |
 | Batterie | kit GeneralUser GS banque 128, programme 0 (kit standard) ; 8 patterns, 8 phrases distinctes, 1 relances ; densité 0 timekeeper, 1 ossature, 2 notes fantômes |
 | Arc | exposition, corps, sommet, retombée : `arc.toml` (valeurs de service) |
-| Timing | basse et accords sur la batterie (0 pas), jitter 0,1 pas (valeur de service ; le reggae joue en retard sur le temps, rien n'est mesuré ici) |
+| Timing | basse sur la grosse caisse, accords sur la caisse claire et le charleston (décalages par voix, Q0), jitter 0,02 pas ; batterie 0,06 pas |
 | Mixage | master 20.0 dB, accords -14.1 dB, basse -13.9 dB, batterie -14.1 dB : réglages de service calés hors ligne (section Mixage) |
 
 Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont ceux de GeneralUser GS (D1).
@@ -212,3 +212,15 @@ basse changée (elle suit la fondamentale des accords) 7 % → 57 %. Poids et pr
 `percussion.toml` est généré : `{venv du labo}/bin/python specs/019-bibliotheque-accompagnements/b8/generer.py gmd_reggae`
 (lit le GMD en cache vérifié, n'écrit rien dans le labo). Les autres valeurs sont portées à la main dans `profile.toml`
 (`styles.py` les génère aussi : le script réécrit tout, README compris).
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : skank : « et » des pas 6 et 14 très appuyés, temps 1 et 3 plus légers (one drop)). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `reggae_comp`, amplitude 22, décalage de niveau -15 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : croche de contretemps (+1), attaque anticipée (+0,8), pas 6 (+1), pas 14 (+1) ; légers : temps 1 (-0,8), temps 3 (-0,5), contretemps 2 et 4 (-0,4), 1re double croche (-0,8), 3e double croche (-0,6) ; coups probabilistes : -0,8 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (temps 3 appuyé (one drop), temps 1 moyen) : forme `reggae_bass`, amplitude 18, décalage -6 ; appuyés : temps 1 (+0,5), temps 3 (+1), attaque anticipée (+0,4) ; légers : 1re double croche (-0,6), 3e double croche (-0,6) ; coups probabilistes : -0,8 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 1, 3 note(s) fantôme(s) à 0,05, exposant des probabilités 1, phrases tenues ×64, part de fins de phrase sans relance ×1.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas ; `jitter` de la batterie 0,06 pas (écart-type intra-fichier du GMD) ; égrenage ancré sur la première corde (`anchor = 0`).
+
+<!-- q0:fin -->
