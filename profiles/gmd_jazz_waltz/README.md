@@ -41,7 +41,7 @@ dites comme telles. WJazzD n'a aucune valse exploitable (E7 ne lit que le 4/4), 
 | Accords | voicings `rootless` par défaut, `color` 9/11/13, `register_drift` ±5 ; dix rythmes d'une mesure (4 `sparse`, 3 `medium`, 3 `dense`) sur les temps 2 et 3 avec anticipations, douze phrases |
 | Batterie | kit jazz 128/32 par défaut (ride 51, pédale 44, grosse caisse 36, caisse claire 38, tom 43) ; kit balais 128/40 : `tap` 38 et `swirl` 40 |
 | Arc | exposition à deux temps ou à la blanche pointée (`three_feel`, A7), deux chorus de marche (ride, un break à la mesure 24 ou un chorus plus fort), retombée à la blanche pointée avec stop-time ; au-delà de quatre chorus : sommet puis corps en boucle |
-| Timing | basse sur la batterie, accords en retard de 0,2 pas (valeurs de `wjazzd_swing`, non mesurées en 3/4) |
+| Timing | basse et accords sur la batterie (0 pas, Q0), jitter 0,02 pas |
 | Mixage | niveaux de `wjazzd_swing` ; **non mesuré au LUFS** pour ce profil |
 
 ## Habillage par graine (`session.toml`)
@@ -65,3 +65,15 @@ de batterie du kit), voicings (`rootless`, `drop2`, `open`, `guide_tones`), regi
 ## Régénérer
 
 `cd ~/Project/bascanada/harmonium_lab && .venv/bin/python <moteur>/specs/019-bibliotheque-accompagnements/b25_batterie.py gmd_jazz_waltz > <moteur>/profiles/gmd_jazz_waltz/percussion.toml`
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : temps 2 appuyé, temps 1 et 3 plus légers (« pah-pah » qui penche vers le 2), anticipations discrètes). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `valse_comp`, amplitude 20, décalage de niveau -2 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 2 (+1) ; légers : temps 3 (-0,8), temps 1 (-0,6), 1re double croche (-0,8), 3e double croche (-0,8) ; coups probabilistes : -0,6 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (marche : courbe de phrase ±18 (A6), arrivées +20) : vélocité de la marche 66, arrivées +20, courbe de phrase ±18.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,9, 5 note(s) fantôme(s) à 0,3, exposant des probabilités 0,75, phrases tenues ×6, part de fins de phrase sans relance ×4.
+- **Mise en place** : basse et accords sans décalage systématique (la batterie n'a aucun décalage par voix ; le retard de +0,2 pas du piano est retiré : aucun instrument ne dérive de la grille plus que la batterie) ; `jitter` 0,02 pas.
+
+<!-- q0:fin -->

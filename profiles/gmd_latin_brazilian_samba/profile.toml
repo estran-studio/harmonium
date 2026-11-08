@@ -206,41 +206,41 @@ walk_high = 50
 weight = 4
 bars = 1
 rhythm = [
-  { step = 0, duration = 3, velocity = 100 },
-  { step = 4, duration = 3, velocity = 90 },
-  { step = 8, duration = 3, velocity = 96 },
-  { step = 12, duration = 3, velocity = 88 },
+  { step = 0, duration = 3, velocity = 90 },
+  { step = 4, duration = 3, velocity = 116 },
+  { step = 8, duration = 3, velocity = 91 },
+  { step = 12, duration = 3, velocity = 114 },
 ]
 cycle = [{ degree = "root" }, { degree = "fifth_if_held" }]
-pickup = { lead = 2, duration = 2, velocity = 84 }
+pickup = { lead = 2, duration = 2, velocity = 93 }
 
 # 2. Figure de la grosse caisse : la basse joue 0, 3, 4, 7, 8, 11, 12, 15, notes fantômes sur les pas 3, 7, 11, 15.
 [[accompaniment.bass.templates]]
 weight = 3
 bars = 1
 rhythm = [
-  { step = 0, duration = 3, velocity = 100 },
-  { step = 3, duration = 1, velocity = 70 },
-  { step = 4, duration = 3, velocity = 92 },
-  { step = 7, duration = 1, velocity = 68 },
-  { step = 8, duration = 3, velocity = 98 },
-  { step = 11, duration = 1, velocity = 70 },
-  { step = 12, duration = 3, velocity = 90 },
-  { step = 15, duration = 1, velocity = 68 },
+  { step = 0, duration = 3, velocity = 90 },
+  { step = 3, duration = 1, velocity = 46 },
+  { step = 4, duration = 3, velocity = 118 },
+  { step = 7, duration = 1, velocity = 44 },
+  { step = 8, duration = 3, velocity = 93 },
+  { step = 11, duration = 1, velocity = 46 },
+  { step = 12, duration = 3, velocity = 116 },
+  { step = 15, duration = 1, velocity = 44 },
 ]
 cycle = [{ degree = "root" }, { degree = "root" }, { degree = "fifth_if_held" }, { degree = "fifth_if_held" }]
-pickup = { lead = 1, duration = 1, velocity = 80 }
+pickup = { lead = 1, duration = 1, velocity = 89 }
 
 # 3. Deux tenues : la fondamentale tenue sur chaque 2/4, anticipation du changement.
 [[accompaniment.bass.templates]]
 weight = 2
 bars = 1
 rhythm = [
-  { step = 0, duration = 8, velocity = 96 },
-  { step = 8, duration = 7, velocity = 90 },
+  { step = 0, duration = 8, velocity = 86 },
+  { step = 8, duration = 7, velocity = 85 },
 ]
 cycle = [{ degree = "root" }]
-pickup = { lead = 2, duration = 2, velocity = 84 }
+pickup = { lead = 2, duration = 2, velocity = 93 }
 
 # 4. Marcação variée : fondamentale, fondamentale, quinte, fondamentale (hauteur répétée : 38 % des intervalles de
 #    WJazzD LATIN sont des répétitions).
@@ -248,13 +248,13 @@ pickup = { lead = 2, duration = 2, velocity = 84 }
 weight = 2
 bars = 1
 rhythm = [
-  { step = 0, duration = 3, velocity = 100 },
-  { step = 4, duration = 3, velocity = 86 },
-  { step = 8, duration = 3, velocity = 96 },
-  { step = 12, duration = 3, velocity = 90 },
+  { step = 0, duration = 3, velocity = 90 },
+  { step = 4, duration = 3, velocity = 112 },
+  { step = 8, duration = 3, velocity = 91 },
+  { step = 12, duration = 3, velocity = 116 },
 ]
 cycle = [{ degree = "root" }, { degree = "root" }, { degree = "fifth_if_held" }, { degree = "root" }]
-pickup = { lead = 2, duration = 2, velocity = 84 }
+pickup = { lead = 2, duration = 2, velocity = 93 }
 
 # 5. Sans le quatrième temps : la place de l'approche chromatique ou diatonique mesurée (`passing`).
 [[accompaniment.bass.motifs]]
@@ -262,9 +262,9 @@ bars = 1
 weight = 4
 reference = "chord_root"
 notes = [
-  { step = 0, duration = 4, semitones = 0, velocity = 100 },
+  { step = 0, duration = 4, semitones = 0, velocity = 90 },
   { step = 4, duration = 4, semitones = 7, octave = -1, velocity = 90 },
-  { step = 8, duration = 4, semitones = 0, velocity = 96 },
+  { step = 8, duration = 4, semitones = 0, velocity = 91 },
 ]
 
 # 6. Deux mesures : le quatrième temps libre une mesure sur deux.
@@ -273,13 +273,13 @@ bars = 2
 weight = 3
 reference = "chord_root"
 notes = [
-  { step = 0, duration = 4, semitones = 0, velocity = 100 },
+  { step = 0, duration = 4, semitones = 0, velocity = 90 },
   { step = 4, duration = 4, semitones = 7, octave = -1, velocity = 90 },
-  { step = 8, duration = 4, semitones = 0, velocity = 96 },
+  { step = 8, duration = 4, semitones = 0, velocity = 91 },
   { step = 12, duration = 4, semitones = 7, octave = -1, velocity = 88 },
-  { step = 16, duration = 4, semitones = 0, velocity = 100 },
+  { step = 16, duration = 4, semitones = 0, velocity = 90 },
   { step = 20, duration = 4, semitones = 7, octave = -1, velocity = 90 },
-  { step = 24, duration = 4, semitones = 0, velocity = 96 },
+  { step = 24, duration = 4, semitones = 0, velocity = 91 },
 ]
 
 [accompaniment.bass.passing]
@@ -308,44 +308,44 @@ register_drift = { step = 2, max = 5 }
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 66 }] }]
 comping = [
   # 0-3 : clairsemé, un accord par 2/4, tenue, temps 2, silence.
-  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 7, velocity = 72 }, { step = 8, duration = 7, velocity = 66 }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 74 }, { step = 6, duration = 2, velocity = 62 }, { step = 8, duration = 3, velocity = 70 }, { step = 14, duration = 2, velocity = 64, anticipate = true }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 4, velocity = 70 }, { step = 12, duration = 4, velocity = 66, anticipate = true }] },
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 7, velocity = 54 }, { step = 8, duration = 7, velocity = 66 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 3, velocity = 56 }, { step = 6, duration = 2, velocity = 44 }, { step = 8, duration = 3, velocity = 70 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 4, velocity = 91 }, { step = 12, duration = 4, velocity = 80, anticipate = true }] },
   { weight = 1, tag = "sparse", hits = [] },
   # 4-7 : médian, contretemps, trois-trois-deux, anticipation.
-  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 2, velocity = 70, direction = "up" }, { step = 6, duration = 2, velocity = 66, direction = "up" }, { step = 10, duration = 2, velocity = 70, direction = "up" }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 3, duration = 3, velocity = 62, direction = "up" }, { step = 6, duration = 2, velocity = 66, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 11, duration = 3, velocity = 60, direction = "up" }, { step = 14, duration = 2, velocity = 68, direction = "up", anticipate = true }] },
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 4, duration = 1, velocity = 58, direction = "up" }, { step = 6, duration = 1, velocity = 64, direction = "up" }, { step = 7, duration = 1, velocity = 56, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 12, duration = 1, velocity = 58, direction = "up" }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
-  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 76, direction = "block" }, { step = 4, duration = 2, velocity = 60, direction = "up" }, { step = 7, duration = 1, velocity = 60, direction = "up" }, { step = 8, duration = 4, velocity = 72, direction = "block" }, { step = 12, duration = 2, velocity = 62, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", anticipate = true }] },
+  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 2, velocity = 52, direction = "up" }, { step = 6, duration = 2, velocity = 48, direction = "up" }, { step = 10, duration = 2, velocity = 52, direction = "up" }, { step = 14, duration = 2, velocity = 80, direction = "up", anticipate = true }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 60, direction = "down" }, { step = 3, duration = 3, velocity = 73, direction = "up" }, { step = 6, duration = 2, velocity = 48, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 11, duration = 3, velocity = 71, direction = "up" }, { step = 14, duration = 2, velocity = 82, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 60, direction = "down" }, { step = 4, duration = 1, velocity = 79, direction = "up" }, { step = 6, duration = 1, velocity = 46, direction = "up" }, { step = 7, duration = 1, velocity = 67, direction = "up" }, { step = 8, duration = 3, velocity = 74, direction = "down" }, { step = 12, duration = 1, velocity = 79, direction = "up" }, { step = 14, duration = 2, velocity = 80, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 58, direction = "block" }, { step = 4, duration = 2, velocity = 81, direction = "up" }, { step = 7, duration = 1, velocity = 71, direction = "up" }, { step = 8, duration = 4, velocity = 72, direction = "block" }, { step = 12, duration = 2, velocity = 83, direction = "up" }, { step = 15, duration = 1, velocity = 74, direction = "up", anticipate = true }] },
   # 8-11 : dense, doubles croches de cavaquinho, notes fantômes à probabilité réduite.
   { weight = 4, tag = "dense", hits = [
-    { step = 0, duration = 1, velocity = 82, direction = "down" }, { step = 1, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
-    { step = 2, duration = 1, velocity = 64, direction = "down" }, { step = 3, duration = 1, velocity = 70, direction = "up" },
-    { step = 4, duration = 1, velocity = 78, direction = "down" }, { step = 5, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
-    { step = 6, duration = 1, velocity = 64, direction = "down" }, { step = 7, duration = 1, velocity = 70, direction = "up" },
-    { step = 8, duration = 1, velocity = 80, direction = "down" }, { step = 9, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
-    { step = 10, duration = 1, velocity = 64, direction = "down" }, { step = 11, duration = 1, velocity = 70, direction = "up" },
-    { step = 12, duration = 1, velocity = 78, direction = "down" }, { step = 13, duration = 1, velocity = 48, direction = "up", probability = 0.6 },
-    { step = 14, duration = 1, velocity = 64, direction = "down" }, { step = 15, duration = 1, velocity = 70, direction = "up", anticipate = true },
+    { step = 0, duration = 1, velocity = 64, direction = "down" }, { step = 1, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 2, duration = 1, velocity = 46, direction = "down" }, { step = 3, duration = 1, velocity = 81, direction = "up" },
+    { step = 4, duration = 1, velocity = 99, direction = "down" }, { step = 5, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 6, duration = 1, velocity = 46, direction = "down" }, { step = 7, duration = 1, velocity = 81, direction = "up" },
+    { step = 8, duration = 1, velocity = 80, direction = "down" }, { step = 9, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 10, duration = 1, velocity = 46, direction = "down" }, { step = 11, duration = 1, velocity = 81, direction = "up" },
+    { step = 12, duration = 1, velocity = 99, direction = "down" }, { step = 13, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 14, duration = 1, velocity = 78, direction = "down" }, { step = 15, duration = 1, velocity = 84, direction = "up", anticipate = true },
   ] },
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 2, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 64, direction = "up" },
-    { step = 4, duration = 1, velocity = 76, direction = "down" }, { step = 6, duration = 1, velocity = 64, direction = "up" },
-    { step = 7, duration = 1, velocity = 56, direction = "up", probability = 0.7 }, { step = 8, duration = 2, velocity = 82, direction = "down" },
-    { step = 11, duration = 1, velocity = 64, direction = "up" }, { step = 12, duration = 1, velocity = 76, direction = "down" },
-    { step = 14, duration = 1, velocity = 66, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", probability = 0.7, anticipate = true },
+    { step = 0, duration = 2, velocity = 66, direction = "down" }, { step = 3, duration = 1, velocity = 75, direction = "up" },
+    { step = 4, duration = 1, velocity = 97, direction = "down" }, { step = 6, duration = 1, velocity = 46, direction = "up" },
+    { step = 7, duration = 1, velocity = 41, direction = "up", probability = 0.7 }, { step = 8, duration = 2, velocity = 82, direction = "down" },
+    { step = 11, duration = 1, velocity = 75, direction = "up" }, { step = 12, duration = 1, velocity = 97, direction = "down" },
+    { step = 14, duration = 1, velocity = 80, direction = "up" }, { step = 15, duration = 1, velocity = 49, direction = "up", probability = 0.7, anticipate = true },
   ] },
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 3, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 62, direction = "up" },
-    { step = 5, duration = 1, velocity = 52, direction = "up", probability = 0.5 }, { step = 6, duration = 2, velocity = 72, direction = "down" },
-    { step = 8, duration = 3, velocity = 82, direction = "down" }, { step = 11, duration = 1, velocity = 62, direction = "up" },
-    { step = 13, duration = 1, velocity = 52, direction = "up", probability = 0.5 }, { step = 14, duration = 2, velocity = 70, direction = "down", anticipate = true },
+    { step = 0, duration = 3, velocity = 66, direction = "down" }, { step = 3, duration = 1, velocity = 73, direction = "up" },
+    { step = 5, duration = 1, velocity = 32, direction = "up", probability = 0.5 }, { step = 6, duration = 2, velocity = 54, direction = "down" },
+    { step = 8, duration = 3, velocity = 82, direction = "down" }, { step = 11, duration = 1, velocity = 73, direction = "up" },
+    { step = 13, duration = 1, velocity = 32, direction = "up", probability = 0.5 }, { step = 14, duration = 2, velocity = 84, direction = "down", anticipate = true },
   ] },
   { weight = 2, tag = "dense", hits = [
-    { step = 0, duration = 4, velocity = 86, direction = "block" }, { step = 4, duration = 1, velocity = 62, direction = "up" },
-    { step = 6, duration = 1, velocity = 70, direction = "up" }, { step = 7, duration = 1, velocity = 58, direction = "up" },
-    { step = 8, duration = 4, velocity = 84, direction = "block" }, { step = 12, duration = 1, velocity = 62, direction = "up" },
-    { step = 14, duration = 1, velocity = 70, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", anticipate = true },
+    { step = 0, duration = 4, velocity = 68, direction = "block" }, { step = 4, duration = 1, velocity = 83, direction = "up" },
+    { step = 6, duration = 1, velocity = 52, direction = "up" }, { step = 7, duration = 1, velocity = 69, direction = "up" },
+    { step = 8, duration = 4, velocity = 84, direction = "block" }, { step = 12, duration = 1, velocity = 83, direction = "up" },
+    { step = 14, duration = 1, velocity = 84, direction = "up" }, { step = 15, duration = 1, velocity = 74, direction = "up", anticipate = true },
   ] },
 ]
 # Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de métier : deux mesures
@@ -377,7 +377,7 @@ down_gap_ms = 6.0
 up_gap_ms = 4.0
 up_note_count = 2
 gap_jitter = 0.3
-anchor = 0.5
+anchor = 0.0
 tempo_exponent = 0.0
 ref_bpm = 89.0
 max_spread_ratio = 0.4
@@ -410,9 +410,15 @@ voices = [
   { note = 44, on_beat = -0.027, off_beat = -0.025 },
 ]
 [performance.tracks.Bass]
-jitter = 0.04
+offsets = [-0.008, -0.046, -0.046, -0.046, -0.008, -0.046, -0.046, -0.046, -0.008, -0.046, -0.046, -0.046, -0.008, -0.046, -0.046, -0.046]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.05
+offsets = [-0.031, -0.0365, -0.0365, -0.0365, -0.031, -0.0365, -0.0365, -0.0365, -0.031, -0.0365, -0.0365, -0.0365, -0.031, -0.0365, -0.0365, -0.0365]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service (rien de mesuré sur un corpus) : niveaux de piste calés sur le LUFS intégré en solo (graines 1 et 2,
 # 48 mesures ; cibles accords −26, basse −25, batterie −25,5, somme en puissance des deux pistes de percussion) avec un

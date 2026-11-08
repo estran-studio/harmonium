@@ -21,7 +21,7 @@ percussion_gain = 1.0
 velocity_humanize = 3
 # Part de fins de phrase sans relance : 60 % (valeur de service : le GMD isole les relances, la part de
 # fins de phrase sans relance n'y est pas mesurable).
-fills_none_weight = 9
+fills_none_weight = 36
 
 [[voices]]
 name = "kick"
@@ -108,8 +108,12 @@ density = 1
 weight = 68
 tag = "ride"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "ride", delta_velocity = 4 },
-  { step = 2, voice = "snare" },
+  { step = 2, voice = "snare", probability = 0.9 },
   { step = 3, voice = "pedal" },
   { step = 4, voice = "ride", delta_velocity = -2 },
   { step = 6, voice = "ride" },
@@ -121,15 +125,18 @@ density = 1
 weight = 62
 tag = "ride"
 hits = [
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "ride", delta_velocity = 8 },
-  { step = 2, voice = "snare", delta_velocity = 1 },
+  { step = 2, voice = "snare", delta_velocity = 1, probability = 0.9 },
   { step = 4, voice = "ride", delta_velocity = -4 },
-  { step = 5, voice = "snare" },
+  { step = 5, voice = "snare", probability = 0.9 },
   { step = 6, voice = "kick" },
   { step = 6, voice = "ride" },
   { step = 8, voice = "ride", delta_velocity = -4 },
   { step = 9, voice = "snare" },
-  { step = 10, voice = "kick" },
+  { step = 10, voice = "kick", probability = 0.9 },
 ]
 
 [[patterns]]
@@ -137,6 +144,11 @@ density = 1
 weight = 87
 tag = "ride"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "ride", delta_velocity = 5 },
   { step = 4, voice = "pedal" },
@@ -145,7 +157,7 @@ hits = [
   { step = 6, voice = "snare", delta_velocity = 10 },
   { step = 8, voice = "pedal" },
   { step = 8, voice = "ride", delta_velocity = -4 },
-  { step = 10, voice = "snare" },
+  { step = 10, voice = "snare", probability = 0.9 },
 ]
 
 [[patterns]]
@@ -153,6 +165,9 @@ density = 2
 weight = 68
 tag = "ride"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "ride", delta_velocity = 4 },
   { step = 2, voice = "snare" },
   { step = 3, voice = "pedal" },
@@ -170,6 +185,8 @@ density = 2
 weight = 62
 tag = "ride"
 hits = [
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "ride", delta_velocity = 8 },
   { step = 0, voice = "snare", delta_velocity = 23 },
@@ -189,6 +206,11 @@ density = 2
 weight = 87
 tag = "ride"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "ride", delta_velocity = 5 },
   { step = 4, voice = "pedal" },
@@ -247,13 +269,16 @@ density = 1
 weight = 68
 tag = "brush"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 5 },
-  { step = 2, voice = "tap", delta_velocity = -11 },
+  { step = 2, voice = "tap", delta_velocity = -11, probability = 0.9 },
   { step = 3, voice = "pedal" },
-  { step = 4, voice = "tap", delta_velocity = -2 },
+  { step = 4, voice = "tap", delta_velocity = -2, probability = 0.9 },
   { step = 6, voice = "tap" },
-  { step = 8, voice = "tap", delta_velocity = -3 },
+  { step = 8, voice = "tap", delta_velocity = -3, probability = 0.9 },
 ]
 
 [[patterns]]
@@ -261,16 +286,18 @@ density = 1
 weight = 62
 tag = "brush"
 hits = [
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 9 },
-  { step = 2, voice = "tap", delta_velocity = -11 },
-  { step = 4, voice = "tap", delta_velocity = -5 },
-  { step = 5, voice = "tap", delta_velocity = -11 },
+  { step = 2, voice = "tap", delta_velocity = -11, probability = 0.9 },
+  { step = 4, voice = "tap", delta_velocity = -5, probability = 0.9 },
+  { step = 5, voice = "tap", delta_velocity = -11, probability = 0.9 },
   { step = 6, voice = "kick" },
   { step = 6, voice = "tap" },
-  { step = 8, voice = "tap", delta_velocity = -5 },
+  { step = 8, voice = "tap", delta_velocity = -5, probability = 0.9 },
   { step = 9, voice = "tap", delta_velocity = -11 },
-  { step = 10, voice = "kick" },
+  { step = 10, voice = "kick", probability = 0.9 },
 ]
 
 [[patterns]]
@@ -278,15 +305,19 @@ density = 1
 weight = 87
 tag = "brush"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 6 },
   { step = 4, voice = "pedal" },
-  { step = 4, voice = "tap", delta_velocity = -1 },
+  { step = 4, voice = "tap", delta_velocity = -1, probability = 0.9 },
   { step = 6, voice = "tap" },
   { step = 8, voice = "pedal" },
-  { step = 8, voice = "tap", delta_velocity = -5 },
-  { step = 10, voice = "tap", delta_velocity = -11 },
+  { step = 8, voice = "tap", delta_velocity = -5, probability = 0.9 },
+  { step = 10, voice = "tap", delta_velocity = -11, probability = 0.9 },
 ]
 
 [[patterns]]
@@ -294,6 +325,9 @@ density = 2
 weight = 68
 tag = "brush"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 5 },
   { step = 2, voice = "tap", delta_velocity = -11 },
@@ -310,6 +344,7 @@ density = 2
 weight = 62
 tag = "brush"
 hits = [
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 9 },
@@ -329,6 +364,10 @@ density = 2
 weight = 87
 tag = "brush"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "swirl" },
   { step = 0, voice = "tap", delta_velocity = 6 },
@@ -356,6 +395,11 @@ density = 1
 weight = 87
 tag = "hat"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "swirl" },
   { step = 4, voice = "pedal" },
   { step = 8, voice = "pedal" },
@@ -366,6 +410,11 @@ density = 2
 weight = 87
 tag = "hat"
 hits = [
+  { step = 5, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 11, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 2, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 8, voice = "tap", delta_velocity = -8, probability = 0.3 },
+  { step = 1, voice = "tap", delta_velocity = -8, probability = 0.3 },
   { step = 0, voice = "kick" },
   { step = 0, voice = "swirl" },
   { step = 4, voice = "pedal" },
@@ -375,76 +424,76 @@ hits = [
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 3
+weight = 18
 patterns = [18, 18, 18, 18]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 2
+weight = 12
 patterns = [18, 18]
 
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 2
+weight = 12
 at = "part_end"
 patterns = [18, 18]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 3
+weight = 18
 patterns = [19, 19, 19, 19]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 2
+weight = 12
 patterns = [19, 19]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 2
+weight = 12
 at = "part_end"
 patterns = [19, 19]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 3
+weight = 18
 patterns = [20, 20, 20, 20]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 2
+weight = 12
 patterns = [20, 20]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 2
+weight = 12
 at = "part_end"
 patterns = [20, 20]
 
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 25
+weight = 150
 patterns = [11, 11]
 
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 19
+weight = 114
 patterns = [9, 9]
 
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 16
+weight = 96
 patterns = [10, 10]
 
 [[phrases]]
@@ -515,19 +564,19 @@ patterns = [10, 9]
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 6
+weight = 36
 patterns = [10, 10, 10, 10]
 
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [9, 9, 9, 9]
 
 [[phrases]]
 density = 0
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [11, 11, 11, 11]
 
 [[phrases]]
@@ -591,19 +640,19 @@ patterns = [9, 9, 10, 11]
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 25
+weight = 150
 patterns = [14, 14]
 
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 19
+weight = 114
 patterns = [12, 12]
 
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 16
+weight = 96
 patterns = [13, 13]
 
 [[phrases]]
@@ -674,19 +723,19 @@ patterns = [13, 12]
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 6
+weight = 36
 patterns = [13, 13, 13, 13]
 
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [12, 12, 12, 12]
 
 [[phrases]]
 density = 1
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [14, 14, 14, 14]
 
 [[phrases]]
@@ -750,19 +799,19 @@ patterns = [12, 12, 13, 14]
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 25
+weight = 150
 patterns = [17, 17]
 
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 19
+weight = 114
 patterns = [15, 15]
 
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 16
+weight = 96
 patterns = [16, 16]
 
 [[phrases]]
@@ -833,19 +882,19 @@ patterns = [16, 15]
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 6
+weight = 36
 patterns = [16, 16, 16, 16]
 
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [15, 15, 15, 15]
 
 [[phrases]]
 density = 2
 tag = "brush"
-weight = 4
+weight = 24
 patterns = [17, 17, 17, 17]
 
 [[phrases]]
@@ -909,19 +958,19 @@ patterns = [15, 15, 16, 17]
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 25
+weight = 150
 patterns = [2, 2]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 19
+weight = 114
 patterns = [0, 0]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 16
+weight = 96
 patterns = [1, 1]
 
 [[phrases]]
@@ -992,19 +1041,19 @@ patterns = [1, 0]
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 6
+weight = 36
 patterns = [1, 1, 1, 1]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [0, 0, 0, 0]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [2, 2, 2, 2]
 
 [[phrases]]
@@ -1068,19 +1117,19 @@ patterns = [0, 0, 1, 2]
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 25
+weight = 150
 patterns = [5, 5]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 19
+weight = 114
 patterns = [3, 3]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 16
+weight = 96
 patterns = [4, 4]
 
 [[phrases]]
@@ -1151,19 +1200,19 @@ patterns = [4, 3]
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 6
+weight = 36
 patterns = [4, 4, 4, 4]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [3, 3, 3, 3]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [5, 5, 5, 5]
 
 [[phrases]]
@@ -1227,19 +1276,19 @@ patterns = [3, 3, 4, 5]
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 25
+weight = 150
 patterns = [8, 8]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 19
+weight = 114
 patterns = [6, 6]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 16
+weight = 96
 patterns = [7, 7]
 
 [[phrases]]
@@ -1310,19 +1359,19 @@ patterns = [7, 6]
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 6
+weight = 36
 patterns = [7, 7, 7, 7]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [6, 6, 6, 6]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 4
+weight = 24
 patterns = [8, 8, 8, 8]
 
 [[phrases]]

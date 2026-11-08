@@ -125,6 +125,9 @@ density = 1
 tag = "spang"
 weight = 154
 hits = [
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "ride" },
   { step = 4, voice = "ride", delta_velocity = 8 },
   { step = 6, voice = "ride", delta_velocity = -1 },
@@ -139,6 +142,9 @@ density = 1
 tag = "spang"
 weight = 146
 hits = [
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "ride", delta_velocity = -5 },
   { step = 4, voice = "pedal", delta_velocity = 17 },
   { step = 4, voice = "ride", delta_velocity = 15 },
@@ -155,6 +161,9 @@ density = 1
 tag = "quarters"
 weight = 73
 hits = [
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "ride", delta_velocity = -6 },
   { step = 4, voice = "pedal", delta_velocity = 23 },
   { step = 4, voice = "ride", delta_velocity = 7 },
@@ -169,6 +178,9 @@ density = 1
 tag = "spang"
 weight = 30
 hits = [
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "ride", delta_velocity = 19 },
   { step = 2, voice = "ride", delta_velocity = -19 },
   { step = 4, voice = "ride", delta_velocity = 23 },
@@ -204,6 +216,8 @@ density = 2
 tag = "spang"
 weight = 146
 hits = [
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "kick", delta_velocity = -10 },
   { step = 0, voice = "ride", delta_velocity = -5 },
   { step = 4, voice = "pedal", delta_velocity = 17 },
@@ -240,6 +254,9 @@ density = 2
 tag = "spang"
 weight = 30
 hits = [
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.35 },
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "kick", delta_velocity = -8 },
   { step = 0, voice = "ride", delta_velocity = 19 },
   { step = 2, voice = "ride", delta_velocity = -19 },
@@ -275,14 +292,15 @@ density = 1
 tag = "brush"
 weight = 3
 hits = [
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "swirl" },
   { step = 4, voice = "swirl", delta_velocity = 6 },
   { step = 4, voice = "pedal" },
-  { step = 6, voice = "tap", delta_velocity = -4 },
+  { step = 6, voice = "tap", delta_velocity = -4, probability = 0.8 },
   { step = 8, voice = "swirl" },
   { step = 12, voice = "swirl", delta_velocity = 6 },
   { step = 12, voice = "pedal" },
-  { step = 14, voice = "tap", delta_velocity = -4 },
+  { step = 14, voice = "tap", delta_velocity = -4, probability = 0.8 },
 ]
 
 # 13 : balais, figure a, densité 2 (règle de métier)
@@ -291,6 +309,7 @@ density = 2
 tag = "brush"
 weight = 3
 hits = [
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "kick", delta_velocity = -14 },
   { step = 0, voice = "swirl" },
   { step = 4, voice = "swirl", delta_velocity = 6 },
@@ -323,14 +342,15 @@ density = 1
 tag = "brush"
 weight = 2
 hits = [
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "swirl", delta_velocity = 4 },
   { step = 4, voice = "tap" },
   { step = 4, voice = "pedal" },
-  { step = 6, voice = "tap", delta_velocity = -6 },
+  { step = 6, voice = "tap", delta_velocity = -6, probability = 0.8 },
   { step = 8, voice = "swirl", delta_velocity = 4 },
   { step = 12, voice = "tap" },
   { step = 12, voice = "pedal" },
-  { step = 14, voice = "tap", delta_velocity = -6 },
+  { step = 14, voice = "tap", delta_velocity = -6, probability = 0.8 },
 ]
 
 # 16 : balais, figure b, densité 2 (règle de métier)
@@ -339,6 +359,7 @@ density = 2
 tag = "brush"
 weight = 2
 hits = [
+  { step = 2, voice = "tap", delta_velocity = -4, probability = 0.35 },
   { step = 0, voice = "kick", delta_velocity = -14 },
   { step = 0, voice = "swirl", delta_velocity = 4 },
   { step = 4, voice = "tap" },

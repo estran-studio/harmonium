@@ -218,3 +218,15 @@ python3 <worktree>/specs/019-bibliotheque-accompagnements/b3/gmd_latin_brazilian
 # variété : harmonium-lab seed-variety --profile $P --seeds 16 --chorus 4 --engine-dir ~/Project/bascanada/harmonium --engine-bin $CLI --label B3 --work-dir … -o …
 cargo test -p harmonium_core --test gmd_latin_brazilian_samba_profile_tests
 ```
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : accent sur les contretemps 2 et 4 (surdo) et la 3e double croche (tamborim), temps 1 plus léger). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `samba_comp`, amplitude 36, décalage de niveau -11 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 3 (+0,3), contretemps 2 et 4 (+0,9), 3e double croche (+0,6), attaque anticipée (+0,7) ; légers : 1re double croche (-0,7) ; coups probabilistes : -0,7 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (surdo : accent sur les 2/4, notes fantômes aux 3e doubles croches) : forme `samba_bass`, amplitude 28, décalage -2 ; appuyés : contretemps 2 et 4 (+1), attaque anticipée (+0,4) ; légers : temps 1 (-0,3), 1re double croche (-0,8), 3e double croche (-0,8) ; coups probabilistes : -0,8 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 1, 0 note(s) fantôme(s) à 0,45, exposant des probabilités 1, phrases tenues ×1, part de fins de phrase sans relance ×1.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas (celui de la batterie est déjà mesuré) ; égrenage ancré sur la première corde quand le profil en a un (`anchor = 0`).
+
+<!-- q0:fin -->

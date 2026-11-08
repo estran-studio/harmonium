@@ -201,26 +201,26 @@ low = 28
 high = 39
 motifs = [
   # 0 : noires à la fondamentale
-  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 96 }, { step = 4, duration = 4, semitones = 0, velocity = 88 }, { step = 8, duration = 4, semitones = 0, velocity = 92 }, { step = 12, duration = 4, semitones = 0, velocity = 88 }] },
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 4, semitones = 0, velocity = 107 }, { step = 4, duration = 4, semitones = 0, velocity = 86 }, { step = 8, duration = 4, semitones = 0, velocity = 96 }, { step = 12, duration = 4, semitones = 0, velocity = 86 }] },
   # 1 : syncopé : anticipation du temps 3 et du temps 1 suivant
-  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 98 }, { step = 6, duration = 2, semitones = 0, velocity = 86 }, { step = 8, duration = 4, semitones = 0, velocity = 94 }, { step = 12, duration = 2, semitones = 7, velocity = 86 }, { step = 14, duration = 2, semitones = 0, velocity = 84 }] },
+  { bars = 1, weight = 4, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 109 }, { step = 6, duration = 2, semitones = 0, velocity = 72 }, { step = 8, duration = 4, semitones = 0, velocity = 98 }, { step = 12, duration = 2, semitones = 7, velocity = 84 }, { step = 14, duration = 2, semitones = 0, velocity = 88 }] },
   # 2 : croches à la fondamentale
-  { bars = 1, weight = 3, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 98 }, { step = 2, duration = 2, semitones = 0, velocity = 82 }, { step = 4, duration = 2, semitones = 0, velocity = 90 }, { step = 6, duration = 2, semitones = 0, velocity = 82 }, { step = 8, duration = 2, semitones = 0, velocity = 94 }, { step = 10, duration = 2, semitones = 0, velocity = 82 }, { step = 12, duration = 2, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 0, velocity = 82 }] },
+  { bars = 1, weight = 3, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 109 }, { step = 2, duration = 2, semitones = 0, velocity = 68 }, { step = 4, duration = 2, semitones = 0, velocity = 88 }, { step = 6, duration = 2, semitones = 0, velocity = 68 }, { step = 8, duration = 2, semitones = 0, velocity = 98 }, { step = 10, duration = 2, semitones = 0, velocity = 68 }, { step = 12, duration = 2, semitones = 0, velocity = 88 }, { step = 14, duration = 2, semitones = 0, velocity = 86 }] },
   # 3 : blanches (couplet calme)
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 8, semitones = 0, velocity = 94 }, { step = 8, duration = 8, semitones = 0, velocity = 90 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 8, semitones = 0, velocity = 105 }, { step = 8, duration = 8, semitones = 0, velocity = 94 }] },
   # 4 : octaves en croches (refrain porté)
-  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 98 }, { step = 2, duration = 2, semitones = 12, velocity = 80 }, { step = 4, duration = 2, semitones = 0, velocity = 90 }, { step = 6, duration = 2, semitones = 12, velocity = 80 }, { step = 8, duration = 2, semitones = 0, velocity = 94 }, { step = 10, duration = 2, semitones = 12, velocity = 80 }, { step = 12, duration = 2, semitones = 0, velocity = 90 }, { step = 14, duration = 2, semitones = 12, velocity = 80 }] },
+  { bars = 1, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 2, semitones = 0, velocity = 109 }, { step = 2, duration = 2, semitones = 12, velocity = 66 }, { step = 4, duration = 2, semitones = 0, velocity = 88 }, { step = 6, duration = 2, semitones = 12, velocity = 66 }, { step = 8, duration = 2, semitones = 0, velocity = 98 }, { step = 10, duration = 2, semitones = 12, velocity = 66 }, { step = 12, duration = 2, semitones = 0, velocity = 88 }, { step = 14, duration = 2, semitones = 12, velocity = 84 }] },
   # 5 : deux mesures : syncopé, puis noires, quinte et octave pour relancer
-  { bars = 2, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 98 }, { step = 6, duration = 2, semitones = 0, velocity = 86 }, { step = 8, duration = 6, semitones = 0, velocity = 94 }, { step = 14, duration = 2, semitones = 7, velocity = 84 }, { step = 16, duration = 4, semitones = 0, velocity = 96 }, { step = 20, duration = 4, semitones = 0, velocity = 88 }, { step = 24, duration = 4, semitones = 0, velocity = 94 }, { step = 28, duration = 2, semitones = 7, velocity = 86 }, { step = 30, duration = 2, semitones = 12, velocity = 84 }] },
+  { bars = 2, weight = 2, reference = "chord_root", notes = [{ step = 0, duration = 6, semitones = 0, velocity = 109 }, { step = 6, duration = 2, semitones = 0, velocity = 72 }, { step = 8, duration = 6, semitones = 0, velocity = 98 }, { step = 14, duration = 2, semitones = 7, velocity = 88 }, { step = 16, duration = 4, semitones = 0, velocity = 107 }, { step = 20, duration = 4, semitones = 0, velocity = 86 }, { step = 24, duration = 4, semitones = 0, velocity = 98 }, { step = 28, duration = 2, semitones = 7, velocity = 84 }, { step = 30, duration = 2, semitones = 12, velocity = 88 }] },
 ]
 
 # Gabarit : noires, relance vers la fondamentale de l'accord suivant (pickup en croche avant le changement).
 [[accompaniment.bass.templates]]
 weight = 3
 bars = 1
-rhythm = [{ step = 0, duration = 4, velocity = 96 }, { step = 4, duration = 4, velocity = 88 }, { step = 8, duration = 4, velocity = 92 }, { step = 12, duration = 2, velocity = 88 }]
+rhythm = [{ step = 0, duration = 4, velocity = 107 }, { step = 4, duration = 4, velocity = 86 }, { step = 8, duration = 4, velocity = 96 }, { step = 12, duration = 2, velocity = 86 }]
 cycle = [{ degree = "root" }]
-pickup = { lead = 2, duration = 2, velocity = 86, degree = "root" }
+pickup = { lead = 2, duration = 2, velocity = 90, degree = "root" }
 
 [accompaniment.chords]
 center = 62
@@ -231,24 +231,24 @@ color = { none_weight = 4, published_weight = 1, ninth_weight = 1 }
 register_drift = { step = 2, max = 4 }
 low = 52
 high = 76
-patterns = [{ hits = [{ step = 0, duration = 8, velocity = 74 }, { step = 8, duration = 8, velocity = 70 }] }]
+patterns = [{ hits = [{ step = 0, duration = 8, velocity = 88 }, { step = 8, duration = 8, velocity = 72 }] }]
 comping = [
   # 0 sparse : accord tenu
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 16, velocity = 72 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 16, velocity = 86 }] },
   # 1 sparse : deux blanches
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 74 }, { step = 8, duration = 8, velocity = 68 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 88 }, { step = 8, duration = 8, velocity = 70 }] },
   # 2 sparse : silence
   { weight = 1, tag = "sparse", hits = [] },
   # 3 medium : noires
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 78 }, { step = 4, duration = 4, velocity = 70 }, { step = 8, duration = 4, velocity = 76 }, { step = 12, duration = 4, velocity = 70 }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 92 }, { step = 4, duration = 4, velocity = 75 }, { step = 8, duration = 4, velocity = 78 }, { step = 12, duration = 4, velocity = 75 }] },
   # 4 medium : syncopé, anticipation de l'accord suivant
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 78 }, { step = 6, duration = 2, velocity = 68 }, { step = 8, duration = 4, velocity = 74 }, { step = 14, duration = 2, velocity = 72, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 92 }, { step = 6, duration = 2, velocity = 46 }, { step = 8, duration = 4, velocity = 76 }, { step = 14, duration = 2, velocity = 83, anticipate = true }] },
   # 5 medium : x..x.x.x
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 78 }, { step = 6, duration = 2, velocity = 70 }, { step = 10, duration = 2, velocity = 72 }, { step = 14, duration = 2, velocity = 70 }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 92 }, { step = 6, duration = 2, velocity = 48 }, { step = 10, duration = 2, velocity = 50 }, { step = 14, duration = 2, velocity = 81 }] },
   # 6 dense : croches
-  { weight = 4, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 80 }, { step = 2, duration = 2, velocity = 66 }, { step = 4, duration = 2, velocity = 74 }, { step = 6, duration = 2, velocity = 66 }, { step = 8, duration = 2, velocity = 78 }, { step = 10, duration = 2, velocity = 66 }, { step = 12, duration = 2, velocity = 74 }, { step = 14, duration = 2, velocity = 66 }] },
+  { weight = 4, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 94 }, { step = 2, duration = 2, velocity = 44 }, { step = 4, duration = 2, velocity = 79 }, { step = 6, duration = 2, velocity = 44 }, { step = 8, duration = 2, velocity = 80 }, { step = 10, duration = 2, velocity = 44 }, { step = 12, duration = 2, velocity = 79 }, { step = 14, duration = 2, velocity = 77 }] },
   # 7 dense : temps 1 puis croches en contretemps
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 80 }, { step = 2, duration = 2, velocity = 72 }, { step = 6, duration = 2, velocity = 74 }, { step = 10, duration = 2, velocity = 72 }, { step = 14, duration = 2, velocity = 74 }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 94 }, { step = 2, duration = 2, velocity = 50 }, { step = 6, duration = 2, velocity = 52 }, { step = 10, duration = 2, velocity = 50 }, { step = 14, duration = 2, velocity = 85 }] },
 ]
 
 [[accompaniment.chords.phrases]]
@@ -326,21 +326,27 @@ rate_scale = 0.0
 
 [performance.tracks.PercussionLow]
 voices = [
-  { note = 36, on_beat = -0.163, off_beat = -0.125, jitter = 0.1 },
+  { note = 36, on_beat = -0.163, off_beat = -0.125, jitter = 0.06 },
 ]
 [performance.tracks.PercussionHigh]
 voices = [
-  { note = 38, on_beat = -0.141, off_beat = -0.076, jitter = 0.1 },
-  { note = 42, on_beat = -0.094, off_beat = -0.153, jitter = 0.1 },
-  { note = 44, on_beat = -0.2, off_beat = 0.2, jitter = 0.1 },
-  { note = 51, on_beat = -0.04, off_beat = -0.099, jitter = 0.1 },
-  { note = 53, on_beat = -0.2, off_beat = -0.127, jitter = 0.1 },
-  { note = 43, on_beat = -0.086, off_beat = -0.2, jitter = 0.1 },
+  { note = 38, on_beat = -0.141, off_beat = -0.076, jitter = 0.06 },
+  { note = 42, on_beat = -0.094, off_beat = -0.153, jitter = 0.06 },
+  { note = 44, on_beat = -0.2, off_beat = 0.2, jitter = 0.06 },
+  { note = 51, on_beat = -0.04, off_beat = -0.099, jitter = 0.06 },
+  { note = 53, on_beat = -0.2, off_beat = -0.127, jitter = 0.06 },
+  { note = 43, on_beat = -0.086, off_beat = -0.2, jitter = 0.06 },
 ]
 [performance.tracks.Bass]
-jitter = 0.1
+offsets = [-0.163, -0.125, -0.125, -0.125, -0.163, -0.125, -0.125, -0.125, -0.163, -0.125, -0.125, -0.125, -0.163, -0.125, -0.125, -0.125]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.1
+offsets = [-0.1175, -0.1145, -0.1145, -0.1145, -0.1175, -0.1145, -0.1145, -0.1145, -0.1175, -0.1145, -0.1145, -0.1145, -0.1175, -0.1145, -0.1145, -0.1145]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 [mix]
 master_db = 20.0

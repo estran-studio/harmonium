@@ -184,3 +184,15 @@ python3 <worktree>/specs/019-bibliotheque-accompagnements/b3/mesures_latin.py ba
 # variété, mixage, distance au GMD : voir le compte rendu
 cargo test -p harmonium_core --test gmd_latin_brazilian_bossa_profile_tests
 ```
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : syncopes des pas 6 et 14 accentuées (le motif de la guitare), temps 1 appuyé, doubles croches fantômes). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `bossa_comp`, amplitude 28, décalage de niveau -7 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 1 (+0,4), attaque anticipée (+0,8), pas 6 (+1), pas 14 (+1) ; légers : 1re double croche (-0,6), 3e double croche (-0,4) ; coups probabilistes : -0,7 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (temps 1 appuyé, reprises de croche plus légères) : forme `bossa_bass`, amplitude 17, décalage -10 ; appuyés : temps 1 (+1), temps 3 (+0,4), attaque anticipée (+0,6), pas 6 (+0,4) ; légers : 1re double croche (-0,7), 3e double croche (-0,7) ; coups probabilistes : -0,8 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 1, 0 note(s) fantôme(s) à 0,5, exposant des probabilités 1, phrases tenues ×16, part de fins de phrase sans relance ×1.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas (celui de la batterie est déjà mesuré) ; égrenage ancré sur la première corde quand le profil en a un (`anchor = 0`).
+
+<!-- q0:fin -->

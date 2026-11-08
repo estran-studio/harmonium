@@ -291,47 +291,47 @@ high = 76
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 66 }] }]
 comping = [
   # 0-3 : clairsemé, accords tenus.
-  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 14, velocity = 70 }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 72 }, { step = 8, duration = 8, velocity = 64 }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 4, velocity = 76 }, { step = 10, duration = 2, velocity = 62 }, { step = 14, duration = 2, velocity = 66, anticipate = true }] },
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 14, velocity = 87 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 89 }, { step = 8, duration = 8, velocity = 67 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 4, velocity = 93 }, { step = 10, duration = 2, velocity = 55 }, { step = 14, duration = 2, velocity = 77, anticipate = true }] },
   { weight = 1, tag = "sparse", hits = [] },
   # 4-7 : médian, croches décalées.
-  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 70, direction = "up" }, { step = 6, duration = 1, velocity = 66, direction = "up" }, { step = 10, duration = 1, velocity = 70, direction = "up" }, { step = 14, duration = 1, velocity = 66, direction = "up" }] },
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 78, direction = "down" }, { step = 3, duration = 1, velocity = 58, direction = "up" }, { step = 6, duration = 1, velocity = 64, direction = "up" }, { step = 8, duration = 2, velocity = 74, direction = "down" }, { step = 11, duration = 1, velocity = 58, direction = "up" }, { step = 14, duration = 2, velocity = 70, direction = "down", anticipate = true }] },
-  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 2, velocity = 78, direction = "down" }, { step = 7, duration = 1, velocity = 60, direction = "up" }, { step = 10, duration = 2, velocity = 72, direction = "down" }, { step = 12, duration = 1, velocity = 64, direction = "up" }, { step = 15, duration = 1, velocity = 62, direction = "up" }] },
-  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 76, direction = "block" }, { step = 6, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 3, velocity = 72, direction = "down" }, { step = 14, duration = 1, velocity = 64, direction = "up" }] },
+  { weight = 4, tag = "medium", hits = [{ step = 2, duration = 1, velocity = 63, direction = "up" }, { step = 6, duration = 1, velocity = 59, direction = "up" }, { step = 10, duration = 1, velocity = 63, direction = "up" }, { step = 14, duration = 1, velocity = 77, direction = "up" }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 2, velocity = 95, direction = "down" }, { step = 3, duration = 1, velocity = 61, direction = "up" }, { step = 6, duration = 1, velocity = 57, direction = "up" }, { step = 8, duration = 2, velocity = 77, direction = "down" }, { step = 11, duration = 1, velocity = 61, direction = "up" }, { step = 14, duration = 2, velocity = 81, direction = "down", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 2, velocity = 79, direction = "down" }, { step = 7, duration = 1, velocity = 63, direction = "up" }, { step = 10, duration = 2, velocity = 65, direction = "down" }, { step = 12, duration = 1, velocity = 65, direction = "up" }, { step = 15, duration = 1, velocity = 65, direction = "up" }] },
+  { weight = 2, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 93, direction = "block" }, { step = 6, duration = 1, velocity = 55, direction = "up" }, { step = 8, duration = 3, velocity = 75, direction = "down" }, { step = 14, duration = 1, velocity = 75, direction = "up" }] },
   # 8-11 : dense, doubles croches, notes fantômes à probabilité réduite.
   { weight = 4, tag = "dense", hits = [
-    { step = 0, duration = 1, velocity = 80, direction = "down" }, { step = 1, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 2, duration = 1, velocity = 64, direction = "down" }, { step = 3, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 4, duration = 1, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 6, duration = 1, velocity = 64, direction = "down" }, { step = 7, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 8, duration = 1, velocity = 80, direction = "down" }, { step = 9, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 10, duration = 1, velocity = 64, direction = "down" }, { step = 11, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 12, duration = 1, velocity = 80, direction = "down" }, { step = 13, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
-    { step = 14, duration = 1, velocity = 64, direction = "down" }, { step = 15, duration = 1, velocity = 50, direction = "up", probability = 0.6 },
+    { step = 0, duration = 1, velocity = 97, direction = "down" }, { step = 1, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 2, duration = 1, velocity = 57, direction = "down" }, { step = 3, duration = 1, velocity = 35, direction = "up", probability = 0.6 },
+    { step = 4, duration = 1, velocity = 81, direction = "down" }, { step = 5, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 6, duration = 1, velocity = 57, direction = "down" }, { step = 7, duration = 1, velocity = 35, direction = "up", probability = 0.6 },
+    { step = 8, duration = 1, velocity = 83, direction = "down" }, { step = 9, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 10, duration = 1, velocity = 57, direction = "down" }, { step = 11, duration = 1, velocity = 35, direction = "up", probability = 0.6 },
+    { step = 12, duration = 1, velocity = 81, direction = "down" }, { step = 13, duration = 1, velocity = 32, direction = "up", probability = 0.6 },
+    { step = 14, duration = 1, velocity = 75, direction = "down" }, { step = 15, duration = 1, velocity = 35, direction = "up", probability = 0.6 },
   ] },
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 2, velocity = 84, direction = "down" }, { step = 2, duration = 1, velocity = 62, direction = "up" },
-    { step = 3, duration = 1, velocity = 56, direction = "up" }, { step = 4, duration = 1, velocity = 76, direction = "down" },
-    { step = 6, duration = 1, velocity = 62, direction = "up" }, { step = 7, duration = 1, velocity = 56, direction = "up", probability = 0.7 },
-    { step = 8, duration = 2, velocity = 82, direction = "down" }, { step = 10, duration = 1, velocity = 62, direction = "up" },
-    { step = 11, duration = 1, velocity = 56, direction = "up" }, { step = 12, duration = 1, velocity = 76, direction = "down" },
-    { step = 14, duration = 1, velocity = 66, direction = "up" }, { step = 15, duration = 1, velocity = 60, direction = "up", probability = 0.7 },
+    { step = 0, duration = 2, velocity = 101, direction = "down" }, { step = 2, duration = 1, velocity = 55, direction = "up" },
+    { step = 3, duration = 1, velocity = 59, direction = "up" }, { step = 4, duration = 1, velocity = 77, direction = "down" },
+    { step = 6, duration = 1, velocity = 55, direction = "up" }, { step = 7, duration = 1, velocity = 41, direction = "up", probability = 0.7 },
+    { step = 8, duration = 2, velocity = 85, direction = "down" }, { step = 10, duration = 1, velocity = 55, direction = "up" },
+    { step = 11, duration = 1, velocity = 59, direction = "up" }, { step = 12, duration = 1, velocity = 77, direction = "down" },
+    { step = 14, duration = 1, velocity = 77, direction = "up" }, { step = 15, duration = 1, velocity = 45, direction = "up", probability = 0.7 },
   ] },
   { weight = 3, tag = "dense", hits = [
-    { step = 0, duration = 1, velocity = 84, direction = "down" }, { step = 3, duration = 1, velocity = 62, direction = "up" },
-    { step = 4, duration = 1, velocity = 80, direction = "down" }, { step = 5, duration = 1, velocity = 52, direction = "up", probability = 0.5 },
-    { step = 7, duration = 1, velocity = 62, direction = "up" }, { step = 8, duration = 1, velocity = 82, direction = "down" },
-    { step = 10, duration = 1, velocity = 64, direction = "up" }, { step = 11, duration = 1, velocity = 62, direction = "down" },
-    { step = 12, duration = 1, velocity = 80, direction = "down" }, { step = 13, duration = 1, velocity = 52, direction = "up", probability = 0.5 },
-    { step = 15, duration = 1, velocity = 64, direction = "up", anticipate = true },
+    { step = 0, duration = 1, velocity = 101, direction = "down" }, { step = 3, duration = 1, velocity = 65, direction = "up" },
+    { step = 4, duration = 1, velocity = 81, direction = "down" }, { step = 5, duration = 1, velocity = 32, direction = "up", probability = 0.5 },
+    { step = 7, duration = 1, velocity = 65, direction = "up" }, { step = 8, duration = 1, velocity = 85, direction = "down" },
+    { step = 10, duration = 1, velocity = 57, direction = "up" }, { step = 11, duration = 1, velocity = 65, direction = "down" },
+    { step = 12, duration = 1, velocity = 81, direction = "down" }, { step = 13, duration = 1, velocity = 32, direction = "up", probability = 0.5 },
+    { step = 15, duration = 1, velocity = 75, direction = "up", anticipate = true },
   ] },
   { weight = 2, tag = "dense", hits = [
-    { step = 0, duration = 3, velocity = 86, direction = "down" }, { step = 3, duration = 1, velocity = 64, direction = "up" },
-    { step = 4, duration = 1, velocity = 62, direction = "up" }, { step = 6, duration = 1, velocity = 70, direction = "down" },
-    { step = 8, duration = 3, velocity = 84, direction = "down" }, { step = 11, duration = 1, velocity = 64, direction = "up" },
-    { step = 12, duration = 1, velocity = 62, direction = "up" }, { step = 14, duration = 2, velocity = 74, direction = "down", anticipate = true },
+    { step = 0, duration = 3, velocity = 103, direction = "down" }, { step = 3, duration = 1, velocity = 67, direction = "up" },
+    { step = 4, duration = 1, velocity = 63, direction = "up" }, { step = 6, duration = 1, velocity = 63, direction = "down" },
+    { step = 8, duration = 3, velocity = 87, direction = "down" }, { step = 11, duration = 1, velocity = 67, direction = "up" },
+    { step = 12, duration = 1, velocity = 63, direction = "up" }, { step = 14, duration = 2, velocity = 85, direction = "down", anticipate = true },
   ] },
 ]
 # Phrases de comping de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..11). Règles de
@@ -364,7 +364,7 @@ down_gap_ms = 6.0
 up_gap_ms = 4.0
 up_note_count = 2
 gap_jitter = 0.3
-anchor = 0.5
+anchor = 0.0
 tempo_exponent = 0.0
 ref_bpm = 96.0
 max_spread_ratio = 0.4
@@ -405,9 +405,15 @@ voices = [
   { note = 48, on_beat = -0.109, off_beat = -0.101 },
 ]
 [performance.tracks.Bass]
-jitter = 0.04
+offsets = [-0.069, -0.04, -0.04, -0.04, -0.069, -0.04, -0.04, -0.04, -0.069, -0.04, -0.04, -0.04, -0.069, -0.04, -0.04, -0.04]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.05
+offsets = [-0.047, -0.03, -0.03, -0.03, -0.047, -0.03, -0.03, -0.03, -0.047, -0.03, -0.03, -0.03, -0.047, -0.03, -0.03, -0.03]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service (rien de mesuré sur un corpus) : réglé sur le LUFS en solo de chaque piste,
 # voir README.

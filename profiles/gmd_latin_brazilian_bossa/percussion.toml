@@ -353,37 +353,37 @@ hits = [
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 67
+weight = 1072
 patterns = [3, 3]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 67
+weight = 1072
 patterns = [4, 4]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 67
+weight = 1072
 patterns = [5, 5]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 18
+weight = 288
 patterns = [3, 3, 3, 3]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 18
+weight = 288
 patterns = [4, 4, 4, 4]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 18
+weight = 288
 patterns = [5, 5, 5, 5]
 
 [[phrases]]
@@ -407,19 +407,19 @@ patterns = [8, 5]
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 4
+weight = 64
 patterns = [0, 0]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 4
+weight = 64
 patterns = [1, 1]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 4
+weight = 64
 patterns = [2, 2]
 
 [[phrases]]
@@ -479,55 +479,55 @@ patterns = [8, 5, 5, 5]
 [[phrases]]
 density = 0
 tag = "hat"
-weight = 5
+weight = 80
 patterns = [0, 0, 0, 0]
 
 [[phrases]]
 density = 1
 tag = "hat"
-weight = 5
+weight = 80
 patterns = [1, 1, 1, 1]
 
 [[phrases]]
 density = 2
 tag = "hat"
-weight = 5
+weight = 80
 patterns = [2, 2, 2, 2]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [6, 6]
 
 [[phrases]]
 density = 0
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [6, 6, 6, 6]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [7, 7]
 
 [[phrases]]
 density = 1
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [7, 7, 7, 7]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [8, 8]
 
 [[phrases]]
 density = 2
 tag = "ride"
-weight = 11
+weight = 176
 patterns = [8, 8, 8, 8]
 
 # Relances de métier : le GMD n'a aucun fichier fill pour ce style.

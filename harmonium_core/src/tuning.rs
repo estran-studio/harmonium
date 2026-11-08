@@ -10,7 +10,10 @@ use crate::{
     style_profile::StyleProfile,
 };
 
-/// Version du contrat : 33 ajoute A7 (019 : motifs de basse étiquetés et plan de basse tiré à
+/// Version du contrat : 34 (020, Q0) retire le swing léger du rock et du hip-hop,
+/// accentue comping et basse des 13 accompagnements prioritaires, tient les grooves
+/// de batterie par phrase et rapproche basse et accords de la batterie.
+/// 33 ajoute A7 (019 : motifs de basse étiquetés et plan de basse tiré à
 /// chaque chorus sous les tags de l'arc, grille tirée par chorus, accords de puissance, niveau
 /// de densité de batterie par variante d'arc ; `gmd_rock` active ces mécanismes, les autres
 /// profils gardent leurs notes). 32 ajoute E12 (019 : mélodie jazz de `wjazzd_swing`, banque de cellules
@@ -25,7 +28,7 @@ use crate::{
 /// probabilistes. S0 (26) tire la graine d'accompagnement une fois par air après la mélodie ;
 /// R1 (25) intègre P1/P2 aux profils `nt_desert`, `isaac_basement`, `isaac_burning` et
 /// `isaac_downpour`.
-pub const TUNING_VERSION: u32 = 33;
+pub const TUNING_VERSION: u32 = 34;
 
 /// Paramètres de réalisation de la mélodie du profil.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

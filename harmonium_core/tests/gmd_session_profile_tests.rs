@@ -23,8 +23,8 @@ const IDS: [&str; 9] = [
     "gmd_funk",
     "gmd_neworleans_funk_secondline",
 ];
-/// Rapports de swing de la source : droit, ou le swing léger du GMD (hip-hop 0,59, rock 0,60).
-const SWINGS: [f32; 3] = [0.5, 0.59, 0.6];
+/// Rapport de swing de la source : droit seulement (Q0, phase 020, a retiré le swing léger du GMD).
+const SWINGS: [f32; 1] = [0.5];
 
 fn flow(p: &StyleProfile, seed: u64, bars: usize, bpm: Option<f32>) -> Vec<MeasureSnapshot> {
     let params = MusicalParams {

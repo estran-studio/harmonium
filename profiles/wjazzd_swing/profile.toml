@@ -297,8 +297,8 @@ high = 47
 walk_low = 33
 walk_high = 50
 [accompaniment.bass.walking]
-velocity = 78
-accent = 6
+velocity = 72
+accent = 20
 duration = 4
 max_leap = 11
 toward_target_weight = 2
@@ -330,23 +330,23 @@ register_drift = { step = 2, max = 6 }
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 62 }, { step = 8, direction = "block", duration = 8, velocity = 62 }] }]
 comping = [
   # 0-4 : sparse
-  { weight = 3, tag = "sparse", hits = [{ step = 8, duration = 8, velocity = 60 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 8, duration = 8, velocity = 36 }] },
   { weight = 1, tag = "sparse", hits = [] },
-  { weight = 2, tag = "sparse", hits = [{ step = 0, duration = 12, velocity = 56 }] },
-  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 6, velocity = 58 }] },
-  { weight = 1, tag = "sparse", hits = [{ step = 14, duration = 2, velocity = 58, anticipate = true }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 0, duration = 12, velocity = 38 }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 6, velocity = 76 }] },
+  { weight = 1, tag = "sparse", hits = [{ step = 14, duration = 2, velocity = 76, anticipate = true }] },
   # 5-10 : medium (5 et 6 : les motifs de la banque d'E7)
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 66 }, { step = 6, duration = 4, velocity = 58 }] },
-  { weight = 2, tag = "medium", hits = [{ step = 6, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
-  { weight = 3, tag = "medium", hits = [{ step = 2, duration = 4, velocity = 58 }, { step = 10, duration = 4, velocity = 56 }] },
-  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 4, velocity = 60 }, { step = 12, duration = 4, velocity = 58 }] },
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 62 }, { step = 8, duration = 6, velocity = 58 }] },
-  { weight = 2, tag = "medium", hits = [{ step = 8, duration = 4, velocity = 60 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 48 }, { step = 6, duration = 4, velocity = 76 }] },
+  { weight = 2, tag = "medium", hits = [{ step = 6, duration = 4, velocity = 76 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 2, duration = 4, velocity = 62 }, { step = 10, duration = 4, velocity = 60 }] },
+  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 4, velocity = 39 }, { step = 12, duration = 4, velocity = 37 }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 44 }, { step = 8, duration = 6, velocity = 34 }] },
+  { weight = 2, tag = "medium", hits = [{ step = 8, duration = 4, velocity = 36 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
   # 11-14 : dense (11 et 12 : les motifs de la banque d'E7)
-  { weight = 3, tag = "dense", hits = [{ step = 4, duration = 3, velocity = 60 }, { step = 10, duration = 3, velocity = 56 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 4, velocity = 62 }, { step = 8, duration = 4, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
-  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 62 }, { step = 6, duration = 3, velocity = 56 }, { step = 10, duration = 3, velocity = 58 }, { step = 14, duration = 2, velocity = 60, anticipate = true }] },
-  { weight = 1, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 56 }, { step = 6, duration = 3, velocity = 60 }, { step = 8, duration = 3, velocity = 58 }, { step = 12, duration = 3, velocity = 56 }] },
+  { weight = 3, tag = "dense", hits = [{ step = 4, duration = 3, velocity = 39 }, { step = 10, duration = 3, velocity = 60 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 4, velocity = 44 }, { step = 8, duration = 4, velocity = 34 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 44 }, { step = 6, duration = 3, velocity = 74 }, { step = 10, duration = 3, velocity = 62 }, { step = 14, duration = 2, velocity = 78, anticipate = true }] },
+  { weight = 1, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 60 }, { step = 6, duration = 3, velocity = 78 }, { step = 8, duration = 3, velocity = 34 }, { step = 12, duration = 3, velocity = 35 }] },
 ]
 
 # Phrases de comping (A1) : suites de motifs de `comping`, même étiquette que leurs motifs pour que
@@ -481,10 +481,14 @@ rate_scale = 0.0
 # mesuré sur les contretemps du piano (déjà en retard) : le retard de 0,2 pas ne s'applique donc qu'aux
 # temps (pas 0, 4, 8, 12), sinon il s'ajouterait au rapport (mesuré sur le MIDI : +0,03 de la courbe JTD).
 [performance.tracks.Bass]
-jitter = 0.1
+jitter = 0.02
+phrase = [[0.0, -18], [0.5, 18], [1.0, -18]]
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-offsets = [0.2, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0]
-jitter = 0.1
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service (rien de mesuré sur un corpus). Écoute du propriétaire (2026-11-02) : la
 # batterie couvrait tout à 0 dB. Elle passe à −9 dB : ride à −33,7 LUFS en solo, environ 8 LU

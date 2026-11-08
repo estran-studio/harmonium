@@ -49,7 +49,7 @@ de session en tire une autre, voir « Habillage par graine »), pas copiées d'u
 | Accords | piano électrique « Tine » (programme 4), voicings `drop2` à quatre sons dans la fenêtre 52..76 ; huit rythmes d'une mesure étiquetés `sparse`, `medium`, `dense` (dont un « chank » en doubles croches), douze phrases de 2 à 4 mesures dont quatre `part_end` |
 | Batterie | kit GeneralUser GS banque 128, programme 0 (kit standard) ; 16 patterns, 22 phrases distinctes, 1 relances ; densité 0 timekeeper, 1 ossature, 2 notes fantômes |
 | Arc | exposition, corps, sommet, retombée : `arc.toml` (valeurs de service) |
-| Timing | basse et accords sur la batterie (0 pas), jitter 0,1 pas (valeur de service) |
+| Timing | basse sur la grosse caisse, accords sur la caisse claire et le charleston (décalages par voix, Q0), jitter 0,02 pas ; batterie 0,045 pas |
 | Mixage | master 20.0 dB, accords -14.4 dB, basse -14.6 dB, batterie -15.3 dB : réglages de service calés hors ligne (section Mixage) |
 
 Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont ceux de GeneralUser GS (D1).
@@ -219,3 +219,15 @@ basse changée (elle suit la fondamentale des accords) 7 % → 59 %. Poids et pr
 `percussion.toml` est généré : `{venv du labo}/bin/python specs/019-bibliotheque-accompagnements/b8/generer.py gmd_soul`
 (lit le GMD en cache vérifié, n'écrit rien dans le labo). Les autres valeurs sont portées à la main dans `profile.toml`
 (`styles.py` les génère aussi : le script réécrit tout, README compris).
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : temps 1 et backbeat appuyés, 3e double croche légèrement appuyée, scratchs fantômes). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `soul_comp`, amplitude 26, décalage de niveau -8 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : temps 1 (+0,8), temps 3 (+0,3), contretemps 2 et 4 (+0,5), attaque anticipée (+0,7) ; légers : 1re double croche (-0,7) ; coups probabilistes : -0,9 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (temps 1 appuyé, notes mortes aux 1res doubles croches) : forme `soul_bass`, amplitude 14, décalage -3 ; appuyés : temps 1 (+1), temps 3 (+0,3), 3e double croche (+0,3), attaque anticipée (+0,5) ; légers : croche de contretemps (-0,4), 1re double croche (-0,9) ; coups probabilistes : -0,9 de plus.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,95, 0 note(s) fantôme(s) à 0,45, exposant des probabilités 3, phrases tenues ×16, part de fins de phrase sans relance ×8.
+- **Mise en place** : basse sur les décalages de la grosse caisse (A6, par pas), accords sur la moyenne caisse claire / timekeeper ; `jitter` basse 0,02 et accords 0,02 pas ; `jitter` de la batterie 0,045 pas (écart-type intra-fichier du GMD) ; égrenage ancré sur la première corde (`anchor = 0`).
+
+<!-- q0:fin -->

@@ -162,9 +162,9 @@ walk_high = 53
 weight = 5
 bars = 1
 rhythm = [
-  { step = 0, duration = 6, velocity = 96 },
-  { step = 6, duration = 2, velocity = 78 },
-  { step = 8, duration = 6, velocity = 90 },
+  { step = 0, duration = 6, velocity = 103 },
+  { step = 6, duration = 2, velocity = 75 },
+  { step = 8, duration = 6, velocity = 87 },
 ]
 cycle = [{ degree = "root" }, { degree = "fifth" }, { degree = "root" }]
 pickup = { when = "bar_end", lead = 2, duration = 2, velocity = 80 }
@@ -176,8 +176,8 @@ pickup = { when = "bar_end", lead = 2, duration = 2, velocity = 80 }
 weight = 3
 bars = 1
 rhythm = [
-  { step = 0, duration = 8, velocity = 96 },
-  { step = 8, duration = 6, velocity = 88 },
+  { step = 0, duration = 8, velocity = 103 },
+  { step = 8, duration = 6, velocity = 85 },
 ]
 cycle = [{ degree = "root" }, { degree = "fifth_if_held" }]
 pickup = { when = "bar_end", lead = 2, duration = 2, velocity = 80 }
@@ -187,10 +187,10 @@ pickup = { when = "bar_end", lead = 2, duration = 2, velocity = 80 }
 weight = 2
 bars = 1
 rhythm = [
-  { step = 0, duration = 6, velocity = 96 },
-  { step = 6, duration = 2, velocity = 76 },
-  { step = 8, duration = 4, velocity = 90 },
-  { step = 12, duration = 2, velocity = 78 },
+  { step = 0, duration = 6, velocity = 103 },
+  { step = 6, duration = 2, velocity = 73 },
+  { step = 8, duration = 4, velocity = 87 },
+  { step = 12, duration = 2, velocity = 70 },
 ]
 cycle = [{ degree = "root" }, { degree = "fifth" }, { degree = "root" }, { degree = "fifth" }]
 pickup = { when = "bar_end", lead = 2, duration = 2, velocity = 80 }
@@ -230,20 +230,20 @@ register_drift = { step = 1, max = 4 }
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 8, velocity = 70 }, { step = 8, direction = "block", duration = 8, velocity = 64 }] }]
 comping = [
   # 0-3 : clairsemé, un ou deux accords par mesure.
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 70, direction = "down" }, { step = 10, duration = 4, velocity = 62, direction = "up" }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 4, velocity = 64, direction = "down" }, { step = 14, duration = 2, velocity = 62, direction = "up", anticipate = true }] },
-  { weight = 2, tag = "sparse", hits = [{ step = 0, duration = 14, velocity = 68, direction = "block" }] },
-  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 4, velocity = 64, direction = "down" }, { step = 14, duration = 2, velocity = 60, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 6, velocity = 74, direction = "down" }, { step = 10, duration = 4, velocity = 49, direction = "up" }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 4, duration = 4, velocity = 54, direction = "down" }, { step = 14, duration = 2, velocity = 83, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 0, duration = 14, velocity = 72, direction = "block" }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 4, velocity = 85, direction = "down" }, { step = 14, duration = 2, velocity = 81, direction = "up", anticipate = true }] },
   # 4-7 : médian, la « clave » de la bossa sur deux mesures (4 : « trois » aux pas 0, 6, 12 ; 5 : « deux » aux pas 4, 8, puis l'anticipation).
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 74, direction = "down" }, { step = 6, duration = 4, velocity = 66, direction = "down" }, { step = 12, duration = 3, velocity = 68, direction = "down" }] },
-  { weight = 4, tag = "medium", hits = [{ step = 4, duration = 3, velocity = 70, direction = "down" }, { step = 8, duration = 4, velocity = 66, direction = "down" }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 74, direction = "down" }, { step = 6, duration = 2, velocity = 62, direction = "up" }, { step = 8, duration = 4, velocity = 70, direction = "down" }, { step = 14, duration = 2, velocity = 64, direction = "up", anticipate = true }] },
-  { weight = 2, tag = "medium", hits = [{ step = 2, duration = 2, velocity = 64, direction = "up" }, { step = 6, duration = 4, velocity = 68, direction = "down" }, { step = 10, duration = 2, velocity = 62, direction = "up" }, { step = 12, duration = 3, velocity = 70, direction = "down" }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 78, direction = "down" }, { step = 6, duration = 4, velocity = 87, direction = "down" }, { step = 12, duration = 3, velocity = 58, direction = "down" }] },
+  { weight = 4, tag = "medium", hits = [{ step = 4, duration = 3, velocity = 60, direction = "down" }, { step = 8, duration = 4, velocity = 59, direction = "down" }, { step = 14, duration = 2, velocity = 87, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 6, duration = 2, velocity = 83, direction = "up" }, { step = 8, duration = 4, velocity = 63, direction = "down" }, { step = 14, duration = 2, velocity = 85, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "medium", hits = [{ step = 2, duration = 2, velocity = 51, direction = "up" }, { step = 6, duration = 4, velocity = 89, direction = "down" }, { step = 10, duration = 2, velocity = 49, direction = "up" }, { step = 12, duration = 3, velocity = 60, direction = "down" }] },
   # 8-11 : dense, croches syncopées, notes fantômes à probabilité réduite.
-  { weight = 4, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 3, duration = 1, velocity = 54, direction = "up", probability = 0.7 }, { step = 6, duration = 3, velocity = 68, direction = "down" }, { step = 10, duration = 3, velocity = 66, direction = "down" }, { step = 13, duration = 2, velocity = 60, direction = "up" }] },
-  { weight = 4, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 62, direction = "up" }, { step = 4, duration = 3, velocity = 72, direction = "down" }, { step = 8, duration = 3, velocity = 70, direction = "down" }, { step = 10, duration = 1, velocity = 54, direction = "up", probability = 0.6 }, { step = 14, duration = 2, velocity = 66, direction = "up", anticipate = true }] },
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 76, direction = "down" }, { step = 4, duration = 2, velocity = 68, direction = "down" }, { step = 6, duration = 2, velocity = 66, direction = "up" }, { step = 10, duration = 2, velocity = 64, direction = "down" }, { step = 12, duration = 2, velocity = 68, direction = "down" }, { step = 14, duration = 2, velocity = 62, direction = "up", anticipate = true }] },
-  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 78, direction = "down" }, { step = 6, duration = 3, velocity = 66, direction = "down" }, { step = 8, duration = 2, velocity = 64, direction = "up" }, { step = 12, duration = 2, velocity = 64, direction = "down" }, { step = 15, duration = 1, velocity = 42, direction = "up", probability = 0.25, anticipate = true }] },
+  { weight = 4, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 82, direction = "down" }, { step = 3, duration = 1, velocity = 32, direction = "up", probability = 0.7 }, { step = 6, duration = 3, velocity = 89, direction = "down" }, { step = 10, duration = 3, velocity = 53, direction = "down" }, { step = 13, duration = 2, velocity = 36, direction = "up" }] },
+  { weight = 4, tag = "dense", hits = [{ step = 2, duration = 2, velocity = 49, direction = "up" }, { step = 4, duration = 3, velocity = 62, direction = "down" }, { step = 8, duration = 3, velocity = 63, direction = "down" }, { step = 10, duration = 1, velocity = 32, direction = "up", probability = 0.6 }, { step = 14, duration = 2, velocity = 87, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 80, direction = "down" }, { step = 4, duration = 2, velocity = 58, direction = "down" }, { step = 6, duration = 2, velocity = 87, direction = "up" }, { step = 10, duration = 2, velocity = 51, direction = "down" }, { step = 12, duration = 2, velocity = 58, direction = "down" }, { step = 14, duration = 2, velocity = 83, direction = "up", anticipate = true }] },
+  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 82, direction = "down" }, { step = 6, duration = 3, velocity = 87, direction = "down" }, { step = 8, duration = 2, velocity = 57, direction = "up" }, { step = 12, duration = 2, velocity = 54, direction = "down" }, { step = 15, duration = 1, velocity = 38, direction = "up", probability = 0.25, anticipate = true }] },
 ]
 # Phrases de comping de 2 et 4 mesures (indices 0..11) : règles de métier (aucune phrase de comping dans un corpus
 # ouvert). Cycle de deux mesures « trois » puis « deux » (rythmes 4 et 5), répété ; variations aux 3ᵉ et 4ᵉ mesures ;
@@ -274,7 +274,7 @@ down_gap_ms = 7.0
 up_gap_ms = 5.0
 up_note_count = 2
 gap_jitter = 0.3
-anchor = 0.5
+anchor = 0.0
 tempo_exponent = 0.0
 ref_bpm = 127.0
 max_spread_ratio = 0.4
@@ -309,9 +309,15 @@ voices = [
   { note = 51, on_beat = -0.0417, off_beat = -0.0583 },
 ]
 [performance.tracks.Bass]
-jitter = 0.03
+offsets = [0.0333, -0.1667, -0.1667, -0.1667, 0.0333, -0.1667, -0.1667, -0.1667, 0.0333, -0.1667, -0.1667, -0.1667, 0.0333, -0.1667, -0.1667, -0.1667]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-jitter = 0.04
+offsets = [-0.0875, -0.1083, -0.1083, -0.1083, -0.0875, -0.1083, -0.1083, -0.1083, -0.0875, -0.1083, -0.1083, -0.1083, -0.0875, -0.1083, -0.1083, -0.1083]
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service (rien de mesuré sur un corpus) : réglé sur le LUFS intégré en solo de chaque piste (48 mesures, graines 1
 # et 2, instruments par défaut : nylon, contrebasse, kit jazz), voir README et `b3/gmd_latin_brazilian_bossa_mix.py`. Cibles :

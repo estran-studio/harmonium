@@ -189,8 +189,8 @@ high = 45
 walk_low = 31
 walk_high = 51
 [accompaniment.bass.walking]
-velocity = 70
-accent = 4
+velocity = 61
+accent = 20
 duration = 4
 max_leap = 11
 toward_target_weight = 1
@@ -216,19 +216,19 @@ register_drift = { step = 2, max = 5 }
 patterns = [{ hits = [{ step = 0, direction = "block", duration = 15, velocity = 58 }] }]
 comping = [
   # 0-4 : clairsemé, accords tenus.
-  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 15, velocity = 58 }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 60 }, { step = 8, duration = 8, velocity = 52 }] },
-  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 10, velocity = 60 }, { step = 14, duration = 2, velocity = 50, anticipate = true }] },
-  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 10, velocity = 56 }] },
+  { weight = 4, tag = "sparse", hits = [{ step = 0, duration = 15, velocity = 52 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 8, velocity = 54 }, { step = 8, duration = 8, velocity = 39 }] },
+  { weight = 3, tag = "sparse", hits = [{ step = 0, duration = 10, velocity = 54 }, { step = 14, duration = 2, velocity = 73, anticipate = true }] },
+  { weight = 2, tag = "sparse", hits = [{ step = 6, duration = 10, velocity = 79 }] },
   { weight = 1, tag = "sparse", hits = [] },
   # 5-7 : médian, deux ou trois attaques.
-  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 62 }, { step = 6, duration = 4, velocity = 54 }, { step = 12, duration = 4, velocity = 56 }] },
-  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 62 }, { step = 8, duration = 6, velocity = 56 }, { step = 14, duration = 2, velocity = 54, anticipate = true }] },
-  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 4, velocity = 58 }, { step = 8, duration = 4, velocity = 58 }, { step = 12, duration = 4, velocity = 52 }] },
+  { weight = 4, tag = "medium", hits = [{ step = 0, duration = 6, velocity = 56 }, { step = 6, duration = 4, velocity = 77 }, { step = 12, duration = 4, velocity = 43 }] },
+  { weight = 3, tag = "medium", hits = [{ step = 0, duration = 4, velocity = 56 }, { step = 8, duration = 6, velocity = 43 }, { step = 14, duration = 2, velocity = 77, anticipate = true }] },
+  { weight = 3, tag = "medium", hits = [{ step = 4, duration = 4, velocity = 45 }, { step = 8, duration = 4, velocity = 45 }, { step = 12, duration = 4, velocity = 39 }] },
   # 8-10 : dense, jusqu'à six attaques dont une anticipée, une mesure roulée (haut-bas).
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 64 }, { step = 4, duration = 3, velocity = 56 }, { step = 6, duration = 2, velocity = 52 }, { step = 10, duration = 3, velocity = 58 }, { step = 14, duration = 2, velocity = 54, anticipate = true }] },
-  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 62 }, { step = 3, duration = 2, velocity = 54 }, { step = 6, duration = 3, velocity = 56 }, { step = 8, duration = 2, velocity = 60 }, { step = 11, duration = 2, velocity = 52 }, { step = 14, duration = 2, velocity = 54, anticipate = true }] },
-  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 6, velocity = 66, direction = "down" }, { step = 6, duration = 2, velocity = 50, direction = "up" }, { step = 8, duration = 4, velocity = 60, direction = "down" }, { step = 12, duration = 2, velocity = 52, direction = "up" }, { step = 14, duration = 2, velocity = 50, direction = "up", anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 3, velocity = 58 }, { step = 4, duration = 3, velocity = 43 }, { step = 6, duration = 2, velocity = 75 }, { step = 10, duration = 3, velocity = 71 }, { step = 14, duration = 2, velocity = 77, anticipate = true }] },
+  { weight = 3, tag = "dense", hits = [{ step = 0, duration = 2, velocity = 56 }, { step = 3, duration = 2, velocity = 34 }, { step = 6, duration = 3, velocity = 79 }, { step = 8, duration = 2, velocity = 47 }, { step = 11, duration = 2, velocity = 32 }, { step = 14, duration = 2, velocity = 77, anticipate = true }] },
+  { weight = 2, tag = "dense", hits = [{ step = 0, duration = 6, velocity = 60, direction = "down" }, { step = 6, duration = 2, velocity = 73, direction = "up" }, { step = 8, duration = 4, velocity = 47, direction = "down" }, { step = 12, duration = 2, velocity = 39, direction = "up" }, { step = 14, duration = 2, velocity = 73, direction = "up", anticipate = true }] },
 ]
 # Phrases de 2 et 4 mesures : suites des motifs ci-dessus (indices 0..10). Règles de métier : deux mesures du même
 # rythme puis une variation ; mise en place de la fin de partie (`part_end`) plus tenue ou plus dense.
@@ -264,10 +264,14 @@ rate_scale = 0.0
 # pas), le piano est en retard de 0,226 pas. Jitter borné à 0,1 pas par le moteur. Aucune piste JTD sous 102 BPM :
 # valeurs de `wjazzd_swing` reprises (en pas, indépendantes du tempo).
 [performance.tracks.Bass]
-jitter = 0.1
+jitter = 0.02
+phrase = [[0.0, -18], [0.5, 18], [1.0, -18]]
+velocity_min = 32
+velocity_max = 118
 [performance.tracks.Chords]
-offsets = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
-jitter = 0.1
+jitter = 0.02
+velocity_min = 32
+velocity_max = 118
 
 # Mixage de service, non calibré ni validé en niveau audible ici : batterie à −10 dB par piste ;
 # la banque et les programmes peuvent changer l'équilibre (voir README).

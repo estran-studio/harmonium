@@ -66,7 +66,7 @@ grille s'écrit relative à la tonique, et celle d'un hôte gagne.
 | Accords | six familles de voicings tirées par graine (`rootless`, `guide_tones`, `drop2`, `drop3`, `fourths`, `shell`), tension de couleur (9, 11, 13) et dérive de registre ; quinze rythmes d'une mesure (`sparse`, `medium`, `dense`, certains anticipés) joués en 24 phrases de 2 à 8 mesures, mises en place en fin de partie et de chorus ; piano 0, guitare de jazz 26 ou orgue 17 |
 | Batterie | kit jazz de GeneralUser GS (128/32) ou balais (128/40) : ride 51, pédale 44, caisse claire 38, toms 43, grosse caisse 36, balayage 40 ; densité 0 timekeeper, 1 + pédale aux temps 2 et 4, 2 + caisse claire fantôme et grosse caisse ; patterns `spang` / `quarters` (GMD) et `brush` (règle de métier), phrases de 2 et 4 mesures, relances d'une mesure en fin de phrase |
 | Swing | rapport par piste selon le tempo (`swing.toml`, JTD) : batterie 0,721 jusqu'à 140 BPM puis −0,098 par 100 BPM ; basse 0,715 puis −0,044 ; comping 0,702 puis −0,073 |
-| Timing | basse sur la batterie (0 pas), accords en retard de 0,2 pas **sur les temps** (le rapport du piano est mesuré sur ses contretemps, déjà en retard), jitter 0,1 pas |
+| Timing | basse et accords sur la batterie (0 pas, Q0), jitter 0,02 pas |
 | Mixage | master +25 dB, batterie −9 dB, basse −16 dB, accords −14 dB : en solo, ride environ 8 LU sous la basse et les accords (la batterie à 0 dB couvrait tout à l'écoute du propriétaire). Même niveau pour le piano, la guitare et l'orgue : non mesuré par timbre |
 
 Odin n'est pas utilisé : aucune zone `[[odin.<Piste>.zones]]`, les timbres sont ceux de GeneralUser GS.
@@ -132,8 +132,8 @@ Toutes les mesures sont celles de `harmonium_lab/references/wjazzd-swing/` (`mea
 | Blues : un accord par mesure, deux à la dernière | — | 92 % des mesures des solos swing sur blues ont un accord, 8 % deux ; changement au temps 1 dans 89 % des cas | WJazzD |
 | Percussion `[[patterns]]` | 11 patterns pondérés (3, 4 et 4 par densité 0, 1, 2) | probabilités par pas, groupes de mesures de même figure de ride : spang-a-lang `0,4,6,8,12,14` (poids 300 / 154), noires `0,4,8,12` (73), pédale aux pas 4 et 12 (45 et 39 %), caisse claire fantôme aux pas 2, 6, 14 | GMD |
 | Percussion `[[cadence_patterns]]` | densité 2 | 22 mesures `fill` : caisse claire, toms, grosse caisse | GMD |
-| `performance.Chords.offsets` | 0,2 pas | piano moins batterie : +0,226 pas (+20 ms) ; médiane de 976 pistes | JTD |
-| `performance.Bass` | 0 pas, jitter 0,1 | basse moins batterie : 0,000 pas (médiane) ; écart-type 0,22 pas, borné par le moteur à 0,1 | JTD |
+| `performance.Chords.offsets` | aucun (019 : 0,2 pas ; retiré en Q0) | piano moins batterie : +0,226 pas (+20 ms) ; médiane de 976 pistes. Retiré en phase 020 : la batterie n'a aucun décalage par voix et aucun instrument ne doit dériver de la grille plus qu'elle (brief Q0 § 4) ; à remettre d'une ligne (`offsets`) si l'écoute préfère le piano en retard | JTD |
+| `performance.Bass` | 0 pas, jitter 0,02 (019 : 0,1) | basse moins batterie : 0,000 pas (médiane) ; écart-type 0,22 pas, borné par le moteur à 0,1. Q0 : la dispersion propre de la basse est réduite à presque rien, pour que basse et batterie jouent ensemble | JTD |
 | Voicings et rythmes de comping | `rootless` ; six rythmes | **aucune mesure distribuable** : les voicings sont des règles de métier (décision F3). Le MIDI de piano de JTD joue le soliste, pas l'accompagnement : ses probabilités par pas (7 attaques par mesure) ne donnent pas de banque de comping | règles |
 | Courbes d'émotion, mixage, vélocités | — | réglages de service, aucune mesure | — |
 
@@ -213,3 +213,15 @@ silence, tout-accord) dans `specs/019-bibliotheque-accompagnements/e12-melodie-j
 GMD en cache). Les autres valeurs sont portées à la main (`profile.toml`, `session.toml`, `swing.toml`), avec
 la mesure ou la règle de métier en commentaire. Preuves : `b1/habillages.py` (habillages distincts),
 `b1/mesure_swing.py` (swing sur le MIDI contre JTD), `make seed-variety` et `make backing-validate` du labo.
+
+<!-- q0:début -->
+## Corrections Q0 (phase 020, `TUNING_VERSION` 34)
+
+Compte rendu, mesures avant / après et limites : `specs/020-qualite-des-styles/q0-corrections-rapides.md`. Scripts : `specs/020-qualite-des-styles/q0/` (`appliquer.py` : accents et mise en place, `batterie.py` : groove de batterie).
+
+- **Accents du comping** (règle de métier : charleston : accent sur le « et » du 2 (pas 6) et sur l'anticipation du prochain accord, temps 1 et 3 légers). Chaque coup garde la vélocité de 019 et reçoit un écart selon sa place, forme `jazz_comp`, amplitude 28, décalage de niveau -10 (le niveau moyen est conservé : la calibration du mixage reste valable) ; appuyés : croche de contretemps (+0,5), attaque anticipée (+1), pas 6 (+1) ; légers : temps 1 (-0,3), temps 3 (-0,5), contretemps 2 et 4 (-0,4), 1re double croche (-0,8), 3e double croche (-0,8) ; coups probabilistes : -0,6 de plus. Plage de vélocité des accords et de la basse : 32 à 118 (`velocity_min`, `velocity_max` d'A6).
+- **Accents de la basse** (marche : arrivée d'accord +20, courbe de phrase ±18 (A6)) : vélocité de la marche 72, arrivées +20, courbe de phrase ±18.
+- **Groove de batterie** : phrases et patterns de 019 inchangés ; probabilité des coups secondaires 0,8, 3 note(s) fantôme(s) à 0,35, exposant des probabilités 1, phrases tenues ×1, part de fins de phrase sans relance ×1.
+- **Mise en place** : basse et accords sans décalage systématique (la batterie n'a aucun décalage par voix ; le retard de +0,2 pas du piano est retiré : aucun instrument ne dérive de la grille plus que la batterie) ; `jitter` 0,02 pas.
+
+<!-- q0:fin -->
