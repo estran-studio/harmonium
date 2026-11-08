@@ -74,9 +74,9 @@ ce dossier, liens d'écoute `harmonium://open?profile=<id>&seed=<n>`.
 
 | Tâche | État |
 |---|---|
-| Q0 | **livrée** (2026-11-07, reprise sur le Mac), branche `wquintal/q0-corrections-rapides`, `TUNING_VERSION` 34 : [compte rendu](q0-corrections-rapides.md) ; en attente de l'écoute de William |
+| Q0 | **fusionnée** (2026-11-07, `37a92df`, reprise sur le Mac), branche `wquintal/q0-corrections-rapides`, `TUNING_VERSION` 34 : [compte rendu](q0-corrections-rapides.md) ; en attente de l'écoute de William |
 | S1 | lancée (2026-11-07), `ovh-inner`, labo, branche `wquintal/s1-sources` |
-| B1 | lancée (2026-11-07), `ovh-inner`, branche `wquintal/b1-banque-sons` |
+| B1 | **livrée (2026-11-07, Mac)**, branche `wquintal/b1-banque-sons` : `b1-banque-sons.md`, `b1-mesures.md`, `b1-outils/`. Trois banques prêtes à écouter dans `~/orca/harmonium-020/b1/` (`ms-basic`, `b1-gu` 53,9 Mo en SF3 q4 dont 30,2 Mo de guitare saturée, `b1-msb` 72,9 Mo ; référence `gu`), liens d'écoute au compte rendu ; aucun choix fait (décision de William après écoute). Trouvaille : oxisynth résout les échantillons **par nom** (assemblages : noms uniques requis ; `harmonium_trad.sf2` a 4 noms dupliqués). Mixage des profils à recalibrer pour toute autre banque. |
 
 **Incident de lancement (2026-11-07)** : lancés par `orca worktree create --agent omp --model …`, les agents
 prennent la configuration globale d'omp sur `ovh-inner`, dont le relais par défaut est **Opus** puis Codex.
