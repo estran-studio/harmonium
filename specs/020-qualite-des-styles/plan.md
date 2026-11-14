@@ -75,7 +75,11 @@ ce dossier, liens d'écoute `harmonium://open?profile=<id>&seed=<n>`.
 | Tâche | État |
 |---|---|
 | Q0 | **fusionnée** (2026-11-07, `37a92df`, reprise sur le Mac), branche `wquintal/q0-corrections-rapides`, `TUNING_VERSION` 34 : [compte rendu](q0-corrections-rapides.md) ; en attente de l'écoute de William |
-| S1 | lancée (2026-11-07), `ovh-inner`, labo, branche `wquintal/s1-sources` |
+| S1 | **fusionnée** au labo (2026-11-14, `e96240a`) : `references/s1-sources.md`, `references/styles/<style>.json` (13 styles), `corpus/sources-styles.md` ; couches sans source : basse et comping du baião, clave et tumbao, balais |
+| V2-jazz | lancée (2026-11-14, Mac), branche `wquintal/v2-jazz`, `TUNING_VERSION` réservé 35 |
+| V2-rock-pop | lancée (2026-11-14, Mac), branche `wquintal/v2-rock-pop`, réservé 36 |
+| V2-groove | lancée (2026-11-14, Mac), branche `wquintal/v2-groove`, réservé 37 |
+| V2-latin | en file (lancée quand une des trois finit), réservé 38 |
 | B1 | **livrée (2026-11-07, Mac)**, branche `wquintal/b1-banque-sons` : `b1-banque-sons.md`, `b1-mesures.md`, `b1-outils/`. Trois banques prêtes à écouter dans `~/orca/harmonium-020/b1/` (`ms-basic`, `b1-gu` 53,9 Mo en SF3 q4 dont 30,2 Mo de guitare saturée, `b1-msb` 72,9 Mo ; référence `gu`), liens d'écoute au compte rendu ; aucun choix fait (décision de William après écoute). Trouvaille : oxisynth résout les échantillons **par nom** (assemblages : noms uniques requis ; `harmonium_trad.sf2` a 4 noms dupliqués). Mixage des profils à recalibrer pour toute autre banque. |
 
 **Incident de lancement (2026-11-07)** : lancés par `orca worktree create --agent omp --model …`, les agents
